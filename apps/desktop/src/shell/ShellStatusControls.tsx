@@ -2,6 +2,7 @@ import React from 'react';
 import { Coffee, FolderOpen, Home, Mail, Settings, UserRound } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { APP_VERSION, APP_VISIBLE_VERSION } from '../appVersion';
+import { isParchmentShellEmbed } from './embedMode';
 import { resolveParchmentNavigation } from './parchmentNavigation';
 import './shellStatus.css';
 
@@ -18,6 +19,8 @@ function openReleaseNotes() {
 }
 
 export function ShellStatusControls({ onFeedback }: { onFeedback: () => void }) {
+  if (isParchmentShellEmbed()) return null;
+
   const navigation = resolveParchmentNavigation(window.location.href);
 
   return createPortal(

@@ -56,8 +56,11 @@ import { useCloudWorkspaceSync } from './workspace/useCloudWorkspaceSync';
 import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
 import { APP_VERSION, APP_VISIBLE_VERSION } from './appVersion';
 import { ReleaseNotesModal } from './release/ReleaseNotesModal';
+import { applyParchmentShellEmbedFlag } from './shell/embedMode';
 import './styles.css';
 import './devWorkspace.css';
+
+applyParchmentShellEmbedFlag();
 
 const APP_NAME = 'World Forge';
 const FEEDBACK_EMAIL = 'support@threewheeledsloth.com';

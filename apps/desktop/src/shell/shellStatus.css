@@ -14,8 +14,16 @@ body::before {
   z-index: 80;
 }
 
+html[data-parchment-shell-embed="true"] body::before {
+  content: none;
+}
+
 .app-shell {
   padding-top: 68px !important;
+}
+
+html[data-parchment-shell-embed="true"] .app-shell {
+  padding-top: 10px !important;
 }
 
 .shell-status-controls {
