@@ -8,7 +8,7 @@ import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '@world-fo
 import type { GenerationGraphNodeRunEvent } from '@world-forge/generator-core/graph/types';
 import { coreGenerationGraph, generationGraphNodeForStageId } from '@world-forge/generation-runtime/graph/generationGraph';
 import { GenerationConfig, WorldProject } from '@world-forge/shared';
-import { APP_VERSION } from '../appVersion';
+import { APP_SOURCE_COMMIT, APP_VERSION } from '../appVersion';
 import { loadWorkspaceSettings } from '../sync';
 import {
   developerGenerationRunEvent,
@@ -263,6 +263,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
         const preparedConfig = prepareSystemOrbitConfig(effectiveConfig);
         const generatedProject = generateProjectWithNativeStages(preparedConfig, {
           appVersion: APP_VERSION,
+          sourceCommit: APP_SOURCE_COMMIT,
           onStageEvent: (event) => {
             const stage = desktopStageEvent(taskId, event);
             emitGenerationStageTelemetry(stage);

@@ -77,6 +77,8 @@ export function DiagnosticsPanel({
         <h3>Generation State</h3>
         <Metric label="Seed pair" value={`${diagnostics.generation.starSeed} : ${diagnostics.generation.worldSeed}`} />
         <Metric label="Build" value={diagnostics.generation.appVersion} status={diagnostics.generation.appVersion === diagnostics.generation.currentAppVersion ? 'ok' : 'warn'} />
+        <Metric label="Generated commit" value={shortCommit(diagnostics.generation.sourceCommit)} status={diagnostics.generation.sourceCommit === diagnostics.generation.currentSourceCommit ? 'ok' : diagnostics.generation.sourceCommit ? 'warn' : undefined} />
+        <Metric label="Runtime commit" value={shortCommit(diagnostics.generation.currentSourceCommit)} />
         <Metric label="Generated size" value={diagnostics.generation.outputResolution} />
         <Metric label="Source topology" value={String(diagnostics.generation.topologyResolution)} />
         <Metric label="World preset" value={diagnostics.generation.worldPreset} />
@@ -263,6 +265,13 @@ function normalizeSeedForComparison(seed: string | undefined, fallback: string):
   if (!value) return String(fallback || '');
   const labeled = value.match(/^(?:star|world):(.+)$/i);
   return labeled ? labeled[1] : value;
+}
+
+function shortCommit(commit: string | undefined): string {
+  const value = commit?.trim();
+  if (!value) return 'unknown';
+  if (value === 'dev-local') return value;
+  return value.length > 12 ? value.slice(0, 12) : value;
 }
 
 function DiagnosticDonutChart({ title, data }: { title: string; data: DiagnosticChartDatum[] }) {

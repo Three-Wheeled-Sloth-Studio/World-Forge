@@ -738,6 +738,7 @@ export type WorldProject = {
   createdAt: string;
   updatedAt: string;
   appVersion: string;
+  sourceCommit?: string;
   generatorVersion: string;
   seed: string;
   config: GenerationConfig;

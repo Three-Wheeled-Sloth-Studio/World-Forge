@@ -1,7 +1,7 @@
 import { generateHexTileMap } from '@world-forge/exporters';
 import { HexTileExportConfig, SurfaceElevationBand, SurfaceReliefCharacter, SurfaceStructureClassification, WorldProject, biomeNames, buildCubedSphereTopology, buildSurfaceStructureClassification, codeToBiome } from '@world-forge/shared';
 import { MapTheme, analyzeBiomeRenderParity, cleanGameMapTheme } from '@world-forge/renderer';
-import { APP_VERSION } from '../appVersion';
+import { APP_SOURCE_COMMIT, APP_VERSION } from '../appVersion';
 
 export type DiagnosticSeverity = 'ok' | 'warn' | 'info';
 
@@ -23,6 +23,8 @@ export type WorldDiagnosticsSummary = {
   generation: {
     appVersion: string;
     currentAppVersion: string;
+    sourceCommit?: string;
+    currentSourceCommit: string;
     generatedAt: string;
     seed: string;
     starSeed: string;
@@ -194,6 +196,15 @@ export function buildWorldDiagnostics(project: WorldProject, tileConfig: Partial
       detail: `This project was generated with ${generation.appVersion}, while the current app is ${generation.currentAppVersion}. Regenerate before comparing terrain diagnostics against current code.`
     });
   }
+  if (generation.sourceCommit && generation.sourceCommit !== generation.currentSourceCommit) {
+    findings.push({
+      id: 'project-source-commit-differs',
+      severity: 'warn',
+      scope: 'project',
+      title: 'Loaded project came from a different source commit',
+      detail: `This project was generated with ${shortCommit(generation.sourceCommit)}, while the current runtime is ${shortCommit(generation.currentSourceCommit)}. Regenerate before comparing terrain diagnostics against current code.`
+    });
+  }
   if (project.metrics.validation.oceanWithinTolerance) {
     findings.push({ id: 'ocean-ok', severity: 'ok', scope: 'world', title: 'Ocean target met', detail: `Generated ocean coverage is ${project.metrics.oceanPercentage}% against a ${project.selectedValues.oceanPercentage}% target.` });
   } else {
@@ -348,6 +359,8 @@ function generationDiagnostics(project: WorldProject): WorldDiagnosticsSummary['
   return {
     appVersion: project.appVersion,
     currentAppVersion: APP_VERSION,
+    sourceCommit: project.sourceCommit,
+    currentSourceCommit: APP_SOURCE_COMMIT,
     generatedAt: project.updatedAt || project.createdAt,
     seed: project.seed,
     starSeed: config.seeds?.star ?? project.seed,
@@ -512,4 +525,11 @@ function formatSelectedValue(value: number | undefined): string {
   if (!Number.isFinite(value)) return 'n/a';
   const numeric = Number(value);
   return Number.isInteger(numeric) ? String(numeric) : String(roundForDisplay(numeric));
+}
+
+function shortCommit(commit: string | undefined): string {
+  const value = commit?.trim();
+  if (!value) return 'unknown';
+  if (value === 'dev-local') return value;
+  return value.length > 12 ? value.slice(0, 12) : value;
 }

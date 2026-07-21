@@ -8,7 +8,7 @@ import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '@world-fo
 import { coreGenerationGraph, generationGraphNodeForStageId } from '@world-forge/generation-runtime/graph/generationGraph';
 import { GenerationConfig, WorldProject } from '@world-forge/shared';
 import type { GenerationStageTelemetryDetail } from './generation/generationEvents';
-import { APP_VERSION } from './appVersion';
+import { APP_SOURCE_COMMIT, APP_VERSION } from './appVersion';
 
 type WorkerMessenger = { postMessage(message: GenerateResponse, transfer?: Transferable[]): void };
 type GenerateRequest = { type: 'generate'; id: string; config: GenerationConfig };
@@ -79,6 +79,7 @@ self.onmessage = (event: MessageEvent<GenerateRequest>) => {
     const previewHeight = Math.min(512, Math.max(128, Math.round(config.outputResolution.height / 2)));
     const generatedProject = generateProjectWithNativeStages(config, {
       appVersion: APP_VERSION,
+      sourceCommit: APP_SOURCE_COMMIT,
       previewResolution: { width: previewWidth, height: previewHeight },
       onProgress: (preview) => {
         messenger.postMessage({ type: 'progress', id: taskId, preview } satisfies GenerateResponse, [preview.rgba.buffer]);

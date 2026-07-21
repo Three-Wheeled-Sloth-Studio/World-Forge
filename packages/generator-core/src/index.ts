@@ -74,6 +74,7 @@ export type GenerateProjectOptions = {
   onProgress?: GenerationProgressCallback;
   onGraphNodeEvent?: (event: GenerationGraphNodeRunEvent) => void;
   appVersion?: string;
+  sourceCommit?: string;
   previewResolution?: {
     width: number;
     height: number;
@@ -189,6 +190,7 @@ export function generateProject(input: Partial<GenerationConfig> = {}, options: 
     createdAt: now,
     updatedAt: now,
     appVersion: options.appVersion ?? '0.1.0',
+    sourceCommit: options.sourceCommit,
     generatorVersion,
     seed: config.seed,
     config,
