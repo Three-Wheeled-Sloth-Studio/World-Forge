@@ -2,7 +2,10 @@
   "compilerOptions": {
     "composite": true,
     "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "../../.local/types/apps/desktop",
     "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "../../.local/tsbuildinfo/apps-desktop.tsbuildinfo",
     "strict": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
