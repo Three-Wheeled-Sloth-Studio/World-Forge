@@ -92,6 +92,7 @@ const rangeLabels: Record<RangeKey, string> = {
 
 const defaultSeed = '1001001';
 const WORLD_FORGE_BUILD_MESSAGE = 'parchment-worlds:world-forge-build';
+const WORLD_FORGE_BUILD_REQUEST = 'parchment-worlds:request-world-forge-build';
 
 const resolutionOptions = [
   { label: 'Fast 256 x 128', width: 256, height: 128 },
@@ -287,13 +288,27 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('embed') !== 'shell' || window.parent === window) return;
-    window.parent.postMessage({
+
+    const postBuild = () => window.parent.postMessage({
       type: WORLD_FORGE_BUILD_MESSAGE,
       payload: {
         version: APP_VERSION,
         sourceCommit: APP_SOURCE_COMMIT
       }
     }, '*');
+
+    const onMessage = (event: MessageEvent<{ type?: string }>) => {
+      if (event.source !== window.parent) return;
+      if (event.data?.type === WORLD_FORGE_BUILD_REQUEST) postBuild();
+    };
+
+    postBuild();
+    const retry = window.setTimeout(postBuild, 500);
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.clearTimeout(retry);
+      window.removeEventListener('message', onMessage);
+    };
   }, []);
 
   const defaultHighConfig = () => configWithPreset(normalizeGenerationConfig(createDefaultConfig(defaultSeed, { width: 2048, height: 1024 })), 'Earthlike');

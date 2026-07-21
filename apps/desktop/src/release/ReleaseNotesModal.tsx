@@ -28,6 +28,23 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.13</p>
+            <h3>Embedded build provenance</h3>
+            <ul>
+              <li>World Forge now reports its loaded runtime version and source commit to the Parchment Worlds shell when embedded.</li>
+              <li>The embedded build message responds to shell requests so hosted deployments do not get stuck on a stale loading state.</li>
+            </ul>
+          </section>
+
+          <section>
+            <p className="release-kicker">Release 0.3.12</p>
+            <h3>Tool version ownership</h3>
+            <ul>
+              <li>Prepared the public tool bundle to identify its own build instead of relying on a shell-side version label.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.2.0</p>
             <h3>Detailed planet generation refinement</h3>
             <ul>
