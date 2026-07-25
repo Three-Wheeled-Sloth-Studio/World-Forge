@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { WorldProject } from '@world-forge/shared';
 import {
-  WORLD_FORGE_WORLD_SAVED_MESSAGE,
-  notifyParchmentWorldSaved,
+  PARCHMENT_SET_WORLD_NAME_MESSAGE,
+  WORLD_FORGE_WORLD_IDENTITY_MESSAGE,
+  notifyParchmentWorldIdentity,
+  parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
-  resetWorldNameSessionForTests,
+  renameWorldProject,
 } from './worldIdentityBridge';
 
 const project = {
@@ -15,8 +17,6 @@ const project = {
 } as WorldProject;
 
 describe('world identity bridge', () => {
-  beforeEach(() => resetWorldNameSessionForTests());
-
   it('reads Parchment embed context without treating the setting name as the world name', () => {
     expect(readEmbeddedWorldContext('?embed=shell&projectId=project_1&projectName=Campaign')).toEqual({
       embedded: true,
@@ -25,38 +25,29 @@ describe('world identity bridge', () => {
     });
   });
 
-  it('prompts once on the first embedded save and reuses the selected name', () => {
-    const promptForName = vi.fn(() => 'The Broken Marches');
-    const search = '?embed=shell&projectId=project_1';
-
-    const first = prepareWorldProjectForSave(project, promptForName, search);
-    const second = prepareWorldProjectForSave(project, promptForName, search);
-
-    expect(first?.projectName).toBe('The Broken Marches');
-    expect(second?.projectName).toBe('The Broken Marches');
-    expect(promptForName).toHaveBeenCalledTimes(1);
-  });
-
-  it('cancels the save when the naming prompt is dismissed', () => {
-    expect(prepareWorldProjectForSave(project, () => null, '?embed=shell&projectId=project_1')).toBeNull();
-  });
-
-  it('uses an existing project world identity without prompting', () => {
-    const promptForName = vi.fn(() => 'Unexpected');
+  it('uses a durable world name supplied by Parchment without prompting', () => {
     const prepared = prepareWorldProjectForSave(
       project,
-      promptForName,
       '?embed=shell&projectId=project_1&worldName=Ashfall',
     );
 
-    expect(prepared?.projectName).toBe('Ashfall');
-    expect(promptForName).not.toHaveBeenCalled();
+    expect(prepared.projectName).toBe('Ashfall');
   });
 
-  it('posts the saved name back to the owning Parchment project', () => {
+  it('leaves the current generated name in place when no durable name exists', () => {
+    expect(prepareWorldProjectForSave(project, '?embed=shell&projectId=project_1')).toBe(project);
+  });
+
+  it('renames a world project through the shared validation path', () => {
+    expect(renameWorldProject(project, '  The Broken Marches  ').projectName).toBe('The Broken Marches');
+    expect(() => renameWorldProject(project, '   ')).toThrow('World name is required.');
+  });
+
+  it('posts saved identity back to the owning Parchment project', () => {
     const postMessage = vi.fn();
-    notifyParchmentWorldSaved(
+    notifyParchmentWorldIdentity(
       { ...project, projectName: 'Ashfall' },
+      'saved',
       {
         search: '?embed=shell&projectId=project_1',
         postMessage,
@@ -65,13 +56,24 @@ describe('world identity bridge', () => {
     );
 
     expect(postMessage).toHaveBeenCalledWith({
-      type: WORLD_FORGE_WORLD_SAVED_MESSAGE,
+      type: WORLD_FORGE_WORLD_IDENTITY_MESSAGE,
       payload: {
         projectId: 'project_1',
         worldName: 'Ashfall',
         worldProjectId: 'world-project-1',
         updatedAt: project.updatedAt,
+        operation: 'saved',
       },
     }, 'https://dev.example.test');
+  });
+
+  it('accepts a parent rename only for the owning project', () => {
+    const message = {
+      type: PARCHMENT_SET_WORLD_NAME_MESSAGE,
+      payload: { projectId: 'project_1', worldName: 'Ashfall Reforged' },
+    };
+
+    expect(parseParchmentSetWorldNameMessage(message, 'project_1')).toBe('Ashfall Reforged');
+    expect(parseParchmentSetWorldNameMessage(message, 'project_2')).toBeNull();
   });
 });
