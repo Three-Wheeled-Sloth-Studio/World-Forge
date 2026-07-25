@@ -1,6 +1,7 @@
 import type { WorldProject } from '@world-forge/shared';
 
-export const WORLD_FORGE_WORLD_SAVED_MESSAGE = 'parchment-worlds:world-forge-world-saved';
+export const WORLD_FORGE_WORLD_IDENTITY_MESSAGE = 'parchment-worlds:world-forge-world-identity';
+export const PARCHMENT_SET_WORLD_NAME_MESSAGE = 'parchment-worlds:set-world-forge-world-name';
 const MAX_WORLD_NAME_LENGTH = 120;
 
 export type EmbeddedWorldContext = {
@@ -9,17 +10,24 @@ export type EmbeddedWorldContext = {
   worldName: string | null;
 };
 
-export type WorldSavedMessage = {
-  type: typeof WORLD_FORGE_WORLD_SAVED_MESSAGE;
+export type WorldIdentityMessage = {
+  type: typeof WORLD_FORGE_WORLD_IDENTITY_MESSAGE;
   payload: {
     projectId: string;
     worldName: string;
     worldProjectId: string;
     updatedAt: string;
+    operation: 'renamed' | 'saved';
   };
 };
 
-let sessionWorldName: string | null = null;
+export type SetWorldNameMessage = {
+  type: typeof PARCHMENT_SET_WORLD_NAME_MESSAGE;
+  payload: {
+    projectId: string;
+    worldName: string;
+  };
+};
 
 export function readEmbeddedWorldContext(search = globalThis.location?.search ?? ''): EmbeddedWorldContext {
   const params = new URLSearchParams(search);
@@ -31,40 +39,39 @@ export function readEmbeddedWorldContext(search = globalThis.location?.search ??
 
 export function prepareWorldProjectForSave(
   project: WorldProject,
-  promptForName: (message: string, defaultValue?: string) => string | null = defaultPrompt,
   search = globalThis.location?.search ?? '',
-): WorldProject | null {
+): WorldProject {
   const context = readEmbeddedWorldContext(search);
-  if (!context.embedded) return project;
-
-  const existingName = sessionWorldName ?? context.worldName;
-  if (existingName) return withProjectName(project, existingName);
-
-  const requestedName = promptForName('Name this world before saving:', project.projectName)?.trim();
-  if (!requestedName) return null;
-
-  sessionWorldName = requestedName.slice(0, MAX_WORLD_NAME_LENGTH);
-  return withProjectName(project, sessionWorldName);
+  return context.embedded && context.worldName
+    ? renameWorldProject(project, context.worldName)
+    : project;
 }
 
-export function notifyParchmentWorldSaved(
+export function renameWorldProject(project: WorldProject, requestedName: string): WorldProject {
+  const projectName = normalizeWorldName(requestedName);
+  return project.projectName === projectName ? project : { ...project, projectName };
+}
+
+export function notifyParchmentWorldIdentity(
   project: WorldProject,
+  operation: WorldIdentityMessage['payload']['operation'],
   options: {
     search?: string;
-    postMessage?: (message: WorldSavedMessage, targetOrigin: string) => void;
+    postMessage?: (message: WorldIdentityMessage, targetOrigin: string) => void;
     targetOrigin?: string;
   } = {},
 ): void {
   const context = readEmbeddedWorldContext(options.search);
   if (!context.embedded || !context.projectId) return;
 
-  const message: WorldSavedMessage = {
-    type: WORLD_FORGE_WORLD_SAVED_MESSAGE,
+  const message: WorldIdentityMessage = {
+    type: WORLD_FORGE_WORLD_IDENTITY_MESSAGE,
     payload: {
       projectId: context.projectId,
       worldName: project.projectName,
       worldProjectId: project.projectId,
       updatedAt: project.updatedAt,
+      operation,
     },
   };
 
@@ -72,21 +79,35 @@ export function notifyParchmentWorldSaved(
   postMessage(message, options.targetOrigin ?? parentOrigin());
 }
 
-export function resetWorldNameSessionForTests(): void {
-  sessionWorldName = null;
+export function parseParchmentSetWorldNameMessage(
+  value: unknown,
+  expectedProjectId: string | null,
+): string | null {
+  if (!isRecord(value) || value.type !== PARCHMENT_SET_WORLD_NAME_MESSAGE) return null;
+  const payload = value.payload;
+  if (!isRecord(payload)) return null;
+  const projectId = cleanText(typeof payload.projectId === 'string' ? payload.projectId : null);
+  const worldName = cleanText(typeof payload.worldName === 'string' ? payload.worldName : null);
+  if (!projectId || !worldName || projectId !== expectedProjectId) return null;
+  return normalizeWorldName(worldName);
 }
 
-function withProjectName(project: WorldProject, projectName: string): WorldProject {
-  return project.projectName === projectName ? project : { ...project, projectName };
+export function expectedParentOrigin() {
+  return parentOrigin();
+}
+
+function normalizeWorldName(value: string) {
+  const name = value.trim();
+  if (!name) throw new Error('World name is required.');
+  if (name.length > MAX_WORLD_NAME_LENGTH) {
+    throw new Error(`World name must be ${MAX_WORLD_NAME_LENGTH} characters or fewer.`);
+  }
+  return name;
 }
 
 function cleanText(value: string | null) {
   const cleaned = value?.trim();
   return cleaned ? cleaned : null;
-}
-
-function defaultPrompt(message: string, defaultValue?: string) {
-  return globalThis.prompt?.(message, defaultValue) ?? null;
 }
 
 function parentOrigin() {
@@ -95,4 +116,8 @@ function parentOrigin() {
   } catch {
     return '*';
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
