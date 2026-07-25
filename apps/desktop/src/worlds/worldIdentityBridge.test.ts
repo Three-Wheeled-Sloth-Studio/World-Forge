@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorldProject } from '@world-forge/shared';
 import {
+  PARCHMENT_REQUEST_WORLD_INVENTORY_MESSAGE,
   PARCHMENT_SET_WORLD_NAME_MESSAGE,
   WORLD_FORGE_WORLD_IDENTITY_MESSAGE,
   WORLD_FORGE_WORLD_INVENTORY_MESSAGE,
+  isParchmentWorldInventoryRequest,
   notifyParchmentWorldIdentity,
   notifyParchmentWorldInventory,
   parseParchmentSetWorldNameMessage,
@@ -113,6 +115,17 @@ describe('world identity bridge', () => {
         ],
       },
     }, 'https://dev.example.test');
+  });
+
+  it('accepts an inventory request only for the owning Parchment project', () => {
+    const message = {
+      type: PARCHMENT_REQUEST_WORLD_INVENTORY_MESSAGE,
+      payload: { projectId: 'project_1' },
+    };
+
+    expect(isParchmentWorldInventoryRequest(message, 'project_1')).toBe(true);
+    expect(isParchmentWorldInventoryRequest(message, 'project_2')).toBe(false);
+    expect(isParchmentWorldInventoryRequest({ type: PARCHMENT_REQUEST_WORLD_INVENTORY_MESSAGE }, 'project_1')).toBe(false);
   });
 
   it('accepts a parent rename only for the owning project', () => {
