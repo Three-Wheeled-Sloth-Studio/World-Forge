@@ -9,6 +9,7 @@ import {
   parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
+  rememberWorldName,
   renameWorldProject,
   type WorldRenameRequestDetail,
 } from './worldIdentityBridge';
@@ -43,6 +44,7 @@ export function useWorldLibraryCommands({
         const record = await defaultWorldStorageProvider.saveWorld(renamed);
         setSavedMaps((current) => mergeSavedMapRecords([record], current));
       }
+      rememberWorldName(renamed.projectId, renamed.projectName);
       if (project?.projectId === projectId) setProject(renamed);
       if (notifyParent && project?.projectId === projectId) {
         notifyParchmentWorldIdentity(renamed, 'renamed');
@@ -68,10 +70,10 @@ export function useWorldLibraryCommands({
       });
     };
 
-    globalThis.addEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest);
+    globalThis.addEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest as EventListener);
     globalThis.addEventListener('message', onParentMessage);
     return () => {
-      globalThis.removeEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest);
+      globalThis.removeEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest as EventListener);
       globalThis.removeEventListener('message', onParentMessage);
     };
   }, [project, setProject, setSavedMaps]);
@@ -83,6 +85,7 @@ export function useWorldLibraryCommands({
       const preparedProject = prepareWorldProjectForSave(project);
       const projectToSave = { ...preparedProject, updatedAt: new Date().toISOString() };
       const record = await defaultWorldStorageProvider.saveWorld(projectToSave);
+      rememberWorldName(projectToSave.projectId, projectToSave.projectName);
       setProject(projectToSave);
       setSavedMaps((current) => mergeSavedMapRecords([record], current).slice(0, localWorldStorageLimits.maxSavedWorlds));
       notifyParchmentWorldIdentity(projectToSave, 'saved');
@@ -102,6 +105,7 @@ export function useWorldLibraryCommands({
         setWorldLibraryStatus('Saved world data is not available on this machine.');
         return;
       }
+      rememberWorldName(loaded.projectId, loaded.projectName);
       onWorldLoaded(loaded);
       setWorldLibraryStatus(`Loaded ${loaded.projectName}`);
     } catch (error) {
