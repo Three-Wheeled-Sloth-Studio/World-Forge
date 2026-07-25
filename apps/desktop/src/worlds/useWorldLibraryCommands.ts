@@ -5,6 +5,7 @@ import { defaultWorldStorageProvider, localWorldStorageLimits, mergeSavedMapReco
 import {
   WORLD_FORGE_RENAME_REQUEST_EVENT,
   expectedParentOrigin,
+  isParchmentWorldInventoryRequest,
   notifyParchmentWorldIdentity,
   notifyParchmentWorldInventory,
   parseParchmentSetWorldNameMessage,
@@ -73,6 +74,14 @@ export function useWorldLibraryCommands({
       if (!embeddedContext.embedded || event.source !== globalThis.parent) return;
       const parentOrigin = expectedParentOrigin();
       if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
+
+      if (isParchmentWorldInventoryRequest(event.data, embeddedContext.projectId)) {
+        void publishInventory().catch((error: unknown) => {
+          setWorldLibraryStatus(error instanceof Error ? error.message : 'World inventory could not be published.');
+        });
+        return;
+      }
+
       const worldName = parseParchmentSetWorldNameMessage(event.data, embeddedContext.projectId);
       if (!worldName || !project) return;
       void renameProject(project.projectId, worldName, false).catch((error: unknown) => {
