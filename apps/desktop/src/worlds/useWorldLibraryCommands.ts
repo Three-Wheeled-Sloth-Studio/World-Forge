@@ -6,6 +6,7 @@ import {
   WORLD_FORGE_RENAME_REQUEST_EVENT,
   expectedParentOrigin,
   notifyParchmentWorldIdentity,
+  notifyParchmentWorldInventory,
   parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
@@ -16,6 +17,7 @@ import {
 
 type UseWorldLibraryCommandsOptions = {
   project: WorldProject | null;
+  savedMaps: SavedMapRecord[];
   setProject: Dispatch<SetStateAction<WorldProject | null>>;
   setSavedMaps: Dispatch<SetStateAction<SavedMapRecord[]>>;
   onWorldLoaded: (project: WorldProject) => void;
@@ -23,11 +25,16 @@ type UseWorldLibraryCommandsOptions = {
 
 export function useWorldLibraryCommands({
   project,
+  savedMaps,
   setProject,
   setSavedMaps,
   onWorldLoaded
 }: UseWorldLibraryCommandsOptions) {
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
+
+  useEffect(() => {
+    notifyParchmentWorldInventory(savedMaps);
+  }, [savedMaps]);
 
   useEffect(() => {
     const renameProject = async (projectId: string, requestedName: string, notifyParent: boolean) => {
@@ -107,6 +114,7 @@ export function useWorldLibraryCommands({
       }
       rememberWorldName(loaded.projectId, loaded.projectName);
       onWorldLoaded(loaded);
+      notifyParchmentWorldIdentity(loaded, 'saved');
       setWorldLibraryStatus(`Loaded ${loaded.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load world';
