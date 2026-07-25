@@ -17,7 +17,6 @@ import {
 
 type UseWorldLibraryCommandsOptions = {
   project: WorldProject | null;
-  savedMaps: SavedMapRecord[];
   setProject: Dispatch<SetStateAction<WorldProject | null>>;
   setSavedMaps: Dispatch<SetStateAction<SavedMapRecord[]>>;
   onWorldLoaded: (project: WorldProject) => void;
@@ -25,16 +24,19 @@ type UseWorldLibraryCommandsOptions = {
 
 export function useWorldLibraryCommands({
   project,
-  savedMaps,
   setProject,
   setSavedMaps,
   onWorldLoaded
 }: UseWorldLibraryCommandsOptions) {
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
 
+  const publishInventory = async () => {
+    notifyParchmentWorldInventory(await defaultWorldStorageProvider.listWorlds());
+  };
+
   useEffect(() => {
-    notifyParchmentWorldInventory(savedMaps);
-  }, [savedMaps]);
+    void publishInventory().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const renameProject = async (projectId: string, requestedName: string, notifyParent: boolean) => {
@@ -50,6 +52,7 @@ export function useWorldLibraryCommands({
       if (stored) {
         const record = await defaultWorldStorageProvider.saveWorld(renamed);
         setSavedMaps((current) => mergeSavedMapRecords([record], current));
+        await publishInventory();
       }
       rememberWorldName(renamed.projectId, renamed.projectName);
       if (project?.projectId === projectId) setProject(renamed);
@@ -96,6 +99,7 @@ export function useWorldLibraryCommands({
       setProject(projectToSave);
       setSavedMaps((current) => mergeSavedMapRecords([record], current).slice(0, localWorldStorageLimits.maxSavedWorlds));
       notifyParchmentWorldIdentity(projectToSave, 'saved');
+      await publishInventory();
       setWorldLibraryStatus(`Saved ${projectToSave.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save world';
@@ -128,6 +132,7 @@ export function useWorldLibraryCommands({
     try {
       await defaultWorldStorageProvider.deleteWorld(record.projectId);
       setSavedMaps((current) => current.filter((entry) => entry.projectId !== record.projectId));
+      await publishInventory();
       setWorldLibraryStatus(`Removed ${record.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to remove world';
