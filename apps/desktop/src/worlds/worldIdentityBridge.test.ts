@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorldProject } from '@world-forge/shared';
 import {
   PARCHMENT_SET_WORLD_NAME_MESSAGE,
@@ -7,16 +7,21 @@ import {
   parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
+  rememberWorldName,
   renameWorldProject,
+  resetRememberedWorldNamesForTests,
 } from './worldIdentityBridge';
 
 const project = {
   projectId: 'world-project-1',
   projectName: 'Generated World 8675309',
   updatedAt: '2026-07-25T01:00:00.000Z',
+  primaryWorld: { name: 'Generated World 8675309' },
 } as WorldProject;
 
 describe('world identity bridge', () => {
+  beforeEach(() => resetRememberedWorldNamesForTests());
+
   it('reads Parchment embed context without treating the setting name as the world name', () => {
     expect(readEmbeddedWorldContext('?embed=shell&projectId=project_1&projectName=Campaign')).toEqual({
       embedded: true,
@@ -25,7 +30,7 @@ describe('world identity bridge', () => {
     });
   });
 
-  it('uses a durable world name supplied by Parchment without prompting', () => {
+  it('uses a durable world name supplied by Parchment for an unrenamed generated world', () => {
     const prepared = prepareWorldProjectForSave(
       project,
       '?embed=shell&projectId=project_1&worldName=Ashfall',
@@ -36,6 +41,24 @@ describe('world identity bridge', () => {
 
   it('leaves the current generated name in place when no durable name exists', () => {
     expect(prepareWorldProjectForSave(project, '?embed=shell&projectId=project_1')).toBe(project);
+  });
+
+  it('keeps a newer inline rename authoritative over a stale embed URL', () => {
+    rememberWorldName(project.projectId, 'Ashfall Reforged');
+    const prepared = prepareWorldProjectForSave(
+      { ...project, projectName: 'Ashfall Reforged' },
+      '?embed=shell&projectId=project_1&worldName=Ashfall',
+    );
+
+    expect(prepared.projectName).toBe('Ashfall Reforged');
+  });
+
+  it('does not overwrite a loaded custom name from a stale embed URL', () => {
+    const loaded = { ...project, projectName: 'The Broken Marches' };
+    expect(prepareWorldProjectForSave(
+      loaded,
+      '?embed=shell&projectId=project_1&worldName=Ashfall',
+    )).toBe(loaded);
   });
 
   it('renames a world project through the shared validation path', () => {
