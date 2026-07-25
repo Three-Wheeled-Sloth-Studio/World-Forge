@@ -1,6 +1,8 @@
 import type { WorldProject } from '@world-forge/shared';
+import type { SavedMapRecord } from '../sync';
 
 export const WORLD_FORGE_WORLD_IDENTITY_MESSAGE = 'parchment-worlds:world-forge-world-identity';
+export const WORLD_FORGE_WORLD_INVENTORY_MESSAGE = 'parchment-worlds:world-forge-world-inventory';
 export const PARCHMENT_SET_WORLD_NAME_MESSAGE = 'parchment-worlds:set-world-forge-world-name';
 export const WORLD_FORGE_RENAME_REQUEST_EVENT = 'world-forge:rename-world';
 const MAX_WORLD_NAME_LENGTH = 120;
@@ -20,6 +22,19 @@ export type WorldIdentityMessage = {
     worldProjectId: string;
     updatedAt: string;
     operation: 'renamed' | 'saved';
+  };
+};
+
+export type WorldInventoryMessage = {
+  type: typeof WORLD_FORGE_WORLD_INVENTORY_MESSAGE;
+  payload: {
+    projectId: string;
+    worlds: Array<{
+      worldProjectId: string;
+      worldName: string;
+      updatedAt: string;
+      seed: string;
+    }>;
   };
 };
 
@@ -99,6 +114,34 @@ export function notifyParchmentWorldIdentity(
       worldProjectId: project.projectId,
       updatedAt: project.updatedAt,
       operation,
+    },
+  };
+
+  const postMessage = options.postMessage ?? ((value, targetOrigin) => globalThis.parent?.postMessage(value, targetOrigin));
+  postMessage(message, options.targetOrigin ?? parentOrigin());
+}
+
+export function notifyParchmentWorldInventory(
+  records: SavedMapRecord[],
+  options: {
+    search?: string;
+    postMessage?: (message: WorldInventoryMessage, targetOrigin: string) => void;
+    targetOrigin?: string;
+  } = {},
+): void {
+  const context = readEmbeddedWorldContext(options.search);
+  if (!context.embedded || !context.projectId) return;
+
+  const message: WorldInventoryMessage = {
+    type: WORLD_FORGE_WORLD_INVENTORY_MESSAGE,
+    payload: {
+      projectId: context.projectId,
+      worlds: records.map((record) => ({
+        worldProjectId: record.projectId,
+        worldName: record.projectName,
+        updatedAt: record.updatedAt,
+        seed: record.seed,
+      })),
     },
   };
 

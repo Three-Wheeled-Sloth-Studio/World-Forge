@@ -6,6 +6,7 @@ import {
   WORLD_FORGE_RENAME_REQUEST_EVENT,
   expectedParentOrigin,
   notifyParchmentWorldIdentity,
+  notifyParchmentWorldInventory,
   parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
@@ -29,6 +30,14 @@ export function useWorldLibraryCommands({
 }: UseWorldLibraryCommandsOptions) {
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
 
+  const publishInventory = async () => {
+    notifyParchmentWorldInventory(await defaultWorldStorageProvider.listWorlds());
+  };
+
+  useEffect(() => {
+    void publishInventory().catch(() => undefined);
+  }, []);
+
   useEffect(() => {
     const renameProject = async (projectId: string, requestedName: string, notifyParent: boolean) => {
       const stored = await defaultWorldStorageProvider.loadWorld(projectId);
@@ -43,6 +52,7 @@ export function useWorldLibraryCommands({
       if (stored) {
         const record = await defaultWorldStorageProvider.saveWorld(renamed);
         setSavedMaps((current) => mergeSavedMapRecords([record], current));
+        await publishInventory();
       }
       rememberWorldName(renamed.projectId, renamed.projectName);
       if (project?.projectId === projectId) setProject(renamed);
@@ -89,6 +99,7 @@ export function useWorldLibraryCommands({
       setProject(projectToSave);
       setSavedMaps((current) => mergeSavedMapRecords([record], current).slice(0, localWorldStorageLimits.maxSavedWorlds));
       notifyParchmentWorldIdentity(projectToSave, 'saved');
+      await publishInventory();
       setWorldLibraryStatus(`Saved ${projectToSave.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save world';
@@ -107,6 +118,7 @@ export function useWorldLibraryCommands({
       }
       rememberWorldName(loaded.projectId, loaded.projectName);
       onWorldLoaded(loaded);
+      notifyParchmentWorldIdentity(loaded, 'saved');
       setWorldLibraryStatus(`Loaded ${loaded.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load world';
@@ -120,6 +132,7 @@ export function useWorldLibraryCommands({
     try {
       await defaultWorldStorageProvider.deleteWorld(record.projectId);
       setSavedMaps((current) => current.filter((entry) => entry.projectId !== record.projectId));
+      await publishInventory();
       setWorldLibraryStatus(`Removed ${record.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to remove world';
