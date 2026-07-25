@@ -2,6 +2,7 @@ import type { WorldProject } from '@world-forge/shared';
 
 export const WORLD_FORGE_WORLD_IDENTITY_MESSAGE = 'parchment-worlds:world-forge-world-identity';
 export const PARCHMENT_SET_WORLD_NAME_MESSAGE = 'parchment-worlds:set-world-forge-world-name';
+export const WORLD_FORGE_RENAME_REQUEST_EVENT = 'world-forge:rename-world';
 const MAX_WORLD_NAME_LENGTH = 120;
 
 export type EmbeddedWorldContext = {
@@ -29,6 +30,13 @@ export type SetWorldNameMessage = {
   };
 };
 
+export type WorldRenameRequestDetail = {
+  projectId: string;
+  worldName: string;
+  resolve: () => void;
+  reject: (cause: unknown) => void;
+};
+
 export function readEmbeddedWorldContext(search = globalThis.location?.search ?? ''): EmbeddedWorldContext {
   const params = new URLSearchParams(search);
   const embedded = params.get('embed') === 'shell';
@@ -50,6 +58,15 @@ export function prepareWorldProjectForSave(
 export function renameWorldProject(project: WorldProject, requestedName: string): WorldProject {
   const projectName = normalizeWorldName(requestedName);
   return project.projectName === projectName ? project : { ...project, projectName };
+}
+
+export function requestWorldRename(projectId: string, worldName: string): Promise<void> {
+  const requestedName = normalizeWorldName(worldName);
+  return new Promise((resolve, reject) => {
+    globalThis.dispatchEvent(new CustomEvent<WorldRenameRequestDetail>(WORLD_FORGE_RENAME_REQUEST_EVENT, {
+      detail: { projectId, worldName: requestedName, resolve, reject },
+    }));
+  });
 }
 
 export function notifyParchmentWorldIdentity(
