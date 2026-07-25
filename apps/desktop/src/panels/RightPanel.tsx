@@ -2,6 +2,7 @@ import React from 'react';
 import { Download, FileChartColumn, FileJson, Globe2, Hexagon, Image, Layers, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { HexTileFeature, WorldProject, civ7StyleHexTileProfile, hexTileMapPresets } from '@world-forge/shared';
 import { ShellStatusControls } from '../shell/ShellStatusControls';
+import { WorldNameEditor } from '../worlds/WorldNameEditor';
 
 type RightPanelTab = 'world' | 'hex' | 'diagnostics';
 
@@ -33,6 +34,7 @@ type RightPanelProps = {
   onCollapsedChange: (collapsed: boolean) => void;
   onTabChange: (tab: RightPanelTab) => void;
   onFeedback: () => void;
+  onProjectNameChange: (name: string) => void | Promise<void>;
   onTilePresetChange: (presetId: string) => void;
   onTileWidthChange: (width: number) => void;
   onTileHeightChange: (height: number) => void;
@@ -63,7 +65,7 @@ export function RightPanel(props: RightPanelProps) {
     collapsed, activeTab, feedbackStatus, inspectorContent, diagnosticsContent, project, exportResolution,
     tilePresetId, tileWidth, tileHeight, tileFeatures, tileFeatureLabels, tileHexScaleMiles, vttResolution,
     resolutionOptions, vttGridEnabled, vttHexSizeMilesInput, vttHexMetrics, hexSvgTask, tileJsonTask, vttTask,
-    onCollapsedChange, onTabChange, onFeedback, onTilePresetChange, onTileWidthChange, onTileHeightChange,
+    onCollapsedChange, onTabChange, onFeedback, onProjectNameChange, onTilePresetChange, onTileWidthChange, onTileHeightChange,
     onTileFeatureChange, onVttResolutionChange, onVttGridEnabledChange, onVttHexSizeInputChange,
     onCommitVttHexSize, renderExportButton, onDownloadHexGridSvg, onDownloadHexTileJson, onDownloadVttPackage
   } = props;
@@ -88,7 +90,7 @@ export function RightPanel(props: RightPanelProps) {
 
           {activeTab === 'world' ? <div role="tabpanel" aria-label="World">
             {!project ? <div className="empty-panel"><h2>World</h2><p>No generated world is loaded.</p></div> : <>
-              <h2>{project.projectName}</h2>
+              <WorldNameEditor value={project.projectName} as="h2" onSave={onProjectNameChange} />
               <Metric label="Ocean" value={`${project.metrics.oceanPercentage}%`} status={project.metrics.validation.oceanWithinTolerance ? 'ok' : 'warn'} />
               <Metric label="Ocean target" value={`${project.selectedValues.oceanPercentage}% +/- ${project.selectedValues.oceanTolerancePercentagePoints}`} />
               <Metric label="Land" value={`${project.metrics.landPercentage}%`} />
