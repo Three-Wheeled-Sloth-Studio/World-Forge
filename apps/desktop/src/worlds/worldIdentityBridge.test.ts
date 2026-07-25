@@ -3,7 +3,9 @@ import type { WorldProject } from '@world-forge/shared';
 import {
   PARCHMENT_SET_WORLD_NAME_MESSAGE,
   WORLD_FORGE_WORLD_IDENTITY_MESSAGE,
+  WORLD_FORGE_WORLD_INVENTORY_MESSAGE,
   notifyParchmentWorldIdentity,
+  notifyParchmentWorldInventory,
   parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
@@ -86,6 +88,29 @@ describe('world identity bridge', () => {
         worldProjectId: 'world-project-1',
         updatedAt: project.updatedAt,
         operation: 'saved',
+      },
+    }, 'https://dev.example.test');
+  });
+
+  it('posts every saved world to the owning Parchment project', () => {
+    const postMessage = vi.fn();
+    notifyParchmentWorldInventory([
+      { projectId: 'world-1', projectName: 'Ashfall', seed: '101', updatedAt: '2026-07-25T01:00:00.000Z' },
+      { projectId: 'world-2', projectName: 'Broken Marches', seed: '202', updatedAt: '2026-07-25T02:00:00.000Z' },
+    ], {
+      search: '?embed=shell&projectId=project_1',
+      postMessage,
+      targetOrigin: 'https://dev.example.test',
+    });
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: WORLD_FORGE_WORLD_INVENTORY_MESSAGE,
+      payload: {
+        projectId: 'project_1',
+        worlds: [
+          { worldProjectId: 'world-1', worldName: 'Ashfall', seed: '101', updatedAt: '2026-07-25T01:00:00.000Z' },
+          { worldProjectId: 'world-2', worldName: 'Broken Marches', seed: '202', updatedAt: '2026-07-25T02:00:00.000Z' },
+        ],
       },
     }, 'https://dev.example.test');
   });
