@@ -4,6 +4,7 @@ export const WORLD_FORGE_WORLD_IDENTITY_MESSAGE = 'parchment-worlds:world-forge-
 export const PARCHMENT_SET_WORLD_NAME_MESSAGE = 'parchment-worlds:set-world-forge-world-name';
 export const WORLD_FORGE_RENAME_REQUEST_EVENT = 'world-forge:rename-world';
 const MAX_WORLD_NAME_LENGTH = 120;
+const rememberedWorldNames = new Map<string, string>();
 
 export type EmbeddedWorldContext = {
   embedded: boolean;
@@ -50,14 +51,23 @@ export function prepareWorldProjectForSave(
   search = globalThis.location?.search ?? '',
 ): WorldProject {
   const context = readEmbeddedWorldContext(search);
-  return context.embedded && context.worldName
-    ? renameWorldProject(project, context.worldName)
-    : project;
+  const rememberedName = rememberedWorldNames.get(project.projectId);
+  const embeddedNameStillApplies = context.embedded
+    && context.worldName
+    && project.projectName === project.primaryWorld.name
+    ? context.worldName
+    : null;
+  const effectiveName = rememberedName ?? embeddedNameStillApplies;
+  return effectiveName ? renameWorldProject(project, effectiveName) : project;
 }
 
 export function renameWorldProject(project: WorldProject, requestedName: string): WorldProject {
   const projectName = normalizeWorldName(requestedName);
   return project.projectName === projectName ? project : { ...project, projectName };
+}
+
+export function rememberWorldName(projectId: string, requestedName: string): void {
+  rememberedWorldNames.set(projectId, normalizeWorldName(requestedName));
 }
 
 export function requestWorldRename(projectId: string, worldName: string): Promise<void> {
@@ -111,6 +121,10 @@ export function parseParchmentSetWorldNameMessage(
 
 export function expectedParentOrigin() {
   return parentOrigin();
+}
+
+export function resetRememberedWorldNamesForTests(): void {
+  rememberedWorldNames.clear();
 }
 
 function normalizeWorldName(value: string) {
