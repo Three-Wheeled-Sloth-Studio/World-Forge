@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Check, Pencil, X } from 'lucide-react';
+import './worldLibraryUx.css';
 
 type WorldNameElement = 'h2' | 'h3' | 'strong' | 'span';
 
