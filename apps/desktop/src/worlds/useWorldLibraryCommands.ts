@@ -2,6 +2,7 @@ import { Dispatch, SetStateAction, useState } from 'react';
 import { WorldProject } from '@world-forge/shared';
 import { SavedMapRecord } from '../sync';
 import { defaultWorldStorageProvider, localWorldStorageLimits, mergeSavedMapRecords } from '../storage';
+import { notifyParchmentWorldSaved, prepareWorldProjectForSave } from './worldIdentityBridge';
 
 type UseWorldLibraryCommandsOptions = {
   project: WorldProject | null;
@@ -20,13 +21,20 @@ export function useWorldLibraryCommands({
 
   const saveCurrentWorldInApp = async () => {
     if (!project) return;
+    const preparedProject = prepareWorldProjectForSave(project);
+    if (!preparedProject) {
+      setWorldLibraryStatus('Save canceled.');
+      return;
+    }
+
     setWorldLibraryStatus('Saving world...');
     try {
-      const projectToSave = { ...project, updatedAt: new Date().toISOString() };
+      const projectToSave = { ...preparedProject, updatedAt: new Date().toISOString() };
       const record = await defaultWorldStorageProvider.saveWorld(projectToSave);
       setProject(projectToSave);
       setSavedMaps((current) => mergeSavedMapRecords([record], current).slice(0, localWorldStorageLimits.maxSavedWorlds));
-      setWorldLibraryStatus(`Saved ${project.projectName}`);
+      notifyParchmentWorldSaved(projectToSave);
+      setWorldLibraryStatus(`Saved ${projectToSave.projectName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save world';
       setWorldLibraryStatus(message);
