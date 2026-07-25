@@ -1,17 +1,20 @@
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { WorldProject } from '@world-forge/shared';
 import { SavedMapRecord } from '../sync';
 import { defaultWorldStorageProvider, localWorldStorageLimits, mergeSavedMapRecords } from '../storage';
-import type { WorldLibraryOperation } from './WorldLibraryOperationOverlay';
 import {
+  WORLD_FORGE_RENAME_REQUEST_EVENT,
+  expectedParentOrigin,
   notifyParchmentWorldIdentity,
+  parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
+  readEmbeddedWorldContext,
   renameWorldProject,
+  type WorldRenameRequestDetail,
 } from './worldIdentityBridge';
 
 type UseWorldLibraryCommandsOptions = {
   project: WorldProject | null;
-  savedMaps: SavedMapRecord[];
   setProject: Dispatch<SetStateAction<WorldProject | null>>;
   setSavedMaps: Dispatch<SetStateAction<SavedMapRecord[]>>;
   onWorldLoaded: (project: WorldProject) => void;
@@ -19,25 +22,66 @@ type UseWorldLibraryCommandsOptions = {
 
 export function useWorldLibraryCommands({
   project,
-  savedMaps,
   setProject,
   setSavedMaps,
   onWorldLoaded
 }: UseWorldLibraryCommandsOptions) {
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
-  const [worldLibraryOperation, setWorldLibraryOperation] = useState<WorldLibraryOperation | null>(null);
+
+  useEffect(() => {
+    const renameProject = async (projectId: string, requestedName: string, notifyParent: boolean) => {
+      const stored = await defaultWorldStorageProvider.loadWorld(projectId);
+      const source = project?.projectId === projectId ? project : stored;
+      if (!source) throw new Error('The world is no longer available.');
+
+      const renamed = {
+        ...renameWorldProject(source, requestedName),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (stored) {
+        const record = await defaultWorldStorageProvider.saveWorld(renamed);
+        setSavedMaps((current) => mergeSavedMapRecords([record], current));
+      }
+      if (project?.projectId === projectId) setProject(renamed);
+      if (notifyParent && project?.projectId === projectId) {
+        notifyParchmentWorldIdentity(renamed, 'renamed');
+      }
+      setWorldLibraryStatus(`Renamed world to ${renamed.projectName}`);
+    };
+
+    const onRenameRequest = (event: Event) => {
+      const detail = (event as CustomEvent<WorldRenameRequestDetail>).detail;
+      if (!detail?.projectId || !detail.worldName) return;
+      void renameProject(detail.projectId, detail.worldName, true).then(detail.resolve, detail.reject);
+    };
+
+    const embeddedContext = readEmbeddedWorldContext();
+    const onParentMessage = (event: MessageEvent<unknown>) => {
+      if (!embeddedContext.embedded || event.source !== globalThis.parent) return;
+      const parentOrigin = expectedParentOrigin();
+      if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
+      const worldName = parseParchmentSetWorldNameMessage(event.data, embeddedContext.projectId);
+      if (!worldName || !project) return;
+      void renameProject(project.projectId, worldName, false).catch((error: unknown) => {
+        setWorldLibraryStatus(error instanceof Error ? error.message : 'World name could not be updated.');
+      });
+    };
+
+    globalThis.addEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest);
+    globalThis.addEventListener('message', onParentMessage);
+    return () => {
+      globalThis.removeEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest);
+      globalThis.removeEventListener('message', onParentMessage);
+    };
+  }, [project, setProject, setSavedMaps]);
 
   const saveCurrentWorldInApp = async () => {
-    if (!project || worldLibraryOperation) return;
-    const preparedProject = prepareWorldProjectForSave(project);
-    const projectToSave = { ...preparedProject, updatedAt: new Date().toISOString() };
+    if (!project) return;
     setWorldLibraryStatus('Saving world...');
-    setWorldLibraryOperation({
-      kind: 'saving',
-      title: `Saving ${projectToSave.projectName}`,
-      detail: 'Writing the generated world and its current settings to the local world library.',
-    });
     try {
+      const preparedProject = prepareWorldProjectForSave(project);
+      const projectToSave = { ...preparedProject, updatedAt: new Date().toISOString() };
       const record = await defaultWorldStorageProvider.saveWorld(projectToSave);
       setProject(projectToSave);
       setSavedMaps((current) => mergeSavedMapRecords([record], current).slice(0, localWorldStorageLimits.maxSavedWorlds));
@@ -47,19 +91,11 @@ export function useWorldLibraryCommands({
       const message = error instanceof Error ? error.message : 'Unable to save world';
       setWorldLibraryStatus(message);
       throw error;
-    } finally {
-      setWorldLibraryOperation(null);
     }
   };
 
   const loadStoredWorld = async (record: SavedMapRecord) => {
-    if (worldLibraryOperation) return;
     setWorldLibraryStatus(`Loading ${record.projectName}...`);
-    setWorldLibraryOperation({
-      kind: 'loading',
-      title: `Loading ${record.projectName}`,
-      detail: 'Reading saved world data and replacing the active World Forge workspace.',
-    });
     try {
       const loaded = await defaultWorldStorageProvider.loadWorld(record.projectId);
       if (!loaded) {
@@ -72,63 +108,6 @@ export function useWorldLibraryCommands({
       const message = error instanceof Error ? error.message : 'Unable to load world';
       setWorldLibraryStatus(message);
       throw error;
-    } finally {
-      setWorldLibraryOperation(null);
-    }
-  };
-
-  const renameCurrentWorld = async (requestedName: string) => {
-    if (!project || worldLibraryOperation) return;
-    const renamed = {
-      ...renameWorldProject(project, requestedName),
-      updatedAt: new Date().toISOString(),
-    };
-    const alreadySaved = savedMaps.some((record) => record.projectId === project.projectId);
-
-    if (alreadySaved) {
-      setWorldLibraryOperation({
-        kind: 'saving',
-        title: `Renaming ${project.projectName}`,
-        detail: 'Updating the saved world identity in the local library.',
-      });
-    }
-
-    try {
-      if (alreadySaved) {
-        const record = await defaultWorldStorageProvider.saveWorld(renamed);
-        setSavedMaps((current) => mergeSavedMapRecords([record], current));
-      }
-      setProject(renamed);
-      notifyParchmentWorldIdentity(renamed, 'renamed');
-      setWorldLibraryStatus(`Renamed world to ${renamed.projectName}`);
-    } finally {
-      setWorldLibraryOperation(null);
-    }
-  };
-
-  const renameStoredWorld = async (record: SavedMapRecord, requestedName: string) => {
-    if (worldLibraryOperation) return;
-    setWorldLibraryOperation({
-      kind: 'saving',
-      title: `Renaming ${record.projectName}`,
-      detail: 'Updating the saved world identity in the local library.',
-    });
-    try {
-      const loaded = await defaultWorldStorageProvider.loadWorld(record.projectId);
-      if (!loaded) throw new Error('Saved world data is not available on this machine.');
-      const renamed = {
-        ...renameWorldProject(loaded, requestedName),
-        updatedAt: new Date().toISOString(),
-      };
-      const nextRecord = await defaultWorldStorageProvider.saveWorld(renamed);
-      setSavedMaps((current) => mergeSavedMapRecords([nextRecord], current));
-      if (project?.projectId === record.projectId) {
-        setProject(renamed);
-        notifyParchmentWorldIdentity(renamed, 'renamed');
-      }
-      setWorldLibraryStatus(`Renamed world to ${renamed.projectName}`);
-    } finally {
-      setWorldLibraryOperation(null);
     }
   };
 
@@ -146,11 +125,8 @@ export function useWorldLibraryCommands({
 
   return {
     worldLibraryStatus,
-    worldLibraryOperation,
     saveCurrentWorldInApp,
     loadStoredWorld,
-    renameCurrentWorld,
-    renameStoredWorld,
     deleteStoredWorld
   };
 }
