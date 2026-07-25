@@ -1,6 +1,7 @@
 import React from 'react';
 import { Save } from 'lucide-react';
 import type { SavedMapRecord } from '../sync';
+import { WorldNameEditor } from './WorldNameEditor';
 
 export type MyWorldsPanelProps = {
   activeProjectId?: string;
@@ -9,6 +10,7 @@ export type MyWorldsPanelProps = {
   status: string;
   onSaveCurrent: () => void;
   onLoad: (record: SavedMapRecord) => void;
+  onRename: (record: SavedMapRecord, name: string) => void | Promise<void>;
   onRemove: (record: SavedMapRecord) => void;
 };
 
@@ -19,6 +21,7 @@ export function MyWorldsPanel({
   status,
   onSaveCurrent,
   onLoad,
+  onRename,
   onRemove
 }: MyWorldsPanelProps) {
   return (
@@ -41,7 +44,7 @@ export function MyWorldsPanel({
           {records.map((record) => (
             <article key={record.projectId} className={`world-list-item ${activeProjectId === record.projectId ? 'active' : ''}`}>
               <div>
-                <strong>{record.projectName}</strong>
+                <WorldNameEditor value={record.projectName} onSave={(name) => onRename(record, name)} />
                 <span>Seed {record.seed} · {new Date(record.updatedAt).toLocaleString()}</span>
               </div>
               <div className="world-list-actions">
