@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { exportHexGridSvg, exportHexTileMapJson, exportSvg, exportVttGridSvg, exportVttMetadata, exportWforge, projectToJson } from '@world-forge/exporters';
 import { renderWorldToCanvas, type CoastlineTreatment, type MapMode, type MapTheme, type RenderMode } from '@world-forge/renderer';
 import { civ7StyleHexTileProfile, type HexTileFeature, type WorldProject } from '@world-forge/shared';
+import { notifyParchmentWorldSaved, prepareWorldProjectForSave } from '../worlds/worldIdentityBridge';
 
 export type ExportKey = 'png' | 'svg' | 'json' | 'wforge' | 'hexSvg' | 'tileJson' | 'vtt';
 export type ExportTaskState = {
@@ -148,9 +149,12 @@ export function useExportCommands(args: UseExportCommandsArgs) {
 
   const downloadPackage = async () => {
     if (!project) return;
+    const projectToSave = prepareWorldProjectForSave(project);
+    if (!projectToSave) return;
     await runExport('wforge', 'Preparing .wforge...', async (progress) => {
-      const blob = await exportWforge(project, { compressionLevel: 1, onProgress: progress });
-      downloadBlob(blob, project.projectName + '.wforge');
+      const blob = await exportWforge(projectToSave, { compressionLevel: 1, onProgress: progress });
+      downloadBlob(blob, projectToSave.projectName + '.wforge');
+      notifyParchmentWorldSaved({ ...projectToSave, updatedAt: new Date().toISOString() });
     });
   };
 
