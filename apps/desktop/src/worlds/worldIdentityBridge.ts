@@ -3,6 +3,7 @@ import type { SavedMapRecord } from '../sync';
 
 export const WORLD_FORGE_WORLD_IDENTITY_MESSAGE = 'parchment-worlds:world-forge-world-identity';
 export const WORLD_FORGE_WORLD_INVENTORY_MESSAGE = 'parchment-worlds:world-forge-world-inventory';
+export const PARCHMENT_REQUEST_WORLD_INVENTORY_MESSAGE = 'parchment-worlds:request-world-forge-world-inventory';
 export const PARCHMENT_SET_WORLD_NAME_MESSAGE = 'parchment-worlds:set-world-forge-world-name';
 export const WORLD_FORGE_RENAME_REQUEST_EVENT = 'world-forge:rename-world';
 const MAX_WORLD_NAME_LENGTH = 120;
@@ -147,6 +148,16 @@ export function notifyParchmentWorldInventory(
 
   const postMessage = options.postMessage ?? ((value, targetOrigin) => globalThis.parent?.postMessage(value, targetOrigin));
   postMessage(message, options.targetOrigin ?? parentOrigin());
+}
+
+export function isParchmentWorldInventoryRequest(
+  value: unknown,
+  expectedProjectId: string | null,
+): boolean {
+  if (!expectedProjectId || !isRecord(value) || value.type !== PARCHMENT_REQUEST_WORLD_INVENTORY_MESSAGE) return false;
+  const payload = value.payload;
+  if (!isRecord(payload)) return false;
+  return cleanText(typeof payload.projectId === 'string' ? payload.projectId : null) === expectedProjectId;
 }
 
 export function parseParchmentSetWorldNameMessage(
