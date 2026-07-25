@@ -2,6 +2,8 @@ import React from 'react';
 import { Download, FileChartColumn, FileJson, Globe2, Hexagon, Image, Layers, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { HexTileFeature, WorldProject, civ7StyleHexTileProfile, hexTileMapPresets } from '@world-forge/shared';
 import { ShellStatusControls } from '../shell/ShellStatusControls';
+import { WorldNameEditor } from '../worlds/WorldNameEditor';
+import { requestWorldRename } from '../worlds/worldIdentityBridge';
 
 type RightPanelTab = 'world' | 'hex' | 'diagnostics';
 
@@ -88,7 +90,7 @@ export function RightPanel(props: RightPanelProps) {
 
           {activeTab === 'world' ? <div role="tabpanel" aria-label="World">
             {!project ? <div className="empty-panel"><h2>World</h2><p>No generated world is loaded.</p></div> : <>
-              <h2>{project.projectName}</h2>
+              <WorldNameEditor value={project.projectName} as="h2" onSave={(name) => requestWorldRename(project.projectId, name)} />
               <Metric label="Ocean" value={`${project.metrics.oceanPercentage}%`} status={project.metrics.validation.oceanWithinTolerance ? 'ok' : 'warn'} />
               <Metric label="Ocean target" value={`${project.selectedValues.oceanPercentage}% +/- ${project.selectedValues.oceanTolerancePercentagePoints}`} />
               <Metric label="Land" value={`${project.metrics.landPercentage}%`} />
