@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type FormEvent } from 'react';
+import React, { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Check, Pencil, X } from 'lucide-react';
 import './worldLibraryUx.css';
 
@@ -19,6 +19,7 @@ export function WorldNameEditor({
   className = '',
   disabled = false,
 }: WorldNameEditorProps) {
+  const inputId = useId();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -70,10 +71,10 @@ export function WorldNameEditor({
     <div className={`inline-world-name-editor ${editing ? 'editing' : ''} ${className}`.trim()}>
       {editing ? (
         <form className="inline-world-name-form" onSubmit={commit}>
-          <label className="sr-only" htmlFor={`world-name-${value.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`}>World name</label>
+          <label className="sr-only" htmlFor={inputId}>World name</label>
           <input
             ref={inputRef}
-            id={`world-name-${value.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`}
+            id={inputId}
             value={draft}
             maxLength={120}
             autoComplete="off"
