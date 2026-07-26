@@ -4,10 +4,13 @@ import { SavedMapRecord } from '../sync';
 import { defaultWorldStorageProvider, localWorldStorageLimits, mergeSavedMapRecords } from '../storage';
 import {
   WORLD_FORGE_RENAME_REQUEST_EVENT,
+  WORLD_FORGE_REPLAY_REQUEST_EVENT,
   expectedParentOrigin,
   isParchmentWorldInventoryRequest,
+  notifyParchmentReplayResult,
   notifyParchmentWorldIdentity,
   notifyParchmentWorldInventory,
+  parseParchmentReplayWorldMessage,
   parseParchmentSetWorldNameMessage,
   prepareWorldProjectForSave,
   readEmbeddedWorldContext,
@@ -15,6 +18,7 @@ import {
   renameWorldProject,
   type WorldRenameRequestDetail,
 } from './worldIdentityBridge';
+import { assessWorldReplayCompatibility } from './worldReplayManifest';
 
 type UseWorldLibraryCommandsOptions = {
   project: WorldProject | null;
@@ -79,6 +83,23 @@ export function useWorldLibraryCommands({
         void publishInventory().catch((error: unknown) => {
           setWorldLibraryStatus(error instanceof Error ? error.message : 'World inventory could not be published.');
         });
+        return;
+      }
+
+      const replay = parseParchmentReplayWorldMessage(event.data, embeddedContext.projectId);
+      if (replay) {
+        if (assessWorldReplayCompatibility(replay.manifest) !== 'ready') {
+          notifyParchmentReplayResult({
+            worldProjectId: replay.manifest.worldProjectId,
+            requestId: replay.requestId,
+            status: 'incompatible',
+            expectedSignature: replay.manifest.outputSignature,
+            message: 'This world was recorded with an incompatible generator or graph contract.',
+          });
+          return;
+        }
+        setWorldLibraryStatus(`Regenerating ${replay.manifest.worldName}...`);
+        globalThis.dispatchEvent(new CustomEvent(WORLD_FORGE_REPLAY_REQUEST_EVENT, { detail: replay }));
         return;
       }
 
