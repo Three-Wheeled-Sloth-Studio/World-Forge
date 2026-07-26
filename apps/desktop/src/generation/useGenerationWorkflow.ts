@@ -11,6 +11,13 @@ import { GenerationConfig, WorldProject } from '@world-forge/shared';
 import { APP_SOURCE_COMMIT, APP_VERSION } from '../appVersion';
 import { loadWorkspaceSettings } from '../sync';
 import {
+  WORLD_FORGE_REPLAY_REQUEST_EVENT,
+  notifyParchmentReplayResult,
+  rememberWorldName,
+  type WorldReplayRequestDetail,
+} from '../worlds/worldIdentityBridge';
+import { authoritativeWorldSignature } from '../worlds/worldReplayManifest';
+import {
   developerGenerationRunEvent,
   generationStageTelemetryEvent,
   generationTelemetryEvent,
@@ -22,7 +29,7 @@ import {
 export { generationStageTelemetryEvent, generationTelemetryEvent } from './generationEvents';
 export type { GenerationStageTelemetryDetail, GenerationTelemetryDetail } from './generationEvents';
 
-export type GenerationLaunchSource = 'generator' | 'dev-graph';
+export type GenerationLaunchSource = 'generator' | 'dev-graph' | 'replay';
 
 type GenerationWorkerMessage = {
   type: 'progress' | 'stage' | 'complete' | 'error';
@@ -121,6 +128,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
   const generationPreviewFrameRef = useRef(0);
   const previousProjectRef = useRef(previousProject);
   const onProjectGeneratedRef = useRef(onProjectGenerated);
+  const pendingReplayRef = useRef<WorldReplayRequestDetail | null>(null);
 
   useEffect(() => { previousProjectRef.current = previousProject; }, [previousProject]);
   useEffect(() => { onProjectGeneratedRef.current = onProjectGenerated; }, [onProjectGenerated]);
@@ -159,6 +167,59 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     setLaunchSource(null);
   }, []);
 
+  const failPendingReplay = useCallback((message: string) => {
+    const replay = pendingReplayRef.current;
+    if (!replay) return;
+    notifyParchmentReplayResult({
+      worldProjectId: replay.manifest.worldProjectId,
+      requestId: replay.requestId,
+      status: 'failed',
+      expectedSignature: replay.manifest.outputSignature,
+      message,
+    });
+    pendingReplayRef.current = null;
+  }, []);
+
+  const acceptGeneratedProject = useCallback((generated: WorldProject) => {
+    const replay = pendingReplayRef.current;
+    if (!replay) {
+      onProjectGeneratedRef.current(generated);
+      return generated;
+    }
+
+    const replayed: WorldProject = {
+      ...generated,
+      projectId: replay.manifest.worldProjectId,
+      projectName: replay.manifest.worldName,
+      updatedAt: new Date().toISOString(),
+    };
+    const actualSignature = authoritativeWorldSignature(replayed);
+    if (actualSignature !== replay.manifest.outputSignature) {
+      notifyParchmentReplayResult({
+        worldProjectId: replay.manifest.worldProjectId,
+        requestId: replay.requestId,
+        status: 'failed',
+        expectedSignature: replay.manifest.outputSignature,
+        actualSignature,
+        message: 'Regeneration completed, but the authoritative world signature did not match.',
+      });
+      pendingReplayRef.current = null;
+      return generated;
+    }
+
+    rememberWorldName(replayed.projectId, replayed.projectName);
+    onProjectGeneratedRef.current(replayed);
+    notifyParchmentReplayResult({
+      worldProjectId: replay.manifest.worldProjectId,
+      requestId: replay.requestId,
+      status: 'verified',
+      expectedSignature: replay.manifest.outputSignature,
+      actualSignature,
+    });
+    pendingReplayRef.current = null;
+    return replayed;
+  }, []);
+
   useEffect(() => {
     const worker = new Worker(new URL('../generationWorker.ts', import.meta.url), { type: 'module' });
     workerRef.current = worker;
@@ -188,16 +249,17 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       }
       if (event.data.type === 'complete' && event.data.project) {
         generationPreviewRef.current = null;
-        onProjectGeneratedRef.current(event.data.project);
-        generationEstimateRef.current = Math.max(3000, event.data.project.diagnostics?.totalMs ?? generationEstimateRef.current);
+        const completedProject = acceptGeneratedProject(event.data.project);
+        generationEstimateRef.current = Math.max(3000, completedProject.diagnostics?.totalMs ?? generationEstimateRef.current);
         emitGenerationTelemetry({
           phase: 'completed', taskId: event.data.id, progress: 1, label: 'World project complete',
           seed: generationSeedRef.current, startNodeId: generationStartNodeIdRef.current,
-          startedAt: generationStartedAtRef.current, timestamp: performance.now(), project: event.data.project
+          startedAt: generationStartedAtRef.current, timestamp: performance.now(), project: completedProject
         });
       } else if (event.data.type === 'error') {
         const message = event.data.message ?? 'Generation failed';
         console.error(message);
+        failPendingReplay(message);
         emitGenerationTelemetry({
           phase: 'failed', taskId: event.data.id, progress: 1, label: 'Generation failed', seed: generationSeedRef.current,
           startNodeId: generationStartNodeIdRef.current, startedAt: generationStartedAtRef.current,
@@ -208,6 +270,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     };
     worker.onerror = (event) => {
       console.error(event.message);
+      failPendingReplay(event.message || 'Generation worker failed.');
       emitGenerationTelemetry({
         phase: 'failed', taskId: generationTaskIdRef.current, progress: 1, label: 'Generation worker failed',
         seed: generationSeedRef.current, startNodeId: generationStartNodeIdRef.current,
@@ -222,7 +285,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       worker.terminate();
       if (workerRef.current === worker) workerRef.current = null;
     };
-  }, [finishGeneration, scheduleGenerationPreviewPaint]);
+  }, [acceptGeneratedProject, failPendingReplay, finishGeneration, scheduleGenerationPreviewPaint]);
 
   useEffect(() => {
     if (!isGenerating) { setGenerationProgress(0); return; }
@@ -242,13 +305,13 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     generationStartedAtRef.current = performance.now();
     generationEstimateRef.current = Math.max(3000, previousProjectRef.current?.diagnostics?.totalMs ?? generationEstimateRef.current);
     generationPreviewRef.current = null;
-    setGenerationStage('Starting generation...');
+    setGenerationStage(source === 'replay' ? 'Starting exact replay...' : 'Starting generation...');
     setGenerationProgress(0.02);
     setGenerationNodeProgress(initialNodeProgress());
     setLaunchSource(source);
     setIsGenerating(true);
     emitGenerationTelemetry({
-      phase: 'started', taskId, progress: 0.02, label: 'Starting generation...', seed: effectiveConfig.seed,
+      phase: 'started', taskId, progress: 0.02, label: source === 'replay' ? 'Starting exact replay...' : 'Starting generation...', seed: effectiveConfig.seed,
       startNodeId: generationStartNodeIdRef.current, startedAt: generationStartedAtRef.current,
       timestamp: generationStartedAtRef.current
     });
@@ -282,16 +345,17 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
         });
         const nextProject = reconcileSystemOrbitPresets(generatedProject);
         if (generationTaskIdRef.current !== taskId) return;
-        onProjectGeneratedRef.current(nextProject);
-        generationEstimateRef.current = Math.max(3000, nextProject.diagnostics?.totalMs ?? generationEstimateRef.current);
+        const completedProject = acceptGeneratedProject(nextProject);
+        generationEstimateRef.current = Math.max(3000, completedProject.diagnostics?.totalMs ?? generationEstimateRef.current);
         emitGenerationTelemetry({
           phase: 'completed', taskId, progress: 1, label: 'World project complete', seed: effectiveConfig.seed,
           startNodeId: generationStartNodeIdRef.current, startedAt: generationStartedAtRef.current,
-          timestamp: performance.now(), project: nextProject
+          timestamp: performance.now(), project: completedProject
         });
         finishGeneration();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        failPendingReplay(message);
         emitGenerationTelemetry({
           phase: 'failed', taskId, progress: 1, label: 'Generation failed', seed: effectiveConfig.seed,
           startNodeId: generationStartNodeIdRef.current, startedAt: generationStartedAtRef.current,
@@ -302,7 +366,28 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
         setLaunchSource(null);
       }
     }, 20);
-  }, [finishGeneration]);
+  }, [acceptGeneratedProject, failPendingReplay, finishGeneration]);
+
+  useEffect(() => {
+    const handleReplayRequest = (event: Event) => {
+      const detail = (event as CustomEvent<WorldReplayRequestDetail>).detail;
+      if (!detail?.manifest || !detail.requestId) return;
+      if (isGenerating) {
+        notifyParchmentReplayResult({
+          worldProjectId: detail.manifest.worldProjectId,
+          requestId: detail.requestId,
+          status: 'failed',
+          expectedSignature: detail.manifest.outputSignature,
+          message: 'World Forge is already generating another world.',
+        });
+        return;
+      }
+      pendingReplayRef.current = detail;
+      generate(structuredClone(detail.manifest.config), { source: 'replay' });
+    };
+    window.addEventListener(WORLD_FORGE_REPLAY_REQUEST_EVENT, handleReplayRequest);
+    return () => window.removeEventListener(WORLD_FORGE_REPLAY_REQUEST_EVENT, handleReplayRequest);
+  }, [generate, isGenerating]);
 
   useEffect(() => {
     const handleDeveloperRun = (event: Event) => {
