@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from '@world-forge/generator-core';
-import { localWorldStorageLimits, mergeSavedMapRecords, savedMapRecordForProject } from './storage';
+import {
+  compactSavedWorldRecord,
+  localWorldStorageLimits,
+  mergeSavedMapRecords,
+  savedMapRecordForProject,
+  type SavedWorldStorageRecord,
+} from './storage';
 
 describe('world storage provider helpers', () => {
   it('creates compact replay-ready metadata from generated projects', () => {
@@ -31,6 +37,38 @@ describe('world storage provider helpers', () => {
     const other = { projectId: 'world-2', projectName: 'Other', seed: '2', updatedAt: '2026-07-03T00:00:00.000Z' };
 
     expect(mergeSavedMapRecords([older, other], [newer])).toEqual([other, newer]);
+  });
+
+  it('lists legacy saved-world metadata without reading the full project payload', () => {
+    let payloadReads = 0;
+    const project = new Proxy({}, {
+      get() {
+        payloadReads += 1;
+        return undefined;
+      },
+    });
+    const record: SavedWorldStorageRecord = {
+      storageSchemaVersion: 1,
+      projectSchemaVersion: 1,
+      projectId: 'legacy-world',
+      projectName: 'Legacy World',
+      seed: '101',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-02T00:00:00.000Z',
+      appVersion: '0.3.14',
+      generatorVersion: '0.1.0-mvp',
+      sizeBytes: 1,
+      project,
+    };
+
+    expect(compactSavedWorldRecord(record)).toEqual({
+      projectId: 'legacy-world',
+      projectName: 'Legacy World',
+      seed: '101',
+      updatedAt: '2026-07-02T00:00:00.000Z',
+      replayManifest: undefined,
+    });
+    expect(payloadReads).toBe(0);
   });
 
   it('sets conservative hosted-beta local storage limits', () => {

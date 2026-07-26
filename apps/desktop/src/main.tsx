@@ -570,6 +570,7 @@ function App() {
     deleteStoredWorld
   } = useWorldLibraryCommands({
     project,
+    savedMaps,
     setProject,
     setSavedMaps,
     onWorldLoaded: (loaded) => {

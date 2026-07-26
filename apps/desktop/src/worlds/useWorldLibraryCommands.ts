@@ -1,7 +1,12 @@
 import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { WorldProject } from '@world-forge/shared';
 import { SavedMapRecord } from '../sync';
-import { defaultWorldStorageProvider, localWorldStorageLimits, mergeSavedMapRecords } from '../storage';
+import {
+  defaultWorldStorageProvider,
+  localWorldStorageLimits,
+  mergeSavedMapRecords,
+  type ReplayReadySavedMapRecord,
+} from '../storage';
 import {
   WORLD_FORGE_RENAME_REQUEST_EVENT,
   WORLD_FORGE_REPLAY_REQUEST_EVENT,
@@ -22,6 +27,7 @@ import { assessWorldReplayCompatibility } from './worldReplayManifest';
 
 type UseWorldLibraryCommandsOptions = {
   project: WorldProject | null;
+  savedMaps: SavedMapRecord[];
   setProject: Dispatch<SetStateAction<WorldProject | null>>;
   setSavedMaps: Dispatch<SetStateAction<SavedMapRecord[]>>;
   onWorldLoaded: (project: WorldProject) => void;
@@ -29,6 +35,7 @@ type UseWorldLibraryCommandsOptions = {
 
 export function useWorldLibraryCommands({
   project,
+  savedMaps,
   setProject,
   setSavedMaps,
   onWorldLoaded
@@ -36,7 +43,11 @@ export function useWorldLibraryCommands({
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
 
   const publishInventory = async () => {
-    notifyParchmentWorldInventory(await defaultWorldStorageProvider.listWorlds());
+    const stored = await defaultWorldStorageProvider.listWorlds();
+    const byId = new Map<string, ReplayReadySavedMapRecord>();
+    for (const record of savedMaps) byId.set(record.projectId, record);
+    for (const record of stored) byId.set(record.projectId, record);
+    notifyParchmentWorldInventory([...byId.values()]);
   };
 
   useEffect(() => {
@@ -116,7 +127,7 @@ export function useWorldLibraryCommands({
       globalThis.removeEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest as EventListener);
       globalThis.removeEventListener('message', onParentMessage);
     };
-  }, [project, setProject, setSavedMaps]);
+  }, [project, savedMaps, setProject, setSavedMaps]);
 
   const saveCurrentWorldInApp = async () => {
     if (!project) return;

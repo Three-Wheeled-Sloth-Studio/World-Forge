@@ -44,6 +44,7 @@ export interface WorldStorageProvider {
 
 const worldLibraryDbName = 'world-forge-library';
 const worldLibraryStore = 'worlds';
+const worldLibraryMetadataStore = 'world-metadata';
 
 export function savedMapRecordForProject(project: WorldProject): ReplayReadySavedMapRecord {
   return {
@@ -78,7 +79,11 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
   async saveWorld(project: WorldProject): Promise<ReplayReadySavedMapRecord> {
     const record = storedWorldRecordForProject(project);
     const db = await openWorldLibraryDb();
-    await idbRequest(db.transaction(worldLibraryStore, 'readwrite').objectStore(worldLibraryStore).put(record));
+    const transaction = db.transaction([worldLibraryStore, worldLibraryMetadataStore], 'readwrite');
+    await Promise.all([
+      idbRequest(transaction.objectStore(worldLibraryStore).put(record)),
+      idbRequest(transaction.objectStore(worldLibraryMetadataStore).put(compactSavedWorldRecord(record))),
+    ]);
     db.close();
     await this.pruneOldWorlds();
     return savedMapRecordForProject(project);
@@ -93,13 +98,16 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
 
   async deleteWorld(projectId: string): Promise<void> {
     const db = await openWorldLibraryDb();
-    await idbRequest(db.transaction(worldLibraryStore, 'readwrite').objectStore(worldLibraryStore).delete(projectId));
+    const transaction = db.transaction([worldLibraryStore, worldLibraryMetadataStore], 'readwrite');
+    await Promise.all([
+      idbRequest(transaction.objectStore(worldLibraryStore).delete(projectId)),
+      idbRequest(transaction.objectStore(worldLibraryMetadataStore).delete(projectId)),
+    ]);
     db.close();
   }
 
   async listWorlds(): Promise<ReplayReadySavedMapRecord[]> {
-    const records = await this.listStoredRecords();
-    return records.map(compactSavedWorldRecord);
+    return this.listMetadataRecords();
   }
 
   async estimateUsage(): Promise<{ usedBytes: number; quotaBytes?: number }> {
@@ -117,15 +125,27 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
   }
 
   private async pruneOldWorlds(): Promise<void> {
-    const records = await this.listStoredRecords();
+    const records = await this.listMetadataRecords();
     if (records.length <= localWorldStorageLimits.maxSavedWorlds) return;
     const toDelete = records
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(localWorldStorageLimits.maxSavedWorlds);
     const db = await openWorldLibraryDb();
-    const store = db.transaction(worldLibraryStore, 'readwrite').objectStore(worldLibraryStore);
-    await Promise.all(toDelete.map((record) => idbRequest(store.delete(record.projectId))));
+    const transaction = db.transaction([worldLibraryStore, worldLibraryMetadataStore], 'readwrite');
+    await Promise.all(toDelete.flatMap((record) => [
+      idbRequest(transaction.objectStore(worldLibraryStore).delete(record.projectId)),
+      idbRequest(transaction.objectStore(worldLibraryMetadataStore).delete(record.projectId)),
+    ]));
     db.close();
+  }
+
+  private async listMetadataRecords(): Promise<ReplayReadySavedMapRecord[]> {
+    const db = await openWorldLibraryDb();
+    const records = await idbRequest<ReplayReadySavedMapRecord[]>(
+      db.transaction(worldLibraryMetadataStore, 'readonly').objectStore(worldLibraryMetadataStore).getAll(),
+    );
+    db.close();
+    return records.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   private async listStoredRecords(): Promise<SavedWorldStorageRecord[]> {
@@ -138,21 +158,13 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
 
 export const defaultWorldStorageProvider = new IndexedDbWorldStorageProvider();
 
-function compactSavedWorldRecord(record: SavedWorldStorageRecord): ReplayReadySavedMapRecord {
-  let replayManifest = record.replayManifest;
-  if (!replayManifest && record.project) {
-    try {
-      replayManifest = buildWorldReplayManifest(deserializeProject(record.project));
-    } catch {
-      replayManifest = undefined;
-    }
-  }
+export function compactSavedWorldRecord(record: SavedWorldStorageRecord): ReplayReadySavedMapRecord {
   return {
     projectId: record.projectId,
     projectName: record.projectName,
     seed: record.seed,
     updatedAt: record.updatedAt,
-    replayManifest,
+    replayManifest: record.replayManifest,
   };
 }
 
@@ -190,10 +202,13 @@ function normalizeStoredWorldRecord(record: Partial<SavedWorldStorageRecord>): S
 function openWorldLibraryDb(): Promise<IDBDatabase> {
   if (!('indexedDB' in globalThis)) return Promise.reject(new Error('In-app world storage is not available in this environment.'));
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(worldLibraryDbName, 2);
+    const request = indexedDB.open(worldLibraryDbName, 3);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(worldLibraryStore)) db.createObjectStore(worldLibraryStore, { keyPath: 'projectId' });
+      if (!db.objectStoreNames.contains(worldLibraryMetadataStore)) {
+        db.createObjectStore(worldLibraryMetadataStore, { keyPath: 'projectId' });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open world library.'));
