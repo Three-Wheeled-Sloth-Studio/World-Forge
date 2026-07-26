@@ -3,16 +3,25 @@ import { createDefaultConfig, generateProject } from '@world-forge/generator-cor
 import { localWorldStorageLimits, mergeSavedMapRecords, savedMapRecordForProject } from './storage';
 
 describe('world storage provider helpers', () => {
-  it('creates compact saved-world metadata from generated projects', () => {
+  it('creates compact replay-ready metadata from generated projects', () => {
     const project = generateProject(createDefaultConfig('storage-record-001', { width: 64, height: 32 }));
     const record = savedMapRecordForProject(project);
 
-    expect(record).toEqual({
+    expect(record).toMatchObject({
       projectId: project.projectId,
       projectName: project.projectName,
       seed: 'storage-record-001',
-      updatedAt: project.updatedAt
+      updatedAt: project.updatedAt,
+      replayManifest: {
+        format: 'world-forge-replay',
+        formatVersion: 1,
+        worldProjectId: project.projectId,
+        worldName: project.projectName,
+        generatorVersion: project.generatorVersion,
+      },
     });
+    expect(record.replayManifest?.config).toEqual(project.config);
+    expect(record.replayManifest?.outputSignature).toMatch(/^wf-a1-[0-9a-f]{16}$/);
     expect('primaryWorld' in record).toBe(false);
   });
 
