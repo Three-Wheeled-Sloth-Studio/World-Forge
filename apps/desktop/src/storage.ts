@@ -99,7 +99,7 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
 
   async listWorlds(): Promise<ReplayReadySavedMapRecord[]> {
     const records = await this.listStoredRecords();
-    return records.map(({ project, storageSchemaVersion, projectSchemaVersion, appVersion, generatorVersion, createdAt, sizeBytes, ...record }) => record);
+    return records.map(compactSavedWorldRecord);
   }
 
   async estimateUsage(): Promise<{ usedBytes: number; quotaBytes?: number }> {
@@ -137,6 +137,24 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
 }
 
 export const defaultWorldStorageProvider = new IndexedDbWorldStorageProvider();
+
+function compactSavedWorldRecord(record: SavedWorldStorageRecord): ReplayReadySavedMapRecord {
+  let replayManifest = record.replayManifest;
+  if (!replayManifest && record.project) {
+    try {
+      replayManifest = buildWorldReplayManifest(deserializeProject(record.project));
+    } catch {
+      replayManifest = undefined;
+    }
+  }
+  return {
+    projectId: record.projectId,
+    projectName: record.projectName,
+    seed: record.seed,
+    updatedAt: record.updatedAt,
+    replayManifest,
+  };
+}
 
 function storedWorldRecordForProject(project: WorldProject): SavedWorldStorageRecord {
   const projectPayload = serializeProject(project, { includeLayerData: true });
