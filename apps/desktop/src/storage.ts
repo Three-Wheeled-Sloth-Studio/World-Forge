@@ -1,6 +1,7 @@
 import { deserializeProject, serializeProject } from '@world-forge/exporters';
 import { WorldProject } from '@world-forge/shared';
 import { SavedMapRecord } from './sync';
+import { buildWorldReplayManifest, type WorldReplayManifestV1 } from './worlds/worldReplayManifest';
 
 export const localWorldStorageLimits = {
   maxSavedWorlds: 12,
@@ -18,7 +19,11 @@ export type StorageProviderInfo = {
   limits: typeof localWorldStorageLimits;
 };
 
-export type SavedWorldStorageRecord = SavedMapRecord & {
+export type ReplayReadySavedMapRecord = SavedMapRecord & {
+  replayManifest?: WorldReplayManifestV1;
+};
+
+export type SavedWorldStorageRecord = ReplayReadySavedMapRecord & {
   storageSchemaVersion: 1;
   projectSchemaVersion: 1;
   appVersion: string;
@@ -30,22 +35,23 @@ export type SavedWorldStorageRecord = SavedMapRecord & {
 
 export interface WorldStorageProvider {
   info: StorageProviderInfo;
-  saveWorld(project: WorldProject): Promise<SavedMapRecord>;
+  saveWorld(project: WorldProject): Promise<ReplayReadySavedMapRecord>;
   loadWorld(projectId: string): Promise<WorldProject | null>;
   deleteWorld(projectId: string): Promise<void>;
-  listWorlds(): Promise<SavedMapRecord[]>;
+  listWorlds(): Promise<ReplayReadySavedMapRecord[]>;
   estimateUsage(): Promise<{ usedBytes: number; quotaBytes?: number }>;
 }
 
 const worldLibraryDbName = 'world-forge-library';
 const worldLibraryStore = 'worlds';
 
-export function savedMapRecordForProject(project: WorldProject): SavedMapRecord {
+export function savedMapRecordForProject(project: WorldProject): ReplayReadySavedMapRecord {
   return {
     projectId: project.projectId,
     projectName: project.projectName,
     seed: project.seed,
-    updatedAt: project.updatedAt
+    updatedAt: project.updatedAt,
+    replayManifest: buildWorldReplayManifest(project),
   };
 }
 
@@ -69,7 +75,7 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
     limits: localWorldStorageLimits
   };
 
-  async saveWorld(project: WorldProject): Promise<SavedMapRecord> {
+  async saveWorld(project: WorldProject): Promise<ReplayReadySavedMapRecord> {
     const record = storedWorldRecordForProject(project);
     const db = await openWorldLibraryDb();
     await idbRequest(db.transaction(worldLibraryStore, 'readwrite').objectStore(worldLibraryStore).put(record));
@@ -91,7 +97,7 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
     db.close();
   }
 
-  async listWorlds(): Promise<SavedMapRecord[]> {
+  async listWorlds(): Promise<ReplayReadySavedMapRecord[]> {
     const records = await this.listStoredRecords();
     return records.map(({ project, storageSchemaVersion, projectSchemaVersion, appVersion, generatorVersion, createdAt, sizeBytes, ...record }) => record);
   }
@@ -158,6 +164,7 @@ function normalizeStoredWorldRecord(record: Partial<SavedWorldStorageRecord>): S
     appVersion: String(record.appVersion || ''),
     generatorVersion: String(record.generatorVersion || ''),
     sizeBytes: Number(record.sizeBytes || roughJsonBytes(record.project)),
+    replayManifest: record.replayManifest,
     project: record.project
   };
 }
