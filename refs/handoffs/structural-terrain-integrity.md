@@ -10,8 +10,9 @@ Tracking issue: `#2 [High Priority Investigation] Root-cause structural vertical
 
 ## Implementation Status
 
-The focused root cause is confirmed and corrected on `dev` for World Forge
-0.3.16 / generator 0.1.1-mvp.
+PI complete. The focused root cause is confirmed, corrected, verified, and
+accepted on the deployed `dev` build for World Forge 0.3.16 / generator
+0.1.1-mvp.
 
 - The investigation script now executes `generateProjectWithNativeStages`.
 - Raw topology elevation is captured at six authoritative mutation boundaries.
@@ -24,11 +25,14 @@ The focused root cause is confirmed and corrected on `dev` for World Forge
   1024 x 512.
 - Root-cause evidence is in
   `refs/testing/vertical-striping-root-cause-v0.3.16.md`.
+- Full repository verification passed with 154 tests.
+- Hosted deployment smoke and exact bundle provenance passed for commit
+  `19cebab197df3f05d151713c897e28c51f24804a`.
+- Browser visual QA passed on 2026-07-26.
 
-Remaining before promotion: full repository verification, dev deployment, and
-browser visual QA across Terrain-only, Heightmap, Natural View, globe, and
-export. A separate initial-tectonic orientation bias remains deferred because
-the corrected fragment transform no longer materially amplifies it.
+No work remains in this PI. A separate initial-tectonic orientation bias
+remains deferred because the corrected fragment transform no longer materially
+amplifies it.
 
 ## Takeover Prompt
 

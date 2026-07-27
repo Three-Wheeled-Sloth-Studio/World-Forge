@@ -86,5 +86,10 @@ Saved replay manifests from generator `0.1.0-mvp` are intentionally
 incompatible with generator `0.1.1-mvp`. Regeneration is required for exact
 comparison.
 
-Browser QA remains required on the dev build for Terrain-only, Heightmap,
-Natural View, globe, and exported raster before promotion.
+## Browser QA
+
+Browser QA passed on the deployed dev build on 2026-07-26. The corrected
+terrain was accepted as good enough for the current release boundary.
+
+The broader initial-tectonic orientation bias remains a documented future
+follow-up rather than a blocker for this PI.
