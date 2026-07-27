@@ -13,7 +13,8 @@
     "skipLibCheck": true,
     "baseUrl": "../..",
     "paths": {
-      "@world-forge/shared": ["packages/shared/src/index.ts"]
+      "@world-forge/shared": ["packages/shared/src/index.ts"],
+      "@world-forge/shared/*": ["packages/shared/src/*"]
     }
   },
   "references": [{ "path": "../shared" }],
