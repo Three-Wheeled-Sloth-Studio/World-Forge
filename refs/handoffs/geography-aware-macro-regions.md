@@ -8,29 +8,17 @@ Branch: `dev`
 
 Portfolio epic: `Parchment-Worlds-Portfolio #14`
 
-## PI status
+## Current status
 
-Implementation is active directly on `dev`.
+Implementation and visual tooling are active directly on `dev`.
 
-The first three increments now establish:
+The first human browser review found the candidate to be a **credible first pass**, but also found **odd geographic edge cases**. The candidate is therefore **not approved for activation**.
 
-- the v2 geography-aware region contract,
-- scale budgets derived from the existing hex hierarchy,
-- a deterministic topology-graph partition candidate,
-- an independent evaluation harness,
-- direct comparison against the legacy latitude-longitude grid,
-- deterministic undersized-region repair,
-- seam-crossing coverage,
-- fixed-world automated exercise against actual generator output,
-- and a browser-visible map overlay and selection inspector for visual QA.
+The next owner should inspect rendered results directly, record the failing region numbers and conditions, identify the responsible algorithm or repair behavior, and make bounded corrections supported by repeatable evidence.
 
-The browser preview is ready for inspection. See:
+Do not activate the v2 region set merely because the broad shapes look better than the legacy grid. The legacy `world-regions-v1` latitude-longitude grid remains authoritative until the candidate passes visual QA, retained fixed-world evaluation, and full repository verification.
 
-`refs/testing/geographic-region-visual-qa.md`
-
-The candidate still does **not** replace the active `world-regions-v1` latitude-longitude scaffold. Production activation remains gated on browser findings, retained fixed-world evidence, full verification, and an explicit generator-version decision.
-
-No generator-version change is included yet because authoritative generated project output remains unchanged.
+No generator-version or replay-compatibility change has been made because authoritative generated project output is still unchanged.
 
 ## Product outcome
 
@@ -42,94 +30,88 @@ Replace arbitrary latitude-longitude rectangles with stable broad geographic reg
 - reproduce under the same compatible world manifest,
 - and serve as neutral territorial units for later resources, cultures, settlements, states, and campaign tools.
 
-## Implemented foundation
+## What is implemented
 
-### Shared contract
+### Geography-aware contract
 
-`packages/shared/src/geographicRegions.ts` defines:
+`packages/shared/src/geographicRegions.ts`
+
+Defines:
 
 - `GeographicWorldRegionSetV2`
-- stable algorithm and region identities
-- topology-cell membership using a compact `Uint16Array`
-- land, water, mixed, and archipelago classifications
+- stable algorithm-scoped region IDs
+- compact `Uint16Array` topology membership
+- land, water, mixed, and archipelago classification
 - scale budgets
-- geographic boundary rationale
-- region and region-set diagnostics
-- deterministic signatures
+- neighbor relationships
+- boundary-rationale tags
+- per-region and region-set diagnostics
+- deterministic region and evaluation signatures
 - sliver-repair provenance
-- baseline and candidate evaluation output
-- latitude, longitude, and combined axis-boundary concentration metrics
+- legacy-baseline comparison metrics
 
-The contract remains separate from the legacy `WorldRegionSet` while the candidate is being evaluated. Production activation will update the authoritative `PrimaryWorld.regions` contract and declare the compatibility change.
+The contract remains separate from the authoritative legacy `WorldRegionSet` during evaluation.
 
 ### Scale budget
 
-`packages/generator-core/src/geographicRegionBudget.ts` derives the broad-region target from the actual `world-500mi` overview dimensions.
+`packages/generator-core/src/geographicRegionBudget.ts`
 
-The first budget uses approximately 48 overview hexes per broad region, bounded to 4 through 64 regions. It records preferred, minimum, and maximum overview footprints plus normalized area-share limits. These values remain calibration inputs rather than universal geography commandments.
+The current starting budget derives region count from the `world-500mi` overview level, targeting roughly 48 overview hexes per broad region and clamping the result to 4 through 64 regions.
 
-### Candidate decomposition
+These numbers are calibration inputs, not established acceptance values.
 
-`packages/generator-core/src/geographicRegionPartition.ts` provides a deterministic multi-source graph partition over the authoritative cubed-sphere topology.
+### Candidate partition
+
+`packages/generator-core/src/geographicRegionPartition.ts`
 
 The candidate uses:
 
 - land and water seed quotas derived from area share,
 - deterministic farthest-point seed selection,
-- topology traversal costs influenced by coast crossings,
-- elevation discontinuities,
-- biome and climate transitions,
-- plate changes,
-- lakes and river corridors,
-- connected graph growth,
-- stable IDs based on seed topology cells,
-- wrap-aware geographic bounds,
-- neighbor relationships,
-- dominant biome, high-point, and river summaries,
+- multi-source graph growth over cubed-sphere topology,
+- strong cost for coast crossing,
+- elevation, biome, climate, plate, lake, and river influences,
+- stable seed-based IDs,
+- wrap-aware bounds,
+- connected membership,
+- region summaries and neighbor relationships,
 - boundary-rationale tags,
-- compactness, cohesion, fragmentation, and sliver diagnostics,
-- and a deterministic region-set signature.
+- and deterministic signatures.
 
-This remains a candidate algorithm behind the evaluation boundary.
+The algorithm is locally cost-driven. Visually odd edge cases may come from seed placement, traversal weights, or a later sliver merge. Determine which one before changing constants.
 
-### Legacy baseline and alignment metrics
+### Sliver repair
 
-`packages/generator-core/src/geographicRegionEvaluation.ts` reconstructs the active `4 x 8` latitude-longitude grid as explicit topology membership and evaluates it through the same metrics as the candidate.
-
-The evaluation includes:
-
-- complete and valid membership,
-- connected-component count per region,
-- cell and area distribution,
-- sliver count,
-- geography-supported boundary share,
-- coastline boundary share,
-- meridional boundary share,
-- concentration of zonal boundaries into latitude bands,
-- concentration of meridional boundaries into longitude bands,
-- and combined axis-boundary concentration.
-
-This makes “less grid-like” measurable rather than a screenshot argument conducted by vibes.
-
-### Deterministic sliver repair
-
-`packages/generator-core/src/geographicRegionRepair.ts` repairs undersized regions through deterministic adjacent-region merges.
+`packages/generator-core/src/geographicRegionRepair.ts`
 
 The repair:
 
-- processes the smallest sliver first,
-- prefers a neighboring region with the same majority land/water class,
-- prefers the weakest geographic boundary,
-- then prefers the largest shared boundary and stable region ordering,
+- processes the smallest undersized region first,
+- prefers an adjacent region with the same majority land/water class,
+- then prefers the weakest geography-supported boundary,
+- then the largest shared boundary and stable region ordering,
 - preserves the retained region ID,
-- recompacts topology membership,
-- rebuilds all summaries and neighbors,
-- records every merge and its rationale,
-- and produces a new deterministic signature including the repair contract.
+- rebuilds membership, summaries, and neighbors,
+- records every merge,
+- and creates a repair-aware deterministic signature.
 
-This intentionally handles tiny islands and similar unavoidable fragments as mixed or archipelago regions when no credible same-surface territorial unit exists.
+Potential edge cases include tiny islands or coastal fragments being absorbed into a visually awkward neighboring region, especially when no credible same-surface neighbor exists.
 
-### Fixed-world harness
+### Evaluation and legacy baseline
+
+`packages/generator-core/src/geographicRegionEvaluation.ts`
+
+The same harness evaluates both the candidate and the active `4 x 8` grid for:
+
+- complete membership,
+- connected components,
+- size distribution and slivers,
+- geography-supported boundary share,
+- coastline boundary share,
+- meridional boundary share,
+- latitude-boundary concentration,
+- longitude-boundary concentration,
+- and combined axis-boundary concentration.
 
 Run:
 
@@ -137,36 +119,16 @@ Run:
 npm run evaluate:regions
 ```
 
-The harness evaluates:
+The script evaluates:
 
-- fixed seed `1001001`,
-- fixed seed `9776542`,
+- seed `1001001`,
+- seed `9776542`,
 - an archipelago-oriented seed,
 - and a seam-oriented seed.
 
-For each world it reports:
-
-- raw candidate diagnostics,
-- repaired candidate diagnostics and merge provenance,
-- the legacy grid baseline,
-- geography-boundary delta,
-- axis-concentration delta,
-- sliver delta,
-- and connectivity delta.
-
 ### Browser preview
 
-The World details panel now contains a **Geographic regions** preview control.
-
-When enabled, the preview:
-
-- builds and repairs the candidate from the loaded world's authoritative topology,
-- overlays lightly tinted, numbered regions on the existing map canvas,
-- remains visible over Terrain only and Natural View,
-- displays candidate-versus-grid metrics,
-- allows click selection without replacing map pan behavior,
-- highlights the selected region,
-- and reports its type, area, land/water balance, neighbor count, geography-supported boundary share, and strongest boundary rationale.
+The right-side **World** panel contains **Geographic regions → Show region preview**.
 
 Relevant files:
 
@@ -175,78 +137,134 @@ Relevant files:
 - `apps/desktop/src/regions/geographicRegionPreview.css`
 - `apps/desktop/src/panels/RightPanel.tsx`
 
-The overlay is a React portal into the existing map frame. It is not serialized and does not modify the project.
+The preview:
 
-### Automated coverage
+- builds and repairs the candidate from the loaded world,
+- overlays lightly tinted numbered regions on the map,
+- works over Terrain only and Natural View,
+- shows candidate-versus-grid metrics,
+- supports click selection and highlight,
+- reports type, area, land/water balance, neighbors, boundary support, and strongest boundary rationale,
+- is held only in UI memory,
+- and does not modify or serialize the project.
 
-Focused tests cover:
+The preview cache is lost when the World panel unmounts. Large topologies may take several seconds to rebuild.
 
-- Earth-scale budget derivation,
-- explicit budget safety bounds,
-- deterministic region signatures and membership,
-- complete topology coverage,
-- region connectivity,
-- `world-60mi` coverage,
-- coastline rationale,
-- legacy grid membership and axis metrics,
-- deterministic tiny-island sliver repair,
-- wrap-aware regions across the longitude seam,
-- candidate, repair, and baseline evaluation on actual generated worlds,
-- and the browser preview adapter, raster, selection lookup, and summary output.
+## First visual-review verdict
 
-## Current boundary
+The first human review concluded:
 
-The legacy `buildWorldRegions` latitude-longitude grid remains the generated world's authoritative region set.
+- the overall direction is useful,
+- the result is not a bad first pass,
+- odd edge cases are visibly present,
+- and the candidate needs direct rendered-result inspection before further tuning or activation.
 
-That is deliberate. The candidate should not become authoritative merely because it compiles, repairs slivers, and now looks fancy on a canvas. It must pass the documented browser inspection and produce retained evidence first.
-
-## Immediate QA
+No specific region IDs or screenshots were recorded in that pass. The next owner should create that evidence.
 
 Use:
 
 `refs/testing/geographic-region-visual-qa.md`
 
-The initial browser pass should cover:
-
-1. Terrain only view.
-2. Biomes with Natural View.
-3. Several selected land, coast, ocean, and archipelago regions.
-4. The left and right longitude seam.
-5. Seeds `1001001` and `9776542`.
-6. One Archipelago preset and one Pangea preset.
-
-Capture the visible region numbers involved in any poor boundary. That provides a precise target for weight tuning instead of “the bit near the green continent looked weird.”
-
-## Next implementation steps
+## Next owner mission
 
 Work directly on `dev`.
 
-1. Complete browser visual QA and retain findings under `refs/testing/`.
-2. Run `npm run evaluate:regions` and retain compact JSON or CSV findings under `refs/testing/`.
-3. Tune target count or boundary weights only where repeated evidence identifies a defect.
-4. Decide whether watershed or surface-structure inputs materially improve the failing boundaries before adding them.
-5. Decide whether the candidate meets the activation boundary.
-6. At activation:
-   - replace the authoritative `PrimaryWorld.regions` scaffold,
-   - bump the generator version,
-   - mark older replay manifests incompatible,
-   - update output-signature expectations,
-   - retain the overlay as the first user-facing region view,
-   - and remove the diagnostic-only candidate warning.
+### 1. Reproduce and document edge cases
 
-## Acceptance boundary for activation
+Inspect at minimum:
 
-The geography-aware candidate may replace the legacy grid when:
+- seed `1001001`,
+- seed `9776542`,
+- one fresh Archipelago preset,
+- one fresh Pangea preset,
+- Terrain only,
+- Biomes with Natural View,
+- 100% and 225% zoom,
+- the left and right longitude seam,
+- representative land, coast, ocean, and island-heavy regions.
 
-- every topology cell belongs to exactly one region,
-- land regions are connected unless an explicit island or archipelago rule explains otherwise,
-- IDs, membership, neighbors, repair history, and signatures are deterministic,
-- target size and sliver budgets pass across the fixed-world set,
-- boundaries are primarily supported by explainable geography,
-- latitude and longitude boundary concentration is materially lower than the grid baseline,
-- seam-crossing regions behave correctly,
-- fixed tests and full `npm run verify` pass,
-- and browser QA accepts the broad regions before promotion beyond `dev`.
+For every poor boundary, record:
+
+- seed and preset,
+- topology and map resolution,
+- screenshot,
+- visible region numbers,
+- selected-region diagnostics,
+- whether the defect exists before or only after sliver repair,
+- and whether it repeats under exact regeneration.
+
+### 2. Categorize before correcting
+
+Classify each issue as one or more of:
+
+- poor seed placement,
+- excessive or insufficient coast-crossing cost,
+- mountain or elevation break ignored,
+- river corridor incorrectly connecting or dividing territory,
+- biome or climate boundary overweighted,
+- thin tendril or concavity,
+- tiny-island or coastal-fragment repair merge,
+- polar distortion,
+- longitude-seam handling,
+- region-count or size-budget problem,
+- label or selection defect rather than partition defect.
+
+### 3. Trace the responsible stage
+
+Compare:
+
+- raw candidate membership,
+- repaired membership,
+- merge provenance,
+- region boundary rationales,
+- candidate metrics,
+- and legacy baseline metrics.
+
+Do not tune all weights together. Change the narrowest confirmed owner and add a regression case for it.
+
+### 4. Retain evidence
+
+Store compact findings under `refs/testing/`, including:
+
+- the fixed-world JSON or CSV evaluation output,
+- a concise visual findings document,
+- screenshots or paths to screenshots where repository policy permits,
+- before-and-after metrics,
+- and the exact dev commit tested.
+
+### 5. Verify
+
+Run focused tests during iteration and complete:
+
+```bash
+npm run verify
+npm run evaluate:regions
+```
+
+Before declaring the candidate activation-ready, confirm:
+
+- complete membership,
+- zero unexplained disconnected regions,
+- acceptable unresolved sliver count,
+- deterministic IDs, membership, neighbors, repairs, and signatures,
+- materially lower arbitrary axis concentration than the grid,
+- credible geography-supported boundaries,
+- coherent seam behavior,
+- and acceptable rendered results across all review worlds.
+
+## Activation remains a separate slice
+
+Do not activate v2 as part of exploratory visual correction unless the evidence and acceptance checks are complete.
+
+Activation must explicitly:
+
+- replace the authoritative `PrimaryWorld.regions` contract,
+- bump the generator version,
+- update replay compatibility,
+- update authoritative output signatures,
+- preserve the overlay as the initial user-facing region view,
+- remove or revise the diagnostic-only candidate warning,
+- and pass browser QA before promotion beyond `dev`.
 
 ## Explicitly deferred
 
@@ -260,4 +278,4 @@ The geography-aware candidate may replace the legacy grid when:
 - Resources
 - Canonical notable features
 - Save and synchronization changes
-- The broader initial-tectonic orientation bias unless region evidence shows it materially corrupts decomposition
+- Broader tectonic orientation work unless region evidence proves it materially corrupts decomposition
