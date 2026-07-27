@@ -30,6 +30,7 @@ describe('geographic macro-region decomposition', () => {
     expect(first.modelVersion).toBe('world-regions-v2');
     expect(first.scheme).toBe('geographic-graph-partition');
     expect(first.scaleBudget.targetDisplayLevelId).toBe('world-60mi');
+    expect(first.overviewSectors).toHaveLength(4);
     expect(first.regions).toHaveLength(10);
     expect(first.membership.regionIndexByTopologyCell).toHaveLength(topology.cellCount);
     expect(first.signature).toBe(second.signature);
@@ -42,6 +43,9 @@ describe('geographic macro-region decomposition', () => {
     expect(first.regions.every((region) => region.neighborRegionIds.length > 0)).toBe(true);
     expect(first.regions.some((region) => region.boundaryRationale.some((reason) => reason.kind === 'coastline'))).toBe(true);
     expect(first.regions.every((region) => region.hexCoverage[0]?.levelId === 'world-60mi')).toBe(true);
+    expect(first.regions.every((region) => (
+      first.membership.regionIndexByTopologyCell[region.labelPoint.topologyCellId] === region.index
+    ))).toBe(true);
   });
 
   it('changes the version-scoped region signature when the deterministic seed changes', () => {

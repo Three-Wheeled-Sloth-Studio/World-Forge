@@ -23,9 +23,12 @@ export type GeographicRegionPreview = {
   topology: CubedSphereTopology;
   rawCandidate: GeographicWorldRegionSetV2;
   regionSet: GeographicWorldRegionSetV2;
+  rawEvaluation: GeographicRegionEvaluation;
   evaluation: GeographicRegionEvaluation;
   baseline: GeographicRegionEvaluation;
 };
+
+export type GeographicRegionPreviewMode = 'raw' | 'repaired';
 
 export function geographicRegionPreviewProjectKey(project: WorldProject): string {
   return [
@@ -58,6 +61,11 @@ export function buildGeographicRegionPreview(project: WorldProject): GeographicR
     topology,
     rawCandidate,
     regionSet,
+    rawEvaluation: evaluateGeographicRegionSet(
+      topology,
+      project.primaryWorld.topologyLayers,
+      rawCandidate,
+    ),
     evaluation: evaluateGeographicRegionSet(
       topology,
       project.primaryWorld.topologyLayers,
@@ -75,27 +83,30 @@ export function geographicRegionAtMapPoint(
   preview: GeographicRegionPreview,
   mapX: number,
   mapY: number,
+  mode: GeographicRegionPreviewMode = 'repaired',
 ): GeographicWorldRegionV2 | null {
   const width = Math.max(1, project.primaryWorld.mapModel.resolution.width);
   const height = Math.max(1, project.primaryWorld.mapModel.resolution.height);
   const longitude = ((mapX + 0.5) / width) * Math.PI * 2 - Math.PI;
   const latitude = Math.PI / 2 - ((mapY + 0.5) / height) * Math.PI;
   const topologyCell = cubedSphereCellForLonLat(preview.topology, longitude, latitude);
-  const regionIndex = preview.regionSet.membership.regionIndexByTopologyCell[topologyCell];
+  const regionSet = geographicRegionSetForMode(preview, mode);
+  const regionIndex = regionSet.membership.regionIndexByTopologyCell[topologyCell];
   if (regionIndex === UNASSIGNED_REGION) return null;
-  return preview.regionSet.regions[regionIndex] ?? null;
+  return regionSet.regions[regionIndex] ?? null;
 }
 
 export function buildGeographicRegionRaster(
   preview: GeographicRegionPreview,
   width: number,
   height: number,
+  mode: GeographicRegionPreviewMode = 'repaired',
 ): Uint16Array {
   const cleanWidth = Math.max(1, Math.round(width));
   const cleanHeight = Math.max(1, Math.round(height));
   const raster = new Uint16Array(cleanWidth * cleanHeight);
   raster.fill(UNASSIGNED_REGION);
-  const membership = preview.regionSet.membership.regionIndexByTopologyCell;
+  const membership = geographicRegionSetForMode(preview, mode).membership.regionIndexByTopologyCell;
 
   for (let y = 0; y < cleanHeight; y += 1) {
     const latitude = Math.PI / 2 - ((y + 0.5) / cleanHeight) * Math.PI;
@@ -109,19 +120,33 @@ export function buildGeographicRegionRaster(
   return raster;
 }
 
-export function geographicRegionPreviewSummary(preview: GeographicRegionPreview) {
-  const repaired = preview.evaluation;
+export function geographicRegionPreviewSummary(
+  preview: GeographicRegionPreview,
+  mode: GeographicRegionPreviewMode = 'repaired',
+) {
+  const candidate = mode === 'raw' ? preview.rawEvaluation : preview.evaluation;
   const baseline = preview.baseline;
   return {
-    regionCount: repaired.regionCount,
-    mergeCount: preview.regionSet.repair?.mergeCount ?? 0,
-    sliverRegionCount: repaired.sliverRegionCount,
-    disconnectedRegionCount: repaired.disconnectedRegionCount,
-    geographyBoundaryShare: repaired.geographicBoundaryShare,
+    mode,
+    regionCount: candidate.regionCount,
+    targetRegionCount: preview.rawCandidate.scaleBudget.targetRegionCount,
+    preferredViewportHexColumns: preview.rawCandidate.scaleBudget.preferredViewportHexColumns,
+    preferredViewportHexRows: preview.rawCandidate.scaleBudget.preferredViewportHexRows,
+    mergeCount: mode === 'repaired' ? preview.regionSet.repair?.mergeCount ?? 0 : 0,
+    sliverRegionCount: candidate.sliverRegionCount,
+    disconnectedRegionCount: candidate.disconnectedRegionCount,
+    geographyBoundaryShare: candidate.geographicBoundaryShare,
     baselineGeographyBoundaryShare: baseline.geographicBoundaryShare,
-    axisBoundaryConcentration: repaired.axisBoundaryConcentration,
+    axisBoundaryConcentration: candidate.axisBoundaryConcentration,
     baselineAxisBoundaryConcentration: baseline.axisBoundaryConcentration,
-    geographyBoundaryShareDelta: repaired.geographicBoundaryShare - baseline.geographicBoundaryShare,
-    axisBoundaryConcentrationDelta: repaired.axisBoundaryConcentration - baseline.axisBoundaryConcentration,
+    geographyBoundaryShareDelta: candidate.geographicBoundaryShare - baseline.geographicBoundaryShare,
+    axisBoundaryConcentrationDelta: candidate.axisBoundaryConcentration - baseline.axisBoundaryConcentration,
   };
+}
+
+export function geographicRegionSetForMode(
+  preview: GeographicRegionPreview,
+  mode: GeographicRegionPreviewMode,
+): GeographicWorldRegionSetV2 {
+  return mode === 'raw' ? preview.rawCandidate : preview.regionSet;
 }

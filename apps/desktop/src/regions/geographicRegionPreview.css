@@ -45,6 +45,36 @@
   width: 100%;
 }
 
+.region-preview-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.region-preview-mode button {
+  background: #eee6d5;
+  border: 1px solid #b8aa91;
+  border-radius: 0;
+  color: #5f584d;
+  font-size: 11px;
+  font-weight: 800;
+  min-height: 28px;
+}
+
+.region-preview-mode button:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.region-preview-mode button:last-child {
+  border-left: 0;
+  border-radius: 0 5px 5px 0;
+}
+
+.region-preview-mode button.active {
+  background: #cfe4df;
+  color: #174f4e;
+  box-shadow: inset 0 0 0 1px #4e8984;
+}
+
 .region-preview-spinner {
   animation: region-preview-spin 900ms linear infinite;
 }

@@ -9,7 +9,9 @@ import {
   geographicRegionAtMapPoint,
   geographicRegionPreviewProjectKey,
   geographicRegionPreviewSummary,
+  geographicRegionSetForMode,
   type GeographicRegionPreview,
+  type GeographicRegionPreviewMode,
 } from './geographicRegionPreview';
 import './geographicRegionPreview.css';
 
@@ -28,6 +30,7 @@ export function GeographicRegionPreviewPanel({ project }: { project: WorldProjec
   const [preview, setPreview] = useState<GeographicRegionPreview | null>(null);
   const [error, setError] = useState('');
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<GeographicRegionPreviewMode>('repaired');
   const [surface, setSurface] = useState<MapSurface | null>(null);
 
   useEffect(() => {
@@ -112,7 +115,7 @@ export function GeographicRegionPreviewPanel({ project }: { project: WorldProjec
       const mapHeight = project.primaryWorld.mapModel.resolution.height;
       const mapX = ((event.clientX - rect.left) / rect.width) * mapWidth;
       const mapY = ((event.clientY - rect.top) / rect.height) * mapHeight;
-      const region = geographicRegionAtMapPoint(project, preview, mapX, mapY);
+      const region = geographicRegionAtMapPoint(project, preview, mapX, mapY, previewMode);
       setSelectedRegionId(region?.id ?? null);
     };
 
@@ -126,10 +129,17 @@ export function GeographicRegionPreviewPanel({ project }: { project: WorldProjec
       surface.host.removeEventListener('pointerup', onPointerUp, true);
       surface.host.removeEventListener('pointercancel', onPointerUp, true);
     };
-  }, [enabled, preview, project, status, surface]);
+  }, [enabled, preview, previewMode, project, status, surface]);
 
-  const summary = useMemo(() => preview ? geographicRegionPreviewSummary(preview) : null, [preview]);
-  const selectedRegion = preview?.regionSet.regions.find((region) => region.id === selectedRegionId) ?? null;
+  const summary = useMemo(
+    () => preview ? geographicRegionPreviewSummary(preview, previewMode) : null,
+    [preview, previewMode],
+  );
+  const activeRegionSet = preview ? geographicRegionSetForMode(preview, previewMode) : null;
+  const selectedRegion = activeRegionSet?.regions.find((region) => region.id === selectedRegionId) ?? null;
+  const selectedDomain = selectedRegion
+    ? activeRegionSet?.surfaceDomains.find((domain) => domain.id === selectedRegion.parentDomainId) ?? null
+    : null;
 
   return (
     <section className={`region-preview-panel ${enabled ? 'active' : ''}`} aria-label="Geographic region preview">
@@ -157,8 +167,33 @@ export function GeographicRegionPreviewPanel({ project }: { project: WorldProjec
       {enabled && status === 'ready' && preview && summary && (
         <>
           {!surface && <p className="region-preview-status"><MapPinned size={14} /> Switch to Map view to inspect the boundaries.</p>}
+          <div className="region-preview-mode" role="group" aria-label="Region preview stage">
+            <button
+              type="button"
+              className={previewMode === 'raw' ? 'active' : ''}
+              aria-pressed={previewMode === 'raw'}
+              onClick={() => {
+                setPreviewMode('raw');
+                setSelectedRegionId(null);
+              }}
+            >
+              Raw
+            </button>
+            <button
+              type="button"
+              className={previewMode === 'repaired' ? 'active' : ''}
+              aria-pressed={previewMode === 'repaired'}
+              onClick={() => {
+                setPreviewMode('repaired');
+                setSelectedRegionId(null);
+              }}
+            >
+              Repaired
+            </button>
+          </div>
           <div className="region-preview-metrics">
-            <PreviewMetric label="Regions" value={String(summary.regionCount)} />
+            <PreviewMetric label="Regions" value={`${summary.regionCount} / target ${summary.targetRegionCount}`} />
+            <PreviewMetric label="Preferred map" value={`${summary.preferredViewportHexColumns} x ${summary.preferredViewportHexRows} @ 60 mi`} />
             <PreviewMetric label="Sliver merges" value={String(summary.mergeCount)} status={summary.sliverRegionCount === 0 ? 'ok' : 'warn'} />
             <PreviewMetric label="Connected" value={summary.disconnectedRegionCount === 0 ? 'All' : `${summary.disconnectedRegionCount} split`} status={summary.disconnectedRegionCount === 0 ? 'ok' : 'warn'} />
             <PreviewMetric
@@ -177,7 +212,14 @@ export function GeographicRegionPreviewPanel({ project }: { project: WorldProjec
               <span><MousePointer2 size={14} /><strong>{selectedRegion ? selectedRegion.label : 'Select a region'}</strong></span>
               {selectedRegion && <button type="button" className="icon-button compact-action-button" title="Clear selected region" aria-label="Clear selected region" onClick={() => setSelectedRegionId(null)}><X size={13} /></button>}
             </div>
-            {selectedRegion ? <SelectedRegionDetails region={selectedRegion} /> : <p>Click the map to highlight a region and inspect why its boundaries exist.</p>}
+            {selectedRegion
+              ? <SelectedRegionDetails
+                  region={selectedRegion}
+                  domainKind={selectedDomain?.kind ?? 'unknown'}
+                  componentCount={selectedDomain?.componentCount ?? 0}
+                  mode={previewMode}
+                />
+              : <p>Click the map to highlight a region and inspect why its boundaries exist.</p>}
           </div>
           <p className="region-preview-candidate-note">Candidate only. The saved world still uses the legacy region grid.</p>
           {surface && createPortal(
@@ -185,6 +227,7 @@ export function GeographicRegionPreviewPanel({ project }: { project: WorldProjec
               preview={preview}
               sourceCanvas={surface.canvas}
               selectedRegionId={selectedRegionId}
+              mode={previewMode}
             />,
             surface.host,
           )}
@@ -198,11 +241,23 @@ function PreviewMetric({ label, value, status }: { label: string; value: string;
   return <div className={`region-preview-metric ${status ?? ''}`}><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function SelectedRegionDetails({ region }: { region: GeographicWorldRegionV2 }) {
+function SelectedRegionDetails({
+  region,
+  domainKind,
+  componentCount,
+  mode,
+}: {
+  region: GeographicWorldRegionV2;
+  domainKind: string;
+  componentCount: number;
+  mode: GeographicRegionPreviewMode;
+}) {
   const strongestBoundary = region.boundaryRationale[0];
   return (
     <dl className="region-preview-details">
       <div><dt>Type</dt><dd>{region.classification}</dd></div>
+      <div><dt>Stage</dt><dd>{mode}</dd></div>
+      <div><dt>Parent</dt><dd>{domainKind}{componentCount > 1 ? ` (${componentCount} islands)` : ''}</dd></div>
       <div><dt>World area</dt><dd>{percent(region.diagnostics.areaShare)}</dd></div>
       <div><dt>Land / water</dt><dd>{percent(region.landAreaShare)} / {percent(region.waterAreaShare)}</dd></div>
       <div><dt>Neighbors</dt><dd>{region.neighborRegionIds.length}</dd></div>
@@ -216,10 +271,12 @@ function GeographicRegionOverlayCanvas({
   preview,
   sourceCanvas,
   selectedRegionId,
+  mode,
 }: {
   preview: GeographicRegionPreview;
   sourceCanvas: HTMLCanvasElement;
   selectedRegionId: string | null;
+  mode: GeographicRegionPreviewMode;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rasterCacheRef = useRef<{ key: string; raster: Uint16Array } | null>(null);
@@ -238,13 +295,14 @@ function GeographicRegionOverlayCanvas({
       const context = overlay.getContext('2d');
       if (!context) return;
 
-      const cacheKey = `${preview.regionSet.signature}:${width}:${height}`;
+      const regionSet = geographicRegionSetForMode(preview, mode);
+      const cacheKey = `${regionSet.signature}:${width}:${height}`;
       let raster = rasterCacheRef.current?.key === cacheKey ? rasterCacheRef.current.raster : null;
       if (!raster) {
-        raster = buildGeographicRegionRaster(preview, width, height);
+        raster = buildGeographicRegionRaster(preview, width, height, mode);
         rasterCacheRef.current = { key: cacheKey, raster };
       }
-      drawRegionRaster(context, raster, width, height, preview, selectedRegionId);
+      drawRegionRaster(context, raster, width, height, preview, selectedRegionId, mode);
     };
     const schedule = () => {
       if (frameHandle) window.cancelAnimationFrame(frameHandle);
@@ -260,7 +318,7 @@ function GeographicRegionOverlayCanvas({
       observer.disconnect();
       window.removeEventListener('resize', schedule);
     };
-  }, [preview, selectedRegionId, sourceCanvas]);
+  }, [mode, preview, selectedRegionId, sourceCanvas]);
 
   return <canvas ref={canvasRef} className="region-preview-overlay-canvas" aria-hidden="true" />;
 }
@@ -272,11 +330,13 @@ function drawRegionRaster(
   height: number,
   preview: GeographicRegionPreview,
   selectedRegionId: string | null,
+  mode: GeographicRegionPreviewMode,
 ): void {
   const image = context.createImageData(width, height);
   const pixels = image.data;
+  const regionSet = geographicRegionSetForMode(preview, mode);
   const selectedIndex = selectedRegionId
-    ? preview.regionSet.regions.findIndex((region) => region.id === selectedRegionId)
+    ? regionSet.regions.findIndex((region) => region.id === selectedRegionId)
     : -1;
 
   for (let y = 0; y < height; y += 1) {
@@ -306,12 +366,12 @@ function drawRegionRaster(
 
   context.clearRect(0, 0, width, height);
   context.putImageData(image, 0, 0);
-  drawRegionLabels(context, preview, width, height, selectedIndex);
+  drawRegionLabels(context, regionSet.regions, width, height, selectedIndex);
 }
 
 function drawRegionLabels(
   context: CanvasRenderingContext2D,
-  preview: GeographicRegionPreview,
+  regions: GeographicWorldRegionV2[],
   width: number,
   height: number,
   selectedIndex: number,
@@ -324,9 +384,9 @@ function drawRegionLabels(
   context.lineJoin = 'round';
   context.lineWidth = Math.max(2, fontSize * 0.28);
 
-  for (const region of preview.regionSet.regions) {
-    const x = ((region.center.longitude + 180) / 360) * width;
-    const y = ((90 - region.center.latitude) / 180) * height;
+  for (const region of regions) {
+    const x = ((region.labelPoint.longitude + 180) / 360) * width;
+    const y = ((90 - region.labelPoint.latitude) / 180) * height;
     const label = String(region.index + 1);
     context.strokeStyle = region.index === selectedIndex ? 'rgba(13, 31, 29, 0.96)' : 'rgba(28, 25, 20, 0.82)';
     context.fillStyle = region.index === selectedIndex ? '#fff7d4' : '#fff4c4';

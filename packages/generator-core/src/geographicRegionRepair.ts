@@ -14,6 +14,8 @@ import {
   type GeographicWorldRegionV2,
 } from '@world-forge/shared/geographicRegions';
 import { hexCoverageForLatLonBounds } from './worldHexOverlay';
+import { geographicTopologyAdjacency } from './geographicTopologyAdjacency';
+import { assignInteriorRegionLabelPoints } from './geographicRegionLabels';
 
 const UNASSIGNED_REGION = 0xffff;
 const RADIANS_TO_DEGREES = 180 / Math.PI;
@@ -44,6 +46,7 @@ type MergeBoundaryStats = {
 type RegionAccumulator = RegionAreaStats & {
   seedTopologyCellId: number;
   id: string;
+  parentDomainId: string;
   topologyCellCount: number;
   biomeArea: Record<Biome, number>;
   highestCell: number;
@@ -86,17 +89,38 @@ export function repairGeographicRegionSlivers(
   const active = new Set(initial.regions.map((region) => region.index));
   const merges: NonNullable<GeographicWorldRegionSetV2['repair']>['merges'] = [];
   const minimumAreaShare = initial.scaleBudget.minAreaShare;
+  const parentDomainIdByRegion = initial.regions.map((region) => region.parentDomainId);
 
   while (active.size > MINIMUM_SURVIVING_REGION_COUNT) {
     const stats = summarizeAreas(topology, layers, membership, initial.regions.length);
     const totalArea = stats.reduce((sum, region) => sum + region.area, 0);
-    const donor = [...active]
+    const activeCountByParent = new Map<string, number>();
+    for (const regionIndex of active) {
+      const parentId = parentDomainIdByRegion[regionIndex];
+      activeCountByParent.set(parentId, (activeCountByParent.get(parentId) ?? 0) + 1);
+    }
+    const donors = [...active]
       .filter((regionIndex) => stats[regionIndex].area / Math.max(0.000001, totalArea) < minimumAreaShare)
-      .sort((left, right) => stats[left].area - stats[right].area || left - right)[0];
-    if (donor === undefined) break;
-
-    const mergeTarget = selectMergeTarget(topology, layers, membership, active, stats, donor);
-    if (!mergeTarget) break;
+      .filter((regionIndex) => (activeCountByParent.get(parentDomainIdByRegion[regionIndex]) ?? 0) > 1)
+      .sort((left, right) => stats[left].area - stats[right].area || left - right);
+    let donor: number | undefined;
+    let mergeTarget: MergeBoundaryStats | null = null;
+    for (const candidate of donors) {
+      mergeTarget = selectMergeTarget(
+        topology,
+        layers,
+        membership,
+        active,
+        stats,
+        candidate,
+        parentDomainIdByRegion,
+      );
+      if (mergeTarget) {
+        donor = candidate;
+        break;
+      }
+    }
+    if (donor === undefined || !mergeTarget) break;
     const removedRegionId = initial.regions[donor]?.id ?? `region-${donor}`;
     const retainedRegionId = initial.regions[mergeTarget.targetRegionIndex]?.id ?? `region-${mergeTarget.targetRegionIndex}`;
 
@@ -126,17 +150,20 @@ function selectMergeTarget(
   active: Set<number>,
   stats: RegionAreaStats[],
   donor: number,
+  parentDomainIdByRegion: string[],
 ): MergeBoundaryStats | null {
+  const adjacency = geographicTopologyAdjacency(topology);
   const byTarget = new Map<number, MergeBoundaryStats>();
   const donorWater = majorityWater(stats[donor]);
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (membership[cell] !== donor) continue;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
+    for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+      const neighbor = adjacency.neighbors[offset];
       if (neighbor < 0) continue;
       const target = membership[neighbor];
       if (target === donor || target === UNASSIGNED_REGION || !active.has(target)) continue;
+      if (parentDomainIdByRegion[target] !== parentDomainIdByRegion[donor]) continue;
       const current = byTarget.get(target) ?? {
         targetRegionIndex: target,
         sharedBoundaryEdges: 0,
@@ -208,22 +235,40 @@ function rebuildRegionSet(
 
   const accumulators = survivors.map((oldIndex) => {
     const source = initial.regions[oldIndex];
-    return createAccumulator(source?.id ?? `region-${oldIndex}`, source?.seedTopologyCellId ?? 0);
+    return createAccumulator(
+      source?.id ?? `region-${oldIndex}`,
+      source?.seedTopologyCellId ?? 0,
+      source?.parentDomainId ?? 'primary-world',
+    );
   });
   accumulateCells(topology, layers, membership, accumulators);
   const boundarySummary = accumulateBoundaries(topology, layers, membership, accumulators);
   const componentCounts = connectedComponentCounts(topology, membership, accumulators.length);
   const totalArea = accumulators.reduce((sum, region) => sum + region.area, 0);
-  const regions = finalizeRegions(
+  const regions = assignInteriorRegionLabelPoints(
     topology,
-    accumulators,
-    componentCounts,
-    totalArea,
-    initial.scaleBudget.minAreaShare,
-    hexOverlay,
+    membership,
+    finalizeRegions(
+      topology,
+      accumulators,
+      componentCounts,
+      totalArea,
+      initial.scaleBudget.minAreaShare,
+      hexOverlay,
+    ),
   );
+  const regionCountByParent = new Map<string, number>();
+  for (const region of regions) {
+    regionCountByParent.set(region.parentDomainId, (regionCountByParent.get(region.parentDomainId) ?? 0) + 1);
+  }
+  for (const region of regions) {
+    if ((regionCountByParent.get(region.parentDomainId) ?? 0) === 1) {
+      region.diagnostics.sliver = false;
+    }
+  }
   const areaShares = regions.map((region) => region.diagnostics.areaShare);
   const unresolvedSliverCount = regions.filter((region) => region.diagnostics.sliver).length;
+  const domainKindById = new Map(initial.surfaceDomains.map((domain) => [domain.id, domain.kind]));
 
   return {
     ...initial,
@@ -237,7 +282,9 @@ function rebuildRegionSet(
       targetRegionCount: initial.scaleBudget.targetRegionCount,
       actualRegionCount: regions.length,
       unassignedCellCount: countUnassigned(membership),
-      disconnectedRegionCount: componentCounts.filter((count) => count > 1).length,
+      disconnectedRegionCount: regions.filter((region, index) => (
+        componentCounts[index] > 1 && domainKindById.get(region.parentDomainId) !== 'archipelago'
+      )).length,
       sliverRegionCount: unresolvedSliverCount,
       minimumAreaShare: round(areaShares.length > 0 ? Math.min(...areaShares) : 0, 8),
       maximumAreaShare: round(areaShares.length > 0 ? Math.max(...areaShares) : 0, 8),
@@ -254,6 +301,10 @@ function rebuildRegionSet(
         boundarySummary.meridionalBoundaryEdges / Math.max(1, boundarySummary.boundaryEdgeCount),
         6,
       ),
+      surfaceDomainCount: initial.diagnostics.surfaceDomainCount,
+      landmassDomainCount: initial.diagnostics.landmassDomainCount,
+      archipelagoDomainCount: initial.diagnostics.archipelagoDomainCount,
+      openOceanDomainCount: initial.diagnostics.openOceanDomainCount,
     },
     repair: {
       modelVersion: GEOGRAPHIC_REGION_SLIVER_REPAIR_VERSION,
@@ -267,9 +318,10 @@ function rebuildRegionSet(
   };
 }
 
-function createAccumulator(id: string, seedTopologyCellId: number): RegionAccumulator {
+function createAccumulator(id: string, seedTopologyCellId: number, parentDomainId: string): RegionAccumulator {
   return {
     id,
+    parentDomainId,
     seedTopologyCellId,
     topologyCellCount: 0,
     area: 0,
@@ -344,6 +396,7 @@ function accumulateBoundaries(
   membership: Uint16Array,
   accumulators: RegionAccumulator[],
 ): BoundarySummary {
+  const adjacency = geographicTopologyAdjacency(topology);
   const summary: BoundarySummary = {
     boundaryEdgeCount: 0,
     geographicBoundaryEdges: 0,
@@ -353,8 +406,8 @@ function accumulateBoundaries(
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const leftIndex = membership[cell];
     if (!accumulators[leftIndex]) continue;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
+    for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+      const neighbor = adjacency.neighbors[offset];
       if (neighbor <= cell) continue;
       const rightIndex = membership[neighbor];
       if (rightIndex === leftIndex || !accumulators[rightIndex]) continue;
@@ -400,12 +453,18 @@ function finalizeRegions(
       id: region.id,
       index,
       level: 'region',
-      parentId: 'primary-world',
+      parentId: region.parentDomainId,
+      parentDomainId: region.parentDomainId,
       label: `Region ${index + 1}`,
       classification: classifyRegion(landAreaShare, waterAreaShare),
       seedTopologyCellId: region.seedTopologyCellId,
       bounds,
       center: vectorCenter(region),
+      labelPoint: {
+        topologyCellId: region.seedTopologyCellId,
+        latitude: round(topology.latitudes[region.seedTopologyCellId] * RADIANS_TO_DEGREES, 4),
+        longitude: round(topology.longitudes[region.seedTopologyCellId] * RADIANS_TO_DEGREES, 4),
+      },
       topologyCellCount: region.topologyCellCount,
       areaWeight: round(region.area, 6),
       landAreaShare: round(landAreaShare, 4),
@@ -464,6 +523,7 @@ function connectedComponentCounts(
   membership: Uint16Array,
   regionCount: number,
 ): number[] {
+  const adjacency = geographicTopologyAdjacency(topology);
   const counts = Array.from({ length: regionCount }, () => 0);
   const visited = new Uint8Array(topology.cellCount);
   const queue = new Int32Array(topology.cellCount);
@@ -478,8 +538,8 @@ function connectedComponentCounts(
     queue[tail++] = start;
     while (head < tail) {
       const cell = queue[head++];
-      for (let direction = 0; direction < 4; direction += 1) {
-        const neighbor = topology.neighbors[cell * 4 + direction];
+      for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+        const neighbor = adjacency.neighbors[offset];
         if (neighbor < 0 || visited[neighbor] === 1 || membership[neighbor] !== regionIndex) continue;
         visited[neighbor] = 1;
         queue[tail++] = neighbor;
@@ -572,6 +632,7 @@ function repairedSignature(regions: GeographicWorldRegionV2[], membership: Uint1
     addByte(region.seedTopologyCellId >>> 8);
     addByte(region.seedTopologyCellId >>> 16);
     addByte(region.seedTopologyCellId >>> 24);
+    for (const character of region.parentDomainId) addByte(character.charCodeAt(0));
   }
   for (const regionIndex of membership) {
     addByte(regionIndex);

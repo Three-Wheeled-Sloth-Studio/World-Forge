@@ -5,6 +5,7 @@ import type {
   GeographicRegionInputLayers,
   GeographicWorldRegionSetV2,
 } from '@world-forge/shared/geographicRegions';
+import { geographicTopologyAdjacency } from './geographicTopologyAdjacency';
 
 const UNASSIGNED_REGION = 0xffff;
 const RADIANS_TO_DEGREES = 180 / Math.PI;
@@ -16,7 +17,7 @@ export function evaluateGeographicRegionSet(
   layers: GeographicRegionInputLayers,
   regionSet: GeographicWorldRegionSetV2,
 ): GeographicRegionEvaluation {
-  return evaluateRegionMembership(
+  const evaluation = evaluateRegionMembership(
     topology,
     layers,
     regionSet.membership.regionIndexByTopologyCell,
@@ -26,6 +27,14 @@ export function evaluateGeographicRegionSet(
     regionSet.algorithmVersion,
     regionSet.signature,
   );
+  const domainKindById = new Map(regionSet.surfaceDomains.map((domain) => [domain.id, domain.kind]));
+  return {
+    ...evaluation,
+    disconnectedRegionCount: regionSet.regions.filter((region, index) => (
+      evaluation.regionComponentCounts[index] > 1
+      && domainKindById.get(region.parentDomainId) !== 'archipelago'
+    )).length,
+  };
 }
 
 export function buildLegacyLatLonGridMembership(
@@ -145,6 +154,7 @@ function componentCounts(
   membership: Uint16Array,
   regionCount: number,
 ): number[] {
+  const adjacency = geographicTopologyAdjacency(topology);
   const counts = Array.from({ length: regionCount }, () => 0);
   if (membership.length !== topology.cellCount) return counts;
   const visited = new Uint8Array(topology.cellCount);
@@ -161,8 +171,8 @@ function componentCounts(
     queue[tail++] = start;
     while (head < tail) {
       const cell = queue[head++];
-      for (let direction = 0; direction < 4; direction += 1) {
-        const neighbor = topology.neighbors[cell * 4 + direction];
+      for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+        const neighbor = adjacency.neighbors[offset];
         if (
           neighbor < 0
           || visited[neighbor] === 1
@@ -193,6 +203,7 @@ function boundaryMetrics(
   membership: Uint16Array,
   regionCount: number,
 ): BoundaryMetrics {
+  const adjacency = geographicTopologyAdjacency(topology);
   const metrics: BoundaryMetrics = {
     total: 0,
     geographic: 0,
@@ -207,8 +218,8 @@ function boundaryMetrics(
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const leftRegion = membership[cell];
     if (leftRegion === UNASSIGNED_REGION || leftRegion >= regionCount) continue;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
+    for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+      const neighbor = adjacency.neighbors[offset];
       if (neighbor <= cell) continue;
       const rightRegion = membership[neighbor];
       if (

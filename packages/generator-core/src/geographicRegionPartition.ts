@@ -11,10 +11,17 @@ import {
   type GeographicRegionBuildOptions,
   type GeographicRegionInputLayers,
   type GeographicRegionSeed,
+  type GeographicSurfaceDomain,
   type GeographicWorldRegionSetV2,
   type GeographicWorldRegionV2,
 } from '@world-forge/shared/geographicRegions';
-import { deriveGeographicRegionScaleBudget } from './geographicRegionBudget';
+import {
+  buildGeographicOverviewSectors,
+  deriveGeographicRegionScaleBudget,
+} from './geographicRegionBudget';
+import { buildGeographicSurfaceDomains } from './geographicSurfaceDomains';
+import { geographicTopologyAdjacency } from './geographicTopologyAdjacency';
+import { assignInteriorRegionLabelPoints } from './geographicRegionLabels';
 import { hexCoverageForLatLonBounds } from './worldHexOverlay';
 
 const UNASSIGNED_REGION = 0xffff;
@@ -32,6 +39,7 @@ const BOUNDARY_KINDS: GeographicRegionBoundaryKind[] = [
 
 type RegionAccumulator = {
   seedTopologyCellId: number;
+  parentDomainIndex: number;
   topologyCellCount: number;
   areaWeight: number;
   landArea: number;
@@ -71,22 +79,41 @@ export function buildGeographicMacroRegions(
 ): GeographicWorldRegionSetV2 {
   validateInputs(topology, layers);
   const scaleBudget = deriveGeographicRegionScaleBudget(hexOverlay, options.targetRegionCount);
-  const seeds = selectGeographicRegionSeeds(topology, layers, scaleBudget.targetRegionCount, options);
+  const surface = buildGeographicSurfaceDomains(
+    topology,
+    layers,
+    hexOverlay,
+    scaleBudget,
+  );
+  const seeds = selectDomainRegionSeeds(
+    topology,
+    layers,
+    surface.domains,
+    surface.regionDomainIndexByTopologyCell,
+    options,
+  );
   if (seeds.length === 0) throw new Error('Geographic region decomposition could not select any region seeds.');
 
-  const membership = partitionTopology(topology, layers, seeds);
+  const membership = partitionTopology(topology, layers, seeds, surface.regionDomainIndexByTopologyCell);
+  assignUnreachedDomainCells(topology, membership, seeds, surface.regionDomainIndexByTopologyCell);
+  makePartitionSeedConnected(topology, layers, membership, seeds, surface.regionDomainIndexByTopologyCell);
   const componentCounts = connectedComponentCounts(topology, membership, seeds.length);
   const accumulators = createAccumulators(seeds);
   accumulateRegionCells(topology, layers, membership, accumulators);
   const boundarySummary = accumulateRegionBoundaries(topology, layers, membership, accumulators);
   const totalArea = accumulators.reduce((sum, region) => sum + region.areaWeight, 0);
-  const regions = finalizeRegions(
+  const regions = assignInteriorRegionLabelPoints(
     topology,
-    accumulators,
-    componentCounts,
-    totalArea,
-    scaleBudget.minAreaShare,
-    hexOverlay,
+    membership,
+    finalizeRegions(
+      topology,
+      accumulators,
+      componentCounts,
+      totalArea,
+      scaleBudget.minAreaShare,
+      hexOverlay,
+      surface.domains,
+    ),
   );
   const areaShares = regions.map((region) => region.diagnostics.areaShare);
   const unassignedCellCount = countUnassigned(membership);
@@ -106,12 +133,19 @@ export function buildGeographicMacroRegions(
       regionIndexByTopologyCell: membership,
     },
     regions,
+    overviewSectors: buildGeographicOverviewSectors(),
+    surfaceDomains: surface.domains,
+    surfaceDomainIndexByTopologyCell: surface.domainIndexByTopologyCell,
+    regionDomainIndexByTopologyCell: surface.regionDomainIndexByTopologyCell,
     crossRegionEntities: [],
     diagnostics: {
       targetRegionCount: scaleBudget.targetRegionCount,
       actualRegionCount: regions.length,
       unassignedCellCount,
-      disconnectedRegionCount: componentCounts.filter((count) => count > 1).length,
+      disconnectedRegionCount: regions.filter((region) => (
+        region.diagnostics.connectedComponentCount > 1
+        && surface.domains[seeds[region.index].parentDomainIndex]?.kind !== 'archipelago'
+      )).length,
       sliverRegionCount: regions.filter((region) => region.diagnostics.sliver).length,
       minimumAreaShare: round(areaShares.length > 0 ? Math.min(...areaShares) : 0, 8),
       maximumAreaShare: round(areaShares.length > 0 ? Math.max(...areaShares) : 0, 8),
@@ -128,6 +162,10 @@ export function buildGeographicMacroRegions(
         boundarySummary.meridionalBoundaryEdges / Math.max(1, boundarySummary.boundaryEdgeCount),
         6,
       ),
+      surfaceDomainCount: surface.domains.length,
+      landmassDomainCount: surface.domains.filter((domain) => domain.kind === 'landmass').length,
+      archipelagoDomainCount: surface.domains.filter((domain) => domain.kind === 'archipelago').length,
+      openOceanDomainCount: surface.domains.filter((domain) => domain.kind === 'open-ocean').length,
     },
     signature,
   };
@@ -174,10 +212,12 @@ export function selectGeographicRegionSeeds(
     ...selectFarthestSeeds(topology, landCandidates, landTarget, `${seedText}:land`).map((topologyCellId) => ({
       topologyCellId,
       water: false,
+      parentDomainIndex: 0,
     })),
     ...selectFarthestSeeds(topology, waterCandidates, waterTarget, `${seedText}:water`).map((topologyCellId) => ({
       topologyCellId,
       water: true,
+      parentDomainIndex: 0,
     })),
   ];
 
@@ -186,11 +226,80 @@ export function selectGeographicRegionSeeds(
     .sort((left, right) => left.topologyCellId - right.topologyCellId);
 }
 
+function assignUnreachedDomainCells(
+  topology: CubedSphereTopology,
+  membership: Uint16Array,
+  seeds: GeographicRegionSeed[],
+  domainIndexByTopologyCell: Uint16Array,
+): void {
+  const seedsByDomain = new Map<number, Array<{ seed: GeographicRegionSeed; regionIndex: number }>>();
+  for (let regionIndex = 0; regionIndex < seeds.length; regionIndex += 1) {
+    const seed = seeds[regionIndex];
+    const entries = seedsByDomain.get(seed.parentDomainIndex) ?? [];
+    entries.push({ seed, regionIndex });
+    seedsByDomain.set(seed.parentDomainIndex, entries);
+  }
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (membership[cell] !== UNASSIGNED_REGION) continue;
+    const candidates = seedsByDomain.get(domainIndexByTopologyCell[cell]) ?? [];
+    const nearest = candidates
+      .map((candidate) => ({
+        regionIndex: candidate.regionIndex,
+        distance: chordDistanceSquared(topology.positions, cell, candidate.seed.topologyCellId),
+      }))
+      .sort((left, right) => left.distance - right.distance || left.regionIndex - right.regionIndex)[0];
+    if (nearest) membership[cell] = nearest.regionIndex;
+  }
+}
+
+function selectDomainRegionSeeds(
+  topology: CubedSphereTopology,
+  layers: GeographicRegionInputLayers,
+  domains: GeographicSurfaceDomain[],
+  domainIndexByTopologyCell: Uint16Array,
+  options: GeographicRegionBuildOptions,
+): GeographicRegionSeed[] {
+  const maximumCandidateCells = Math.max(
+    domains.reduce((sum, domain) => sum + domain.targetRegionCount, 0) * 16,
+    Math.round(options.maximumCandidateCells ?? MAXIMUM_DEFAULT_CANDIDATES),
+  );
+  const seedText = options.seed?.trim() || 'world-regions';
+  const seeds: GeographicRegionSeed[] = [];
+  for (const domain of domains) {
+    const candidates = collectDomainCandidates(
+      topology,
+      domainIndexByTopologyCell,
+      domain.index,
+      maximumCandidateCells,
+      `${seedText}:${domain.id}`,
+    );
+    const selected = selectFarthestSeeds(
+      topology,
+      candidates,
+      Math.min(domain.targetRegionCount, candidates.length),
+      `${seedText}:${domain.id}`,
+    );
+    for (const topologyCellId of selected) {
+      seeds.push({
+        topologyCellId,
+        water: layers.water[topologyCellId] === 1,
+        parentDomainIndex: domain.index,
+      });
+    }
+  }
+  return seeds.sort((left, right) => (
+    left.parentDomainIndex - right.parentDomainIndex
+      || left.topologyCellId - right.topologyCellId
+  ));
+}
+
 function partitionTopology(
   topology: CubedSphereTopology,
   layers: GeographicRegionInputLayers,
   seeds: GeographicRegionSeed[],
+  domainIndexByTopologyCell: Uint16Array,
 ): Uint16Array {
+  const adjacency = geographicTopologyAdjacency(topology);
   const membership = new Uint16Array(topology.cellCount);
   membership.fill(UNASSIGNED_REGION);
   const distances = new Float64Array(topology.cellCount);
@@ -213,6 +322,7 @@ function partitionTopology(
     for (let direction = 0; direction < 4; direction += 1) {
       const neighbor = topology.neighbors[current.cell * 4 + direction];
       if (neighbor < 0) continue;
+      if (domainIndexByTopologyCell[neighbor] !== seeds[current.regionIndex].parentDomainIndex) continue;
       const nextCost = current.cost + traversalCost(
         current.cell,
         neighbor,
@@ -220,10 +330,7 @@ function partitionTopology(
         layers,
       );
       const previousCost = distances[neighbor];
-      const previousRegion = membership[neighbor];
-      const winsTie = Math.abs(nextCost - previousCost) <= 1e-9
-        && (previousRegion === UNASSIGNED_REGION || current.regionIndex < previousRegion);
-      if (nextCost + 1e-9 >= previousCost && !winsTie) continue;
+      if (nextCost + 1e-9 >= previousCost) continue;
       distances[neighbor] = nextCost;
       membership[neighbor] = current.regionIndex;
       heap.push(nextCost, neighbor, current.regionIndex);
@@ -260,6 +367,7 @@ function traversalCost(
 function createAccumulators(seeds: GeographicRegionSeed[]): RegionAccumulator[] {
   return seeds.map((seed) => ({
     seedTopologyCellId: seed.topologyCellId,
+    parentDomainIndex: seed.parentDomainIndex,
     topologyCellCount: 0,
     areaWeight: 0,
     landArea: 0,
@@ -334,6 +442,7 @@ function accumulateRegionBoundaries(
   membership: Uint16Array,
   accumulators: RegionAccumulator[],
 ): PartitionBoundarySummary {
+  const adjacency = geographicTopologyAdjacency(topology);
   let boundaryEdgeCount = 0;
   let geographicBoundaryEdges = 0;
   let coastlineBoundaryEdges = 0;
@@ -342,8 +451,8 @@ function accumulateRegionBoundaries(
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const leftRegionIndex = membership[cell];
     if (leftRegionIndex === UNASSIGNED_REGION) continue;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
+    for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+      const neighbor = adjacency.neighbors[offset];
       if (neighbor <= cell) continue;
       const rightRegionIndex = membership[neighbor];
       if (rightRegionIndex === UNASSIGNED_REGION || rightRegionIndex === leftRegionIndex) continue;
@@ -388,6 +497,7 @@ function finalizeRegions(
   totalArea: number,
   minimumAreaShare: number,
   hexOverlay: WorldHexOverlay,
+  surfaceDomains: GeographicSurfaceDomain[],
 ): GeographicWorldRegionV2[] {
   const regionIds = accumulators.map((region) => regionId(region.seedTopologyCellId));
 
@@ -411,12 +521,18 @@ function finalizeRegions(
       id: regionIds[index],
       index,
       level: 'region',
-      parentId: 'primary-world',
+      parentId: surfaceDomains[region.parentDomainIndex]?.id ?? 'primary-world',
+      parentDomainId: surfaceDomains[region.parentDomainIndex]?.id ?? 'primary-world',
       label: `Region ${index + 1}`,
       classification: classifyRegion(landAreaShare, waterAreaShare),
       seedTopologyCellId: region.seedTopologyCellId,
       bounds,
       center,
+      labelPoint: {
+        topologyCellId: region.seedTopologyCellId,
+        latitude: round(topology.latitudes[region.seedTopologyCellId] * RADIANS_TO_DEGREES, 4),
+        longitude: round(topology.longitudes[region.seedTopologyCellId] * RADIANS_TO_DEGREES, 4),
+      },
       topologyCellCount: region.topologyCellCount,
       areaWeight: round(region.areaWeight, 6),
       landAreaShare: round(landAreaShare, 4),
@@ -455,7 +571,8 @@ function finalizeRegions(
           region.geographicBoundaryEdges / Math.max(1, region.boundaryEdgeCount),
           6,
         ),
-        sliver: areaShare < minimumAreaShare,
+        sliver: areaShare < minimumAreaShare
+          && (surfaceDomains[region.parentDomainIndex]?.targetRegionCount ?? 1) > 1,
       },
       subdivision: {
         scheme: GEOGRAPHIC_REGION_ALGORITHM_VERSION,
@@ -466,11 +583,38 @@ function finalizeRegions(
   });
 }
 
+function collectDomainCandidates(
+  topology: CubedSphereTopology,
+  domainIndexByTopologyCell: Uint16Array,
+  domainIndex: number,
+  maximumCandidateCells: number,
+  seedText: string,
+): number[] {
+  const domainCellCount = countDomainCells(domainIndexByTopologyCell, domainIndex);
+  const stride = Math.max(1, Math.floor(domainCellCount / Math.max(1, maximumCandidateCells)));
+  const offset = hashText(`${seedText}:offset`) % stride;
+  const candidates: number[] = [];
+  let seen = 0;
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (domainIndexByTopologyCell[cell] !== domainIndex) continue;
+    if (seen % stride === offset) candidates.push(cell);
+    seen += 1;
+  }
+  return candidates;
+}
+
+function countDomainCells(domainIndexByTopologyCell: Uint16Array, domainIndex: number): number {
+  let count = 0;
+  for (const value of domainIndexByTopologyCell) if (value === domainIndex) count += 1;
+  return count;
+}
+
 function connectedComponentCounts(
   topology: CubedSphereTopology,
   membership: Uint16Array,
   regionCount: number,
 ): number[] {
+  const adjacency = geographicTopologyAdjacency(topology);
   const visited = new Uint8Array(topology.cellCount);
   const queue = new Int32Array(topology.cellCount);
   const counts = Array.from({ length: regionCount }, () => 0);
@@ -496,6 +640,79 @@ function connectedComponentCounts(
   }
 
   return counts;
+}
+
+function makePartitionSeedConnected(
+  topology: CubedSphereTopology,
+  layers: GeographicRegionInputLayers,
+  membership: Uint16Array,
+  seeds: GeographicRegionSeed[],
+  domainIndexByTopologyCell: Uint16Array,
+): void {
+  const adjacency = geographicTopologyAdjacency(topology);
+  const visited = new Uint8Array(topology.cellCount);
+  const queue = new Int32Array(topology.cellCount);
+  const connected = new Uint16Array(topology.cellCount);
+  connected.fill(UNASSIGNED_REGION);
+  for (let regionIndex = 0; regionIndex < seeds.length; regionIndex += 1) {
+    let head = 0;
+    let tail = 0;
+    const seedCell = seeds[regionIndex].topologyCellId;
+    queue[tail++] = seedCell;
+    visited[seedCell] = 1;
+    connected[seedCell] = regionIndex;
+    while (head < tail) {
+      const cell = queue[head++];
+      for (let offset = adjacency.offsets[cell]; offset < adjacency.offsets[cell + 1]; offset += 1) {
+        const neighbor = adjacency.neighbors[offset];
+        if (neighbor < 0 || visited[neighbor] === 1 || membership[neighbor] !== regionIndex) continue;
+        visited[neighbor] = 1;
+        connected[neighbor] = regionIndex;
+        queue[tail++] = neighbor;
+      }
+    }
+  }
+
+  const distances = new Float64Array(topology.cellCount);
+  distances.fill(Number.POSITIVE_INFINITY);
+  const heap = new RegionMinHeap();
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (connected[cell] === UNASSIGNED_REGION) continue;
+    distances[cell] = 0;
+    heap.push(0, cell, connected[cell]);
+  }
+  while (heap.size > 0) {
+    const current = heap.pop();
+    if (!current || current.cost > distances[current.cell] + 1e-9) continue;
+    for (let offset = adjacency.offsets[current.cell]; offset < adjacency.offsets[current.cell + 1]; offset += 1) {
+      const neighbor = adjacency.neighbors[offset];
+      if (neighbor < 0 || connected[neighbor] !== UNASSIGNED_REGION) continue;
+      if (domainIndexByTopologyCell[neighbor] !== seeds[current.regionIndex].parentDomainIndex) continue;
+      const nextCost = current.cost + traversalCost(
+        current.cell,
+        neighbor,
+        seeds[current.regionIndex].water,
+        layers,
+      );
+      if (nextCost + 1e-9 >= distances[neighbor]) continue;
+      distances[neighbor] = nextCost;
+      connected[neighbor] = current.regionIndex;
+      heap.push(nextCost, neighbor, current.regionIndex);
+    }
+  }
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (connected[cell] !== UNASSIGNED_REGION) {
+      membership[cell] = connected[cell];
+    } else {
+      const previous = membership[cell];
+      if (
+        previous !== UNASSIGNED_REGION
+        && seeds[previous]?.parentDomainIndex === domainIndexByTopologyCell[cell]
+      ) {
+        membership[cell] = previous;
+      }
+    }
+  }
 }
 
 function collectCandidates(
@@ -682,6 +899,8 @@ function regionSetSignature(seeds: GeographicRegionSeed[], membership: Uint16Arr
     addByte(seed.topologyCellId >>> 16);
     addByte(seed.topologyCellId >>> 24);
     addByte(seed.water ? 1 : 0);
+    addByte(seed.parentDomainIndex);
+    addByte(seed.parentDomainIndex >>> 8);
   }
   for (const regionIndex of membership) {
     addByte(regionIndex);

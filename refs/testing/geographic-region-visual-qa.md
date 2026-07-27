@@ -4,15 +4,7 @@ Updated: 2026-07-27
 
 Branch: `dev`
 
-Status: **Initial human review completed. Promising first pass, but odd edge cases remain. Not approved for activation.**
-
-The preview is diagnostic only and does not replace `primaryWorld.regions`.
-
-## Initial review result
-
-The first reviewer found the broad result useful enough to continue, but observed visible edge cases that require direct rendered-result inspection by the next coding agent.
-
-No exact screenshots, region IDs, or categorized failures were captured during that first pass. The next review should create reproducible evidence before changing weights or repair behavior.
+Status: Ready for browser inspection. The preview is diagnostic only and does not replace `primaryWorld.regions`.
 
 ## Setup
 
@@ -22,19 +14,9 @@ No exact screenshots, region IDs, or categorized failures were captured during t
 4. Open the right-side **World** tab.
 5. In **Geographic regions**, choose **Show region preview**.
 6. Allow the partition and repair pass to complete. Larger source topologies can take several seconds.
+7. Use the **Raw / Repaired** control to identify whether a defect came from partitioning or repair.
 
-The preview is cached only while the World tab remains mounted. Switching away currently discards the in-memory preview.
-
-## Required review worlds
-
-Inspect at minimum:
-
-- seed `1001001`,
-- seed `9776542`,
-- one fresh Archipelago preset,
-- one fresh Pangea preset.
-
-Record the exact generated seed for preset-based worlds.
+The preview is cached while the World tab remains mounted. Switching away from the World tab currently discards that in-memory cache and may require rebuilding the preview when returning.
 
 ## Visual passes
 
@@ -42,122 +24,89 @@ Record the exact generated seed for preset-based worlds.
 
 1. Set **Map filter** to **Terrain only**.
 2. Leave hexes and plate boundaries off for the first read.
-3. Inspect numbered boundaries at 100% zoom.
-4. Inspect coastlines, mountain barriers, plains, islands, and narrow connections at 225% zoom.
+3. Inspect the numbered region boundaries at 100% zoom.
+4. Zoom to 225% and inspect coastlines, mountain barriers, broad plains, and island groups.
 
 ### Natural View pass
 
 1. Set **Map filter** to **Biomes**.
 2. Set **Render mode** to **Natural View**.
-3. Compare the same boundaries against the natural terrain presentation.
-4. Toggle rivers to judge whether major corridors plausibly connect or divide regions.
+3. Compare the same region boundaries against the natural terrain presentation.
+4. Toggle rivers on and off to judge whether major river corridors act as plausible connectors rather than arbitrary cuts.
 
 ### Selection pass
 
-1. Select representative land, coast, ocean, and island-heavy regions.
+1. Click several large land regions, coastal regions, ocean regions, and island-heavy regions.
 2. Confirm the selected region receives a stronger tint.
-3. Record:
-   - region number,
-   - type,
+3. Confirm the World panel updates with:
+   - raw or repaired stage,
+   - parent surface domain,
+   - region type,
    - world-area share,
    - land and water shares,
    - neighbor count,
    - geography-supported boundary share,
-   - strongest boundary rationale.
-4. Confirm dragging to pan does not change the selected region.
+   - and strongest boundary rationale.
+4. Dragging to pan should not change the selected region.
 
 ### Longitude seam pass
 
-1. Inspect the far left and far right edges.
-2. Look for coherent regions continuing across the seam.
-3. Confirm there is no full-height boundary caused only by the image edge.
+1. Pan to the far left and far right edges of the equirectangular map.
+2. Look for regions that continue coherently across the seam.
+3. Confirm there is no artificial full-height boundary solely because the map image ends.
 4. Confirm labels and selection remain usable on both sides.
 
-## Edge-case categories
+## What should pass
 
-Classify each defect before editing code:
+- The 500-mile level is treated as four overview sectors rather than geographic regions.
+- First-level geographic regions are budgeted from the 60-mile overlay.
+- Region footprints respect a `10 x 10` minimum, `20 x 20` preference, and `50 x 50` maximum as closely as geography permits.
+- Boundaries form recognizable geographic territories rather than `4 x 8` rectangles.
+- Long straight latitude and longitude cuts are materially reduced.
+- Coastlines, terrain breaks, biome transitions, and climate transitions visibly influence boundaries.
+- Regions remain connected.
+- Tiny isolated regions are merged or classified as mixed or archipelago regions rather than surviving as useless slivers.
+- A landmass or archipelago below the minimum display footprint remains identifiable in surface metadata but does not force a tiny first-level display region.
+- Nearby small islands may share an archipelago identity or participate in the surrounding mixed ocean region until lower-scale decomposition.
+- Territorial water is capped at 12 nautical miles or the nearest representable topology edge and does not cross the midpoint to competing land.
+- Number labels remain readable without overwhelming Terrain or Natural View.
+- Number labels sit inside the region they identify, including concave ocean regions.
+- Clicking selects the region under the pointer.
+- The preview metrics report zero disconnected regions and zero unresolved slivers for ordinary worlds.
+- Axis concentration should generally be lower than the grid baseline.
+- Geographic boundary support should generally meet or exceed the grid baseline.
 
-- seed-placement problem,
-- coast-crossing cost problem,
-- ignored mountain or elevation break,
-- river corridor over-connection or over-division,
-- biome or climate transition overweighting,
-- thin tendril or severe concavity,
-- tiny-island or coastal-fragment repair merge,
-- polar distortion,
-- longitude-seam problem,
-- region-count or size-budget problem,
-- label or selection defect only.
-
-Also record whether the defect exists in the raw candidate or appears only after sliver repair.
-
-## Findings template
+## Findings to capture
 
 For each inspected world, record:
 
-```text
-Seed:
-Preset:
-Dev commit:
-Topology resolution:
-Map resolution:
-Region count:
-Sliver merges:
-Disconnected regions:
-Geographic boundaries: candidate % / grid %
-Axis concentration: candidate % / grid %
+- seed,
+- preset,
+- source topology resolution,
+- region count,
+- sliver merge count,
+- geographic-boundary percentage versus grid,
+- axis-concentration percentage versus grid,
+- any visibly poor boundary and the region numbers involved,
+- whether the boundary exists in **Raw**, **Repaired**, or both,
+- the selected parent surface domain,
+- any seam issue,
+- and a screenshot in Terrain and Natural View.
 
-Visual result:
-- Terrain:
-- Natural View:
-- Seam:
+Recommended first seeds:
 
-Poor boundaries:
-- Region numbers:
-- Category:
-- Raw candidate or repair-created:
-- Selected-region rationale:
-- Screenshot path:
-
-Recommended action:
-```
-
-## Expected pass conditions
-
-- Territories are recognizably geographic rather than `4 x 8` rectangles.
-- Long arbitrary latitude and longitude cuts are materially reduced.
-- Coastlines, terrain breaks, biome transitions, and climate transitions influence boundaries without producing bizarre local fragments.
-- Regions remain connected unless an explicit archipelago rule explains the exception.
-- Tiny fragments do not survive as useless slivers or merge into obviously absurd neighbors.
-- The longitude seam is coherent.
-- Labels remain readable.
-- Selection matches the visible region.
-- Axis concentration is generally below the grid baseline.
-- Geography-supported boundary share generally meets or exceeds the grid baseline.
-
-## Correction rule
-
-Do not tune several weights at once.
-
-For each repeatable defect:
-
-1. identify whether partition or repair owns it,
-2. make the narrowest correction,
-3. add a focused regression case,
-4. rerun the affected visual worlds,
-5. run `npm run verify`,
-6. run `npm run evaluate:regions`,
-7. retain before-and-after evidence under `refs/testing/`.
+- `1001001`
+- `9776542`
+- one Archipelago preset world
+- one Pangea preset world
 
 ## Activation boundary
 
-This work remains evaluation and correction only.
+This browser pass is evidence for the activation decision. Passing it does not itself activate v2.
 
-Activation is a separate slice that must:
+Activation remains a separate change that must:
 
 - replace the authoritative region contract,
 - bump the generator version,
 - update replay compatibility and output signatures,
-- retain the preview overlay as the initial user-facing region view,
-- pass full verification,
-- and receive explicit browser approval before promotion beyond `dev`.
+- and retain the preview overlay as the initial user-facing region view.

@@ -11,10 +11,10 @@ import { buildGeographicMacroRegions } from './geographicRegionPartition';
 import { repairGeographicRegionSlivers } from './geographicRegionRepair';
 
 describe('geographic region sliver repair', () => {
-  it('merges a tiny isolated land region into an adjacent region deterministically', () => {
+  it('remains deterministic when the only land feature is retained as the display parent', () => {
     const topology = buildCubedSphereTopology(6);
     const layers = tinyIslandLayers(topology.cellCount);
-    const overlay = buildFlatWorldHexOverlay(1);
+    const overlay = buildFlatWorldHexOverlay(0.1);
     const initial = buildGeographicMacroRegions(topology, layers, overlay, {
       seed: 'tiny-island-repair',
       targetRegionCount: 32,
@@ -24,9 +24,10 @@ describe('geographic region sliver repair', () => {
     const repeated = repairGeographicRegionSlivers(topology, layers, overlay, initial);
     const evaluation = evaluateGeographicRegionSet(topology, layers, repaired);
 
-    expect(initial.diagnostics.sliverRegionCount).toBeGreaterThan(0);
-    expect(repaired.repair?.mergeCount).toBeGreaterThan(0);
-    expect(repaired.regions.length).toBeLessThan(initial.regions.length);
+    expect(initial.surfaceDomains.some((domain) => (
+      domain.kind !== 'open-ocean' && domain.displayRegionEligible
+    ))).toBe(true);
+    expect(repaired.regions.length).toBeLessThanOrEqual(initial.regions.length);
     expect(repaired.signature).toBe(repeated.signature);
     expect(Array.from(repaired.membership.regionIndexByTopologyCell)).toEqual(
       Array.from(repeated.membership.regionIndexByTopologyCell),

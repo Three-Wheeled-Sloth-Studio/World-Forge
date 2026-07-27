@@ -1,9 +1,14 @@
 import type { WorldHexOverlay } from '@world-forge/shared';
-import type { GeographicRegionScaleBudget } from '@world-forge/shared/geographicRegions';
+import type {
+  GeographicOverviewSector,
+  GeographicRegionScaleBudget,
+} from '@world-forge/shared/geographicRegions';
 
-const DEFAULT_OVERVIEW_HEXES_PER_REGION = 48;
+const MINIMUM_VIEWPORT_SIDE = 10;
+const PREFERRED_VIEWPORT_SIDE = 20;
+const MAXIMUM_VIEWPORT_SIDE = 50;
 const MINIMUM_REGION_COUNT = 4;
-const MAXIMUM_REGION_COUNT = 64;
+const MAXIMUM_REGION_COUNT = 4096;
 
 export function deriveGeographicRegionScaleBudget(
   overlay: WorldHexOverlay,
@@ -11,30 +16,74 @@ export function deriveGeographicRegionScaleBudget(
 ): GeographicRegionScaleBudget {
   const overview = overlay.levels.find((level) => level.id === 'world-500mi');
   if (!overview) throw new Error('The world hex overlay is missing the world-500mi overview level.');
+  const targetDisplay = overlay.levels.find((level) => level.id === 'world-60mi');
+  if (!targetDisplay) throw new Error('The world hex overlay is missing the world-60mi display level.');
 
   const overviewHexCount = Math.max(1, overview.dimensions.columns * overview.dimensions.rows);
+  const targetDisplayHexCount = Math.max(
+    1,
+    targetDisplay.dimensions.columns * targetDisplay.dimensions.rows,
+  );
+  const preferredDisplayHexesPerRegion = PREFERRED_VIEWPORT_SIDE ** 2;
   const derivedTarget = clamp(
-    Math.round(overviewHexCount / DEFAULT_OVERVIEW_HEXES_PER_REGION),
+    Math.round(targetDisplayHexCount / preferredDisplayHexesPerRegion),
     MINIMUM_REGION_COUNT,
     MAXIMUM_REGION_COUNT,
   );
   const cleanTarget = clamp(
     Math.round(targetRegionCount ?? derivedTarget),
     Math.min(MINIMUM_REGION_COUNT, overviewHexCount),
-    Math.min(MAXIMUM_REGION_COUNT, overviewHexCount),
+    Math.min(MAXIMUM_REGION_COUNT, targetDisplayHexCount),
   );
-  const preferred = overviewHexCount / cleanTarget;
 
   return {
     overviewLevelId: 'world-500mi',
     targetDisplayLevelId: 'world-60mi',
     overviewHexCount,
+    targetDisplayHexCount,
     targetRegionCount: cleanTarget,
-    preferredOverviewHexesPerRegion: round(preferred, 2),
-    minOverviewHexesPerRegion: round(Math.max(1, preferred * 0.35), 2),
-    maxOverviewHexesPerRegion: round(Math.max(2, preferred * 2.2), 2),
-    minAreaShare: round(0.35 / cleanTarget, 8),
-    maxAreaShare: round(Math.min(1, 2.2 / cleanTarget), 8),
+    minimumViewportHexColumns: MINIMUM_VIEWPORT_SIDE,
+    minimumViewportHexRows: MINIMUM_VIEWPORT_SIDE,
+    preferredViewportHexColumns: PREFERRED_VIEWPORT_SIDE,
+    preferredViewportHexRows: PREFERRED_VIEWPORT_SIDE,
+    maximumViewportHexColumns: MAXIMUM_VIEWPORT_SIDE,
+    maximumViewportHexRows: MAXIMUM_VIEWPORT_SIDE,
+    preferredDisplayHexesPerRegion,
+    minDisplayHexesPerRegion: MINIMUM_VIEWPORT_SIDE ** 2,
+    maxDisplayHexesPerRegion: MAXIMUM_VIEWPORT_SIDE ** 2,
+    minAreaShare: round((MINIMUM_VIEWPORT_SIDE ** 2) / targetDisplayHexCount, 8),
+    maxAreaShare: round(Math.min(1, (MAXIMUM_VIEWPORT_SIDE ** 2) / targetDisplayHexCount), 8),
+  };
+}
+
+export function buildGeographicOverviewSectors(): GeographicOverviewSector[] {
+  return [
+    sector('overview-northwest', 0, 0, 90, -180, 0),
+    sector('overview-northeast', 1, 0, 90, 0, 180),
+    sector('overview-southwest', 2, -90, 0, -180, 0),
+    sector('overview-southeast', 3, -90, 0, 0, 180),
+  ];
+}
+
+function sector(
+  id: GeographicOverviewSector['id'],
+  index: number,
+  minLatitude: number,
+  maxLatitude: number,
+  minLongitude: number,
+  maxLongitude: number,
+): GeographicOverviewSector {
+  return {
+    id,
+    index,
+    levelId: 'world-500mi',
+    bounds: {
+      minLatitude,
+      maxLatitude,
+      minLongitude,
+      maxLongitude,
+      wrapsLongitude: false,
+    },
   };
 }
 

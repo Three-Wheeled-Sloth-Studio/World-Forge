@@ -6,6 +6,7 @@ import {
   geographicRegionAtMapPoint,
   geographicRegionPreviewProjectKey,
   geographicRegionPreviewSummary,
+  geographicRegionSetForMode,
 } from './geographicRegionPreview';
 
 describe('browser geographic region preview', () => {
@@ -23,10 +24,17 @@ describe('browser geographic region preview', () => {
     expect(preview.evaluation.validMembership).toBe(true);
     expect(preview.evaluation.disconnectedRegionCount).toBe(0);
     expect(preview.baseline.source).toBe('lat-lon-grid');
-    expect(preview.regionSet.repair?.modelVersion).toBe('geographic-sliver-merge-v1');
+    expect(preview.regionSet.repair?.modelVersion).toBe('geographic-parent-sliver-merge-v2');
+    expect(preview.rawEvaluation.regionCount).toBe(preview.rawCandidate.regions.length);
+    expect(geographicRegionSetForMode(preview, 'raw')).toBe(preview.rawCandidate);
+    expect(geographicRegionSetForMode(preview, 'repaired')).toBe(preview.regionSet);
+    expect(geographicRegionPreviewSummary(preview, 'raw').mode).toBe('raw');
     expect(raster).toHaveLength(48 * 24);
     expect(selected).not.toBeNull();
     expect(summary.regionCount).toBe(preview.regionSet.regions.length);
+    expect(summary.targetRegionCount).toBe(preview.rawCandidate.scaleBudget.targetRegionCount);
+    expect(summary.preferredViewportHexColumns).toBe(20);
+    expect(summary.preferredViewportHexRows).toBe(20);
     expect(summary.axisBoundaryConcentration).toBeGreaterThanOrEqual(0);
     expect(summary.axisBoundaryConcentration).toBeLessThanOrEqual(1);
   });
