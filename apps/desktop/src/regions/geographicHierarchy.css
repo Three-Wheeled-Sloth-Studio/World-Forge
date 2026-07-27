@@ -1,0 +1,329 @@
+.geographic-atlas-launcher {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid rgba(191, 173, 124, 0.24);
+  border-radius: 10px;
+  background: rgba(19, 24, 31, 0.72);
+}
+
+.geographic-atlas-launcher-heading,
+.geographic-atlas-launcher-heading span,
+.geographic-atlas-area-group h3,
+.geographic-atlas-intro,
+.geographic-atlas-toolbar,
+.geographic-atlas-breadcrumbs {
+  display: flex;
+  align-items: center;
+}
+
+.geographic-atlas-launcher-heading {
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.geographic-atlas-launcher-heading span,
+.geographic-atlas-area-group h3 {
+  gap: 7px;
+}
+
+.geographic-atlas-launcher-heading small,
+.geographic-atlas-eyebrow {
+  color: #bda96e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.geographic-atlas-launcher > button {
+  width: 100%;
+  justify-content: center;
+}
+
+.geographic-atlas-launcher > p {
+  margin: 8px 0 0;
+  color: rgba(238, 235, 222, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.geographic-atlas-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(5, 8, 12, 0.86);
+  backdrop-filter: blur(5px);
+}
+
+.geographic-atlas-modal {
+  width: min(1500px, 96vw);
+  height: min(940px, 94vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(222, 201, 143, 0.34);
+  border-radius: 14px;
+  background: #11171e;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
+}
+
+.geographic-atlas-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(191, 173, 124, 0.2);
+  background: linear-gradient(180deg, rgba(45, 50, 57, 0.82), rgba(25, 31, 39, 0.82));
+}
+
+.geographic-atlas-header h2 {
+  margin: 3px 0 5px;
+  font-size: 1.35rem;
+}
+
+.geographic-atlas-breadcrumbs {
+  flex-wrap: wrap;
+  gap: 4px;
+  color: rgba(238, 235, 222, 0.62);
+}
+
+.geographic-atlas-breadcrumbs button {
+  border: 0;
+  padding: 2px 4px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.geographic-atlas-breadcrumbs button:hover {
+  color: #fff4c7;
+}
+
+.geographic-atlas-loading {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: rgba(238, 235, 222, 0.72);
+}
+
+.geographic-atlas-spinner {
+  animation: geographic-atlas-spin 0.9s linear infinite;
+}
+
+@keyframes geographic-atlas-spin {
+  to { transform: rotate(360deg); }
+}
+
+.geographic-atlas-error {
+  color: #ffb0a6 !important;
+}
+
+.geographic-atlas-chooser {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.geographic-atlas-intro {
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(78, 91, 103, 0.22);
+}
+
+.geographic-atlas-intro h3,
+.geographic-atlas-intro p,
+.geographic-atlas-area-group h3 {
+  margin: 0;
+}
+
+.geographic-atlas-intro p {
+  margin-top: 4px;
+  color: rgba(238, 235, 222, 0.66);
+}
+
+.geographic-atlas-area-group {
+  margin-bottom: 22px;
+}
+
+.geographic-atlas-area-group h3 {
+  margin-bottom: 10px;
+}
+
+.geographic-atlas-area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.geographic-atlas-area-grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid rgba(191, 173, 124, 0.23);
+  border-radius: 9px;
+  color: #eeeade;
+  text-align: left;
+  background: rgba(25, 32, 40, 0.84);
+  cursor: pointer;
+}
+
+.geographic-atlas-area-grid button:hover {
+  border-color: rgba(225, 202, 139, 0.66);
+  background: rgba(42, 50, 59, 0.9);
+}
+
+.geographic-atlas-area-grid span,
+.geographic-atlas-area-grid em {
+  color: rgba(238, 235, 222, 0.63);
+  font-size: 0.78rem;
+}
+
+.geographic-atlas-area-grid em {
+  margin-top: auto;
+  color: #d6bd78;
+}
+
+.geographic-atlas-workspace {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+}
+
+.geographic-atlas-map-column {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(191, 173, 124, 0.18);
+}
+
+.geographic-atlas-toolbar {
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(191, 173, 124, 0.16);
+  background: rgba(20, 26, 33, 0.88);
+}
+
+.geographic-atlas-toolbar label {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+}
+
+.geographic-atlas-segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid rgba(191, 173, 124, 0.25);
+  border-radius: 7px;
+}
+
+.geographic-atlas-segmented button {
+  border: 0;
+  padding: 6px 10px;
+  color: rgba(238, 235, 222, 0.67);
+  background: transparent;
+  cursor: pointer;
+}
+
+.geographic-atlas-segmented button.active {
+  color: #fff4c7;
+  background: rgba(181, 151, 80, 0.24);
+}
+
+.geographic-atlas-canvas-frame {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 14px;
+  background: #080d12;
+}
+
+.geographic-atlas-canvas-frame canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border: 1px solid rgba(232, 220, 181, 0.34);
+  background: #071727;
+  cursor: crosshair;
+  image-rendering: auto;
+}
+
+.geographic-atlas-inspector {
+  overflow: auto;
+  padding: 12px;
+  background: rgba(15, 21, 28, 0.96);
+}
+
+.geographic-atlas-card {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid rgba(191, 173, 124, 0.2);
+  border-radius: 9px;
+  background: rgba(29, 36, 44, 0.82);
+}
+
+.geographic-atlas-card h3 {
+  margin: 0 0 9px;
+}
+
+.geographic-atlas-card p {
+  color: rgba(238, 235, 222, 0.65);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.geographic-atlas-card select,
+.geographic-atlas-card > button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.geographic-atlas-card dl,
+.geographic-atlas-node-summary {
+  margin: 0;
+}
+
+.geographic-atlas-card dl div,
+.geographic-atlas-node-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(191, 173, 124, 0.1);
+}
+
+.geographic-atlas-card dt,
+.geographic-atlas-node-summary dt {
+  color: rgba(238, 235, 222, 0.58);
+}
+
+.geographic-atlas-card dd,
+.geographic-atlas-node-summary dd {
+  margin: 0;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .geographic-atlas-backdrop { padding: 8px; }
+  .geographic-atlas-modal { width: 100%; height: 100%; border-radius: 8px; }
+  .geographic-atlas-workspace { grid-template-columns: 1fr; }
+  .geographic-atlas-map-column { min-height: 58vh; border-right: 0; }
+  .geographic-atlas-inspector { border-top: 1px solid rgba(191, 173, 124, 0.18); }
+}
