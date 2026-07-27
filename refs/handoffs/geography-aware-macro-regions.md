@@ -10,11 +10,22 @@ Portfolio epic: `Parchment-Worlds-Portfolio #14`
 
 ## PI status
 
-Implementation has started directly on `dev`.
+Implementation is active directly on `dev`.
 
-The first increment establishes the contract, scale budget, deterministic candidate partition, and evaluation harness. It does **not** replace the active `world-regions-v1` latitude-longitude scaffold yet. Production activation remains gated on fixed-world evidence, budget tuning, and visual review.
+The first two increments now establish:
 
-No generator-version change is included in this increment because generated project output is unchanged until the new region set becomes authoritative.
+- the v2 geography-aware region contract,
+- scale budgets derived from the existing hex hierarchy,
+- a deterministic topology-graph partition candidate,
+- an independent evaluation harness,
+- direct comparison against the legacy latitude-longitude grid,
+- deterministic undersized-region repair,
+- seam-crossing coverage,
+- and fixed-world automated exercise against actual generator output.
+
+The candidate still does **not** replace the active `world-regions-v1` latitude-longitude scaffold. Production activation remains gated on retained harness evidence, boundary-weight calibration, visual review, full verification, and an explicit generator-version decision.
+
+No generator-version change is included yet because generated project output remains unchanged.
 
 ## Product outcome
 
@@ -40,21 +51,23 @@ Replace arbitrary latitude-longitude rectangles with stable broad geographic reg
 - geographic boundary rationale
 - region and region-set diagnostics
 - deterministic signatures
-- independent evaluation output
+- sliver-repair provenance
+- baseline and candidate evaluation output
+- latitude, longitude, and combined axis-boundary concentration metrics
 
-The contract is intentionally separate from the legacy `WorldRegionSet` while the candidate is being evaluated. Production activation will update the authoritative `PrimaryWorld.regions` contract and declare the compatibility change.
+The contract remains separate from the legacy `WorldRegionSet` while the candidate is being evaluated. Production activation will update the authoritative `PrimaryWorld.regions` contract and declare the compatibility change.
 
 ### Scale budget
 
 `packages/generator-core/src/geographicRegionBudget.ts` derives the broad-region target from the actual `world-500mi` overview dimensions.
 
-The first budget uses approximately 48 overview hexes per broad region, bounded to 4 through 64 regions. It records preferred, minimum, and maximum overview footprints plus normalized area-share limits. These values are starting calibration points, not immutable geology handed down on stone tablets.
+The first budget uses approximately 48 overview hexes per broad region, bounded to 4 through 64 regions. It records preferred, minimum, and maximum overview footprints plus normalized area-share limits. These values remain calibration inputs rather than universal geography commandments.
 
 ### Candidate decomposition
 
 `packages/generator-core/src/geographicRegionPartition.ts` provides a deterministic multi-source graph partition over the authoritative cubed-sphere topology.
 
-The candidate currently uses:
+The candidate uses:
 
 - land and water seed quotas derived from area share,
 - deterministic farthest-point seed selection,
@@ -72,11 +85,13 @@ The candidate currently uses:
 - compactness, cohesion, fragmentation, and sliver diagnostics,
 - and a deterministic region-set signature.
 
-This is a candidate algorithm behind the evaluation boundary. It is not yet the active production decomposition.
+This remains a candidate algorithm behind the evaluation boundary.
 
-### Evaluation harness
+### Legacy baseline and alignment metrics
 
-`packages/generator-core/src/geographicRegionEvaluation.ts` independently checks:
+`packages/generator-core/src/geographicRegionEvaluation.ts` now reconstructs the active `4 x 8` latitude-longitude grid as explicit topology membership and evaluates it through the same metrics as the candidate.
+
+The evaluation includes:
 
 - complete and valid membership,
 - connected-component count per region,
@@ -85,7 +100,31 @@ This is a candidate algorithm behind the evaluation boundary. It is not yet the 
 - geography-supported boundary share,
 - coastline boundary share,
 - meridional boundary share,
-- and deterministic evaluation signatures.
+- concentration of zonal boundaries into latitude bands,
+- concentration of meridional boundaries into longitude bands,
+- and combined axis-boundary concentration.
+
+This makes “less grid-like” measurable rather than a screenshot argument conducted by vibes.
+
+### Deterministic sliver repair
+
+`packages/generator-core/src/geographicRegionRepair.ts` repairs undersized regions through deterministic adjacent-region merges.
+
+The repair:
+
+- processes the smallest sliver first,
+- prefers a neighboring region with the same majority land/water class,
+- prefers the weakest geographic boundary,
+- then prefers the largest shared boundary and stable region ordering,
+- preserves the retained region ID,
+- recompacts topology membership,
+- rebuilds all summaries and neighbors,
+- records every merge and its rationale,
+- and produces a new deterministic signature including the repair contract.
+
+This intentionally handles tiny islands and similar unavoidable fragments as mixed or archipelago regions when no credible same-surface territorial unit exists.
+
+### Fixed-world harness
 
 Run:
 
@@ -93,47 +132,58 @@ Run:
 npm run evaluate:regions
 ```
 
-The initial script evaluates two established fixed seeds plus an archipelago-oriented case at compact investigative resolution and emits machine-readable JSON.
+The harness now evaluates:
+
+- fixed seed `1001001`,
+- fixed seed `9776542`,
+- an archipelago-oriented seed,
+- and a seam-oriented seed.
+
+For each world it reports:
+
+- raw candidate diagnostics,
+- repaired candidate diagnostics and merge provenance,
+- the legacy grid baseline,
+- geography-boundary delta,
+- axis-concentration delta,
+- sliver delta,
+- and connectivity delta.
 
 ### Automated coverage
 
-Focused tests cover:
+Focused tests now cover:
 
 - Earth-scale budget derivation,
 - explicit budget safety bounds,
 - deterministic region signatures and membership,
 - complete topology coverage,
 - region connectivity,
-- world-60mi coverage,
+- `world-60mi` coverage,
 - coastline rationale,
-- and seed-scoped identity changes.
+- legacy grid membership and axis metrics,
+- deterministic tiny-island sliver repair,
+- wrap-aware regions across the longitude seam,
+- and candidate, repair, and baseline evaluation on two actual generated worlds.
 
 ## Current boundary
 
 The legacy `buildWorldRegions` latitude-longitude grid remains the generated world's authoritative region set.
 
-That is deliberate. The candidate should not become authoritative merely because it compiles and produces blobs with IDs. Before activation, it must beat the grid baseline across several fixed worlds and survive visual review.
+That is deliberate. The candidate should not become authoritative merely because it compiles, repairs slivers, and produces better-shaped nouns. Before activation, it must beat the grid baseline across retained fixed-world evidence and survive browser visual review.
 
 ## Next implementation steps
 
 Work directly on `dev`.
 
-1. Run the fixed-world harness and retain compact JSON/CSV findings under `refs/testing/`.
-2. Add the legacy `lat-lon-grid` output to the same evaluation report as a baseline.
-3. Calibrate target count, sliver limits, and boundary weights across:
-   - connected continents,
-   - archipelagos,
-   - mountain barriers,
-   - major river systems,
-   - broad plains,
-   - and strong biome transitions.
-4. Add deterministic repair for undersized slivers where the evaluation proves it is needed.
-5. Add at least one case that crosses the longitude seam.
-6. Produce compact visual evidence of candidate boundaries over Terrain and Natural View.
-7. Decide whether geography costs need watershed or surface-structure inputs before activation.
-8. Replace the active `world-regions-v1` scaffold only after the candidate passes.
-9. At activation:
-   - update the authoritative shared `PrimaryWorld.regions` contract,
+1. Run `npm run evaluate:regions` and retain compact JSON or CSV findings under `refs/testing/`.
+2. Review target count, sliver merges, geographic-boundary share, and axis concentration across all four fixed worlds.
+3. Tune boundary weights only where the evidence exposes a repeatable defect.
+4. Add compact visual evidence of repaired candidate boundaries over Terrain and Natural View.
+5. Confirm seam-spanning bounds and coverage in the visual path.
+6. Decide whether watershed or surface-structure inputs materially improve boundaries before adding them.
+7. Decide whether the candidate meets the activation boundary.
+8. At activation:
+   - replace the authoritative `PrimaryWorld.regions` scaffold,
    - bump the generator version,
    - mark older replay manifests incompatible,
    - update output-signature expectations,
@@ -145,10 +195,10 @@ The geography-aware candidate may replace the legacy grid when:
 
 - every topology cell belongs to exactly one region,
 - land regions are connected unless an explicit island or archipelago rule explains otherwise,
-- IDs, membership, neighbors, and signatures are deterministic,
+- IDs, membership, neighbors, repair history, and signatures are deterministic,
 - target size and sliver budgets pass across the fixed-world set,
 - boundaries are primarily supported by explainable geography,
-- arbitrary latitude and longitude alignment is materially lower than the grid baseline,
+- latitude and longitude boundary concentration is materially lower than the grid baseline,
 - seam-crossing regions behave correctly,
 - fixed tests and full `npm run verify` pass,
 - and visual QA accepts the broad regions before promotion beyond `dev`.
