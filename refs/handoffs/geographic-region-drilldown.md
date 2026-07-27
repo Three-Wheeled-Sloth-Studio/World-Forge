@@ -1,4 +1,4 @@
-# Current Handoff: Geographic Region Drill-Down
+# Current Handoff: Adaptive Geographic Drill-Down
 
 Updated: 2026-07-27
 
@@ -6,177 +6,247 @@ Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-Starting version: `0.3.18`
+Visible version: `0.3.19`
 
 Predecessor: `refs/handoffs/geography-aware-macro-regions.md`
 
 ## Status
 
-The geography-aware first-level region candidate passed initial visual QA. The accepted baseline provides:
+The first functional hierarchy prototype is implemented directly on `dev`.
 
-- four stable `world-500mi` overview sectors,
-- first-level regions partitioned at `world-60mi`,
-- a `10 x 10` minimum, `20 x 20` preferred, and `50 x 50` maximum map-footprint contract,
-- retained geographic identity for undersized islands without forcing tiny display regions,
-- deterministic raw and repaired partitions,
-- and label points guaranteed to lie inside their displayed regions.
+The accepted `0.3.18` geography-aware region candidate remains diagnostic-only and is still not the authoritative saved-world region contract. The new drilldown is also in-memory and diagnostic. No generator-version, replay-compatibility, or saved-project schema change has been made.
 
-The candidate remains diagnostic-only. Do not activate it as the authoritative saved-world region contract during this slice.
+The prototype now supports:
 
-## Objective
+1. World-level selection of continents, archipelagos, and provisional ocean basins.
+2. Adaptive continent or basin maps using a deterministic world-anchored hex scale.
+3. First-level region boundaries inside the selected macro area.
+4. Region selection and an explicit **Open region** action.
+5. On-demand deterministic subregion generation inside the exact selected-region membership.
+6. Subregion selection and an explicit **Open subregion** action.
+7. Reliable breadcrumb and parent navigation during the current session.
+8. Seam-aware rectangular context maps that retain terrain outside the selected parent.
 
-Prove the hierarchical map interaction:
+## Resolved product rules
 
-1. Select a first-level region on the world map.
-2. Open a rectangular map centered on that region at the region's current hex scale.
-3. Show the full terrain and water contained by that rectangular map extent, including context outside the selected region.
-4. Draw a heavy boundary around the selected region.
-5. Generate or reveal the selected region's next-scale child partition.
-6. Select a child subregion and repeat the same drill-down behavior.
+### Hierarchy
 
-The interaction may initially use buttons in the Geographic regions preview. A context menu is not required for the functional prototype.
+Use:
 
-## Scale hierarchy
+`World → continent / archipelago / ocean basin → region → subregion → local → detail`
 
-Use the existing overlay levels:
+The four `world-500mi` overview sectors remain simple navigation sectors. They are not geographic parents.
 
-| Navigation level | Hex level | Purpose |
-| --- | --- | --- |
-| World overview | `world-500mi` | Four stable overview sectors; no inferred geographic partition |
-| Region | `world-60mi` | First geography-aware region layer |
-| Subregion | `regional-24mi` | First on-demand child partition within a selected region |
-| Local | `local-6mi` | Later child partition for local-area maps |
-| Detail | `local-1mi` | Later encounter/detail map support |
+Continents and archipelagos are derived from the accepted surface-domain model. Open-ocean display domains are exposed as provisional ocean basins. More nuanced ocean and sea chunking is desired, but is not a blocker for validating the land hierarchy and drilldown interaction.
 
-At every generated level, retain the map-footprint contract:
+### Adaptive scales
 
-- hard minimum `10 x 10` hexes,
-- preferred `20 x 20` hexes,
-- hard maximum `50 x 50` hexes.
+Hierarchy levels do not hardcode miles-per-hex values.
 
-The parent footprint and next hex scale determine the child target count. Do not hard-code a universal number of children per parent.
+The familiar 500, 60, 24, 6, and 1 mile values are reference points on a canonical scale ladder. The selected parent geography and the viewport footprint contract determine the actual scale.
 
-## Region map behavior
+Every opened map targets:
 
-### Rectangular context
+- hard minimum `10 x 10` contextual hexes,
+- preferred `20 x 20`,
+- hard maximum `50 x 50` where the selected membership can fit.
 
-The drill-down map must be rectangular. Determine a stable latitude/longitude extent from the selected region's bounds, add enough padding for map context, and fit that extent to the viewport contract.
+The scale contract records:
 
-Do not mask or blank pixels outside the selected region. Render neighboring land, islands, water, terrain, biomes, rivers, and other available world data normally across the entire rectangle.
+- nominal miles per hex,
+- global world-grid dimensions,
+- world-relative `q/r` ID format,
+- exact parent hex count,
+- contextual hex count,
+- seam behavior,
+- and whether the selected membership fits the maximum footprint.
 
-The selected region boundary must remain visually dominant:
+### Exact membership versus context
 
-- use a heavy, high-contrast boundary,
-- correctly handle the longitude seam,
-- avoid drawing a false boundary at the rectangular map edge,
-- and keep neighboring parent-region boundaries secondary or hidden for the first prototype.
+Child budgets use exact parent membership sampled through world-anchored hex centers.
 
-### Hex overlay
+Rectangular map coverage is rendering context only. Context terrain outside the selected parent remains visible but cannot be selected as a child of the open parent.
 
-The opened region map uses the selected level's hex overlay:
+### Small geographic features
 
-- first-level region view: `world-60mi`,
-- selected subregion view: `regional-24mi`.
+Display eligibility is recalculated at each generated scale.
 
-Hexes should fill the rectangular map extent rather than only the selected polygon. Hex IDs and coordinates must remain stable relative to the world overlay so later persistence and cross-region entities do not require coordinate translation.
+The original geographic identity remains available through surface-domain metadata even when a small island or coastal feature is too small to own a useful display partition at a higher scale.
 
-### Navigation
+### Rendering
 
-The prototype needs:
+The drilldown uses a seam-aware windowed canvas renderer. It renders existing world facts into a geographic extent and does not use a CSS crop.
 
-- an explicit **Open region** action for the selected first-level region,
-- an explicit **Show subregions** action in the opened region view,
-- selection of a child subregion,
-- an explicit **Open subregion** action,
-- and a reliable **Back to parent** action.
+The selected parent has a heavy high-contrast border. Child boundaries are lighter. Neighboring terrain remains visible across the full rectangle.
 
-Preserve world, region, and subregion selection while navigating during the current session. Permanent UI design and URL routing can follow after the functional path is validated.
+## Implemented contracts and engine
 
-## Child decomposition
+### Shared hierarchy contract
 
-Build the child partition on demand from the selected parent's authoritative topology membership and next-scale hex coverage.
+`packages/shared/src/geographicHierarchy.ts`
 
-The child algorithm should:
+Defines:
 
-- never assign a child outside its parent region,
-- completely cover the parent membership,
-- remain deterministic for the same compatible world and parent ID,
-- derive child count from next-scale hex coverage and the viewport footprint contract,
-- follow the same terrain, coastline, hydrology, climate, and biome evidence used by the first-level candidate,
-- preserve small geographic features without forcing unusable child maps,
-- support parents that cross the longitude seam,
-- and produce stable IDs derived from the world, parent, level, and deterministic seed.
+- scale-neutral hierarchy levels,
+- continent, archipelago, and ocean-basin macro areas,
+- adaptive hex-scale contracts,
+- seam-aware rectangular map extents,
+- generic hierarchy nodes,
+- deterministic child partitions,
+- and versioned signatures.
 
-The first implementation may compute children in memory. Keep the contract suitable for later on-demand persistence or cheap deterministic reconstruction.
+### Adaptive scale selection
 
-## Suggested implementation order
+`packages/generator-core/src/geographicAdaptiveScale.ts`
 
-1. Define scale-neutral parent/child region contracts and deterministic IDs.
-2. Add a bounds-to-rectangular-map extent helper with seam tests.
-3. Add a scale-aware child budget derived from parent hex coverage.
-4. Generalize the graph partition to accept parent membership and a child level.
-5. Add focused synthetic and fixed-world tests before UI work.
-6. Add region-view state and rectangular contextual rendering.
-7. Add heavy selected-parent borders and the appropriate hex overlay.
-8. Add Show subregions, child selection, Open subregion, and Back actions.
-9. Retain screenshots and diagnostics for accepted and failed boundaries.
+Provides:
 
-Bias toward concrete contracts and a TDD approach. Do not solve the prototype by copying the first-level partition into a second one-off implementation.
+- deterministic scale selection from a canonical ladder,
+- world-anchored pointy odd-row coordinates,
+- compact seam-aware bounds,
+- exact parent-hex counting through topology membership,
+- contextual padding,
+- and stable ID formats.
 
-## Acceptance criteria
+### Macro areas
 
-### Contracts and generation
+`packages/generator-core/src/geographicMacroAreas.ts`
 
-- A selected first-level region produces deterministic `regional-24mi` children.
-- Children cover all and only the parent topology membership.
-- No child belongs to multiple parents.
-- Child IDs reproduce for the same compatible project.
-- Child footprint diagnostics expose minimum, preferred, and maximum map sizes.
-- Seam-crossing parents and children retain valid rectangular extents.
+Builds macro parents from first-level display-domain ownership:
 
-### Region view
+- landmass domains become continents,
+- archipelago domains remain archipelagos,
+- open-ocean domains become provisional ocean basins,
+- macro membership covers the complete display-domain topology,
+- and child first-level region IDs remain stable.
 
-- Opening a region replaces the world extent with a rectangular contextual map.
-- Terrain outside the selected region remains visible.
-- The selected region has a heavy border that is not confused with the map frame.
-- The `world-60mi` hex overlay fills the complete rectangle.
-- The view provides a Show subregions action.
+The current ocean implementation generally yields one basin per open-ocean display domain. Subdivision into more natural ocean and sea units remains a later refinement.
 
-### Subregion view
+### Child partition
 
-- Child boundaries can be toggled in the parent region view.
-- A child can be selected and opened.
-- The opened child map uses `regional-24mi` hexes across its rectangular context.
-- The selected child has a heavy border.
-- Back navigation restores the previous extent and selection.
+`packages/generator-core/src/geographicChildPartition.ts`
 
-### Verification
+Generates children on demand from exact parent membership.
 
-- `npm run verify`
-- `npm run evaluate:regions`
-- browser visual QA for star seed `2850873`, world seed `1001001`
-- browser visual QA for seed `9776542`
-- one Archipelago world
-- one seam-crossing region
+The implementation:
 
-Inspect Terrain only and Natural View. Retain at least one world-to-region-to-subregion screenshot sequence under `refs/testing/`.
+- detects disconnected parent components,
+- allocates at least one deterministic seed per component,
+- derives child count from exact next-scale hex coverage,
+- grows only through parent membership,
+- uses the established coastline, elevation, biome, climate, plate, lake, and river evidence,
+- completely covers all and only the parent,
+- produces stable IDs from project, world, parent, level, scale, and seed cell,
+- retains world-relative coordinates,
+- and produces a deterministic partition signature.
 
-## Deferred
+### Windowed renderer
 
-- production activation of `world-regions-v2`,
-- durable cloud persistence of generated child partitions,
-- final context-menu and navigation design,
-- political entities spanning multiple regions,
-- collaborative editing,
-- natural-wonder placement,
-- settlements and roads,
-- local `6mi` and detail `1mi` generation beyond proving the reusable hierarchy,
-- and globe-to-flat-map animated transitions.
+`apps/desktop/src/regions/geographicWindowedMap.ts`
 
-## Risks
+Provides:
 
-- Bounding boxes near the longitude seam can accidentally expand to almost the full world.
-- A rectangular view can imply that context outside the selected parent is editable; keep the heavy parent border unambiguous.
-- Reprojecting to local coordinates would break stable world hex IDs; retain world-relative coordinates.
-- Dense labels and boundaries can overwhelm the contextual map; gate child labels by zoom if necessary.
-- High child counts can make on-demand generation feel blocking; retain instrumentation and cache the in-memory result by project, parent ID, algorithm version, and scale.
+- seam-aware rectangular rendering,
+- Natural and Terrain presentations,
+- context outside the selected parent,
+- heavy parent boundaries,
+- child boundaries and selection tint,
+- and a world-anchored hex overlay.
+
+### Atlas UI
+
+Relevant files:
+
+- `apps/desktop/src/regions/GeographicHierarchyPanel.tsx`
+- `apps/desktop/src/regions/GeographicAtlasModal.tsx`
+- `apps/desktop/src/regions/GeographicAtlasCards.tsx`
+- `apps/desktop/src/regions/useGeographicAtlasController.ts`
+- `apps/desktop/src/regions/geographicHierarchyPreview.ts`
+- `apps/desktop/src/regions/geographicHierarchy.css`
+- `apps/desktop/src/panels/RightPanel.tsx`
+
+The right-side World panel now includes **Geographic atlas → Open geographic atlas**.
+
+The atlas provides:
+
+- continent, archipelago, and ocean-basin cards,
+- adaptive scale and footprint diagnostics,
+- Natural and Terrain toggles,
+- optional world-relative hex display,
+- region selection and opening,
+- on-demand subregion generation,
+- subregion selection and opening,
+- and breadcrumb and parent navigation.
+
+## Automated coverage
+
+Added focused tests for:
+
+- deterministic adaptive scale selection,
+- `10 x 10` through `50 x 50` viewport behavior,
+- compact longitude-seam extents,
+- exact parent membership,
+- deterministic child IDs and signatures,
+- complete parent-only child coverage,
+- and disconnected island components.
+
+## Browser inspection
+
+Use:
+
+`refs/testing/geographic-region-drilldown-qa.md`
+
+Required first pass:
+
+- star seed `2850873`, world seed `1001001`,
+- world seed `9776542`,
+- one Archipelago world,
+- one Pangea world,
+- one continent or region crossing the longitude seam,
+- Natural and Terrain presentations,
+- hexes on and off,
+- and at least one complete world → macro area → region → subregion sequence.
+
+## Current boundaries
+
+This slice does not:
+
+- activate `world-regions-v2` as saved-world authority,
+- persist macro areas or child partitions,
+- generate new higher-resolution terrain facts,
+- provide final URL routing or context menus,
+- generate local or detail children,
+- split a global open ocean into multiple scientifically named basins and seas,
+- or define politics, cultures, settlements, roads, or resources.
+
+The windowed renderer resamples the existing world map facts. It proves hierarchy, coordinates, context, and interaction. Higher-resolution regional terrain generation remains a separate product increment.
+
+## Next owner priorities
+
+Work directly on `dev`.
+
+1. Run `npm run verify` and repair any repository-level type or test failures.
+2. Complete the browser drilldown checklist and retain screenshots under `refs/testing/`.
+3. Confirm scale selection keeps ordinary maps near the preferred `20 x 20` footprint without cropping selected geography.
+4. Confirm exact parent membership and context-only behavior by clicking near the heavy boundary.
+5. Confirm seam-crossing extents remain compact and do not create a false map-edge boundary.
+6. Confirm child IDs and membership reproduce after closing and reopening the atlas.
+7. Record performance for large topologies and repeated subregion generation.
+8. Make bounded corrections before considering local/detail levels or authoritative activation.
+
+## Acceptance boundary
+
+The prototype is ready to advance when:
+
+- continent and region extents are compact and seam-safe,
+- adaptive scales consistently prioritize the viewport footprint contract,
+- exact parent membership drives child budgets,
+- surrounding context remains visible but cannot become a child,
+- first-level regions appear inside their macro area,
+- subregions cover all and only the selected region,
+- selection and heavy borders match visible geography,
+- world-relative hex coordinates remain stable,
+- Back restores the previous level and selection context,
+- deterministic regeneration reproduces IDs and membership,
+- `npm run verify` passes,
+- and browser QA accepts the full world-to-subregion path.
