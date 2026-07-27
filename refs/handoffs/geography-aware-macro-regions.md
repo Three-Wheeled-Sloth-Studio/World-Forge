@@ -12,7 +12,7 @@ Portfolio epic: `Parchment-Worlds-Portfolio #14`
 
 Implementation is active directly on `dev`.
 
-The first two increments now establish:
+The first three increments now establish:
 
 - the v2 geography-aware region contract,
 - scale budgets derived from the existing hex hierarchy,
@@ -21,11 +21,16 @@ The first two increments now establish:
 - direct comparison against the legacy latitude-longitude grid,
 - deterministic undersized-region repair,
 - seam-crossing coverage,
-- and fixed-world automated exercise against actual generator output.
+- fixed-world automated exercise against actual generator output,
+- and a browser-visible map overlay and selection inspector for visual QA.
 
-The candidate still does **not** replace the active `world-regions-v1` latitude-longitude scaffold. Production activation remains gated on retained harness evidence, boundary-weight calibration, visual review, full verification, and an explicit generator-version decision.
+The browser preview is ready for inspection. See:
 
-No generator-version change is included yet because generated project output remains unchanged.
+`refs/testing/geographic-region-visual-qa.md`
+
+The candidate still does **not** replace the active `world-regions-v1` latitude-longitude scaffold. Production activation remains gated on browser findings, retained fixed-world evidence, full verification, and an explicit generator-version decision.
+
+No generator-version change is included yet because authoritative generated project output remains unchanged.
 
 ## Product outcome
 
@@ -89,7 +94,7 @@ This remains a candidate algorithm behind the evaluation boundary.
 
 ### Legacy baseline and alignment metrics
 
-`packages/generator-core/src/geographicRegionEvaluation.ts` now reconstructs the active `4 x 8` latitude-longitude grid as explicit topology membership and evaluates it through the same metrics as the candidate.
+`packages/generator-core/src/geographicRegionEvaluation.ts` reconstructs the active `4 x 8` latitude-longitude grid as explicit topology membership and evaluates it through the same metrics as the candidate.
 
 The evaluation includes:
 
@@ -132,7 +137,7 @@ Run:
 npm run evaluate:regions
 ```
 
-The harness now evaluates:
+The harness evaluates:
 
 - fixed seed `1001001`,
 - fixed seed `9776542`,
@@ -149,9 +154,32 @@ For each world it reports:
 - sliver delta,
 - and connectivity delta.
 
+### Browser preview
+
+The World details panel now contains a **Geographic regions** preview control.
+
+When enabled, the preview:
+
+- builds and repairs the candidate from the loaded world's authoritative topology,
+- overlays lightly tinted, numbered regions on the existing map canvas,
+- remains visible over Terrain only and Natural View,
+- displays candidate-versus-grid metrics,
+- allows click selection without replacing map pan behavior,
+- highlights the selected region,
+- and reports its type, area, land/water balance, neighbor count, geography-supported boundary share, and strongest boundary rationale.
+
+Relevant files:
+
+- `apps/desktop/src/regions/geographicRegionPreview.ts`
+- `apps/desktop/src/regions/GeographicRegionPreviewPanel.tsx`
+- `apps/desktop/src/regions/geographicRegionPreview.css`
+- `apps/desktop/src/panels/RightPanel.tsx`
+
+The overlay is a React portal into the existing map frame. It is not serialized and does not modify the project.
+
 ### Automated coverage
 
-Focused tests now cover:
+Focused tests cover:
 
 - Earth-scale budget derivation,
 - explicit budget safety bounds,
@@ -163,31 +191,48 @@ Focused tests now cover:
 - legacy grid membership and axis metrics,
 - deterministic tiny-island sliver repair,
 - wrap-aware regions across the longitude seam,
-- and candidate, repair, and baseline evaluation on two actual generated worlds.
+- candidate, repair, and baseline evaluation on actual generated worlds,
+- and the browser preview adapter, raster, selection lookup, and summary output.
 
 ## Current boundary
 
 The legacy `buildWorldRegions` latitude-longitude grid remains the generated world's authoritative region set.
 
-That is deliberate. The candidate should not become authoritative merely because it compiles, repairs slivers, and produces better-shaped nouns. Before activation, it must beat the grid baseline across retained fixed-world evidence and survive browser visual review.
+That is deliberate. The candidate should not become authoritative merely because it compiles, repairs slivers, and now looks fancy on a canvas. It must pass the documented browser inspection and produce retained evidence first.
+
+## Immediate QA
+
+Use:
+
+`refs/testing/geographic-region-visual-qa.md`
+
+The initial browser pass should cover:
+
+1. Terrain only view.
+2. Biomes with Natural View.
+3. Several selected land, coast, ocean, and archipelago regions.
+4. The left and right longitude seam.
+5. Seeds `1001001` and `9776542`.
+6. One Archipelago preset and one Pangea preset.
+
+Capture the visible region numbers involved in any poor boundary. That provides a precise target for weight tuning instead of “the bit near the green continent looked weird.”
 
 ## Next implementation steps
 
 Work directly on `dev`.
 
-1. Run `npm run evaluate:regions` and retain compact JSON or CSV findings under `refs/testing/`.
-2. Review target count, sliver merges, geographic-boundary share, and axis concentration across all four fixed worlds.
-3. Tune boundary weights only where the evidence exposes a repeatable defect.
-4. Add compact visual evidence of repaired candidate boundaries over Terrain and Natural View.
-5. Confirm seam-spanning bounds and coverage in the visual path.
-6. Decide whether watershed or surface-structure inputs materially improve boundaries before adding them.
-7. Decide whether the candidate meets the activation boundary.
-8. At activation:
+1. Complete browser visual QA and retain findings under `refs/testing/`.
+2. Run `npm run evaluate:regions` and retain compact JSON or CSV findings under `refs/testing/`.
+3. Tune target count or boundary weights only where repeated evidence identifies a defect.
+4. Decide whether watershed or surface-structure inputs materially improve the failing boundaries before adding them.
+5. Decide whether the candidate meets the activation boundary.
+6. At activation:
    - replace the authoritative `PrimaryWorld.regions` scaffold,
    - bump the generator version,
    - mark older replay manifests incompatible,
    - update output-signature expectations,
-   - and add the minimal map overlay and region inspector proof.
+   - retain the overlay as the first user-facing region view,
+   - and remove the diagnostic-only candidate warning.
 
 ## Acceptance boundary for activation
 
@@ -201,7 +246,7 @@ The geography-aware candidate may replace the legacy grid when:
 - latitude and longitude boundary concentration is materially lower than the grid baseline,
 - seam-crossing regions behave correctly,
 - fixed tests and full `npm run verify` pass,
-- and visual QA accepts the broad regions before promotion beyond `dev`.
+- and browser QA accepts the broad regions before promotion beyond `dev`.
 
 ## Explicitly deferred
 
