@@ -17,7 +17,7 @@ describe('geographic region sliver repair', () => {
     const overlay = buildFlatWorldHexOverlay(1);
     const initial = buildGeographicMacroRegions(topology, layers, overlay, {
       seed: 'tiny-island-repair',
-      targetRegionCount: 8,
+      targetRegionCount: 32,
       maximumCandidateCells: topology.cellCount,
     });
     const repaired = repairGeographicRegionSlivers(topology, layers, overlay, initial);
