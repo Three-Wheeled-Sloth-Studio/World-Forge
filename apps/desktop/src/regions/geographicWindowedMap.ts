@@ -194,6 +194,7 @@ function drawMembershipOverlay(
   }
 
   const image = context.createImageData(rasterWidth, rasterHeight);
+  const wrapsRasterEdges = transform.extent.wrapsLongitude;
   for (let y = 0; y < rasterHeight; y += 1) {
     for (let x = 0; x < rasterWidth; x += 1) {
       const index = y * rasterWidth + x;
@@ -213,8 +214,16 @@ function drawMembershipOverlay(
         image.data[pixel + 3] = childIndex === options.selectedChildIndex ? 68 : 16;
       }
 
-      const leftIndex = y * rasterWidth + (x === 0 ? rasterWidth - 1 : x - 1);
-      const rightIndex = y * rasterWidth + (x === rasterWidth - 1 ? 0 : x + 1);
+      const leftIndex = x > 0
+        ? index - 1
+        : wrapsRasterEdges
+          ? y * rasterWidth + rasterWidth - 1
+          : index;
+      const rightIndex = x < rasterWidth - 1
+        ? index + 1
+        : wrapsRasterEdges
+          ? y * rasterWidth
+          : index;
       const aboveIndex = y > 0 ? index - rasterWidth : index;
       const belowIndex = y < rasterHeight - 1 ? index + rasterWidth : index;
       const parentBoundary = parent[index] !== parent[leftIndex]
