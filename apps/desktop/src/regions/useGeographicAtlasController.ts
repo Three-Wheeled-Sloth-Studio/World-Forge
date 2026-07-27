@@ -39,11 +39,15 @@ export function useGeographicAtlasController(
   const current = navigation[navigation.length - 1] ?? null;
 
   useEffect(() => {
-    setSelectedRegionId(null);
-    setSelectedChildId(null);
-    setPartition(null);
     setChildError('');
-  }, [current?.id]);
+    setBuildingChildren(false);
+    if (!current || current.level !== 'region') {
+      setPartition(null);
+      return;
+    }
+    const cacheKey = hierarchyCacheKey(project, current.id, 'subregion', current.scale.id);
+    setPartition(partitionCache.get(cacheKey) ?? null);
+  }, [current?.id, current?.level, current?.scale.id, partitionCache, project]);
 
   const macroRegions = useMemo(() => {
     if (!preview || current?.level !== 'macro-area') return [];
@@ -89,12 +93,19 @@ export function useGeographicAtlasController(
 
   const openMacro = (macroArea: GeographicMacroArea) => {
     if (!preview) return;
+    const regions = regionsForMacroArea(preview, macroArea.id);
+    if (!regions.some((region) => region.id === selectedRegionId)) setSelectedRegionId(null);
     setNavigation([openMacroAreaMap(project, preview, macroArea.id)]);
   };
 
   const openSelectedRegion = () => {
     if (!preview || !selectedRegionId) return;
-    setNavigation((entries) => [...entries, openRegionMap(project, preview, selectedRegionId)]);
+    const regionMap = openRegionMap(project, preview, selectedRegionId);
+    const cacheKey = hierarchyCacheKey(project, regionMap.id, 'subregion', regionMap.scale.id);
+    const cached = partitionCache.get(cacheKey) ?? null;
+    setPartition(cached);
+    if (cached && !cached.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
+    setNavigation((entries) => [...entries, regionMap]);
   };
 
   const showSubregions = () => {
@@ -112,6 +123,7 @@ export function useGeographicAtlasController(
         const next = buildSubregions(project, preview, current);
         partitionCache.set(cacheKey, next);
         setPartition(next);
+        if (!next.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
       } catch (reason) {
         setChildError(reason instanceof Error ? reason.message : 'Subregion generation failed.');
       } finally {
