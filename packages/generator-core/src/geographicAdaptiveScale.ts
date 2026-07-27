@@ -282,8 +282,14 @@ function extentForBounds(
 
   const paddedColumns = Math.max(minimumColumns, selectedColumns + contextPaddingHexes * 2);
   const paddedRows = Math.max(minimumRows, selectedRows + contextPaddingHexes * 2);
-  const contextColumns = Math.min(worldColumns, Math.max(selectedColumns, paddedColumns));
-  const contextRows = Math.min(worldRows, Math.max(selectedRows, paddedRows));
+  const contextColumns = Math.min(
+    worldColumns,
+    Math.max(selectedColumns, Math.min(maximumColumns, paddedColumns)),
+  );
+  const contextRows = Math.min(
+    worldRows,
+    Math.max(selectedRows, Math.min(maximumRows, paddedRows)),
+  );
   const qPadding = Math.max(0, Math.floor((contextColumns - selectedColumns) / 2));
   const rPadding = Math.max(0, Math.floor((contextRows - selectedRows) / 2));
   qMin = mod(qMin - qPadding, worldColumns);
