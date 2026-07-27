@@ -1,0 +1,152 @@
+.region-preview-panel {
+  background: rgba(255, 249, 235, 0.72);
+  border: 1px solid #c9baa1;
+  border-radius: 7px;
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 9px;
+}
+
+.region-preview-panel.active {
+  border-color: #567d76;
+  box-shadow: inset 3px 0 0 #2d716f;
+}
+
+.region-preview-heading,
+.region-preview-selection-title {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.region-preview-heading > span,
+.region-preview-selection-title > span,
+.region-preview-status {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.region-preview-heading small {
+  background: #e4ded0;
+  border: 1px solid #b8aa91;
+  border-radius: 999px;
+  color: #625a4d;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.region-preview-panel > button {
+  justify-content: center;
+  width: 100%;
+}
+
+.region-preview-spinner {
+  animation: region-preview-spin 900ms linear infinite;
+}
+
+@keyframes region-preview-spin {
+  to { transform: rotate(360deg); }
+}
+
+.region-preview-status,
+.region-preview-error,
+.region-preview-candidate-note,
+.region-preview-selection p {
+  color: #5d594f;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.region-preview-error {
+  color: #7a2d26;
+  font-weight: 700;
+}
+
+.region-preview-candidate-note {
+  border-top: 1px solid rgba(167, 155, 134, 0.55);
+  padding-top: 7px;
+}
+
+.region-preview-metrics {
+  display: grid;
+  gap: 5px;
+}
+
+.region-preview-metric {
+  align-items: center;
+  background: rgba(245, 238, 222, 0.8);
+  border: 1px solid rgba(184, 170, 145, 0.72);
+  border-radius: 5px;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 5px 7px;
+}
+
+.region-preview-metric span {
+  color: #635d52;
+}
+
+.region-preview-metric strong {
+  font-size: 11px;
+  text-align: right;
+}
+
+.region-preview-metric.ok {
+  border-left: 3px solid #4d8260;
+}
+
+.region-preview-metric.warn {
+  border-left: 3px solid #a36c25;
+}
+
+.region-preview-selection {
+  background: rgba(235, 239, 229, 0.78);
+  border: 1px solid #aebaa5;
+  border-radius: 6px;
+  display: grid;
+  gap: 7px;
+  padding: 7px;
+}
+
+.region-preview-details {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.region-preview-details > div {
+  align-items: baseline;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.region-preview-details dt {
+  color: #625f55;
+}
+
+.region-preview-details dd {
+  font-weight: 800;
+  margin: 0;
+  text-align: right;
+  text-transform: capitalize;
+}
+
+.region-preview-overlay-canvas {
+  background: transparent !important;
+  height: 100%;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 2;
+}
