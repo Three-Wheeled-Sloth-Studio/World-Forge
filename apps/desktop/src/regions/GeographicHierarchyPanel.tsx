@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Compass, LoaderCircle, Map } from 'lucide-react';
 import type { WorldProject } from '@world-forge/shared';
@@ -7,12 +7,14 @@ import {
   buildGeographicHierarchyPreview,
   type GeographicHierarchyPreview,
 } from './geographicHierarchyPreview';
+import { geographicRegionPreviewProjectKey } from './geographicRegionPreview';
 import { GeographicAtlasModal } from './GeographicAtlasModal';
 import './geographicHierarchy.css';
 
 export type GeographicHierarchyBuildStatus = 'idle' | 'building' | 'ready' | 'error';
 
 export function GeographicHierarchyPanel({ project }: { project: WorldProject }) {
+  const projectKey = geographicRegionPreviewProjectKey(project);
   const cacheRef = useRef(new Map<string, GeographicHierarchyPreview>());
   const partitionCacheRef = useRef(new Map<string, GeographicHierarchyPartition>());
   const [status, setStatus] = useState<GeographicHierarchyBuildStatus>('idle');
@@ -20,10 +22,18 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    const cached = cacheRef.current.get(projectKey) ?? null;
+    setPreview(cached);
+    setStatus(cached ? 'ready' : 'idle');
+    setError('');
+    setOpen(false);
+  }, [projectKey]);
+
   const start = () => {
     setOpen(true);
     if (preview || status === 'building') return;
-    const cached = cacheRef.current.get(project.projectId);
+    const cached = cacheRef.current.get(projectKey);
     if (cached) {
       setPreview(cached);
       setStatus('ready');
@@ -34,7 +44,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
     window.setTimeout(() => {
       try {
         const next = buildGeographicHierarchyPreview(project);
-        cacheRef.current.set(project.projectId, next);
+        cacheRef.current.set(projectKey, next);
         setPreview(next);
         setStatus('ready');
       } catch (reason) {
@@ -54,7 +64,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
         {status === 'building' ? <LoaderCircle className="geographic-atlas-spinner" size={16} /> : <Map size={16} />}
         {status === 'building' ? 'Building hierarchy' : 'Open geographic atlas'}
       </button>
-      <p>World → continent or ocean basin → region → subregion. Map scales adapt to the selected geography.</p>
+      <p>World to continent or ocean basin to region to subregion. Map scales adapt to the selected geography.</p>
       {status === 'error' && <p className="geographic-atlas-error" role="alert">{error}</p>}
       {open && createPortal(
         <GeographicAtlasModal
