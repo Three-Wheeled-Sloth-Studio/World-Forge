@@ -10,6 +10,7 @@ import type {
 } from './types';
 
 export const GEOGRAPHIC_REGION_ALGORITHM_VERSION = 'geographic-graph-partition-v1' as const;
+export const GEOGRAPHIC_REGION_SLIVER_REPAIR_VERSION = 'geographic-sliver-merge-v1' as const;
 
 export type GeographicRegionClassification = 'land' | 'water' | 'mixed' | 'archipelago';
 
@@ -103,6 +104,21 @@ export type GeographicRegionSetDiagnostics = {
   meridionalBoundaryShare: number;
 };
 
+export type GeographicRegionRepairSummary = {
+  modelVersion: typeof GEOGRAPHIC_REGION_SLIVER_REPAIR_VERSION;
+  initialRegionCount: number;
+  finalRegionCount: number;
+  mergeCount: number;
+  unresolvedSliverCount: number;
+  merges: Array<{
+    removedRegionId: string;
+    retainedRegionId: string;
+    sharedBoundaryEdges: number;
+    geographicBoundaryShare: number;
+    sameSurfaceClass: boolean;
+  }>;
+};
+
 export type GeographicWorldRegionSetV2 = {
   modelVersion: 'world-regions-v2';
   algorithmVersion: typeof GEOGRAPHIC_REGION_ALGORITHM_VERSION;
@@ -119,6 +135,7 @@ export type GeographicWorldRegionSetV2 = {
   regions: GeographicWorldRegionV2[];
   crossRegionEntities: WorldRegionEntity[];
   diagnostics: GeographicRegionSetDiagnostics;
+  repair?: GeographicRegionRepairSummary;
   signature: string;
 };
 
@@ -144,8 +161,12 @@ export type GeographicRegionBuildOptions = {
   maximumCandidateCells?: number;
 };
 
+export type GeographicRegionEvaluationSource = 'geographic-graph-partition' | 'lat-lon-grid';
+
 export type GeographicRegionEvaluation = {
   modelVersion: 'geographic-region-evaluation-v1';
+  source: GeographicRegionEvaluationSource;
+  algorithmVersion: string;
   signature: string;
   validMembership: boolean;
   cellCount: number;
@@ -159,6 +180,9 @@ export type GeographicRegionEvaluation = {
   geographicBoundaryShare: number;
   coastlineBoundaryShare: number;
   meridionalBoundaryShare: number;
+  latitudeBoundaryConcentration: number;
+  longitudeBoundaryConcentration: number;
+  axisBoundaryConcentration: number;
   regionComponentCounts: number[];
   regionCellCounts: number[];
 };
