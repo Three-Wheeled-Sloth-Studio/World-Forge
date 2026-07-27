@@ -1,5 +1,6 @@
 import { buildCubedSphereTopology, clamp, type WorldProject } from '@world-forge/shared';
 import { applyDeepTimeFoundation, type DeepTimeProgress, type DeepTimeProject } from './deepTimePipeline';
+import type { GenerateProjectOptions } from './index';
 
 export type MutationPopulationSummary = {
   amount: number;
@@ -260,7 +261,11 @@ function totalDepositionCapacity(category: DepositionCategory, cell: number, ele
   return Math.min(0.012, fillToSpill);
 }
 
-export function applyDeepTimeFoundationWithMutationLedger(project: WorldProject, onProgress?: (progress: DeepTimeProgress) => void): DeepTimeProject {
+export function applyDeepTimeFoundationWithMutationLedger(
+  project: WorldProject,
+  onProgress?: (progress: DeepTimeProgress) => void,
+  options: GenerateProjectOptions = {}
+): DeepTimeProject {
   const world = project.primaryWorld;
   const topology = buildCubedSphereTopology(world.topology.resolution);
   const originalElevation = world.topologyLayers.elevation;
@@ -384,7 +389,7 @@ export function applyDeepTimeFoundationWithMutationLedger(project: WorldProject,
 
   world.topologyLayers.elevation = proxy as Float32Array;
   let result: DeepTimeProject;
-  try { result = applyDeepTimeFoundation(project, onProgress); }
+  try { result = applyDeepTimeFoundation(project, onProgress, options); }
   finally { world.topologyLayers.elevation = originalElevation; }
 
   let pendingVolume = 0;

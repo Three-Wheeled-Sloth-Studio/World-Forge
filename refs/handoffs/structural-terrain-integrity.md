@@ -8,6 +8,28 @@ Branch: `dev`
 
 Tracking issue: `#2 [High Priority Investigation] Root-cause structural vertical striping`
 
+## Implementation Status
+
+The focused root cause is confirmed and corrected on `dev` for World Forge
+0.3.16 / generator 0.1.1-mvp.
+
+- The investigation script now executes `generateProjectWithNativeStages`.
+- Raw topology elevation is captured at six authoritative mutation boundaries.
+- A controlled fragment-placement bypass confirmed ownership.
+- Fragment placement v2 uses inverse-sampled rigid rotation rather than
+  forward splatting, gap creation, and directional collision spill.
+- Fixed-seed regression coverage prevents placement discontinuity amplification.
+- The reference seed passes at topology 512 / output 2048 x 1024.
+- The additional seed `9776542:9776542` passes at topology 256 / output
+  1024 x 512.
+- Root-cause evidence is in
+  `refs/testing/vertical-striping-root-cause-v0.3.16.md`.
+
+Remaining before promotion: full repository verification, dev deployment, and
+browser visual QA across Terrain-only, Heightmap, Natural View, globe, and
+export. A separate initial-tectonic orientation bias remains deferred because
+the corrected fragment transform no longer materially amplifies it.
+
 ## Takeover Prompt
 
 Continue the structural terrain integrity work on the World Forge `dev` branch.
@@ -52,7 +74,7 @@ Relevant commits include:
 
 This was a real and worthwhile correction. It did not remove the visible ribbon pattern.
 
-### Confirmed correction with no demonstrated visual ownership: fragment placement
+### Confirmed visual owner and correction: fragment placement
 
 World Forge v0.3.9 replaced independent longitude and latitude fragment translation with rigid spherical rotation and improved deterministic collision placement.
 
@@ -60,7 +82,14 @@ Primary commit:
 
 - `d65fb8f91d5ea986b51700328dd38c9cc0e666a6`
 
-The transform is more geometrically correct, but user QA did not show a meaningful change to the visible stripe pattern. Do not continue tuning fragment rotation without fresh evidence that fragment placement owns the defect.
+The earlier rigid transform remained a forward raster splat. Native-stage
+snapshots and a controlled bypass subsequently proved that fragment placement
+amplified adjacent-cell elevation discontinuities by `2.91x` on the
+investigative reference run.
+
+World Forge 0.3.16 replaces that rasterization with inverse-sampled rigid
+rotation. At full reference resolution, placement amplification is `1.035x`
+and meridional high-gradient share decreases through the placement boundary.
 
 ### Runtime provenance now exists
 

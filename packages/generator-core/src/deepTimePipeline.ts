@@ -5,6 +5,7 @@ import {
   clamp,
   codeToBiome,
   cubedSphereCellForLonLat,
+  cubedSphereCellForVector,
   type Biome,
   type CubedSphereTopology,
   type GenerationConfig,
@@ -12,6 +13,7 @@ import {
   type WorldProject
 } from '@world-forge/shared';
 import { generateProject, type GenerateProjectOptions } from './index';
+import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
 import { applyBasinAwareCirculation } from './basinCirculation';
 import {
   buildRotationBetweenUnitVectors,
@@ -176,7 +178,7 @@ export type DeepTimeContinentalDriftDiagnostics = {
 };
 
 export type DeepTimeFragmentPlacementDiagnostics = {
-  modelVersion: 'fragment-placement-v1';
+  modelVersion: 'fragment-placement-v2';
   fragmentCount: number;
   movingFragmentCount: number;
   resolvedRecordShare: number;
@@ -903,46 +905,6 @@ function buildStoredFragmentHistory(
   };
 }
 
-function findBestUnclaimedTransformTarget(
-  topology: CubedSphereTopology,
-  initialTarget: number,
-  targetClaims: Uint8Array,
-  targetVector: { x: number; y: number; z: number },
-  maxDepth = 3
-): number {
-  if (!targetClaims[initialTarget]) return initialTarget;
-  const queueCells = [initialTarget];
-  const queueDepths = [0];
-  const visited = new Set<number>([initialTarget]);
-  let head = 0;
-  let bestCell = -1;
-  let bestAlignment = Number.NEGATIVE_INFINITY;
-  while (head < queueCells.length) {
-    const cell = queueCells[head];
-    const depth = queueDepths[head];
-    head += 1;
-    if (!targetClaims[cell]) {
-      const alignment =
-        topology.positions[cell * 3] * targetVector.x +
-        topology.positions[cell * 3 + 1] * targetVector.y +
-        topology.positions[cell * 3 + 2] * targetVector.z;
-      if (alignment > bestAlignment + 1e-12 || (Math.abs(alignment - bestAlignment) <= 1e-12 && (bestCell < 0 || cell < bestCell))) {
-        bestCell = cell;
-        bestAlignment = alignment;
-      }
-    }
-    if (depth >= maxDepth) continue;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
-      if (neighbor < 0 || visited.has(neighbor)) continue;
-      visited.add(neighbor);
-      queueCells.push(neighbor);
-      queueDepths.push(depth + 1);
-    }
-  }
-  return bestCell;
-}
-
 function applyAuthoritativeFragmentTransforms(
   project: DeepTimeProject,
   lineageSeeds: FragmentLineageSeed[],
@@ -963,6 +925,8 @@ function applyAuthoritativeFragmentTransforms(
   const collisionCells = new Uint8Array(topology.cellCount);
   const collisionResolvedCells = new Uint8Array(topology.cellCount);
   const mergedCollisionCells = new Uint8Array(topology.cellCount);
+  const sourceFragmentIds = new Int32Array(topology.cellCount);
+  sourceFragmentIds.fill(-1);
   const sortedSeeds = [...lineageSeeds].sort((left, right) => right.cellCount - left.cellCount || left.id - right.id);
   let targetCellCount = 0;
   let movingFragmentCount = 0;
@@ -972,6 +936,7 @@ function applyAuthoritativeFragmentTransforms(
   for (const seed of sortedSeeds) {
     for (const sourceCell of seed.cells) {
       sourceCells[sourceCell] = 1;
+      sourceFragmentIds[sourceCell] = seed.id;
       elevation[sourceCell] = Math.min(originalElevation[sourceCell], world.seaLevel - 0.07);
       volcanism[sourceCell] = Math.max(originalVolcanism[sourceCell] * 0.35, world.planetaryDynamics.geothermalFlux * 0.12);
     }
@@ -985,44 +950,56 @@ function applyAuthoritativeFragmentTransforms(
     const motionX = speed > 0.0001 ? plateLookup.motionX[seed.plateId] / speed : 0;
     const motionY = speed > 0.0001 ? plateLookup.motionY[seed.plateId] / speed : 0;
     const rotation = buildTangentSphericalRotation(
-    { x: seed.x, y: seed.y, z: seed.z },
-    motionX,
-    motionY,
-    displacement
-  );
-  if (displacement > 0) movingFragmentCount += 1;
-  displacementTotal += displacement;
-  maxDisplacement = Math.max(maxDisplacement, displacement);
-  for (const sourceCell of seed.cells) {
-    const rotatedTarget = rotateUnitVector(
-      {
-        x: topology.positions[sourceCell * 3],
-        y: topology.positions[sourceCell * 3 + 1],
-        z: topology.positions[sourceCell * 3 + 2]
-      },
-      rotation
+      { x: seed.x, y: seed.y, z: seed.z },
+      motionX,
+      motionY,
+      displacement
     );
-    const targetCoordinates = unitVectorToLonLat(rotatedTarget);
-    const desiredTarget = cubedSphereCellForLonLat(topology, targetCoordinates.longitude, targetCoordinates.latitude);
-      let targetCell = desiredTarget;
-      if (targetClaims[desiredTarget]) {
-        collisionCells[desiredTarget] = 1;
-        const spillTarget = findBestUnclaimedTransformTarget(
-        topology,
-        desiredTarget,
-        targetClaims,
-        rotatedTarget,
-        3
+    const inverseRotation = { ...rotation, angleRadians: -rotation.angleRadians };
+    const candidateMarks = new Uint8Array(topology.cellCount);
+    const candidateCells: number[] = [];
+    const addCandidate = (cell: number) => {
+      if (cell < 0 || candidateMarks[cell]) return;
+      candidateMarks[cell] = 1;
+      candidateCells.push(cell);
+    };
+    if (displacement > 0) movingFragmentCount += 1;
+    displacementTotal += displacement;
+    maxDisplacement = Math.max(maxDisplacement, displacement);
+
+    for (const sourceCell of seed.cells) {
+      const rotatedTarget = rotateUnitVector(
+        {
+          x: topology.positions[sourceCell * 3],
+          y: topology.positions[sourceCell * 3 + 1],
+          z: topology.positions[sourceCell * 3 + 2]
+        },
+        rotation
       );
-        if (spillTarget >= 0) {
-          targetCell = spillTarget;
-          collisionResolvedCells[targetCell] = 1;
-        } else {
-          mergedCollisionCells[desiredTarget] = 1;
-          elevation[desiredTarget] = Math.max(elevation[desiredTarget], originalElevation[sourceCell]) + 0.004;
-          volcanism[desiredTarget] = clamp(Math.max(volcanism[desiredTarget], originalVolcanism[sourceCell]) + 0.008, 0, 1);
-          continue;
-        }
+      const targetCell = cubedSphereCellForVector(topology, rotatedTarget.x, rotatedTarget.y, rotatedTarget.z);
+      addCandidate(targetCell);
+      for (let direction = 0; direction < 4; direction += 1) {
+        addCandidate(topology.neighbors[targetCell * 4 + direction]);
+      }
+    }
+
+    for (const targetCell of candidateCells) {
+      const sourceVector = rotateUnitVector(
+        {
+          x: topology.positions[targetCell * 3],
+          y: topology.positions[targetCell * 3 + 1],
+          z: topology.positions[targetCell * 3 + 2]
+        },
+        inverseRotation
+      );
+      const sourceCell = cubedSphereCellForVector(topology, sourceVector.x, sourceVector.y, sourceVector.z);
+      if (sourceFragmentIds[sourceCell] !== seed.id) continue;
+      if (targetClaims[targetCell]) {
+        collisionCells[targetCell] = 1;
+        mergedCollisionCells[targetCell] = 1;
+        elevation[targetCell] = Math.max(elevation[targetCell], originalElevation[sourceCell]) + 0.004;
+        volcanism[targetCell] = clamp(Math.max(volcanism[targetCell], originalVolcanism[sourceCell]) + 0.008, 0, 1);
+        continue;
       } else {
         directPlacementCells[targetCell] = 1;
       }
@@ -1049,13 +1026,14 @@ function applyAuthoritativeFragmentTransforms(
   const notes = [
     'All captured continental fragments use one rigid three-dimensional spherical rotation, including near-stationary fragments which use identity transforms.',
     'Fragment placement carries elevation and volcanism, but plate ownership remains the coherent authoritative topology field to avoid raster-fragment plate ribbons.',
-    'Overlapping target claims search the local topology neighborhood and choose the unclaimed cell with the best angular fit before merging relief at the collision target.',
+    'Inverse sampling reconstructs each rigidly rotated fragment over a bounded target neighborhood, avoiding forward-splat holes and directional spill ribbons.',
+    'Overlapping transformed fragments merge relief at the collision target without reassigning coherent plate ownership.',
     'Vacated source cells receive young-oceanic-crust elevation and volcanism treatment before erosion, impacts, glaciation, climate, and hydrology run.'
   ];
   if (retainedCellRatio < 0.97) notes.push('Fragment placement retained less than 97 percent of source cells; inspect merged collision pressure.');
 
   return {
-    modelVersion: 'fragment-placement-v1',
+    modelVersion: 'fragment-placement-v2',
     fragmentCount: sortedSeeds.length,
     movingFragmentCount,
     resolvedRecordShare: sortedSeeds.length / Math.max(1, lineageSeeds.length),
@@ -2796,7 +2774,11 @@ function refreshMetrics(project: DeepTimeProject): SurfaceConsistencyDiagnostics
   };
 }
 
-export function applyDeepTimeFoundation(project: WorldProject, onProgress?: (progress: DeepTimeProgress) => void): DeepTimeProject {
+export function applyDeepTimeFoundation(
+  project: WorldProject,
+  onProgress?: (progress: DeepTimeProgress) => void,
+  options: GenerateProjectOptions = {}
+): DeepTimeProject {
   const mutable = project as DeepTimeProject;
   const rng = randomSource(`${project.seed}:deep-time-v2`);
   const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
@@ -2824,7 +2806,28 @@ export function applyDeepTimeFoundation(project: WorldProject, onProgress?: (pro
   mutable.primaryWorld.planetaryDynamics = planetaryDynamics;
   mutable.primaryWorld.geology = { cratons };
   onProgress?.({ phase: 'initializing', progress: 0.055, message: 'Applying authoritative continental fragment transforms' });
+  const prePlacementElevation = options.terrainDiagnosticBypasses?.fragmentPlacement
+    ? new Float32Array(mutable.primaryWorld.topologyLayers.elevation)
+    : undefined;
+  const prePlacementPlates = options.terrainDiagnosticBypasses?.fragmentPlacement
+    ? new Uint16Array(mutable.primaryWorld.topologyLayers.plates)
+    : undefined;
+  const prePlacementVolcanism = options.terrainDiagnosticBypasses?.fragmentPlacement
+    ? new Float32Array(mutable.primaryWorld.topologyLayers.volcanism)
+    : undefined;
   const fragmentPlacement = applyAuthoritativeFragmentTransforms(mutable, fragmentLineageSeeds, topology, plateLookup);
+  if (prePlacementElevation && prePlacementPlates && prePlacementVolcanism) {
+    mutable.primaryWorld.topologyLayers.elevation.set(prePlacementElevation);
+    mutable.primaryWorld.topologyLayers.plates.set(prePlacementPlates);
+    mutable.primaryWorld.topologyLayers.volcanism.set(prePlacementVolcanism);
+    fragmentPlacement.notes.push('Diagnostic bypass restored pre-placement topology fields before surface aging.');
+  }
+  emitTerrainDiagnosticSnapshot(
+    options.onTerrainDiagnosticSnapshot,
+    'post-fragment-placement',
+    mutable.primaryWorld.topologyLayers.elevation,
+    mutable.primaryWorld.topologyLayers.plates
+  );
 
   for (const epoch of epochs) {
     onProgress?.({
@@ -2858,15 +2861,28 @@ export function applyDeepTimeFoundation(project: WorldProject, onProgress?: (pro
     }
   }
 
+  emitTerrainDiagnosticSnapshot(
+    options.onTerrainDiagnosticSnapshot,
+    'post-surface-aging',
+    mutable.primaryWorld.topologyLayers.elevation,
+    mutable.primaryWorld.topologyLayers.plates
+  );
   onProgress?.({ phase: 'reconciling', progress: 0.77, message: 'Applying fragment-history terrain response' });
+  const applyFragmentHistoryTerrainResponse = !options.terrainDiagnosticBypasses?.fragmentHistoryTerrainResponse;
   const fragmentHistory = buildFragmentHistoryDiagnostics(mutable, topology, plateLookup, fragmentLineageSeeds, {
-    applyTerrainResponse: true,
+    applyTerrainResponse: applyFragmentHistoryTerrainResponse,
     terrainResponseScale: 0.95,
     applyVolcanismResponse: true,
     volcanismResponseScale: 0.35,
     surfaceAgingSampleCount,
     directTransformDiagnostics: fragmentPlacement
   });
+  emitTerrainDiagnosticSnapshot(
+    options.onTerrainDiagnosticSnapshot,
+    'post-fragment-history',
+    mutable.primaryWorld.topologyLayers.elevation,
+    mutable.primaryWorld.topologyLayers.plates
+  );
 
   onProgress?.({ phase: 'reconciling', progress: 0.79, message: 'Resolving final sea level and water masks' });
   mutable.primaryWorld.seaLevel = finalSeaLevel(mutable.primaryWorld.topologyLayers.elevation, project.selectedValues.oceanPercentage);

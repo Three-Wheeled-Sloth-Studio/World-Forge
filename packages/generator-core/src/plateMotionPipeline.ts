@@ -6,6 +6,7 @@ import { alignTerminalOrbitalPhase } from './deepTimePhaseAlignment';
 import { attachDeepTimeStageIsolationDiagnostics, captureDeepTimeStageIsolationBaseline } from './deepTimeStageIsolation';
 import { attachDeepTimeTerrainChangeDiagnostics, capturePreAgingTerrain } from './deepTimeTerrainDiagnostics';
 import { generateProject, type GenerateProjectOptions } from './index';
+import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
 export type { DeepTimeProgress, DeepTimeProject } from './deepTimePipeline';
 
 type RandomSource = { next: () => number; range: (min: number, max: number) => number };
@@ -270,13 +271,19 @@ export function generateProjectWithMotionAwareDeepTime(
 ): DeepTimeProject {
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const project = generateProject(input, options);
+  emitTerrainDiagnosticSnapshot(
+    options.onTerrainDiagnosticSnapshot,
+    'pre-deep-time',
+    project.primaryWorld.topologyLayers.elevation,
+    project.primaryWorld.topologyLayers.plates
+  );
   const motionStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   applyPlateMotionMagnitude(project);
   const historicalProcessBaseline = captureHistoricalProcessBaseline(project);
   const preAgingTerrain = capturePreAgingTerrain(project);
   const stageIsolationBaseline = captureDeepTimeStageIsolationBaseline(project);
   const deepTimeStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const result = applyDeepTimeFoundationWithMutationLedger(project, onDeepTimeProgress);
+  const result = applyDeepTimeFoundationWithMutationLedger(project, onDeepTimeProgress, options);
   result.primaryWorld.deepTime.continentalDrift = analyzeContinentalDrift(result);
   attachDeepTimeTerrainChangeDiagnostics(result, preAgingTerrain);
   attachDeepTimeStageIsolationDiagnostics(result, stageIsolationBaseline);

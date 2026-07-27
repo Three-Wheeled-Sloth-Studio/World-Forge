@@ -148,7 +148,7 @@ export type DeepTimeContinentalDriftDiagnostics = {
 };
 
 export type DeepTimeFragmentPlacementDiagnostics = {
-  modelVersion: 'fragment-placement-v1';
+  modelVersion: 'fragment-placement-v2';
   fragmentCount: number;
   movingFragmentCount: number;
   resolvedRecordShare: number;

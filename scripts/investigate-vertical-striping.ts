@@ -1,8 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildCubedSphereTopology, type CubedSphereTopology, type GenerationConfig, type WorldProject } from '@world-forge/shared';
-import { createDefaultConfig, generateProject } from '../packages/generator-core/src/index';
-import { generateProjectWithMotionAwareDeepTime } from '../packages/generator-core/src/plateMotionPipeline';
+import { createDefaultConfig, type TerrainDiagnosticSnapshot } from '../packages/generator-core/src/index';
+import { generateProjectWithNativeStages } from '../packages/generator-core/src/nativeStagePipeline';
 
 type LayerMetrics = {
   label: string;
@@ -52,18 +52,19 @@ type ProjectedMetrics = {
 };
 
 type InvestigationReport = {
-  version: 1;
+  version: 2;
   generatedAt: string;
   config: {
     starSeed: string;
     worldSeed: string;
     outputResolution: string;
     topologyResolution: number;
+    bypassFragmentPlacement: boolean;
+    bypassFragmentHistoryTerrainResponse: boolean;
   };
   generation: {
-    initialAppVersion: string;
-    finalAppVersion: string;
-    finalSourceCommit?: string;
+    appVersion: string;
+    sourceCommit?: string;
     totalMs?: number;
   };
   topologyLayers: LayerMetrics[];
@@ -75,36 +76,38 @@ const options = parseArgs(process.argv.slice(2));
 const config = createInvestigationConfig(options);
 console.log(`Generating baseline ${options.starSeed}:${options.worldSeed} at ${config.outputResolution.width}x${config.outputResolution.height}, topology ${config.topologyResolution}...`);
 
-const initial = generateProject(config, { appVersion: 'striping-investigation-initial' });
-const final = generateProjectWithMotionAwareDeepTime(config, {
-  appVersion: 'striping-investigation-final',
-  sourceCommit: currentCommitLabel()
+const terrainSnapshots: TerrainDiagnosticSnapshot[] = [];
+const project = generateProjectWithNativeStages(config, {
+  appVersion: 'striping-investigation-native',
+  sourceCommit: currentCommitLabel(),
+  terrainDiagnosticBypasses: {
+    fragmentPlacement: options.bypassFragmentPlacement,
+    fragmentHistoryTerrainResponse: options.bypassFragmentHistoryTerrainResponse
+  },
+  onTerrainDiagnosticSnapshot: (snapshot) => terrainSnapshots.push(snapshot)
 });
-const topology = buildCubedSphereTopology(final.primaryWorld.topology.resolution);
+const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
 
 const report: InvestigationReport = {
-  version: 1,
+  version: 2,
   generatedAt: new Date().toISOString(),
   config: {
     starSeed: options.starSeed,
     worldSeed: options.worldSeed,
     outputResolution: `${config.outputResolution.width}x${config.outputResolution.height}`,
-    topologyResolution: final.primaryWorld.topology.resolution
+    topologyResolution: project.primaryWorld.topology.resolution,
+    bypassFragmentPlacement: options.bypassFragmentPlacement,
+    bypassFragmentHistoryTerrainResponse: options.bypassFragmentHistoryTerrainResponse
   },
   generation: {
-    initialAppVersion: initial.appVersion,
-    finalAppVersion: final.appVersion,
-    finalSourceCommit: final.sourceCommit,
-    totalMs: final.diagnostics?.totalMs
+    appVersion: project.appVersion,
+    sourceCommit: project.sourceCommit,
+    totalMs: project.diagnostics?.totalMs
   },
-  topologyLayers: [
-    summarizeTopologyLayer('initial topology plates/elevation', initial, topology),
-    summarizeTopologyLayer('final topology plates/elevation', final, topology)
-  ],
+  topologyLayers: terrainSnapshots.map((snapshot) => summarizeTopologySnapshot(snapshot, topology)),
   projectedLayers: [
-    summarizeProjectedElevation('initial projected elevation', initial),
-    summarizeProjectedElevation('final projected elevation', final),
-    summarizeProjectedPlateRaster('final projected plates', final)
+    summarizeProjectedElevation('final projected elevation', project),
+    summarizeProjectedPlateRaster('final projected plates', project)
   ],
   interpretation: []
 };
@@ -113,8 +116,14 @@ report.interpretation = interpret(report);
 
 const outputDir = join('refs', 'testing');
 mkdirSync(outputDir, { recursive: true });
-const jsonPath = join(outputDir, 'vertical-striping-v0.3.11-metrics.json');
-const mdPath = join(outputDir, 'vertical-striping-v0.3.11-runtime-and-layer-isolation.md');
+const modeLabel = options.bypassFragmentPlacement
+  ? 'bypass-fragment-placement'
+  : options.bypassFragmentHistoryTerrainResponse
+    ? 'bypass-fragment-history'
+    : 'baseline';
+const runLabel = `${options.starSeed}-${options.worldSeed}-${modeLabel}`;
+const jsonPath = join(outputDir, `vertical-striping-native-${runLabel}-metrics.json`);
+const mdPath = join(outputDir, `vertical-striping-native-${runLabel}.md`);
 writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(mdPath, renderMarkdown(report));
 
@@ -122,7 +131,15 @@ console.log(`Wrote ${jsonPath}`);
 console.log(`Wrote ${mdPath}`);
 for (const line of report.interpretation) console.log(`- ${line}`);
 
-function parseArgs(argv: string[]): { starSeed: string; worldSeed: string; width: number; height: number; topologyResolution: number } {
+function parseArgs(argv: string[]): {
+  starSeed: string;
+  worldSeed: string;
+  width: number;
+  height: number;
+  topologyResolution: number;
+  bypassFragmentPlacement: boolean;
+  bypassFragmentHistoryTerrainResponse: boolean;
+} {
   const get = (name: string, fallback: string): string => {
     const prefix = `--${name}=`;
     return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length) ?? fallback;
@@ -132,7 +149,9 @@ function parseArgs(argv: string[]): { starSeed: string; worldSeed: string; width
     worldSeed: get('world', '1001001'),
     width: Number(get('width', '2048')),
     height: Number(get('height', '1024')),
-    topologyResolution: Number(get('topology', '512'))
+    topologyResolution: Number(get('topology', '512')),
+    bypassFragmentPlacement: get('bypass-placement', 'false') === 'true',
+    bypassFragmentHistoryTerrainResponse: get('bypass-fragment-history', 'false') === 'true'
   };
 }
 
@@ -149,15 +168,13 @@ function createInvestigationConfig(options: ReturnType<typeof parseArgs>): Gener
   return config;
 }
 
-function summarizeTopologyLayer(label: string, project: WorldProject, topology: CubedSphereTopology): LayerMetrics {
-  const plates = project.primaryWorld.topologyLayers.plates;
-  const elevation = project.primaryWorld.topologyLayers.elevation;
+function summarizeTopologySnapshot(snapshot: TerrainDiagnosticSnapshot, topology: CubedSphereTopology): LayerMetrics {
   return {
-    label,
+    label: snapshot.stage,
     cellCount: topology.cellCount,
-    plateBoundary: measurePlateBoundaries(topology, plates),
-    elevation: measureTopologyElevationOrientation(topology, elevation),
-    componentShape: measureComponentShapes(topology, plates)
+    plateBoundary: snapshot.plates ? measurePlateBoundaries(topology, snapshot.plates) : undefined,
+    elevation: measureTopologyElevationOrientation(topology, snapshot.elevation),
+    componentShape: snapshot.plates ? measureComponentShapes(topology, snapshot.plates) : undefined
   };
 }
 
@@ -382,43 +399,44 @@ function minimalLongitudeSpan(longitudes: number[]): number {
 }
 
 function interpret(report: InvestigationReport): string[] {
-  const initial = report.topologyLayers[0];
-  const final = report.topologyLayers[1];
   const lines: string[] = [];
-  const initialMeridional = initial.plateBoundary?.meridionalTangentShare ?? 0;
-  const finalMeridional = final.plateBoundary?.meridionalTangentShare ?? 0;
-  const initialComponents = initial.componentShape?.componentCount ?? 0;
-  const finalComponents = final.componentShape?.componentCount ?? 0;
-  if (finalComponents > initialComponents * 20) {
-    lines.push(`Final topology plate ownership is massively more fragmented than initial ownership (${finalComponents} vs ${initialComponents}), pointing to downstream fragment placement or later plate mutation.`);
-  } else if (finalComponents <= initialComponents + 32) {
-    lines.push(`Final topology plate ownership remains near initial cohesion (${finalComponents} vs ${initialComponents}); downstream fragment placement is not shredding plate ownership in this run.`);
+  for (let index = 1; index < report.topologyLayers.length; index += 1) {
+    const previous = report.topologyLayers[index - 1];
+    const current = report.topologyLayers[index];
+    const previousBias = previous.elevation?.highDeltaMeridionalTangentShare ?? 0;
+    const currentBias = current.elevation?.highDeltaMeridionalTangentShare ?? 0;
+    const delta = currentBias - previousBias;
+    if (Math.abs(delta) >= 0.04) {
+      lines.push(`${current.label} changes high-gradient meridional share by ${round(delta, 6)} (${previousBias} to ${currentBias}); this is a material orientation change at that mutation boundary.`);
+    }
   }
-  if (finalMeridional > initialMeridional + 0.12) {
-    lines.push(`Final topology plate boundaries are materially more meridional than initial plates (${finalMeridional} vs ${initialMeridional}), pointing downstream of plates.construct.`);
-  } else {
-    lines.push(`Initial and final topology plate-boundary orientation are comparable (${initialMeridional} vs ${finalMeridional}).`);
-  }
-  const finalElevationMeridional = final.elevation?.highDeltaMeridionalTangentShare ?? 0;
-  if (finalElevationMeridional > 0.62) {
-    lines.push(`Final topology high-elevation-gradient edges are strongly meridional (${finalElevationMeridional}), matching the visible north-south stripe family.`);
-  }
+  const largestIncrease = report.topologyLayers.slice(1).map((current, index) => {
+    const previous = report.topologyLayers[index];
+    return {
+      stage: current.label,
+      delta: (current.elevation?.highDeltaMeridionalTangentShare ?? 0)
+        - (previous.elevation?.highDeltaMeridionalTangentShare ?? 0)
+    };
+  }).sort((left, right) => right.delta - left.delta)[0];
+  if (largestIncrease) lines.push(`Largest staged meridional-bias increase occurs at ${largestIncrease.stage} (${round(largestIncrease.delta, 6)}).`);
   const projected = report.projectedLayers.find((item) => item.label === 'final projected elevation');
   if (projected && projected.horizontalToVerticalHighDeltaRatio > 1.35) {
     lines.push(`Projected elevation has more high horizontal deltas than vertical deltas (ratio ${projected.horizontalToVerticalHighDeltaRatio}), consistent with vertical visual bands.`);
   }
-  lines.push('This pass compares initial generation against final deep-time output only; if downstream ownership is confirmed, the next slice should add internal snapshots around fragment placement and fragment-history terrain response.');
+  lines.push('All topology layers were captured from one authoritative native-stage generation run; diagnostics callbacks received defensive copies.');
   return lines;
 }
 
 function renderMarkdown(report: InvestigationReport): string {
   const lines = [
-    '# Vertical Striping v0.3.11 Runtime and Layer Isolation',
+    '# Vertical Striping Native-Stage Isolation',
     '',
     `Generated: ${report.generatedAt}`,
     `Seed pair: ${report.config.starSeed}:${report.config.worldSeed}`,
     `Resolution: ${report.config.outputResolution}; topology ${report.config.topologyResolution}`,
-    `Final source commit: ${report.generation.finalSourceCommit ?? 'unknown'}`,
+    `Bypass fragment placement: ${report.config.bypassFragmentPlacement}`,
+    `Bypass fragment-history terrain response: ${report.config.bypassFragmentHistoryTerrainResponse}`,
+    `Source commit: ${report.generation.sourceCommit ?? 'unknown'}`,
     `Total generation ms: ${report.generation.totalMs ?? 'n/a'}`,
     '',
     '## Interpretation',

@@ -9,6 +9,7 @@ import {
 import { runGenerationFoundation } from './graph/run-generation-foundation';
 import { SeededRandom } from './random';
 import type { GenerateProjectOptions } from './index';
+import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
 import { buildFlatWorldHexOverlay } from './worldHexOverlay';
 import { buildWorldRegions } from './worldRegions';
 
@@ -162,6 +163,8 @@ export function orchestratePrimaryWorld(
   const terrainPhases = foundation.crust.phases;
   const topologyCrust = foundation.crust.crust;
 
+  emitTerrainDiagnosticSnapshot(options.onTerrainDiagnosticSnapshot, 'primordial', primordial.elevation, topologyPlates);
+  emitTerrainDiagnosticSnapshot(options.onTerrainDiagnosticSnapshot, 'initial-tectonic', foundation.elevation.elevation, topologyPlates);
   operations.emitTopologyPreview(options, 'primordial', 'Primordial terrain', 0.08, topology, primordial.elevation);
   operations.emitTopologyPreview(options, 'plates', 'Plate layout', 0.18, topology, primordial.elevation, undefined, undefined, topologyPlates);
   operations.emitTopologyPreview(options, 'elevation', 'Tectonic uplift', 0.38, topology, foundation.elevation.elevation);

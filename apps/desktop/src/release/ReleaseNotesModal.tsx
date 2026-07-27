@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.16</p>
+            <h3>Structural terrain integrity</h3>
+            <ul>
+              <li>Rigid continental drift now inverse-samples transformed fragments instead of forward-splatting cells into gaps and directional spill ribbons.</li>
+              <li>Fixed-seed native-stage diagnostics now isolate terrain changes across initial tectonics, fragment placement, surface aging, and fragment-history response.</li>
+              <li>The generator compatibility version advanced because fresh worlds produce corrected authoritative elevation.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.13</p>
             <h3>Embedded build provenance</h3>
             <ul>

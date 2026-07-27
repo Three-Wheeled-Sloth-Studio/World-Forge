@@ -1,0 +1,210 @@
+{
+  "version": 2,
+  "generatedAt": "2026-07-27T00:09:35.219Z",
+  "config": {
+    "starSeed": "2850873",
+    "worldSeed": "1001001",
+    "outputResolution": "1024x512",
+    "topologyResolution": 256
+  },
+  "generation": {
+    "appVersion": "striping-investigation-native",
+    "sourceCommit": "local-script",
+    "totalMs": 38090.975
+  },
+  "topologyLayers": [
+    {
+      "label": "primordial",
+      "cellCount": 393216,
+      "plateBoundary": {
+        "boundaryEdges": 6656,
+        "meridionalTangentShare": 0.535156,
+        "zonalTangentShare": 0.464844,
+        "faceEdgeBoundaryShare": 0.002704
+      },
+      "elevation": {
+        "comparedEdges": 786172,
+        "p90Delta": 0.00456211,
+        "highDeltaEdges": 78618,
+        "highDeltaMeridionalTangentShare": 0.597967,
+        "highDeltaZonalTangentShare": 0.402033,
+        "meanHighDelta": 0.00673479
+      },
+      "componentShape": {
+        "componentCount": 27,
+        "largeComponentCount": 27,
+        "longThinMeridionalShare": 0,
+        "meanLargeLatSpanDeg": 46.095,
+        "meanLargeLonSpanDeg": 80.586,
+        "maxLatSpanDeg": 63.609,
+        "maxLonSpanDeg": 357.953
+      }
+    },
+    {
+      "label": "initial-tectonic",
+      "cellCount": 393216,
+      "plateBoundary": {
+        "boundaryEdges": 6656,
+        "meridionalTangentShare": 0.535156,
+        "zonalTangentShare": 0.464844,
+        "faceEdgeBoundaryShare": 0.002704
+      },
+      "elevation": {
+        "comparedEdges": 786172,
+        "p90Delta": 0.01480547,
+        "highDeltaEdges": 78618,
+        "highDeltaMeridionalTangentShare": 0.543781,
+        "highDeltaZonalTangentShare": 0.456219,
+        "meanHighDelta": 0.04638597
+      },
+      "componentShape": {
+        "componentCount": 27,
+        "largeComponentCount": 27,
+        "longThinMeridionalShare": 0,
+        "meanLargeLatSpanDeg": 46.095,
+        "meanLargeLonSpanDeg": 80.586,
+        "maxLatSpanDeg": 63.609,
+        "maxLonSpanDeg": 357.953
+      }
+    },
+    {
+      "label": "pre-deep-time",
+      "cellCount": 393216,
+      "plateBoundary": {
+        "boundaryEdges": 6656,
+        "meridionalTangentShare": 0.535156,
+        "zonalTangentShare": 0.464844,
+        "faceEdgeBoundaryShare": 0.002704
+      },
+      "elevation": {
+        "comparedEdges": 786172,
+        "p90Delta": 0.01598585,
+        "highDeltaEdges": 78618,
+        "highDeltaMeridionalTangentShare": 0.545613,
+        "highDeltaZonalTangentShare": 0.454387,
+        "meanHighDelta": 0.0446097
+      },
+      "componentShape": {
+        "componentCount": 27,
+        "largeComponentCount": 27,
+        "longThinMeridionalShare": 0,
+        "meanLargeLatSpanDeg": 46.095,
+        "meanLargeLonSpanDeg": 80.586,
+        "maxLatSpanDeg": 63.609,
+        "maxLonSpanDeg": 357.953
+      }
+    },
+    {
+      "label": "post-fragment-placement",
+      "cellCount": 393216,
+      "plateBoundary": {
+        "boundaryEdges": 6656,
+        "meridionalTangentShare": 0.535156,
+        "zonalTangentShare": 0.464844,
+        "faceEdgeBoundaryShare": 0.002704
+      },
+      "elevation": {
+        "comparedEdges": 786172,
+        "p90Delta": 0.04655075,
+        "highDeltaEdges": 78618,
+        "highDeltaMeridionalTangentShare": 0.558244,
+        "highDeltaZonalTangentShare": 0.441756,
+        "meanHighDelta": 0.16117353
+      },
+      "componentShape": {
+        "componentCount": 27,
+        "largeComponentCount": 27,
+        "longThinMeridionalShare": 0,
+        "meanLargeLatSpanDeg": 46.095,
+        "meanLargeLonSpanDeg": 80.586,
+        "maxLatSpanDeg": 63.609,
+        "maxLonSpanDeg": 357.953
+      }
+    },
+    {
+      "label": "post-surface-aging",
+      "cellCount": 393216,
+      "plateBoundary": {
+        "boundaryEdges": 6656,
+        "meridionalTangentShare": 0.535156,
+        "zonalTangentShare": 0.464844,
+        "faceEdgeBoundaryShare": 0.002704
+      },
+      "elevation": {
+        "comparedEdges": 786172,
+        "p90Delta": 0.0466601,
+        "highDeltaEdges": 78618,
+        "highDeltaMeridionalTangentShare": 0.558765,
+        "highDeltaZonalTangentShare": 0.441235,
+        "meanHighDelta": 0.14222326
+      },
+      "componentShape": {
+        "componentCount": 27,
+        "largeComponentCount": 27,
+        "longThinMeridionalShare": 0,
+        "meanLargeLatSpanDeg": 46.095,
+        "meanLargeLonSpanDeg": 80.586,
+        "maxLatSpanDeg": 63.609,
+        "maxLonSpanDeg": 357.953
+      }
+    },
+    {
+      "label": "post-fragment-history",
+      "cellCount": 393216,
+      "plateBoundary": {
+        "boundaryEdges": 6656,
+        "meridionalTangentShare": 0.535156,
+        "zonalTangentShare": 0.464844,
+        "faceEdgeBoundaryShare": 0.002704
+      },
+      "elevation": {
+        "comparedEdges": 786172,
+        "p90Delta": 0.05359866,
+        "highDeltaEdges": 78618,
+        "highDeltaMeridionalTangentShare": 0.556781,
+        "highDeltaZonalTangentShare": 0.443219,
+        "meanHighDelta": 0.15188655
+      },
+      "componentShape": {
+        "componentCount": 27,
+        "largeComponentCount": 27,
+        "longThinMeridionalShare": 0,
+        "meanLargeLatSpanDeg": 46.095,
+        "meanLargeLonSpanDeg": 80.586,
+        "maxLatSpanDeg": 63.609,
+        "maxLonSpanDeg": 357.953
+      }
+    }
+  ],
+  "projectedLayers": [
+    {
+      "label": "final projected elevation",
+      "width": 1024,
+      "height": 512,
+      "horizontalP90Delta": 0.04197165,
+      "verticalP90Delta": 0.05747518,
+      "horizontalHighDeltaShare": 0.091702,
+      "verticalHighDeltaShare": 0.108316,
+      "horizontalToVerticalHighDeltaRatio": 0.846609,
+      "meanColumnAutocorrelation": 0.977024,
+      "meanRowAutocorrelation": 0.984345
+    },
+    {
+      "label": "final projected plates",
+      "width": 1024,
+      "height": 512,
+      "horizontalP90Delta": 0,
+      "verticalP90Delta": 0,
+      "horizontalHighDeltaShare": 0.00643,
+      "verticalHighDeltaShare": 0.009576,
+      "horizontalToVerticalHighDeltaRatio": 0.671406,
+      "meanColumnAutocorrelation": 0.982454,
+      "meanRowAutocorrelation": 0.867954
+    }
+  ],
+  "interpretation": [
+    "initial-tectonic changes high-gradient meridional share by -0.054186 (0.597967 to 0.543781); this is a material orientation change at that mutation boundary.",
+    "Largest staged meridional-bias increase occurs at post-fragment-placement (0.012631).",
+    "All topology layers were captured from one authoritative native-stage generation run; diagnostics callbacks received defensive copies."
+  ]
+}

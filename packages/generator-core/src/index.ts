@@ -37,10 +37,12 @@ import { SeededRandom } from './random';
 import { runGenerationFoundation } from './graph/run-generation-foundation';
 import type { GenerationGraphNodeRunEvent } from './graph/types';
 import { orchestratePrimaryWorld } from './primary-world-orchestrator';
+import type { TerrainDiagnosticBypasses, TerrainDiagnosticSnapshotCallback } from './terrainDiagnostics';
 
 export { SeededRandom, createDefaultConfig, defaultParameterRanges };
+export type { TerrainDiagnosticBypasses, TerrainDiagnosticSnapshot, TerrainDiagnosticStage } from './terrainDiagnostics';
 
-const generatorVersion = '0.1.0-mvp';
+const generatorVersion = '0.1.1-mvp';
 
 type DiagnosticsRecorder = {
   measure<T>(name: string, fn: () => T): T;
@@ -73,6 +75,8 @@ export type GenerationProgressCallback = (frame: GenerationPreviewFrame) => void
 export type GenerateProjectOptions = {
   onProgress?: GenerationProgressCallback;
   onGraphNodeEvent?: (event: GenerationGraphNodeRunEvent) => void;
+  onTerrainDiagnosticSnapshot?: TerrainDiagnosticSnapshotCallback;
+  terrainDiagnosticBypasses?: TerrainDiagnosticBypasses;
   appVersion?: string;
   sourceCommit?: string;
   previewResolution?: {
