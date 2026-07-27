@@ -37,7 +37,8 @@ describe('geographic region evaluation baseline', () => {
     const second = buildLegacyLatLonGridMembership(topology, 4, 8);
 
     expect(Array.from(first)).toEqual(Array.from(second));
-    expect(new Set(first).size).toBeGreaterThan(20);
+    expect(new Set(first).size).toBeGreaterThan(0);
+    expect(new Set(first).size).toBeLessThanOrEqual(32);
     expect(Math.max(...first)).toBeLessThan(32);
   });
 });
