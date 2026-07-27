@@ -5,6 +5,7 @@ import { ShellStatusControls } from '../shell/ShellStatusControls';
 import { WorldNameEditor } from '../worlds/WorldNameEditor';
 import { requestWorldRename } from '../worlds/worldIdentityBridge';
 import { GeographicRegionPreviewPanel } from '../regions/GeographicRegionPreviewPanel';
+import { GeographicHierarchyPanel } from '../regions/GeographicHierarchyPanel';
 
 type RightPanelTab = 'world' | 'hex' | 'diagnostics';
 
@@ -93,6 +94,7 @@ export function RightPanel(props: RightPanelProps) {
             {!project ? <div className="empty-panel"><h2>World</h2><p>No generated world is loaded.</p></div> : <>
               <WorldNameEditor value={project.projectName} as="h2" onSave={(name) => requestWorldRename(project.projectId, name)} />
               <GeographicRegionPreviewPanel project={project} />
+              <GeographicHierarchyPanel project={project} />
               <Metric label="Ocean" value={`${project.metrics.oceanPercentage}%`} status={project.metrics.validation.oceanWithinTolerance ? 'ok' : 'warn'} />
               <Metric label="Ocean target" value={`${project.selectedValues.oceanPercentage}% +/- ${project.selectedValues.oceanTolerancePercentagePoints}`} />
               <Metric label="Land" value={`${project.metrics.landPercentage}%`} />
