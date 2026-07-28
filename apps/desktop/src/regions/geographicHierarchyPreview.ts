@@ -54,7 +54,14 @@ export type GeographicHierarchyOpenMap = {
 
 export function buildGeographicHierarchyPreview(project: WorldProject): GeographicHierarchyPreview {
   const regionPreview = buildGeographicRegionPreview(project);
-  const macroAreaSet = buildGeographicMacroAreas(regionPreview.topology, regionPreview.regionSet);
+  const macroAreaSet = buildGeographicMacroAreas(
+    regionPreview.topology,
+    regionPreview.regionSet,
+    {
+      water: project.primaryWorld.topologyLayers.water,
+      targetContinentCount: project.selectedValues.continentCount,
+    },
+  );
   return {
     projectKey: `${geographicRegionPreviewProjectKey(project)}:${macroAreaSet.signature}`,
     regionPreview,
@@ -275,5 +282,5 @@ function planetCircumferenceMiles(project: WorldProject): number {
 }
 
 function previewAlgorithmKey(): string {
-  return 'geographic-hierarchy-v2:width-driven-scale-v1:geographic-child-partition-v1:geographic-tile-window-v1';
+  return 'geographic-hierarchy-v2:isthmus-core-v1:width-driven-scale-v1:geographic-child-partition-v1:geographic-tile-window-v1';
 }
