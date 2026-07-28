@@ -19,8 +19,8 @@ export function drawGeographicChildBoundaryOverlay(
   const context = canvas.getContext('2d');
   if (!context) return;
 
-  const sampleColumns = Math.max(72, Math.min(260, transform.extent.columns * 5));
-  const sampleRows = Math.max(48, Math.min(220, Math.round(sampleColumns * canvas.height / Math.max(1, canvas.width))));
+  const sampleColumns = Math.max(96, Math.min(360, transform.extent.columns * 7));
+  const sampleRows = Math.max(64, Math.min(280, Math.round(sampleColumns * canvas.height / Math.max(1, canvas.width))));
   const sampledChildren = new Uint16Array(sampleColumns * sampleRows);
   sampledChildren.fill(UNASSIGNED_CHILD);
   const sampledParent = new Uint8Array(sampleColumns * sampleRows);
@@ -47,7 +47,7 @@ export function drawGeographicChildBoundaryOverlay(
   context.save();
 
   if (selectedChildIndex !== null) {
-    context.fillStyle = 'rgba(255, 223, 132, 0.16)';
+    context.fillStyle = 'rgba(255, 223, 132, 0.2)';
     for (let row = 0; row < sampleRows; row += 1) {
       for (let column = 0; column < sampleColumns; column += 1) {
         const index = row * sampleColumns + column;
@@ -57,9 +57,9 @@ export function drawGeographicChildBoundaryOverlay(
     }
   }
 
-  context.lineWidth = 1.15;
+  context.lineWidth = 1.65;
   context.lineCap = 'round';
-  context.setLineDash([4, 5]);
+  context.setLineDash([3, 3]);
   for (let row = 0; row < sampleRows; row += 1) {
     for (let column = 0; column < sampleColumns; column += 1) {
       const index = row * sampleColumns + column;
@@ -67,8 +67,8 @@ export function drawGeographicChildBoundaryOverlay(
       const childIndex = sampledChildren[index];
       const selectedBoundary = selectedChildIndex !== null && childIndex === selectedChildIndex;
       context.strokeStyle = selectedBoundary
-        ? 'rgba(255, 232, 153, 0.92)'
-        : 'rgba(244, 237, 215, 0.58)';
+        ? 'rgba(255, 232, 153, 0.98)'
+        : 'rgba(255, 250, 232, 0.82)';
 
       if (column + 1 < sampleColumns) {
         const right = index + 1;
