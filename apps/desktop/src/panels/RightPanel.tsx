@@ -80,6 +80,7 @@ export function RightPanel(props: RightPanelProps) {
           {collapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
         </button>
 
+        {project && <GeographicHierarchyPanel project={project} />}
         {feedbackStatus && !collapsed && <div className="feedback-status" role="status">{feedbackStatus}</div>}
         {!collapsed && inspectorContent}
 
@@ -94,7 +95,6 @@ export function RightPanel(props: RightPanelProps) {
             {!project ? <div className="empty-panel"><h2>World</h2><p>No generated world is loaded.</p></div> : <>
               <WorldNameEditor value={project.projectName} as="h2" onSave={(name) => requestWorldRename(project.projectId, name)} />
               <GeographicRegionPreviewPanel project={project} />
-              <GeographicHierarchyPanel project={project} />
               <Metric label="Ocean" value={`${project.metrics.oceanPercentage}%`} status={project.metrics.validation.oceanWithinTolerance ? 'ok' : 'warn'} />
               <Metric label="Ocean target" value={`${project.selectedValues.oceanPercentage}% +/- ${project.selectedValues.oceanTolerancePercentagePoints}`} />
               <Metric label="Land" value={`${project.metrics.landPercentage}%`} />

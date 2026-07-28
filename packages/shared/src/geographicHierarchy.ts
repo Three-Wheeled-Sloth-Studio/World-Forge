@@ -104,8 +104,8 @@ export type GeographicHierarchyNode = {
 export type GeographicHierarchyPartition = {
   modelVersion: typeof GEOGRAPHIC_HIERARCHY_VERSION;
   algorithmVersion: typeof GEOGRAPHIC_CHILD_PARTITION_VERSION;
-  hierarchyLevel: Exclude<GeographicHierarchyLevel, 'macro-area' | 'region'>;
-  parentLevel: 'region' | 'subregion' | 'local';
+  hierarchyLevel: Exclude<GeographicHierarchyLevel, 'macro-area'>;
+  parentLevel: Exclude<GeographicHierarchyLevel, 'detail'>;
   parentId: string;
   sourceTopologyKind: TopologyKind;
   sourceTopologyResolution: number;

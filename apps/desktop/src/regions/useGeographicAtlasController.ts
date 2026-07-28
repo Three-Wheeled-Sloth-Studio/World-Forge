@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import type { WorldProject } from '@world-forge/shared';
 import type { GeographicHierarchyPartition, GeographicMacroArea } from '@world-forge/shared/geographicHierarchy';
 import type { GeographicWorldRegionV2 } from '@world-forge/shared/geographicRegions';
@@ -16,6 +16,7 @@ import {
   type GeographicHierarchyPreview,
 } from './geographicHierarchyPreview';
 import {
+  renderGeographicWindowToCanvas,
   topologyCellAtWindowPoint,
   type GeographicWindowTransform,
 } from './geographicWindowedMap';
@@ -23,8 +24,9 @@ import {
   renderGeographicTileWindowToCanvas,
   type GeographicTileWindowPresentation,
 } from './geographicTileWindowMap';
+import { drawGeographicChildBoundaryOverlay } from './geographicDrilldownBoundaryOverlay';
 
-type MapPresentation = GeographicTileWindowPresentation;
+export type GeographicDrilldownPresentation = 'auto' | 'overlay' | 'tiles' | 'natural' | 'terrain';
 
 export function useGeographicAtlasController(
   project: WorldProject,
@@ -33,9 +35,10 @@ export function useGeographicAtlasController(
 ) {
   const [navigation, setNavigation] = useState<GeographicHierarchyOpenMap[]>([]);
   const [partition, setPartition] = useState<GeographicHierarchyPartition | null>(null);
+  const [selectedMacroId, setSelectedMacroId] = useState<string | null>(null);
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
-  const [presentation, setPresentation] = useState<MapPresentation>('natural');
+  const [presentation, setPresentation] = useState<GeographicDrilldownPresentation>('auto');
   const [showHexes, setShowHexes] = useState(true);
   const [buildingChildren, setBuildingChildren] = useState(false);
   const [childError, setChildError] = useState('');
@@ -47,16 +50,41 @@ export function useGeographicAtlasController(
   useEffect(() => {
     setChildError('');
     setBuildingChildren(false);
-    if (!current || !childLevel) {
+    if (!preview || !current || !childLevel) {
       setPartition(null);
       setSelectedChildId(null);
       return;
     }
+
     const cacheKey = hierarchyCacheKey(project, current.id, childLevel, current.scale.id);
     const cached = partitionCache.get(cacheKey) ?? null;
-    setPartition(cached);
-    if (!cached?.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
-  }, [childLevel, current?.id, current?.level, current?.scale.id, partitionCache, project]);
+    if (cached) {
+      setPartition(cached);
+      setSelectedChildId((selected) => cached.children.some((entry) => entry.id === selected) ? selected : null);
+      return;
+    }
+
+    let cancelled = false;
+    setPartition(null);
+    setBuildingChildren(true);
+    const timer = window.setTimeout(() => {
+      try {
+        const next = buildHierarchyChildren(project, preview, current);
+        if (cancelled) return;
+        partitionCache.set(cacheKey, next);
+        setPartition(next);
+        setSelectedChildId(null);
+      } catch (reason) {
+        if (!cancelled) setChildError(reason instanceof Error ? reason.message : `${childLevel} generation failed.`);
+      } finally {
+        if (!cancelled) setBuildingChildren(false);
+      }
+    }, 20);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [childLevel, current?.id, current?.level, current?.scale.id, partitionCache, preview, project]);
 
   const macroRegions = useMemo(() => {
     if (!preview || current?.level !== 'macro-area') return [];
@@ -65,46 +93,80 @@ export function useGeographicAtlasController(
 
   useEffect(() => {
     if (!preview || !current || !canvasRef.current) return;
-    const childMembership = current.level === 'macro-area'
-      ? filteredMacroRegionMembership(preview, current, macroRegions)
-      : partition?.membership.childIndexByTopologyCell ?? null;
-    const selectedChildIndex = current.level === 'macro-area'
-      ? preview.regionPreview.regionSet.regions.findIndex((region) => region.id === selectedRegionId)
-      : partition?.children.findIndex((entry) => entry.id === selectedChildId) ?? -1;
-    const tileWindow = generateGeographicTileWindow({
-      project,
-      topology: preview.regionPreview.topology,
-      scale: current.scale,
-      extent: current.extent,
-      parentMembership: current.membership,
-      childMembership,
-    });
-    const transform = renderGeographicTileWindowToCanvas(
-      canvasRef.current,
-      tileWindow,
-      {
-        presentation,
-        showHexes,
-        selectedChildIndex: selectedChildIndex >= 0 ? selectedChildIndex : null,
-      },
-    );
+    const childMembership = partition?.membership.childIndexByTopologyCell ?? null;
+    const selectedChildIndex = partition?.children.findIndex((entry) => entry.id === selectedChildId) ?? -1;
+    const resolvedPresentation = resolvePresentation(presentation, current.level);
+    let transform: GeographicWindowTransform;
+
+    if (resolvedPresentation.mode === 'overlay') {
+      transform = renderGeographicWindowToCanvas(
+        canvasRef.current,
+        project,
+        preview.regionPreview.topology,
+        current.scale,
+        current.extent,
+        {
+          mapMode: 'biomes',
+          renderMode: 'natural',
+          rivers: true,
+          showHexes,
+          parentMembership: current.membership,
+          childMembership: null,
+          selectedChildIndex: null,
+        },
+      );
+    } else {
+      const tileWindow = generateGeographicTileWindow({
+        project,
+        topology: preview.regionPreview.topology,
+        scale: current.scale,
+        extent: current.extent,
+        parentMembership: current.membership,
+        childMembership: null,
+      });
+      transform = renderGeographicTileWindowToCanvas(
+        canvasRef.current,
+        tileWindow,
+        {
+          presentation: resolvedPresentation.tilePresentation,
+          showHexes,
+          selectedChildIndex: null,
+        },
+      );
+    }
+
     transformRef.current = transform;
+    drawGeographicChildBoundaryOverlay(
+      canvasRef.current,
+      preview.regionPreview.topology,
+      transform,
+      current.membership,
+      childMembership,
+      selectedChildIndex >= 0 ? selectedChildIndex : null,
+    );
     drawLabels(
       canvasRef.current,
       transform,
-      current.level === 'macro-area'
-        ? macroRegions.map((region) => ({ id: region.id, label: region.label, point: region.labelPoint }))
-        : partition?.children.map((entry) => ({ id: entry.id, label: entry.label, point: entry.labelPoint })) ?? [],
-      current.level === 'macro-area' ? selectedRegionId : selectedChildId,
+      partition?.children.map((entry) => ({ id: entry.id, label: entry.label, point: entry.labelPoint })) ?? [],
+      selectedChildId,
     );
-  }, [current, macroRegions, partition, presentation, preview, project, selectedChildId, selectedRegionId, showHexes]);
+  }, [current, partition, presentation, preview, project, selectedChildId, showHexes]);
 
   const openMacro = (macroArea: GeographicMacroArea) => {
     if (!preview) return;
-    const regions = regionsForMacroArea(preview, macroArea.id);
-    if (!regions.some((region) => region.id === selectedRegionId)) setSelectedRegionId(null);
+    setSelectedMacroId(macroArea.id);
+    setSelectedRegionId(null);
     setSelectedChildId(null);
     setNavigation([openMacroAreaMap(project, preview, macroArea.id)]);
+  };
+
+  const openMacroById = (macroAreaId: string) => {
+    const macroArea = preview?.macroAreaSet.macroAreas.find((entry) => entry.id === macroAreaId);
+    if (macroArea) openMacro(macroArea);
+  };
+
+  const openSelectedMacro = () => {
+    if (selectedMacroId) openMacroById(selectedMacroId);
   };
 
   const openSelectedRegion = () => {
@@ -114,64 +176,74 @@ export function useGeographicAtlasController(
   };
 
   const showChildren = () => {
-    if (!preview || !current || !childLevel) return;
+    if (!preview || !current || !childLevel || partition || buildingChildren) return;
     const cacheKey = hierarchyCacheKey(project, current.id, childLevel, current.scale.id);
     const cached = partitionCache.get(cacheKey);
-    if (cached) {
-      setPartition(cached);
-      return;
-    }
-    setBuildingChildren(true);
-    setChildError('');
-    window.setTimeout(() => {
-      try {
-        const next = buildHierarchyChildren(project, preview, current);
-        partitionCache.set(cacheKey, next);
-        setPartition(next);
-        if (!next.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
-      } catch (reason) {
-        setChildError(reason instanceof Error ? reason.message : `${childLevel} generation failed.`);
-      } finally {
-        setBuildingChildren(false);
-      }
-    }, 30);
+    if (cached) setPartition(cached);
+  };
+
+  const openChildById = (childId: string) => {
+    if (!preview || !partition) return;
+    const nextMap = openHierarchyChildMap(project, preview, partition, childId);
+    setSelectedChildId(null);
+    setNavigation((entries) => [...entries, nextMap]);
   };
 
   const openSelectedChild = () => {
-    if (!preview || !partition || !selectedChildId) return;
-    setSelectedChildId(null);
-    setNavigation((entries) => [...entries, openHierarchyChildMap(project, preview, partition, selectedChildId)]);
+    if (selectedChildId) openChildById(selectedChildId);
   };
 
   const back = () => {
     setSelectedChildId(null);
     setNavigation((entries) => entries.slice(0, -1));
   };
+
   const reset = () => {
-    setSelectedRegionId(null);
     setSelectedChildId(null);
+    setSelectedRegionId(null);
     setNavigation([]);
   };
+
   const navigateTo = (index: number) => {
     setSelectedChildId(null);
     setNavigation((entries) => entries.slice(0, index + 1));
   };
 
-  const onCanvasClick = (event: MouseEvent<HTMLCanvasElement>) => {
-    if (!preview || !current || !transformRef.current || !canvasRef.current) return;
+  const childIdAtCanvasEvent = (event: MouseEvent<HTMLCanvasElement>): string | null => {
+    if (!preview || !current || !partition || !transformRef.current || !canvasRef.current) return null;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * canvasRef.current.width;
-    const y = ((event.clientY - rect.top) / rect.height) * canvasRef.current.height;
+    const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * canvasRef.current.width;
+    const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * canvasRef.current.height;
     const cell = topologyCellAtWindowPoint(preview.regionPreview.topology, transformRef.current, x, y);
-    if (current.membership[cell] !== 1) return;
-    if (current.level === 'macro-area') {
-      const regionIndex = preview.regionPreview.regionSet.membership.regionIndexByTopologyCell[cell];
-      const region = preview.regionPreview.regionSet.regions[regionIndex];
-      if (region && macroRegions.some((candidate) => candidate.id === region.id)) setSelectedRegionId(region.id);
-    } else if (partition) {
-      const childIndex = partition.membership.childIndexByTopologyCell[cell];
-      const entry = partition.children[childIndex];
-      if (entry) setSelectedChildId(entry.id);
+    if (current.membership[cell] !== 1) return null;
+    const childIndex = partition.membership.childIndexByTopologyCell[cell];
+    return partition.children[childIndex]?.id ?? null;
+  };
+
+  const onCanvasClick = (event: MouseEvent<HTMLCanvasElement>) => {
+    const childId = childIdAtCanvasEvent(event);
+    if (childId) setSelectedChildId(childId);
+  };
+
+  const onCanvasContextMenu = (event: MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    const childId = childIdAtCanvasEvent(event);
+    if (!childId) return;
+    setSelectedChildId(childId);
+    openChildById(childId);
+  };
+
+  const onCanvasDoubleClick = (event: MouseEvent<HTMLCanvasElement>) => {
+    const childId = childIdAtCanvasEvent(event);
+    if (!childId) return;
+    setSelectedChildId(childId);
+    openChildById(childId);
+  };
+
+  const onCanvasKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    if (event.key === 'Enter' && selectedChildId) {
+      event.preventDefault();
+      openChildById(selectedChildId);
     }
   };
 
@@ -181,6 +253,7 @@ export function useGeographicAtlasController(
     childLevel,
     partition,
     macroRegions,
+    selectedMacroId,
     selectedRegionId,
     selectedChildId,
     presentation,
@@ -188,11 +261,14 @@ export function useGeographicAtlasController(
     buildingChildren,
     childError,
     canvasRef,
+    setSelectedMacroId,
     setSelectedRegionId,
     setSelectedChildId,
     setPresentation,
     setShowHexes,
     openMacro,
+    openMacroById,
+    openSelectedMacro,
     openSelectedRegion,
     showChildren,
     openSelectedChild,
@@ -200,22 +276,22 @@ export function useGeographicAtlasController(
     reset,
     navigateTo,
     onCanvasClick,
+    onCanvasContextMenu,
+    onCanvasDoubleClick,
+    onCanvasKeyDown,
   };
 }
 
-function filteredMacroRegionMembership(
-  preview: GeographicHierarchyPreview,
-  current: GeographicHierarchyOpenMap,
-  regions: GeographicWorldRegionV2[],
-): Uint16Array {
-  const allowed = new Set(regions.map((region) => region.index));
-  const source = preview.regionPreview.regionSet.membership.regionIndexByTopologyCell;
-  const filtered = new Uint16Array(source.length);
-  filtered.fill(0xffff);
-  for (let cell = 0; cell < source.length; cell += 1) {
-    if (current.membership[cell] === 1 && allowed.has(source[cell])) filtered[cell] = source[cell];
-  }
-  return filtered;
+function resolvePresentation(
+  presentation: GeographicDrilldownPresentation,
+  level: GeographicHierarchyOpenMap['level'],
+): { mode: 'overlay'; tilePresentation: GeographicTileWindowPresentation } | { mode: 'tiles'; tilePresentation: GeographicTileWindowPresentation } {
+  if (presentation === 'overlay') return { mode: 'overlay', tilePresentation: 'terrain' };
+  if (presentation === 'natural') return { mode: 'tiles', tilePresentation: 'natural' };
+  if (presentation === 'terrain' || presentation === 'tiles') return { mode: 'tiles', tilePresentation: 'terrain' };
+  return level === 'macro-area'
+    ? { mode: 'overlay', tilePresentation: 'terrain' }
+    : { mode: 'tiles', tilePresentation: 'terrain' };
 }
 
 function drawLabels(

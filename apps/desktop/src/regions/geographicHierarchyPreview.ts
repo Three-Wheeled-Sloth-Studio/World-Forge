@@ -11,7 +11,6 @@ import type {
 } from '@world-forge/shared/geographicHierarchy';
 import type { GeographicWorldRegionV2 } from '@world-forge/shared/geographicRegions';
 import {
-  deriveAdaptiveGeographicScale,
   membershipMaskFromRegionIndex,
 } from '@world-forge/generator-core/geographicAdaptiveScale';
 import {
@@ -22,6 +21,12 @@ import {
   buildGeographicMacroAreas,
   macroAreaMembershipMask,
 } from '@world-forge/generator-core/geographicMacroAreas';
+import {
+  deriveInitialGeographicScale,
+  deriveNextGeographicScale,
+  deriveScaleAtMiles,
+  targetChildCountForExtent,
+} from '@world-forge/generator-core/geographicWidthScale';
 import {
   buildGeographicRegionPreview,
   geographicRegionPreviewProjectKey,
@@ -41,7 +46,7 @@ export type GeographicHierarchyOpenMap = {
   parentId: string | null;
   membership: Uint8Array;
   scale: GeographicAdaptiveHexScale;
-  extent: ReturnType<typeof deriveAdaptiveGeographicScale>['extent'];
+  extent: ReturnType<typeof deriveInitialGeographicScale>['extent'];
   macroArea?: GeographicMacroArea;
   region?: GeographicWorldRegionV2;
   partition?: GeographicHierarchyPartition;
@@ -65,7 +70,7 @@ export function openMacroAreaMap(
   const macroArea = preview.macroAreaSet.macroAreas.find((entry) => entry.id === macroAreaId);
   if (!macroArea) throw new Error(`Unknown macro area ${macroAreaId}.`);
   const membership = macroAreaMembershipMask(preview.macroAreaSet, macroAreaId);
-  const scaleResult = deriveAdaptiveGeographicScale(
+  const scaleResult = deriveInitialGeographicScale(
     preview.regionPreview.topology,
     planetCircumferenceMiles(project),
     membership,
@@ -94,7 +99,7 @@ export function openRegionMap(
     preview.regionPreview.regionSet.membership.regionIndexByTopologyCell,
     regionIndex,
   );
-  const scaleResult = deriveAdaptiveGeographicScale(
+  const scaleResult = deriveInitialGeographicScale(
     preview.regionPreview.topology,
     planetCircumferenceMiles(project),
     membership,
@@ -122,7 +127,19 @@ export function buildHierarchyChildren(
   }
   const childLevel = nextHierarchyLevel(parentLevel);
   if (!childLevel) throw new Error(`${parentMap.label} has no deeper geographic level.`);
-  return buildGeographicChildPartition(
+
+  const nextScale = deriveNextGeographicScale(
+    preview.regionPreview.topology,
+    planetCircumferenceMiles(project),
+    parentMap.membership,
+    parentMap.scale.nominalHexWidthMiles,
+  );
+  const targetChildCount = targetChildCountForExtent(nextScale.extent);
+  const partitionScaleDriver = {
+    ...parentMap.scale,
+    nominalHexWidthMiles: nextScale.scale.nominalHexWidthMiles * 2,
+  };
+  const rawPartition = buildGeographicChildPartition(
     preview.regionPreview.topology,
     project.primaryWorld.topologyLayers,
     {
@@ -132,10 +149,19 @@ export function buildHierarchyChildren(
       parentLevel,
       childLevel,
       parentMembership: parentMap.membership,
-      parentScale: parentMap.scale,
+      parentScale: partitionScaleDriver,
       planetCircumferenceMiles: planetCircumferenceMiles(project),
-    },
+      targetChildCount,
+    } as unknown as Parameters<typeof buildGeographicChildPartition>[2],
   );
+
+  return {
+    ...rawPartition,
+    hierarchyLevel: childLevel,
+    parentLevel,
+    scale: nextScale.scale,
+    extent: nextScale.extent,
+  } as GeographicHierarchyPartition;
 }
 
 export function openHierarchyChildMap(
@@ -147,11 +173,11 @@ export function openHierarchyChildMap(
   const child = partition.children.find((entry) => entry.id === childId);
   if (!child) throw new Error(`Unknown ${partition.hierarchyLevel} ${childId}.`);
   const membership = childMembershipMask(partition, childId);
-  const scaleResult = deriveAdaptiveGeographicScale(
+  const scaleResult = deriveScaleAtMiles(
     preview.regionPreview.topology,
     planetCircumferenceMiles(project),
     membership,
-    { maximumScaleMiles: partition.scale.nominalHexWidthMiles },
+    partition.scale.nominalHexWidthMiles,
   );
   return {
     id: child.id,
@@ -183,7 +209,10 @@ export function openSubregionMap(
   return openHierarchyChildMap(project, preview, partition, childId);
 }
 
-export function nextHierarchyLevel(level: GeographicHierarchyLevel): GeographicHierarchyPartition['hierarchyLevel'] | null {
+export function nextHierarchyLevel(
+  level: GeographicHierarchyLevel,
+): GeographicHierarchyPartition['hierarchyLevel'] | null {
+  if (level === 'macro-area') return 'region';
   if (level === 'region') return 'subregion';
   if (level === 'subregion') return 'local';
   if (level === 'local') return 'detail';
@@ -205,6 +234,14 @@ export function macroAreaForRegion(
   region: GeographicWorldRegionV2,
 ): GeographicMacroArea | null {
   return preview.macroAreaSet.macroAreas.find((macroArea) => macroArea.childRegionIds.includes(region.id)) ?? null;
+}
+
+export function macroAreaAtTopologyCell(
+  preview: GeographicHierarchyPreview,
+  topologyCell: number,
+): GeographicMacroArea | null {
+  const index = preview.macroAreaSet.membership.macroAreaIndexByTopologyCell[topologyCell];
+  return preview.macroAreaSet.macroAreas[index] ?? null;
 }
 
 export function hierarchyCacheKey(
@@ -230,7 +267,7 @@ export function hierarchyLevelLabel(level: GeographicHierarchyLevel): string {
 function isHierarchyParentLevel(
   level: GeographicHierarchyLevel,
 ): level is GeographicHierarchyPartition['parentLevel'] {
-  return level === 'region' || level === 'subregion' || level === 'local';
+  return level === 'macro-area' || level === 'region' || level === 'subregion' || level === 'local';
 }
 
 function planetCircumferenceMiles(project: WorldProject): number {
@@ -238,5 +275,5 @@ function planetCircumferenceMiles(project: WorldProject): number {
 }
 
 function previewAlgorithmKey(): string {
-  return 'geographic-hierarchy-v1:adaptive-world-hex-scale-v1:geographic-child-partition-v1:geographic-tile-window-v1';
+  return 'geographic-hierarchy-v2:width-driven-scale-v1:geographic-child-partition-v1:geographic-tile-window-v1';
 }
