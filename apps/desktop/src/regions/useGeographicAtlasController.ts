@@ -3,23 +3,28 @@ import type { MouseEvent } from 'react';
 import type { WorldProject } from '@world-forge/shared';
 import type { GeographicHierarchyPartition, GeographicMacroArea } from '@world-forge/shared/geographicHierarchy';
 import type { GeographicWorldRegionV2 } from '@world-forge/shared/geographicRegions';
+import { generateGeographicTileWindow } from '@world-forge/generator-core/geographicTileWindow';
 import {
-  buildSubregions,
+  buildHierarchyChildren,
   hierarchyCacheKey,
+  nextHierarchyLevel,
+  openHierarchyChildMap,
   openMacroAreaMap,
   openRegionMap,
-  openSubregionMap,
   regionsForMacroArea,
   type GeographicHierarchyOpenMap,
   type GeographicHierarchyPreview,
 } from './geographicHierarchyPreview';
 import {
-  renderGeographicWindowToCanvas,
   topologyCellAtWindowPoint,
   type GeographicWindowTransform,
 } from './geographicWindowedMap';
+import {
+  renderGeographicTileWindowToCanvas,
+  type GeographicTileWindowPresentation,
+} from './geographicTileWindowMap';
 
-type MapPresentation = 'natural' | 'terrain';
+type MapPresentation = GeographicTileWindowPresentation;
 
 export function useGeographicAtlasController(
   project: WorldProject,
@@ -37,17 +42,21 @@ export function useGeographicAtlasController(
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const transformRef = useRef<GeographicWindowTransform | null>(null);
   const current = navigation[navigation.length - 1] ?? null;
+  const childLevel = current ? nextHierarchyLevel(current.level) : null;
 
   useEffect(() => {
     setChildError('');
     setBuildingChildren(false);
-    if (!current || current.level !== 'region') {
+    if (!current || !childLevel) {
       setPartition(null);
+      setSelectedChildId(null);
       return;
     }
-    const cacheKey = hierarchyCacheKey(project, current.id, 'subregion', current.scale.id);
-    setPartition(partitionCache.get(cacheKey) ?? null);
-  }, [current?.id, current?.level, current?.scale.id, partitionCache, project]);
+    const cacheKey = hierarchyCacheKey(project, current.id, childLevel, current.scale.id);
+    const cached = partitionCache.get(cacheKey) ?? null;
+    setPartition(cached);
+    if (!cached?.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
+  }, [childLevel, current?.id, current?.level, current?.scale.id, partitionCache, project]);
 
   const macroRegions = useMemo(() => {
     if (!preview || current?.level !== 'macro-area') return [];
@@ -58,25 +67,24 @@ export function useGeographicAtlasController(
     if (!preview || !current || !canvasRef.current) return;
     const childMembership = current.level === 'macro-area'
       ? filteredMacroRegionMembership(preview, current, macroRegions)
-      : current.level === 'region' && partition
-        ? partition.membership.childIndexByTopologyCell
-        : null;
+      : partition?.membership.childIndexByTopologyCell ?? null;
     const selectedChildIndex = current.level === 'macro-area'
       ? preview.regionPreview.regionSet.regions.findIndex((region) => region.id === selectedRegionId)
       : partition?.children.findIndex((entry) => entry.id === selectedChildId) ?? -1;
-    const transform = renderGeographicWindowToCanvas(
-      canvasRef.current,
+    const tileWindow = generateGeographicTileWindow({
       project,
-      preview.regionPreview.topology,
-      current.scale,
-      current.extent,
+      topology: preview.regionPreview.topology,
+      scale: current.scale,
+      extent: current.extent,
+      parentMembership: current.membership,
+      childMembership,
+    });
+    const transform = renderGeographicTileWindowToCanvas(
+      canvasRef.current,
+      tileWindow,
       {
-        mapMode: presentation === 'terrain' ? 'terrain-only' : 'biomes',
-        renderMode: presentation === 'terrain' ? 'data' : 'natural',
-        rivers: true,
+        presentation,
         showHexes,
-        parentMembership: current.membership,
-        childMembership,
         selectedChildIndex: selectedChildIndex >= 0 ? selectedChildIndex : null,
       },
     );
@@ -95,22 +103,19 @@ export function useGeographicAtlasController(
     if (!preview) return;
     const regions = regionsForMacroArea(preview, macroArea.id);
     if (!regions.some((region) => region.id === selectedRegionId)) setSelectedRegionId(null);
+    setSelectedChildId(null);
     setNavigation([openMacroAreaMap(project, preview, macroArea.id)]);
   };
 
   const openSelectedRegion = () => {
     if (!preview || !selectedRegionId) return;
-    const regionMap = openRegionMap(project, preview, selectedRegionId);
-    const cacheKey = hierarchyCacheKey(project, regionMap.id, 'subregion', regionMap.scale.id);
-    const cached = partitionCache.get(cacheKey) ?? null;
-    setPartition(cached);
-    if (cached && !cached.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
-    setNavigation((entries) => [...entries, regionMap]);
+    setSelectedChildId(null);
+    setNavigation((entries) => [...entries, openRegionMap(project, preview, selectedRegionId)]);
   };
 
-  const showSubregions = () => {
-    if (!preview || !current || current.level !== 'region') return;
-    const cacheKey = hierarchyCacheKey(project, current.id, 'subregion', current.scale.id);
+  const showChildren = () => {
+    if (!preview || !current || !childLevel) return;
+    const cacheKey = hierarchyCacheKey(project, current.id, childLevel, current.scale.id);
     const cached = partitionCache.get(cacheKey);
     if (cached) {
       setPartition(cached);
@@ -120,26 +125,37 @@ export function useGeographicAtlasController(
     setChildError('');
     window.setTimeout(() => {
       try {
-        const next = buildSubregions(project, preview, current);
+        const next = buildHierarchyChildren(project, preview, current);
         partitionCache.set(cacheKey, next);
         setPartition(next);
         if (!next.children.some((entry) => entry.id === selectedChildId)) setSelectedChildId(null);
       } catch (reason) {
-        setChildError(reason instanceof Error ? reason.message : 'Subregion generation failed.');
+        setChildError(reason instanceof Error ? reason.message : `${childLevel} generation failed.`);
       } finally {
         setBuildingChildren(false);
       }
     }, 30);
   };
 
-  const openSelectedSubregion = () => {
+  const openSelectedChild = () => {
     if (!preview || !partition || !selectedChildId) return;
-    setNavigation((entries) => [...entries, openSubregionMap(project, preview, partition, selectedChildId)]);
+    setSelectedChildId(null);
+    setNavigation((entries) => [...entries, openHierarchyChildMap(project, preview, partition, selectedChildId)]);
   };
 
-  const back = () => setNavigation((entries) => entries.slice(0, -1));
-  const reset = () => setNavigation([]);
-  const navigateTo = (index: number) => setNavigation((entries) => entries.slice(0, index + 1));
+  const back = () => {
+    setSelectedChildId(null);
+    setNavigation((entries) => entries.slice(0, -1));
+  };
+  const reset = () => {
+    setSelectedRegionId(null);
+    setSelectedChildId(null);
+    setNavigation([]);
+  };
+  const navigateTo = (index: number) => {
+    setSelectedChildId(null);
+    setNavigation((entries) => entries.slice(0, index + 1));
+  };
 
   const onCanvasClick = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!preview || !current || !transformRef.current || !canvasRef.current) return;
@@ -152,7 +168,7 @@ export function useGeographicAtlasController(
       const regionIndex = preview.regionPreview.regionSet.membership.regionIndexByTopologyCell[cell];
       const region = preview.regionPreview.regionSet.regions[regionIndex];
       if (region && macroRegions.some((candidate) => candidate.id === region.id)) setSelectedRegionId(region.id);
-    } else if (current.level === 'region' && partition) {
+    } else if (partition) {
       const childIndex = partition.membership.childIndexByTopologyCell[cell];
       const entry = partition.children[childIndex];
       if (entry) setSelectedChildId(entry.id);
@@ -162,6 +178,7 @@ export function useGeographicAtlasController(
   return {
     navigation,
     current,
+    childLevel,
     partition,
     macroRegions,
     selectedRegionId,
@@ -177,8 +194,8 @@ export function useGeographicAtlasController(
     setShowHexes,
     openMacro,
     openSelectedRegion,
-    showSubregions,
-    openSelectedSubregion,
+    showChildren,
+    openSelectedChild,
     back,
     reset,
     navigateTo,
@@ -216,7 +233,7 @@ function drawLabels(
   for (const entry of labels) {
     const point = transform.geoToCanvasPoint(entry.point.latitude, entry.point.longitude);
     if (point.x < -30 || point.x > canvas.width + 30 || point.y < -20 || point.y > canvas.height + 20) continue;
-    const text = entry.label.replace(/^(Region|Subregion)\s+/i, '');
+    const text = entry.label.replace(/^(Region|Subregion|Local|Detail)\s+/i, '');
     context.lineWidth = entry.id === selectedId ? 4 : 3;
     context.strokeStyle = 'rgba(8, 12, 18, 0.9)';
     context.strokeText(text, point.x, point.y);
