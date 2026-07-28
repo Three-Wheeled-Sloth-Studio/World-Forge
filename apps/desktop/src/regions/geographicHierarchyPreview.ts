@@ -116,10 +116,12 @@ export function buildHierarchyChildren(
   preview: GeographicHierarchyPreview,
   parentMap: GeographicHierarchyOpenMap,
 ): GeographicHierarchyPartition {
-  const childLevel = nextHierarchyLevel(parentMap.level);
-  if (!childLevel || parentMap.level === 'macro-area') {
+  const parentLevel = parentMap.level;
+  if (parentLevel !== 'region' && parentLevel !== 'subregion' && parentLevel !== 'local') {
     throw new Error(`${parentMap.label} cannot generate hierarchy children.`);
   }
+  const childLevel = nextHierarchyLevel(parentLevel);
+  if (!childLevel) throw new Error(`${parentMap.label} has no deeper geographic level.`);
   return buildGeographicChildPartition(
     preview.regionPreview.topology,
     project.primaryWorld.topologyLayers,
@@ -127,7 +129,7 @@ export function buildHierarchyChildren(
       projectId: project.projectId,
       worldSeed: project.seed,
       parentId: parentMap.id,
-      parentLevel: parentMap.level,
+      parentLevel,
       childLevel,
       parentMembership: parentMap.membership,
       parentScale: parentMap.scale,
