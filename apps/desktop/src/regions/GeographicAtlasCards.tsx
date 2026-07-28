@@ -1,6 +1,7 @@
 import React from 'react';
 import { LoaderCircle, MapPinned, Mountain, Shapes, Waves } from 'lucide-react';
 import type {
+  GeographicHierarchyLevel,
   GeographicHierarchyPartition,
   GeographicMacroArea,
 } from '@world-forge/shared/geographicHierarchy';
@@ -58,7 +59,7 @@ function MacroAreaGroup({
 
 export function MapContract({ current }: { current: GeographicHierarchyOpenMap }) {
   return (
-    <div className="geographic-atlas-card">
+    <div className="geographic-atlas-card geographic-atlas-contract-card">
       <h3>Map contract</h3>
       <dl>
         <div><dt>Level</dt><dd>{current.level.replace('-', ' ')}</dd></div>
@@ -100,7 +101,8 @@ export function RegionSelection({
   );
 }
 
-export function SubregionSelection({
+export function HierarchyChildSelection({
+  childLevel,
   partition,
   selectedChildId,
   building,
@@ -108,6 +110,7 @@ export function SubregionSelection({
   onSelect,
   onOpen,
 }: {
+  childLevel: Exclude<GeographicHierarchyLevel, 'macro-area' | 'region'>;
   partition: GeographicHierarchyPartition | null;
   selectedChildId: string | null;
   building: boolean;
@@ -116,25 +119,35 @@ export function SubregionSelection({
   onOpen: () => void;
 }) {
   const selected = partition?.children.find((child) => child.id === selectedChildId) ?? null;
+  const plural = pluralLevel(childLevel);
   return (
     <div className="geographic-atlas-card">
-      <h3>Subregions</h3>
+      <h3>{titleCase(plural)}</h3>
       {!partition ? (
         <button type="button" className="primary-button" disabled={building} onClick={onShow}>
           {building ? <LoaderCircle className="geographic-atlas-spinner" size={15} /> : <Shapes size={15} />}
-          {building ? 'Generating subregions' : 'Show subregions'}
+          {building ? `Generating ${plural}` : `Show ${plural}`}
         </button>
       ) : (
         <>
           <p>{partition.children.length} deterministic children at {formatMiles(partition.scale.nominalHexWidthMiles)}.</p>
           <select value={selectedChildId ?? ''} onChange={(event) => onSelect(event.target.value)}>
-            <option value="">Select subregion</option>
+            <option value="">Select {childLevel}</option>
             {partition.children.map((child) => <option key={child.id} value={child.id}>{child.label}</option>)}
           </select>
           {selected && <NodeSummary label={selected.label} classification={selected.classification} land={selected.landAreaShare} water={selected.waterAreaShare} cells={selected.topologyCellCount} />}
-          <button type="button" className="primary-button" disabled={!selected} onClick={onOpen}><MapPinned size={15} />Open subregion</button>
+          <button type="button" className="primary-button" disabled={!selected} onClick={onOpen}><MapPinned size={15} />Open {childLevel}</button>
         </>
       )}
+    </div>
+  );
+}
+
+export function DetailTerminalCard() {
+  return (
+    <div className="geographic-atlas-card">
+      <h3>Detail level</h3>
+      <p>This is the terminal geographic level for the current hierarchy. The map remains world-anchored, deterministic, and constrained by its inherited parent facts.</p>
     </div>
   );
 }
@@ -168,4 +181,13 @@ function formatMiles(value: number): string {
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+function pluralLevel(level: string): string {
+  if (level === 'local') return 'local areas';
+  return `${level}s`;
+}
+
+function titleCase(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
