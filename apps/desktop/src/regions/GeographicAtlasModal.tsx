@@ -6,10 +6,11 @@ import type { GeographicHierarchyBuildStatus } from './GeographicHierarchyPanel'
 import type { GeographicHierarchyPreview } from './geographicHierarchyPreview';
 import { useGeographicAtlasController } from './useGeographicAtlasController';
 import {
+  DetailTerminalCard,
+  HierarchyChildSelection,
   MacroAreaChooser,
   MapContract,
   RegionSelection,
-  SubregionSelection,
 } from './GeographicAtlasCards';
 
 export function GeographicAtlasModal({
@@ -34,10 +35,10 @@ export function GeographicAtlasModal({
     <div className="geographic-atlas-backdrop" role="dialog" aria-modal="true" aria-label="Geographic atlas">
       <div className="geographic-atlas-modal">
         <header className="geographic-atlas-header">
-          <div>
-            <span className="geographic-atlas-eyebrow">Diagnostic hierarchy prototype</span>
+          <div className="geographic-atlas-heading">
+            <span className="geographic-atlas-eyebrow">Geographic atlas</span>
             <h2>{current ? current.label : project.projectName}</h2>
-            <div className="geographic-atlas-breadcrumbs">
+            <div className="geographic-atlas-breadcrumbs" aria-label="Geographic hierarchy">
               <button type="button" onClick={controller.reset}>World</button>
               {controller.navigation.map((entry, index) => (
                 <React.Fragment key={`${entry.level}:${entry.id}`}>
@@ -64,12 +65,13 @@ export function GeographicAtlasModal({
           <div className="geographic-atlas-workspace">
             <div className="geographic-atlas-map-column">
               <div className="geographic-atlas-toolbar">
-                <button type="button" className="secondary-button" onClick={controller.back}><ArrowLeft size={15} />Back to parent</button>
+                <button type="button" className="secondary-button" onClick={controller.back}><ArrowLeft size={15} />Back</button>
                 <div className="geographic-atlas-segmented" role="group" aria-label="Map presentation">
                   <button type="button" className={controller.presentation === 'natural' ? 'active' : ''} onClick={() => controller.setPresentation('natural')}>Natural</button>
                   <button type="button" className={controller.presentation === 'terrain' ? 'active' : ''} onClick={() => controller.setPresentation('terrain')}>Terrain</button>
                 </div>
                 <label><input type="checkbox" checked={controller.showHexes} onChange={(event) => controller.setShowHexes(event.target.checked)} />Hexes</label>
+                <span className="geographic-atlas-level-chip">{current.level.replace('-', ' ')}</span>
               </div>
               <div className="geographic-atlas-canvas-frame">
                 <canvas ref={controller.canvasRef} onClick={controller.onCanvasClick} />
@@ -85,25 +87,19 @@ export function GeographicAtlasModal({
                   onOpen={controller.openSelectedRegion}
                 />
               )}
-              {current.level === 'region' && (
-                <>
-                  <SubregionSelection
-                    partition={controller.partition}
-                    selectedChildId={controller.selectedChildId}
-                    building={controller.buildingChildren}
-                    onShow={controller.showSubregions}
-                    onSelect={controller.setSelectedChildId}
-                    onOpen={controller.openSelectedSubregion}
-                  />
-                  {controller.childError && <p className="geographic-atlas-error" role="alert">{controller.childError}</p>}
-                </>
+              {controller.childLevel && (
+                <HierarchyChildSelection
+                  childLevel={controller.childLevel}
+                  partition={controller.partition}
+                  selectedChildId={controller.selectedChildId}
+                  building={controller.buildingChildren}
+                  onShow={controller.showChildren}
+                  onSelect={controller.setSelectedChildId}
+                  onOpen={controller.openSelectedChild}
+                />
               )}
-              {current.level === 'subregion' && (
-                <div className="geographic-atlas-card">
-                  <h3>Subregion proof</h3>
-                  <p>This view retains world-relative hex coordinates and a seam-aware context rectangle. Local and detail children remain deferred.</p>
-                </div>
-              )}
+              {current.level === 'detail' && <DetailTerminalCard />}
+              {controller.childError && <p className="geographic-atlas-error" role="alert">{controller.childError}</p>}
             </aside>
           </div>
         )}
