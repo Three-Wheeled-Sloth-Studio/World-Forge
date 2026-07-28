@@ -110,7 +110,7 @@ export function HierarchyChildSelection({
   onSelect,
   onOpen,
 }: {
-  childLevel: Exclude<GeographicHierarchyLevel, 'macro-area' | 'region'>;
+  childLevel: Exclude<GeographicHierarchyLevel, 'macro-area'>;
   partition: GeographicHierarchyPartition | null;
   selectedChildId: string | null;
   building: boolean;
