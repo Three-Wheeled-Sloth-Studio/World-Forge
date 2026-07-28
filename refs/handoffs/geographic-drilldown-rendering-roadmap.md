@@ -6,91 +6,119 @@ Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
+Visible version: `0.3.20`
+
 Related handoff: `refs/handoffs/geographic-region-drilldown.md`
+
+Browser QA: `refs/testing/geographic-region-drilldown-qa.md`
+
+Tracking issue: `#10 [PI] Build canonical tile-window geographic drilldown`
 
 ## Status
 
-The adaptive hierarchy and world-relative hex contracts are working through subregion level. Initial browser inspection found the geographic breakdowns coherent enough to continue, but exposed presentation and depth limitations in the current prototype.
+PI 1, the canonical tile-window drilldown, is implemented on `dev` through detail level and is awaiting repository verification and browser acceptance.
 
-The next implementation should treat the current windowed raster renderer as a successful hierarchy proof, not the final regional-map rendering path.
+The implementation now includes:
 
-The material-transition and PBR sections in this roadmap are future-direction planning. They record the current preferred shape and the questions a visual proof should test. They are not locked architecture decisions.
+- a versioned tile-window contract;
+- extent-aware world-relative tile generation;
+- explicit parent and context tile roles;
+- clean 2D tile rendering;
+- a widescreen-first atlas;
+- generic region, subregion, local, and detail orchestration;
+- deterministic overlap, seam, and deeper-partition tests.
 
-## Browser findings
+The current implementation is not yet accepted because:
 
-1. Bias the atlas layout toward widescreen desktop use.
-2. Horizontal space is abundant; vertical space is the constrained dimension.
-3. The current title, breadcrumb, control bar, map, and diagnostics stack spends too much height before the user reaches the map.
-4. Region and subregion geography generally looks coherent.
-5. The hierarchy needs to continue through `local` and `detail` levels.
-6. Enlarging the existing world raster produces visibly soft, splotchy regional terrain.
-7. Explorer-style presentation or canonical hex-tile translation should replace direct raster enlargement at closer scales.
+- the available GitHub connector reports no workflow check results;
+- browser QA has not been completed for `0.3.20`;
+- exporter hex generation still owns a parallel classifier and must either move onto the canonical runtime classifier or be split into an explicitly approved follow-up.
 
-## Layout direction
+The former windowed raster renderer remains a successful hierarchy proof, not the production regional rendering path.
+
+3D and procedural material work remain blocked until the canonical tile model is verified and visually accepted.
+
+## Delivery workflow
+
+This is a single-developer repository.
+
+Routine work lands directly on `dev` in small functional commits. Accepted commits are promoted exactly through `qa` and `main`. Root `AGENTS.md` records this permanently.
+
+Do not create routine feature branches or pull requests unless the user explicitly changes the workflow.
+
+## Accepted layout direction
 
 Use a widescreen-first atlas composition:
 
 - compact title and breadcrumb row;
-- compact control row or controls integrated into the map header;
+- compact map controls;
 - map occupying the dominant center-left area;
-- diagnostics and selection details in a right-side inspector;
-- avoid vertically stacked cards beneath the map during normal navigation;
-- keep the selected map usable without page-level vertical scrolling at common desktop resolutions.
+- diagnostics and selection details in a bounded right-side inspector;
+- no vertically stacked cards beneath the map during normal desktop navigation;
+- no page-level vertical scrolling at common widescreen resolutions;
+- responsive stacking only at narrower breakpoints.
 
-Responsive behavior should preserve function on narrower windows, but widescreen is the primary product target.
+The `0.3.20` implementation applies this structure. Browser QA must validate `1920 x 1080` and `1440 x 900` behavior.
 
 ## Canonical tile translation layer
 
-The existing hex-tile export pipeline should be refactored into a reusable runtime translation layer rather than duplicated for drilldown.
+### Implemented runtime direction
 
-Current relevant implementation:
-
-- `packages/exporters/src/index.ts`
-- `generateHexTileMap(...)`
-- tile classification for biome, morphology, features, ridges, rivers, elevation, temperature, wetness, water, ice, and volcanism
-
-The runtime API should become extent-aware and world-anchored, approximately:
+The runtime API is now represented by:
 
 ```ts
-generateHexTileWindow({
+generateGeographicTileWindow({
   project,
+  topology,
   scale,
   extent,
   parentMembership,
-  contextPadding,
+  childMembership,
 });
 ```
 
-Required behavior:
+Required and implemented behavior includes:
 
-- generate only the selected seam-aware rectangular extent;
-- use adaptive world-relative `q/r` coordinates rather than restarting at `0,0`;
+- generate only the selected seam-aware extent;
+- use adaptive world-relative `q/r` coordinates;
 - preserve stable tile IDs across reopening and adjacent maps;
 - mark exact parent membership separately from contextual tiles;
 - preserve topology-cell provenance;
-- support continent, region, subregion, local, and detail levels;
-- feed 2D rendering, 3D rendering, JSON/SVG export, and later persistence from one canonical tile model.
+- support macro area, region, subregion, local, and detail maps;
+- keep canvas and presentation concerns out of the canonical contract;
+- generate a bounded halo for edge classification;
+- produce deterministic window signatures.
 
-The tile classifier belongs in generator-core or another shared generation package. Exporters should serialize or draw the canonical result rather than own the classification logic.
+### Contract locations
+
+- `packages/shared/src/geographicTileWindow.ts`
+- `packages/generator-core/src/geographicTileWindow.ts`
+
+### Remaining ownership correction
+
+The existing export pipeline in `packages/exporters/src/index.ts` still contains its established tile classifier.
+
+Before PI 1 is fully complete, choose one of these outcomes:
+
+1. Preferred: move exporter generation onto the canonical runtime classifier and retain exporter-only serialization and drawing.
+2. Explicit follow-up: accept the runtime slice after browser QA and track exporter convergence as the immediate next increment.
+
+Do not silently leave two long-lived geography classifiers without recording the decision.
 
 ## Deeper drilldown generation
 
-The next hierarchy levels should use inherited facts as constraints rather than simply enlarging the same source raster.
-
-Recommended flow:
+The implemented hierarchy path is:
 
 ```text
 Open parent
-  → choose adaptive scale and seam-aware extent
-  → generate canonical hex tile window
-  → translate inherited world facts into tile priors
-  → generate deterministic scale-appropriate detail
-  → classify tiles
-  → render in 2D or 3D
-  → partition into the next child level
+  -> choose adaptive scale and seam-aware extent
+  -> generate canonical tile window
+  -> classify inherited world facts
+  -> render in 2D
+  -> partition into the next child level
 ```
 
-Parent facts that must remain authoritative:
+Parent facts remain authoritative:
 
 - coastline and water identity;
 - broad elevation and slope tendency;
@@ -100,42 +128,63 @@ Parent facts that must remain authoritative:
 - geology and volcanism;
 - permanent ice and snow constraints.
 
-Child generation may add local relief, tributaries, terrain variation, vegetation patterns, wetlands, and other scale-appropriate detail without contradicting those inherited facts.
+The `0.3.20` implementation does not yet add a new authoritative high-resolution terrain simulation at local or detail scale. It samples and classifies inherited facts on finer world-relative windows.
+
+Browser QA must identify the point, if any, where the current topology becomes too coarse to support useful local or detail presentation. Any future scale-specific refinement must remain deterministic, world anchored, inherited-fact constrained, and replay neutral until separately approved.
 
 ## 2D rendering direction
 
-The first production rendering increment should use the canonical tile window to replace the enlarged world raster at region and deeper levels.
+### Implemented
 
-Possible presentations:
+`apps/desktop/src/regions/geographicTileWindowMap.ts` provides:
 
-- clean Explorer-style map;
-- direct hex-tile presentation using the existing classification rules;
-- optional Natural and Terrain presentations derived from tile facts;
-- parent, child, river, ridge, and selection overlays retained as separate layers.
+- direct hex-tile rendering;
+- Natural and Terrain presentations from the same tile facts;
+- water and ice treatment;
+- elevation and morphology differentiation;
+- rivers and ridges;
+- parent, child, selection, label, and optional hex overlays;
+- context dimming without removing neighboring terrain.
 
-This should be completed before investing heavily in 3D. Otherwise the 3D renderer will merely emboss the current splotchy source data.
+### Acceptance questions
+
+Browser QA must answer:
+
+1. Is the tile presentation materially cleaner than the enlarged raster at region and subregion scale?
+2. Does it remain useful at local and detail scale?
+3. Do river and ridge edges remain coherent across overlapping windows?
+4. Are biome and morphology boundaries readable without becoming noisy?
+5. Does context remain visible but subordinate?
+6. Does selection near boundaries match the visible tile side?
+7. Does the map remain interactive at the maximum `50 x 50` footprint?
+
+The 2D path must be accepted before 3D begins.
 
 ## 3D feasibility
 
-A regional 3D viewer is moderately involved and fits the existing stack. Three.js is already a project dependency.
+Decision status: planned next proof, not active implementation.
+
+Three.js is already available.
 
 Recommended geometry:
 
-1. Use tile centers and shared edge/corner vertices to build a continuous terrain mesh.
-2. Avoid independent raised hex columns except as a short-lived diagnostic.
+1. Use tile centers and shared edge or corner vertices to build a continuous terrain mesh.
+2. Avoid independent raised hex columns except as a temporary diagnostic.
 3. Render water as a separate continuous plane or mesh.
 4. Render rivers as ribbons following canonical river-edge paths.
 5. Keep the hex grid as an optional overlay and selection surface.
-6. Use instancing for repeated features such as trees, rocks, volcanoes, and settlement markers.
-7. Default to an orthographic or very shallow-perspective camera because this remains a map tool.
+6. Use instancing for repeated trees, rocks, volcanoes, and later settlement markers.
+7. Default to an orthographic or shallow-perspective camera because this remains a map tool.
 
-A basic 2.5D proof can be one focused PI. Production-quality regional 3D should be planned as several increments.
+A basic regional 2.5D proof can be one focused increment. Production regional 3D remains multiple increments.
 
 ## Procedural PBR direction
 
-Do not generate a separate full texture stack per tile.
+Decision status: future-direction hypothesis, not locked architecture.
 
-Use shared procedural material families with per-tile attributes:
+Do not generate a bespoke texture stack per tile.
+
+Use shared procedural material families driven by canonical tile attributes:
 
 - biome;
 - morphology;
@@ -147,12 +196,12 @@ Use shared procedural material families with per-tile attributes:
 - volcanism;
 - deterministic variation seed.
 
-Shared material families should cover at least:
+Candidate material families:
 
 - grassland;
 - forest;
 - desert;
-- rock;
+- exposed rock;
 - tundra;
 - snow;
 - ice;
@@ -161,33 +210,28 @@ Shared material families should cover at least:
 - marsh or bog;
 - volcanic terrain.
 
-Runtime shaders or procedural texture generation should derive:
+Runtime shaders or procedural texture generation may derive:
 
 - base color;
 - roughness;
 - normal detail;
 - limited height or displacement detail;
-- ambient occlusion approximation;
+- ambient-occlusion approximation;
 - snowline, shoreline, wet-ground, exposed-rock, and vegetation masks.
 
-Terrain metalness should remain zero except for explicitly modeled artificial features.
+Terrain metalness remains zero except for explicitly modeled artificial features.
 
-Texture atlases may be baked later for export or caching. Runtime rendering should prefer shared materials and batched geometry over thousands of unique tile materials.
+## Material-transition hypothesis
 
-## Exploratory material-transition direction
+The preferred hypothesis remains a hybrid:
 
-Decision status: **future-direction hypothesis, not locked**.
+- canonical tiles remain the simulation and selection units;
+- continuous window-level material weights blend across the rendered surface;
+- a small curated transition system handles physically meaningful boundaries.
 
-The current preferred approach is a hybrid rather than either of these extremes:
+### Window-level blend weights
 
-- allowing whole tiles to overlap neighboring tiles according to one universal material priority;
-- maintaining a combinatorial library of bespoke edge and corner textures for every possible material pairing.
-
-### Likely default: window-level blend weights
-
-Treat the tile as the simulation and selection unit, but blend terrain materials across a continuous map surface.
-
-Each translated tile may contribute weights for several shared material families, for example:
+A future translated tile may contribute several shared material weights, for example:
 
 ```ts
 {
@@ -197,58 +241,49 @@ Each translated tile may contribute weights for several shared material families
 }
 ```
 
-The opened map window should derive low-resolution control textures, commonly called splat maps, blend maps, control maps, or material-weight maps. Those control textures define material contribution across the complete contextual rectangle rather than assigning one unique texture stack to each tile.
+The opened window may derive low-resolution control or splat maps that:
 
-Expected behavior:
-
-- interpolate material weights across shared tile edges;
-- allow up to three meaningful contributors at a hex vertex;
-- normalize the final weights;
-- limit active contributors per rendered pixel to the strongest two or three material families;
-- use a compact active material palette for each opened map window;
-- use world-relative coordinates so adjacent or reopened windows reproduce the same transitions.
-
-A practical control-map density may start around four to sixteen samples per hex dimension and remain adjustable by zoom level and profiling evidence.
+- interpolate weights across shared tile edges;
+- normalize contributors;
+- keep only the strongest two or three contributors per rendered pixel;
+- use a compact active material palette;
+- remain stable across adjacent and reopened windows through world-relative coordinates.
 
 ### Transition shaping
 
-Pure center-to-center interpolation will preserve visible soft hex outlines. A later visual proof should test modest deterministic boundary distortion using:
+A future visual proof may test modest deterministic boundary distortion using:
 
-- low-frequency world-space procedural noise;
-- slope and exposed-rock evidence;
+- low-frequency world-space noise;
+- slope and rock evidence;
 - drainage and wetness;
 - temperature and snow coverage;
 - shoreline distance;
 - vegetation density.
 
-The distortion should break mechanical hex boundaries without moving a biome or terrain identity far enough to contradict the canonical tile classification.
+The distortion must not move a terrain identity far enough to contradict canonical tile classification.
 
-Presentation noise must remain deterministic, world-anchored, and non-authoritative.
+### Physical-cover priority
 
-### Layer priority remains useful for physical cover
-
-A compositing hierarchy may still be appropriate for materials that physically cover another surface. A candidate ordering is:
+A surface-cover hierarchy may remain useful:
 
 ```text
 base geology
-→ soil or sediment
-→ vegetation cover
-→ wetness or mud
-→ snow or ice
-→ ash, lava, or temporary deposits
-→ roads and constructed surfaces
+-> soil or sediment
+-> vegetation cover
+-> wetness or mud
+-> snow or ice
+-> ash, lava, or temporary deposits
+-> roads and constructed surfaces
 ```
 
-This hierarchy should define surface-cover behavior. It should not decide that one entire neighboring tile paints over another tile.
+This ordering governs physical cover. It does not allow one whole neighboring tile to paint over another.
 
 ### Curated special transitions
 
-A small curated transition system remains desirable where the boundary has physical or semantic meaning beyond ordinary material blending.
-
-Likely candidates:
+Likely candidates include:
 
 - coastline and beach;
-- shallow-water transition;
+- shallow water;
 - riverbank;
 - cliff edge;
 - snowline;
@@ -256,89 +291,43 @@ Likely candidates:
 - marsh boundary;
 - lava-flow edge;
 - road shoulder;
-- wall, embankment, or other constructed edge.
+- wall or embankment.
 
-Possible implementations include procedural edge geometry, decals, trim textures, signed-distance masks, or instanced boundary meshes. These systems should derive from canonical feature and edge data rather than infer important geography from color alone.
+Possible techniques include procedural edge geometry, decals, trim textures, signed-distance masks, or instanced boundary meshes. Important geography must derive from canonical feature and edge data rather than color inference.
 
-### Why not a complete pairwise transition atlas
+A complete pairwise edge-and-corner asset atlas is not the default core strategy because it grows combinatorially with materials, directions, corners, states, and three-way junctions.
 
-A full edge-and-corner atlas grows combinatorially as material families, directions, corner cases, moisture states, seasonal states, and three-way junctions are added. That approach may still be valid for a deliberately illustrated board-game presentation, but it is not the current preferred default for procedural PBR terrain.
+## Proof questions before locking materials
 
-The architecture should not prevent a future authored tile-art renderer from using curated edge assets. It should simply avoid making that asset matrix mandatory for the core geographic renderer.
+A future proof must answer:
 
-### Candidate runtime contract
-
-An exploratory tile-surface contract may eventually expose:
-
-```ts
-type TileSurfaceMaterial = {
-  primary: MaterialFamilyId;
-  secondary?: MaterialFamilyId;
-  secondaryWeight?: number;
-  soilMoisture: number;
-  vegetationDensity: number;
-  snowCoverage: number;
-  exposedRock: number;
-  sediment: number;
-  volcanicCover: number;
-  slope: number;
-  elevation: number;
-  shorelineDistance?: number;
-  riverDistance?: number;
-  seed: number;
-};
-```
-
-A map-window material result may eventually expose:
-
-```ts
-type TerrainMaterialWindow = {
-  extent: GeographicHierarchyMapExtent;
-  activeMaterials: MaterialFamilyId[];
-  blendMaps: BlendMap[];
-  waterMask: TextureData;
-  shorelineMask: TextureData;
-  riverMask: TextureData;
-  cliffMask: TextureData;
-};
-```
-
-These names and shapes are illustrative only. They must not be treated as accepted persistence or public API contracts.
-
-### Proof questions before locking direction
-
-A visual prototype should answer:
-
-1. Does window-level blending remove visible hex seams without making biome boundaries muddy?
-2. How much world-space noise is enough to break regularity without violating tile meaning?
-3. Can the renderer keep transitions stable across adjacent windows and hierarchy levels?
-4. How many active material families can be supported at the `50 x 50` maximum footprint without unacceptable GPU cost?
-5. Should 2D Explorer View and 3D PBR share the same blend maps or derive presentation-specific maps from the same tile attributes?
-6. Which boundaries require authored decals or geometry rather than shader blending?
+1. Do window-level blend maps remove mechanical hex seams without muddying meaningful biome boundaries?
+2. How much deterministic world-space distortion is useful without violating tile meaning?
+3. Can transitions remain stable across adjacent windows and hierarchy levels?
+4. How many active material families fit the `50 x 50` maximum footprint?
+5. Should 2D and 3D share blend maps or derive presentation-specific maps from the same attributes?
+6. Which boundaries require decals or geometry?
 7. How should seasonal or temporary cover interact with deterministic base materials?
-8. Is an authored transition-atlas presentation worth supporting as an optional renderer rather than a core dependency?
+8. Is an authored transition-atlas renderer worthwhile as an optional presentation?
 
-### Tentative implementation order
+## Revised implementation sequence
 
-1. Start with blend maps over simple biome colors.
-2. Add elevation shading, slope-driven rock, water, shoreline masks, and deterministic boundary distortion.
-3. Replace simple colors with shared PBR material families.
-4. Add explicit semantic transitions for shorelines, rivers, cliffs, snowlines, and roads.
-5. Add local feature instances and optional baked texture export.
+### PI 1: Canonical tile-window drilldown
 
-No material-transition implementation should begin before the extent-aware canonical tile-window model is stable.
+Implementation status: code present on `dev`, validation pending.
 
-## Recommended implementation sequence
+Remaining:
 
-### PI 1: Tile-window drilldown
-
-- extract tile classification from exporter ownership;
-- create extent-aware world-anchored tile windows;
-- replace region and subregion raster enlargement with a clean 2D tile renderer;
-- implement local and detail hierarchy levels;
-- retain deterministic IDs, exact membership, context, seam handling, and replay-neutral diagnostic behavior.
+- obtain a real `npm audit` and `npm run verify` result;
+- complete the browser QA matrix;
+- capture screenshots;
+- resolve exporter classifier ownership;
+- fix any overlap, seam, river, ridge, layout, or performance defects;
+- promote the exact accepted commit through `qa` and `main`.
 
 ### PI 2: Regional 3D proof
+
+Begin only after PI 1 acceptance.
 
 - continuous terrain mesh;
 - elevation and water;
@@ -366,20 +355,21 @@ No material-transition implementation should begin before the extent-aware canon
 - cached tile windows;
 - mesh and feature LOD;
 - optional baked PBR export;
-- profiling at the maximum `50 x 50` contextual footprint.
+- profiling at the maximum `50 x 50` footprint.
 
 ## Guardrails
 
 - Do not create a second geography model for 3D.
 - Do not let presentation-generated noise alter authoritative world facts.
 - Do not reset tile coordinates per parent map.
-- Do not make exporter-only structures the persisted hierarchy contract.
-- Do not use CSS zooming or enlarged source rasters as the production regional renderer.
+- Do not keep exporter-only structures as the long-term hierarchy contract.
+- Do not return to CSS zooming or enlarged source rasters as the regional renderer.
 - Do not generate one bespoke PBR texture stack per tile.
-- Do not require a complete pairwise edge-and-corner asset matrix for the core renderer.
-- Do not treat the exploratory material contracts in this document as accepted persistence contracts.
-- Do not activate or persist `world-regions-v2` as part of the rendering work without separate approval.
+- Do not require a complete pairwise transition atlas for the core renderer.
+- Do not treat exploratory material shapes as accepted persistence contracts.
+- Do not activate or persist `world-regions-v2` without separate approval.
+- Do not begin 3D or materials until PI 1 passes verification and browser QA.
 
 ## Immediate next slice
 
-The next implementation should be the extent-aware canonical tile-window PI, with a widescreen atlas layout correction included in the same user-visible increment. 3D and material-transition work should begin only after that tile model is producing clean and stable region, subregion, local, and detail maps.
+The immediate work is validation and hardening of the implemented canonical tile-window path, including exporter convergence. The regional 3D proof starts only after the `0.3.20` world-to-detail experience is accepted and promoted.
