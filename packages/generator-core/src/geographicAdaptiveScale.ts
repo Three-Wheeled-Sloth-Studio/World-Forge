@@ -69,6 +69,7 @@ export function deriveAdaptiveGeographicScale(
   );
 
   let best: CandidateResult | null = null;
+  let coarsest: Omit<CandidateResult, 'exactParentHexCount' | 'score'> | null = null;
   for (const nominalMiles of ladder) {
     const dimensions = worldHexDimensions(planetCircumferenceMiles, nominalMiles);
     const extent = extentForBounds(
@@ -81,6 +82,13 @@ export function deriveAdaptiveGeographicScale(
       maximumColumns,
       maximumRows,
     );
+    coarsest ??= { nominalMiles, dimensions, extent };
+
+    // An over-fine candidate already violates the footprint contract. Exact
+    // membership sampling across that enormous rectangle cannot make it valid,
+    // so reject it before doing potentially millions of topology lookups.
+    if (!extent.selectedMembershipFitsMaximum) continue;
+
     const exactParentHexCount = countExactParentHexes(
       topology,
       parentMembership,
@@ -100,6 +108,30 @@ export function deriveAdaptiveGeographicScale(
     if (!best || candidate.score < best.score || (
       candidate.score === best.score && candidate.nominalMiles < best.nominalMiles
     )) best = candidate;
+  }
+
+  // The coarsest candidate is bounded by the planet grid itself and is safe to
+  // sample. Keep it as an explicit no-crop fallback for unusual custom limits.
+  if (!best && coarsest) {
+    const exactParentHexCount = countExactParentHexes(
+      topology,
+      parentMembership,
+      coarsest.dimensions.columns,
+      coarsest.dimensions.rows,
+      coarsest.extent,
+    );
+    best = {
+      ...coarsest,
+      exactParentHexCount,
+      score: candidateScore(
+        coarsest.extent,
+        targetColumns,
+        targetRows,
+        maximumColumns,
+        maximumRows,
+        exactParentHexCount,
+      ),
+    };
   }
 
   if (!best) throw new Error('Adaptive geographic scale could not select a scale.');
