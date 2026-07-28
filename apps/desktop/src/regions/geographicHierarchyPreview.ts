@@ -4,6 +4,7 @@ import {
 } from '@world-forge/shared';
 import type {
   GeographicAdaptiveHexScale,
+  GeographicHierarchyLevel,
   GeographicHierarchyPartition,
   GeographicMacroArea,
   GeographicMacroAreaSet,
@@ -36,7 +37,7 @@ export type GeographicHierarchyPreview = {
 export type GeographicHierarchyOpenMap = {
   id: string;
   label: string;
-  level: 'macro-area' | 'region' | 'subregion';
+  level: GeographicHierarchyLevel;
   parentId: string | null;
   membership: Uint8Array;
   scale: GeographicAdaptiveHexScale;
@@ -66,7 +67,7 @@ export function openMacroAreaMap(
   const membership = macroAreaMembershipMask(preview.macroAreaSet, macroAreaId);
   const scaleResult = deriveAdaptiveGeographicScale(
     preview.regionPreview.topology,
-    project.primaryWorld.hexOverlay?.planetCircumferenceMiles ?? 24881,
+    planetCircumferenceMiles(project),
     membership,
   );
   return {
@@ -95,7 +96,7 @@ export function openRegionMap(
   );
   const scaleResult = deriveAdaptiveGeographicScale(
     preview.regionPreview.topology,
-    project.primaryWorld.hexOverlay?.planetCircumferenceMiles ?? 24881,
+    planetCircumferenceMiles(project),
     membership,
   );
   return {
@@ -110,26 +111,65 @@ export function openRegionMap(
   };
 }
 
-export function buildSubregions(
+export function buildHierarchyChildren(
   project: WorldProject,
   preview: GeographicHierarchyPreview,
-  regionMap: GeographicHierarchyOpenMap,
+  parentMap: GeographicHierarchyOpenMap,
 ): GeographicHierarchyPartition {
-  if (regionMap.level !== 'region') throw new Error('Subregions can only be generated for an open region.');
+  const childLevel = nextHierarchyLevel(parentMap.level);
+  if (!childLevel || parentMap.level === 'macro-area') {
+    throw new Error(`${parentMap.label} cannot generate hierarchy children.`);
+  }
   return buildGeographicChildPartition(
     preview.regionPreview.topology,
     project.primaryWorld.topologyLayers,
     {
       projectId: project.projectId,
       worldSeed: project.seed,
-      parentId: regionMap.id,
-      parentLevel: 'region',
-      childLevel: 'subregion',
-      parentMembership: regionMap.membership,
-      parentScale: regionMap.scale,
-      planetCircumferenceMiles: project.primaryWorld.hexOverlay?.planetCircumferenceMiles ?? 24881,
+      parentId: parentMap.id,
+      parentLevel: parentMap.level,
+      childLevel,
+      parentMembership: parentMap.membership,
+      parentScale: parentMap.scale,
+      planetCircumferenceMiles: planetCircumferenceMiles(project),
     },
   );
+}
+
+export function openHierarchyChildMap(
+  project: WorldProject,
+  preview: GeographicHierarchyPreview,
+  partition: GeographicHierarchyPartition,
+  childId: string,
+): GeographicHierarchyOpenMap {
+  const child = partition.children.find((entry) => entry.id === childId);
+  if (!child) throw new Error(`Unknown ${partition.hierarchyLevel} ${childId}.`);
+  const membership = childMembershipMask(partition, childId);
+  const scaleResult = deriveAdaptiveGeographicScale(
+    preview.regionPreview.topology,
+    planetCircumferenceMiles(project),
+    membership,
+    { maximumScaleMiles: partition.scale.nominalHexWidthMiles },
+  );
+  return {
+    id: child.id,
+    label: child.label,
+    level: child.level,
+    parentId: partition.parentId,
+    membership,
+    scale: scaleResult.scale,
+    extent: scaleResult.extent,
+    partition,
+  };
+}
+
+export function buildSubregions(
+  project: WorldProject,
+  preview: GeographicHierarchyPreview,
+  regionMap: GeographicHierarchyOpenMap,
+): GeographicHierarchyPartition {
+  if (regionMap.level !== 'region') throw new Error('Subregions can only be generated for an open region.');
+  return buildHierarchyChildren(project, preview, regionMap);
 }
 
 export function openSubregionMap(
@@ -138,25 +178,14 @@ export function openSubregionMap(
   partition: GeographicHierarchyPartition,
   childId: string,
 ): GeographicHierarchyOpenMap {
-  const child = partition.children.find((entry) => entry.id === childId);
-  if (!child) throw new Error(`Unknown subregion ${childId}.`);
-  const membership = childMembershipMask(partition, childId);
-  const scaleResult = deriveAdaptiveGeographicScale(
-    preview.regionPreview.topology,
-    project.primaryWorld.hexOverlay?.planetCircumferenceMiles ?? 24881,
-    membership,
-    { maximumScaleMiles: partition.scale.nominalHexWidthMiles },
-  );
-  return {
-    id: child.id,
-    label: child.label,
-    level: 'subregion',
-    parentId: partition.parentId,
-    membership,
-    scale: scaleResult.scale,
-    extent: scaleResult.extent,
-    partition,
-  };
+  return openHierarchyChildMap(project, preview, partition, childId);
+}
+
+export function nextHierarchyLevel(level: GeographicHierarchyLevel): GeographicHierarchyPartition['hierarchyLevel'] | null {
+  if (level === 'region') return 'subregion';
+  if (level === 'subregion') return 'local';
+  if (level === 'local') return 'detail';
+  return null;
 }
 
 export function regionsForMacroArea(
@@ -191,6 +220,15 @@ export function hierarchyCacheKey(
   ].join(':');
 }
 
+export function hierarchyLevelLabel(level: GeographicHierarchyLevel): string {
+  if (level === 'macro-area') return 'macro area';
+  return level;
+}
+
+function planetCircumferenceMiles(project: WorldProject): number {
+  return project.primaryWorld.hexOverlay?.planetCircumferenceMiles ?? 24881;
+}
+
 function previewAlgorithmKey(): string {
-  return 'geographic-hierarchy-v1:adaptive-world-hex-scale-v1:geographic-child-partition-v1';
+  return 'geographic-hierarchy-v1:adaptive-world-hex-scale-v1:geographic-child-partition-v1:geographic-tile-window-v1';
 }
