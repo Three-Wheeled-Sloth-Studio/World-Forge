@@ -220,17 +220,15 @@ export function useGeographicAtlasController(
     return partition.children[childIndex]?.id ?? null;
   };
 
-  const onCanvasClick = (event: MouseEvent<HTMLCanvasElement>) => {
+  const onCanvasClick = (event: MouseEvent<HTMLCanvasElement>): string | null => {
     const childId = childIdAtCanvasEvent(event);
     if (childId) setSelectedChildId(childId);
+    return childId;
   };
 
-  const onCanvasContextMenu = (event: MouseEvent<HTMLCanvasElement>) => {
+  const onCanvasContextMenu = (event: MouseEvent<HTMLCanvasElement>): string | null => {
     event.preventDefault();
-    const childId = childIdAtCanvasEvent(event);
-    if (!childId) return;
-    setSelectedChildId(childId);
-    openChildById(childId);
+    return onCanvasClick(event);
   };
 
   const onCanvasDoubleClick = (event: MouseEvent<HTMLCanvasElement>) => {
@@ -271,6 +269,7 @@ export function useGeographicAtlasController(
     openSelectedMacro,
     openSelectedRegion,
     showChildren,
+    openChildById,
     openSelectedChild,
     back,
     reset,
@@ -286,12 +285,12 @@ function resolvePresentation(
   presentation: GeographicDrilldownPresentation,
   level: GeographicHierarchyOpenMap['level'],
 ): { mode: 'overlay'; tilePresentation: GeographicTileWindowPresentation } | { mode: 'tiles'; tilePresentation: GeographicTileWindowPresentation } {
-  if (presentation === 'overlay') return { mode: 'overlay', tilePresentation: 'terrain' };
-  if (presentation === 'natural') return { mode: 'tiles', tilePresentation: 'natural' };
-  if (presentation === 'terrain' || presentation === 'tiles') return { mode: 'tiles', tilePresentation: 'terrain' };
-  return level === 'macro-area'
-    ? { mode: 'overlay', tilePresentation: 'terrain' }
-    : { mode: 'tiles', tilePresentation: 'terrain' };
+  if (presentation === 'overlay') return { mode: 'overlay', tilePresentation: 'natural' };
+  if (presentation === 'terrain') return { mode: 'tiles', tilePresentation: 'terrain' };
+  if (presentation === 'natural' || presentation === 'tiles') return { mode: 'tiles', tilePresentation: 'natural' };
+  return level === 'local' || level === 'detail'
+    ? { mode: 'tiles', tilePresentation: 'natural' }
+    : { mode: 'overlay', tilePresentation: 'natural' };
 }
 
 function drawLabels(
