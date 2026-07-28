@@ -11,7 +11,8 @@
 .geographic-atlas-area-group h3,
 .geographic-atlas-intro,
 .geographic-atlas-toolbar,
-.geographic-atlas-breadcrumbs {
+.geographic-atlas-breadcrumbs,
+.geographic-atlas-heading {
   display: flex;
   align-items: center;
 }
@@ -29,10 +30,11 @@
 .geographic-atlas-launcher-heading small,
 .geographic-atlas-eyebrow {
   color: #bda96e;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .geographic-atlas-launcher > button {
@@ -53,53 +55,71 @@
   z-index: 10000;
   display: grid;
   place-items: center;
-  padding: 22px;
+  padding: 12px;
   background: rgba(5, 8, 12, 0.86);
   backdrop-filter: blur(5px);
 }
 
 .geographic-atlas-modal {
-  width: min(1500px, 96vw);
-  height: min(940px, 94vh);
+  width: min(1680px, 98vw);
+  height: min(1040px, 96vh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(222, 201, 143, 0.34);
-  border-radius: 14px;
+  border-radius: 12px;
   background: #11171e;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
 }
 
 .geographic-atlas-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 16px 18px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 7px 12px;
   border-bottom: 1px solid rgba(191, 173, 124, 0.2);
   background: linear-gradient(180deg, rgba(45, 50, 57, 0.82), rgba(25, 31, 39, 0.82));
 }
 
+.geographic-atlas-heading {
+  min-width: 0;
+  flex: 1;
+  gap: 10px;
+}
+
 .geographic-atlas-header h2 {
-  margin: 3px 0 5px;
-  font-size: 1.35rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .geographic-atlas-breadcrumbs {
-  flex-wrap: wrap;
-  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+  overflow-x: auto;
   color: rgba(238, 235, 222, 0.62);
+  scrollbar-width: thin;
 }
 
 .geographic-atlas-breadcrumbs button {
+  flex: 0 0 auto;
   border: 0;
-  padding: 2px 4px;
+  padding: 2px 3px;
   color: inherit;
   background: transparent;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.geographic-atlas-breadcrumbs button:hover {
+.geographic-atlas-breadcrumbs button:hover,
+.geographic-atlas-breadcrumbs button:focus-visible {
   color: #fff4c7;
 }
 
@@ -127,13 +147,13 @@
 .geographic-atlas-chooser {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  padding: 16px;
 }
 
 .geographic-atlas-intro {
   gap: 12px;
-  margin-bottom: 22px;
-  padding: 15px;
+  margin-bottom: 16px;
+  padding: 12px;
   border-radius: 10px;
   background: rgba(78, 91, 103, 0.22);
 }
@@ -150,11 +170,11 @@
 }
 
 .geographic-atlas-area-group {
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .geographic-atlas-area-group h3 {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .geographic-atlas-area-grid {
@@ -168,7 +188,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  min-height: 100px;
+  min-height: 96px;
   padding: 12px;
   border: 1px solid rgba(191, 173, 124, 0.23);
   border-radius: 9px;
@@ -178,7 +198,8 @@
   cursor: pointer;
 }
 
-.geographic-atlas-area-grid button:hover {
+.geographic-atlas-area-grid button:hover,
+.geographic-atlas-area-grid button:focus-visible {
   border-color: rgba(225, 202, 139, 0.66);
   background: rgba(42, 50, 59, 0.9);
 }
@@ -198,7 +219,7 @@
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
 }
 
 .geographic-atlas-map-column {
@@ -210,19 +231,36 @@
 }
 
 .geographic-atlas-toolbar {
-  gap: 10px;
-  min-height: 48px;
-  padding: 8px 12px;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 40px;
+  padding: 5px 8px;
   border-bottom: 1px solid rgba(191, 173, 124, 0.16);
   background: rgba(20, 26, 33, 0.88);
 }
 
+.geographic-atlas-toolbar > button {
+  min-height: 30px;
+  padding: 4px 8px;
+}
+
 .geographic-atlas-toolbar label {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.geographic-atlas-level-chip {
+  margin-left: auto;
+  padding: 3px 7px;
+  border: 1px solid rgba(191, 173, 124, 0.22);
+  border-radius: 999px;
+  color: rgba(238, 235, 222, 0.68);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .geographic-atlas-segmented {
@@ -234,7 +272,7 @@
 
 .geographic-atlas-segmented button {
   border: 0;
-  padding: 6px 10px;
+  padding: 5px 9px;
   color: rgba(238, 235, 222, 0.67);
   background: transparent;
   cursor: pointer;
@@ -250,8 +288,8 @@
   flex: 1;
   display: grid;
   place-items: center;
-  overflow: auto;
-  padding: 14px;
+  overflow: hidden;
+  padding: 6px;
   background: #080d12;
 }
 
@@ -266,33 +304,36 @@
 }
 
 .geographic-atlas-inspector {
+  min-height: 0;
   overflow: auto;
-  padding: 12px;
+  padding: 8px;
   background: rgba(15, 21, 28, 0.96);
 }
 
 .geographic-atlas-card {
-  margin-bottom: 12px;
-  padding: 12px;
+  margin-bottom: 8px;
+  padding: 10px;
   border: 1px solid rgba(191, 173, 124, 0.2);
-  border-radius: 9px;
+  border-radius: 8px;
   background: rgba(29, 36, 44, 0.82);
 }
 
 .geographic-atlas-card h3 {
-  margin: 0 0 9px;
+  margin: 0 0 7px;
+  font-size: 0.94rem;
 }
 
 .geographic-atlas-card p {
+  margin: 6px 0;
   color: rgba(238, 235, 222, 0.65);
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .geographic-atlas-card select,
 .geographic-atlas-card > button {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 7px;
 }
 
 .geographic-atlas-card dl,
@@ -304,8 +345,8 @@
 .geographic-atlas-node-summary div {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 5px 0;
+  gap: 10px;
+  padding: 4px 0;
   border-bottom: 1px solid rgba(191, 173, 124, 0.1);
 }
 
@@ -320,10 +361,18 @@
   text-align: right;
 }
 
+.geographic-atlas-contract-card {
+  font-size: 0.76rem;
+}
+
 @media (max-width: 900px) {
-  .geographic-atlas-backdrop { padding: 8px; }
+  .geographic-atlas-backdrop { padding: 6px; }
   .geographic-atlas-modal { width: 100%; height: 100%; border-radius: 8px; }
-  .geographic-atlas-workspace { grid-template-columns: 1fr; }
-  .geographic-atlas-map-column { min-height: 58vh; border-right: 0; }
-  .geographic-atlas-inspector { border-top: 1px solid rgba(191, 173, 124, 0.18); }
+  .geographic-atlas-heading { flex-wrap: wrap; }
+  .geographic-atlas-eyebrow { display: none; }
+  .geographic-atlas-breadcrumbs { flex-basis: 100%; order: 3; }
+  .geographic-atlas-workspace { grid-template-columns: 1fr; overflow: auto; }
+  .geographic-atlas-map-column { min-height: 62vh; border-right: 0; }
+  .geographic-atlas-canvas-frame { overflow: auto; }
+  .geographic-atlas-inspector { overflow: visible; border-top: 1px solid rgba(191, 173, 124, 0.18); }
 }
