@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Compass, LoaderCircle, Map } from 'lucide-react';
+import { Compass, LoaderCircle, Map as MapIcon } from 'lucide-react';
 import type { WorldProject } from '@world-forge/shared';
 import type { GeographicHierarchyPartition } from '@world-forge/shared/geographicHierarchy';
 import {
@@ -61,7 +61,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
         <small>Drilldown</small>
       </div>
       <button type="button" className="secondary-button" onClick={start}>
-        {status === 'building' ? <LoaderCircle className="geographic-atlas-spinner" size={16} /> : <Map size={16} />}
+        {status === 'building' ? <LoaderCircle className="geographic-atlas-spinner" size={16} /> : <MapIcon size={16} />}
         {status === 'building' ? 'Building hierarchy' : 'Open geographic atlas'}
       </button>
       <p>World to continent or ocean basin to region to subregion. Map scales adapt to the selected geography.</p>
