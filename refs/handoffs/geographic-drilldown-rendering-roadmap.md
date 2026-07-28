@@ -1,6 +1,6 @@
 # Geographic Drilldown Rendering Roadmap
 
-Updated: 2026-07-27
+Updated: 2026-07-28
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
@@ -13,6 +13,8 @@ Related handoff: `refs/handoffs/geographic-region-drilldown.md`
 The adaptive hierarchy and world-relative hex contracts are working through subregion level. Initial browser inspection found the geographic breakdowns coherent enough to continue, but exposed presentation and depth limitations in the current prototype.
 
 The next implementation should treat the current windowed raster renderer as a successful hierarchy proof, not the final regional-map rendering path.
+
+The material-transition and PBR sections in this roadmap are future-direction planning. They record the current preferred shape and the questions a visual proof should test. They are not locked architecture decisions.
 
 ## Browser findings
 
@@ -172,6 +174,160 @@ Terrain metalness should remain zero except for explicitly modeled artificial fe
 
 Texture atlases may be baked later for export or caching. Runtime rendering should prefer shared materials and batched geometry over thousands of unique tile materials.
 
+## Exploratory material-transition direction
+
+Decision status: **future-direction hypothesis, not locked**.
+
+The current preferred approach is a hybrid rather than either of these extremes:
+
+- allowing whole tiles to overlap neighboring tiles according to one universal material priority;
+- maintaining a combinatorial library of bespoke edge and corner textures for every possible material pairing.
+
+### Likely default: window-level blend weights
+
+Treat the tile as the simulation and selection unit, but blend terrain materials across a continuous map surface.
+
+Each translated tile may contribute weights for several shared material families, for example:
+
+```ts
+{
+  grassland: 0.65,
+  exposedRock: 0.20,
+  wetSoil: 0.15,
+}
+```
+
+The opened map window should derive low-resolution control textures, commonly called splat maps, blend maps, control maps, or material-weight maps. Those control textures define material contribution across the complete contextual rectangle rather than assigning one unique texture stack to each tile.
+
+Expected behavior:
+
+- interpolate material weights across shared tile edges;
+- allow up to three meaningful contributors at a hex vertex;
+- normalize the final weights;
+- limit active contributors per rendered pixel to the strongest two or three material families;
+- use a compact active material palette for each opened map window;
+- use world-relative coordinates so adjacent or reopened windows reproduce the same transitions.
+
+A practical control-map density may start around four to sixteen samples per hex dimension and remain adjustable by zoom level and profiling evidence.
+
+### Transition shaping
+
+Pure center-to-center interpolation will preserve visible soft hex outlines. A later visual proof should test modest deterministic boundary distortion using:
+
+- low-frequency world-space procedural noise;
+- slope and exposed-rock evidence;
+- drainage and wetness;
+- temperature and snow coverage;
+- shoreline distance;
+- vegetation density.
+
+The distortion should break mechanical hex boundaries without moving a biome or terrain identity far enough to contradict the canonical tile classification.
+
+Presentation noise must remain deterministic, world-anchored, and non-authoritative.
+
+### Layer priority remains useful for physical cover
+
+A compositing hierarchy may still be appropriate for materials that physically cover another surface. A candidate ordering is:
+
+```text
+base geology
+→ soil or sediment
+→ vegetation cover
+→ wetness or mud
+→ snow or ice
+→ ash, lava, or temporary deposits
+→ roads and constructed surfaces
+```
+
+This hierarchy should define surface-cover behavior. It should not decide that one entire neighboring tile paints over another tile.
+
+### Curated special transitions
+
+A small curated transition system remains desirable where the boundary has physical or semantic meaning beyond ordinary material blending.
+
+Likely candidates:
+
+- coastline and beach;
+- shallow-water transition;
+- riverbank;
+- cliff edge;
+- snowline;
+- glacier edge;
+- marsh boundary;
+- lava-flow edge;
+- road shoulder;
+- wall, embankment, or other constructed edge.
+
+Possible implementations include procedural edge geometry, decals, trim textures, signed-distance masks, or instanced boundary meshes. These systems should derive from canonical feature and edge data rather than infer important geography from color alone.
+
+### Why not a complete pairwise transition atlas
+
+A full edge-and-corner atlas grows combinatorially as material families, directions, corner cases, moisture states, seasonal states, and three-way junctions are added. That approach may still be valid for a deliberately illustrated board-game presentation, but it is not the current preferred default for procedural PBR terrain.
+
+The architecture should not prevent a future authored tile-art renderer from using curated edge assets. It should simply avoid making that asset matrix mandatory for the core geographic renderer.
+
+### Candidate runtime contract
+
+An exploratory tile-surface contract may eventually expose:
+
+```ts
+type TileSurfaceMaterial = {
+  primary: MaterialFamilyId;
+  secondary?: MaterialFamilyId;
+  secondaryWeight?: number;
+  soilMoisture: number;
+  vegetationDensity: number;
+  snowCoverage: number;
+  exposedRock: number;
+  sediment: number;
+  volcanicCover: number;
+  slope: number;
+  elevation: number;
+  shorelineDistance?: number;
+  riverDistance?: number;
+  seed: number;
+};
+```
+
+A map-window material result may eventually expose:
+
+```ts
+type TerrainMaterialWindow = {
+  extent: GeographicHierarchyMapExtent;
+  activeMaterials: MaterialFamilyId[];
+  blendMaps: BlendMap[];
+  waterMask: TextureData;
+  shorelineMask: TextureData;
+  riverMask: TextureData;
+  cliffMask: TextureData;
+};
+```
+
+These names and shapes are illustrative only. They must not be treated as accepted persistence or public API contracts.
+
+### Proof questions before locking direction
+
+A visual prototype should answer:
+
+1. Does window-level blending remove visible hex seams without making biome boundaries muddy?
+2. How much world-space noise is enough to break regularity without violating tile meaning?
+3. Can the renderer keep transitions stable across adjacent windows and hierarchy levels?
+4. How many active material families can be supported at the `50 x 50` maximum footprint without unacceptable GPU cost?
+5. Should 2D Explorer View and 3D PBR share the same blend maps or derive presentation-specific maps from the same tile attributes?
+6. Which boundaries require authored decals or geometry rather than shader blending?
+7. How should seasonal or temporary cover interact with deterministic base materials?
+8. Is an authored transition-atlas presentation worth supporting as an optional renderer rather than a core dependency?
+
+### Tentative implementation order
+
+1. Start with blend maps over simple biome colors.
+2. Add elevation shading, slope-driven rock, water, shoreline masks, and deterministic boundary distortion.
+3. Replace simple colors with shared PBR material families.
+4. Add explicit semantic transitions for shorelines, rivers, cliffs, snowlines, and roads.
+5. Add local feature instances and optional baked texture export.
+
+No material-transition implementation should begin before the extent-aware canonical tile-window model is stable.
+
 ## Recommended implementation sequence
 
 ### PI 1: Tile-window drilldown
@@ -198,6 +354,7 @@ Texture atlases may be baked later for export or caching. Runtime rendering shou
 - shared biome material families;
 - deterministic color and normal variation;
 - roughness and moisture response;
+- window-level material blend maps;
 - snow and shoreline blending;
 - river ribbons;
 - instanced vegetation and terrain features.
@@ -218,8 +375,11 @@ Texture atlases may be baked later for export or caching. Runtime rendering shou
 - Do not reset tile coordinates per parent map.
 - Do not make exporter-only structures the persisted hierarchy contract.
 - Do not use CSS zooming or enlarged source rasters as the production regional renderer.
+- Do not generate one bespoke PBR texture stack per tile.
+- Do not require a complete pairwise edge-and-corner asset matrix for the core renderer.
+- Do not treat the exploratory material contracts in this document as accepted persistence contracts.
 - Do not activate or persist `world-regions-v2` as part of the rendering work without separate approval.
 
 ## Immediate next slice
 
-The next implementation should be the extent-aware canonical tile-window PI, with a widescreen atlas layout correction included in the same user-visible increment. 3D should begin only after that tile model is producing clean and stable region, subregion, local, and detail maps.
+The next implementation should be the extent-aware canonical tile-window PI, with a widescreen atlas layout correction included in the same user-visible increment. 3D and material-transition work should begin only after that tile model is producing clean and stable region, subregion, local, and detail maps.
