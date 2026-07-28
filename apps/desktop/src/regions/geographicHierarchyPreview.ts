@@ -117,7 +117,7 @@ export function buildHierarchyChildren(
   parentMap: GeographicHierarchyOpenMap,
 ): GeographicHierarchyPartition {
   const parentLevel = parentMap.level;
-  if (parentLevel !== 'region' && parentLevel !== 'subregion' && parentLevel !== 'local') {
+  if (!isHierarchyParentLevel(parentLevel)) {
     throw new Error(`${parentMap.label} cannot generate hierarchy children.`);
   }
   const childLevel = nextHierarchyLevel(parentLevel);
@@ -225,6 +225,12 @@ export function hierarchyCacheKey(
 export function hierarchyLevelLabel(level: GeographicHierarchyLevel): string {
   if (level === 'macro-area') return 'macro area';
   return level;
+}
+
+function isHierarchyParentLevel(
+  level: GeographicHierarchyLevel,
+): level is GeographicHierarchyPartition['parentLevel'] {
+  return level === 'region' || level === 'subregion' || level === 'local';
 }
 
 function planetCircumferenceMiles(project: WorldProject): number {
