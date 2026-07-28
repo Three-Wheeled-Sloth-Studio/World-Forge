@@ -20,6 +20,7 @@ const UNASSIGNED_INDEX = 0xffff;
 export type GeographicHierarchyBuildStatus = 'idle' | 'building' | 'ready' | 'error';
 
 type DrilldownController = ReturnType<typeof useGeographicAtlasController>;
+type DrilldownContextMenu = { x: number; y: number; label: string };
 
 export function GeographicHierarchyPanel({ project }: { project: WorldProject }) {
   const projectKey = geographicRegionPreviewProjectKey(project);
@@ -29,6 +30,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
   const [preview, setPreview] = useState<GeographicHierarchyPreview | null>(null);
   const [error, setError] = useState('');
   const [enabled, setEnabled] = useState(false);
+  const [inspectorActive, setInspectorActive] = useState(false);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
   const [mapTarget, setMapTarget] = useState<HTMLElement | null>(null);
   const controller = useGeographicAtlasController(project, preview, partitionCacheRef.current);
@@ -46,14 +48,25 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
     const locateTargets = () => {
       const nextToolbar = document.querySelector<HTMLElement>('.map-actions .layer-toggles');
       const nextMap = document.querySelector<HTMLElement>('.map-canvas-frame');
+      const diagnosticToggle = document.querySelector<HTMLButtonElement>('.diagnostic-toggle');
       setToolbarTarget((current) => current === nextToolbar ? current : nextToolbar);
       setMapTarget((current) => current === nextMap ? current : nextMap);
+      setInspectorActive(diagnosticToggle?.getAttribute('aria-pressed') === 'true');
     };
     locateTargets();
     const observer = new MutationObserver(locateTargets);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['aria-pressed'],
+      childList: true,
+      subtree: true,
+    });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (inspectorActive && controller.current) controller.reset();
+  }, [inspectorActive, controller.current?.id]);
 
   useEffect(() => {
     if (!mapTarget) return;
@@ -127,6 +140,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
           preview={preview}
           status={status}
           error={error}
+          inspectorActive={inspectorActive}
           mapTarget={mapTarget}
           controller={controller}
           onDisable={() => {
@@ -143,6 +157,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
           <small>{enabled ? (controller.current?.level ?? 'world') : 'off'}</small>
         </header>
         {!enabled && <p>Enable drill-down from the map toolbar to select geographic areas directly on the world map.</p>}
+        {enabled && inspectorActive && <p>Point diagnostics are active. Drill-down remains visible at world level while clicks go to the world inspector.</p>}
         {enabled && status === 'building' && <p>Building continent and ocean boundaries.</p>}
         {enabled && status === 'error' && <p className="geographic-atlas-error" role="alert">{error}</p>}
         {enabled && status === 'ready' && preview && (
@@ -157,9 +172,9 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
             </dl>
             <div className="geographic-drilldown-inspector-actions">
               {controller.current && <button type="button" className="secondary-button" onClick={controller.back}><ArrowLeft size={14} />Back</button>}
-              <button type="button" className="primary-button" disabled={!canOpen} onClick={openSelected}>Open selected</button>
+              <button type="button" className="primary-button" disabled={!canOpen || inspectorActive} onClick={openSelected}>Open selected</button>
             </div>
-            <p className="geographic-drilldown-help">Left-click selects. Right-click, double-click, or Enter opens the selected area.</p>
+            <p className="geographic-drilldown-help">Left-click selects. Right-click opens an action menu. Double-click or Enter opens the selected area.</p>
             {controller.childError && <p className="geographic-atlas-error" role="alert">{controller.childError}</p>}
           </>
         )}
@@ -173,6 +188,7 @@ function GeographicDrilldownSurface({
   preview,
   status,
   error,
+  inspectorActive,
   mapTarget,
   controller,
   onDisable,
@@ -181,11 +197,15 @@ function GeographicDrilldownSurface({
   preview: GeographicHierarchyPreview | null;
   status: GeographicHierarchyBuildStatus;
   error: string;
+  inspectorActive: boolean;
   mapTarget: HTMLElement;
   controller: DrilldownController;
   onDisable: () => void;
 }) {
   const current = controller.current;
+  const [contextMenu, setContextMenu] = useState<DrilldownContextMenu | null>(null);
+
+  useEffect(() => setContextMenu(null), [current?.id]);
 
   useEffect(() => {
     if (!preview || status !== 'ready' || current || !controller.canvasRef.current) return;
@@ -216,30 +236,46 @@ function GeographicDrilldownSurface({
     return macroAreaAtTopologyCell(preview, cell);
   };
 
-  const selectWorldMacro = (event: React.MouseEvent<HTMLCanvasElement>) => {
+  const selectWorldMacro = (event: React.MouseEvent<HTMLCanvasElement>): GeographicMacroArea | null => {
     const macroArea = macroAtEvent(event);
     if (macroArea) controller.setSelectedMacroId(macroArea.id);
+    return macroArea;
   };
 
   const openWorldMacro = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const macroArea = macroAtEvent(event);
-    if (!macroArea) return;
-    controller.setSelectedMacroId(macroArea.id);
-    controller.openMacro(macroArea);
+    const macroArea = selectWorldMacro(event);
+    if (macroArea) controller.openMacro(macroArea);
   };
 
   const onClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    setContextMenu(null);
     if (current) controller.onCanvasClick(event);
     else selectWorldMacro(event);
   };
 
   const onContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
-    if (current) controller.onCanvasContextMenu(event);
-    else openWorldMacro(event);
+    const rect = event.currentTarget.getBoundingClientRect();
+    let label: string | null = null;
+    if (current) {
+      const childId = controller.onCanvasContextMenu(event);
+      label = controller.partition?.children.find((entry) => entry.id === childId)?.label ?? null;
+    } else {
+      label = selectWorldMacro(event)?.label ?? null;
+    }
+    if (!label) {
+      setContextMenu(null);
+      return;
+    }
+    setContextMenu({
+      x: Math.max(8, Math.min(event.clientX - rect.left, rect.width - 190)),
+      y: Math.max(44, Math.min(event.clientY - rect.top, rect.height - 88)),
+      label,
+    });
   };
 
   const onDoubleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    setContextMenu(null);
     if (current) controller.onCanvasDoubleClick(event);
     else openWorldMacro(event);
   };
@@ -247,6 +283,10 @@ function GeographicDrilldownSurface({
   const onKeyDown = (event: React.KeyboardEvent<HTMLCanvasElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault();
+      if (contextMenu) {
+        setContextMenu(null);
+        return;
+      }
       if (current) controller.back();
       else onDisable();
       return;
@@ -255,9 +295,15 @@ function GeographicDrilldownSurface({
     else if (event.key === 'Enter') controller.openSelectedMacro();
   };
 
+  const openContextSelection = () => {
+    if (current) controller.openSelectedChild();
+    else controller.openSelectedMacro();
+    setContextMenu(null);
+  };
+
   return (
-    <div className={`geographic-drilldown-surface ${current ? 'drilled' : 'world'}`}>
-      <div className="geographic-drilldown-bar" onPointerDown={(event) => event.stopPropagation()}>
+    <div className={`geographic-drilldown-surface ${current ? 'drilled' : 'world'} ${inspectorActive ? 'inspecting' : ''}`}>
+      <div className="geographic-drilldown-bar" onPointerDown={(event) => { event.stopPropagation(); setContextMenu(null); }}>
         {current && <button type="button" className="icon-button" title="Back to parent" aria-label="Back to parent" onClick={controller.back}><ArrowLeft size={15} /></button>}
         <nav className="geographic-drilldown-breadcrumbs" aria-label="Geographic hierarchy">
           <button type="button" onClick={controller.reset}>World</button>
@@ -275,6 +321,7 @@ function GeographicDrilldownSurface({
             <button type="button" className={controller.presentation === 'tiles' ? 'active' : ''} onClick={() => controller.setPresentation('tiles')}>Tiles</button>
           </div>
         )}
+        {inspectorActive && <span className="geographic-drilldown-inspection-chip">Point inspector</span>}
         <label><input type="checkbox" checked={controller.showHexes} onChange={(event) => controller.setShowHexes(event.target.checked)} />Hexes</label>
         <button type="button" className="geographic-drilldown-exit" onClick={onDisable}>Exit</button>
       </div>
@@ -284,12 +331,24 @@ function GeographicDrilldownSurface({
         ref={controller.canvasRef}
         className="geographic-drilldown-canvas"
         aria-label={current ? `${current.label} drill-down map` : 'World geographic drill-down map'}
-        tabIndex={0}
+        aria-disabled={inspectorActive}
+        tabIndex={inspectorActive ? -1 : 0}
         onClick={onClick}
         onContextMenu={onContextMenu}
         onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
       />
+      {contextMenu && (
+        <div
+          className="geographic-drilldown-context-menu"
+          role="menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" onClick={openContextSelection}>Open {contextMenu.label}</button>
+          <button type="button" role="menuitem" onClick={() => setContextMenu(null)}>Keep selected</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -354,7 +413,7 @@ function drawWorldMacroOverlay(
       image.data[pixel] = selectedBoundary ? 255 : 238;
       image.data[pixel + 1] = selectedBoundary ? 221 : 232;
       image.data[pixel + 2] = selectedBoundary ? 139 : 211;
-      image.data[pixel + 3] = selectedBoundary ? 245 : 190;
+      image.data[pixel + 3] = selectedBoundary ? 245 : 220;
     }
   }
 
