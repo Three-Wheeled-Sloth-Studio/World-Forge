@@ -1,56 +1,58 @@
-# Current Handoff: Adaptive Geographic Drill-Down
+# Current Handoff: Canonical Geographic Tile-Window Drilldown
 
-Updated: 2026-07-27
+Updated: 2026-07-28
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-Visible version: `0.3.19`
+Visible version: `0.3.20`
 
 Predecessor: `refs/handoffs/geography-aware-macro-regions.md`
 
-Rendering follow-up: `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
+Rendering direction: `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
+
+Browser QA: `refs/testing/geographic-region-drilldown-qa.md`
+
+Tracking issue: `#10 [PI] Build canonical tile-window geographic drilldown`
+
+## Working model
+
+This repository is maintained by one active developer. Routine increments are implemented directly on `dev`, then the exact accepted commit is promoted through `qa` and `main`.
+
+The permanent directive is recorded in root `AGENTS.md`. Do not create feature branches or pull requests for ordinary implementation work unless the user explicitly changes this workflow.
 
 ## Status
 
-The first functional hierarchy prototype is implemented directly on `dev` and has completed an initial human browser pass through subregion level.
+The geographic hierarchy now has an implementation path from:
 
-The accepted `0.3.18` geography-aware region candidate remains diagnostic-only and is still not the authoritative saved-world region contract. The new drilldown is also in-memory and diagnostic. No generator-version, replay-compatibility, or saved-project schema change has been made.
+`World -> continent / archipelago / ocean basin -> region -> subregion -> local -> detail`
 
-Repository validation passed on the user checkout after:
+The initial hierarchy prototype through subregion remains diagnostic and in-memory. The new `0.3.20` work adds:
 
-- correcting the Lucide `Map` name collision;
-- patching adaptive-scale candidate evaluation so unusably fine scales are rejected before exact topology sampling;
-- updating the lockfile to patched PostCSS and NanoID versions;
-- confirming `npm audit` reports zero vulnerabilities;
-- confirming `npm run verify` passes.
+1. A versioned canonical geographic tile-window contract.
+2. An extent-aware, world-anchored runtime tile-window generator.
+3. Explicit parent versus context-only tile roles.
+4. Stable tile IDs based on adaptive scale and world-relative `q/r` coordinates.
+5. Seam-aware one-tile classification halos for bounded edge context.
+6. Deterministic river and ridge edge classification for regional rendering.
+7. A clean 2D canvas tile renderer with Natural and Terrain presentations.
+8. Heavy parent boundaries, lighter child boundaries, selection tint, labels, rivers, ridges, ice, and optional hex lines.
+9. Generic child orchestration through subregion, local, and detail.
+10. A widescreen-first atlas composition with compact navigation and a right-side inspector.
+11. Focused deterministic, overlap, seam, context-role, and deep-partition tests.
 
-The prototype now supports:
+The current implementation was committed directly to `dev` in small milestones. No saved-world schema, generator version, or replay contract was changed.
 
-1. World-level selection of continents, archipelagos, and provisional ocean basins.
-2. Adaptive continent or basin maps using a deterministic world-anchored hex scale.
-3. First-level region boundaries inside the selected macro area.
-4. Region selection and an explicit **Open region** action.
-5. On-demand deterministic subregion generation inside the exact selected-region membership.
-6. Subregion selection and an explicit **Open subregion** action.
-7. Reliable breadcrumb and parent navigation during the current session.
-8. Seam-aware rectangular context maps that retain terrain outside the selected parent.
+## Validation state
 
-## Initial browser verdict
+Validation is not yet accepted.
 
-The hierarchy and breakdowns look broadly credible. Region and subregion shapes are coherent enough to continue the approach.
-
-The main problems exposed by the browser pass are presentation and depth:
-
-- the atlas should bias toward a widescreen desktop layout;
-- horizontal space is plentiful, vertical space is constrained;
-- the current header, breadcrumbs, controls, map, and inspector consume too much height;
-- the hierarchy needs to continue through local and detail levels;
-- enlarged world-map raster data becomes visibly soft and splotchy at region and subregion scales;
-- Explorer-style rendering or canonical hex-tile translation should replace direct raster enlargement for close-scale maps.
-
-The current windowed raster renderer is therefore accepted as a hierarchy proof, not as the production rendering path for regional maps.
+- GitHub Actions is configured to run `npm run verify` on every push to `dev`.
+- The available GitHub connector has returned no check records for the implementation commits.
+- No claim is made that the current `dev` head passes until a real workflow result or user-checkout run confirms it.
+- Browser QA has not yet been completed for `0.3.20`.
+- Promotion to `qa` or `main` must wait for verification and the required browser pass.
 
 ## Resolved product rules
 
@@ -58,53 +60,45 @@ The current windowed raster renderer is therefore accepted as a hierarchy proof,
 
 Use:
 
-`World → continent / archipelago / ocean basin → region → subregion → local → detail`
+`World -> continent / archipelago / ocean basin -> region -> subregion -> local -> detail`
 
-The four `world-500mi` overview sectors remain simple navigation sectors. They are not geographic parents.
+The four `world-500mi` overview sectors remain navigation sectors, not geographic parents.
 
-Continents and archipelagos are derived from the accepted surface-domain model. Open-ocean display domains are exposed as provisional ocean basins. More nuanced ocean and sea chunking is desired, but is not a blocker for validating the land hierarchy and drilldown interaction.
+Continents and archipelagos derive from the accepted surface-domain model. Open-ocean display domains remain provisional ocean basins.
 
 ### Adaptive scales
 
 Hierarchy levels do not hardcode miles-per-hex values.
 
-The familiar 500, 60, 24, 6, and 1 mile values are reference points on a canonical scale ladder. The selected parent geography and the viewport footprint contract determine the actual scale.
+The familiar 500, 60, 24, 6, and 1 mile values are reference points on a canonical scale ladder. Selected geography and viewport footprint determine the actual scale.
 
 Every opened map targets:
 
 - hard minimum `10 x 10` contextual hexes;
 - preferred `20 x 20`;
-- hard maximum `50 x 50` where the selected membership can fit.
+- hard maximum `50 x 50` where selected membership can fit.
 
-The scale contract records:
-
-- nominal miles per hex;
-- global world-grid dimensions;
-- world-relative `q/r` ID format;
-- exact parent hex count;
-- contextual hex count;
-- seam behavior;
-- whether the selected membership fits the maximum footprint.
-
-### Exact membership versus context
+### Exact membership and context
 
 Child budgets use exact parent membership sampled through world-anchored hex centers.
 
-Rectangular map coverage is rendering context only. Context terrain outside the selected parent remains visible but cannot be selected as a child of the open parent.
+Rectangular coverage is rendering context only. Context terrain remains visible but cannot be selected as a child of the opened parent.
 
-### Small geographic features
+The tile-window contract records this as an explicit tile role rather than inferring it from color or overlay state.
 
-Display eligibility is recalculated at each generated scale.
+### Determinism
 
-The original geographic identity remains available through surface-domain metadata even when a small island or coastal feature is too small to own a useful display partition at a higher scale.
+- Tile IDs are world-relative and include the adaptive scale identity.
+- Tile coordinates do not restart at `0,0` inside each parent.
+- Overlapping windows must produce identical facts for the same tile ID.
+- Child IDs and memberships remain deterministic across close and reopen.
+- Presentation noise must not alter authoritative world facts.
 
-### Rendering
+### Persistence boundary
 
-The current drilldown uses a seam-aware windowed canvas renderer. It renders existing world facts into a geographic extent and does not use a CSS crop.
+This remains diagnostic and in-memory.
 
-The selected parent has a heavy high-contrast border. Child boundaries are lighter. Neighboring terrain remains visible across the full rectangle.
-
-For production regional and deeper maps, the selected extent should drive a canonical world-anchored hex-tile window. The tile window should feed both 2D and future 3D renderers from the same classified tile facts.
+Do not activate or persist `world-regions-v2`, macro areas, child partitions, or tile windows without a separate approved increment.
 
 ## Implemented contracts and engine
 
@@ -115,194 +109,186 @@ For production regional and deeper maps, the selected extent should drive a cano
 Defines:
 
 - scale-neutral hierarchy levels;
-- continent, archipelago, and ocean-basin macro areas;
-- adaptive hex-scale contracts;
-- seam-aware rectangular map extents;
-- generic hierarchy nodes;
-- deterministic child partitions;
-- versioned signatures.
+- macro areas;
+- adaptive scales;
+- seam-aware extents;
+- hierarchy nodes and partitions;
+- stable signatures.
 
-### Adaptive scale selection
+### Canonical tile-window contract
 
-`packages/generator-core/src/geographicAdaptiveScale.ts`
+`packages/shared/src/geographicTileWindow.ts`
 
-Provides:
+Defines:
 
-- deterministic scale selection from a canonical ladder;
-- world-anchored pointy odd-row coordinates;
-- compact seam-aware bounds;
-- exact parent-hex counting through topology membership;
-- contextual padding;
-- stable ID formats;
-- early rejection of over-fine candidates that already violate the maximum footprint.
+- `geographic-tile-window-v1`;
+- `geographic-tile-classifier-v1`;
+- source project, world, topology, scale, and extent identity;
+- stable world-relative tile identity;
+- topology-cell provenance;
+- parent versus context membership role;
+- optional child membership index;
+- biome, morphology, features, elevation, slope, climate, water, ice, volcanism, rivers, ridges, and plate facts;
+- deterministic window signature.
 
-### Macro areas
+The contract intentionally excludes canvas coordinates, UI colors, tooltip copy, 3D materials, and persistence concerns.
 
-`packages/generator-core/src/geographicMacroAreas.ts`
+### Extent-aware tile-window generator
 
-Builds macro parents from first-level display-domain ownership:
-
-- landmass domains become continents;
-- archipelago domains remain archipelagos;
-- open-ocean domains become provisional ocean basins;
-- macro membership covers the complete display-domain topology;
-- child first-level region IDs remain stable.
-
-The current ocean implementation generally yields one basin per open-ocean display domain. Subdivision into more natural ocean and sea units remains a later refinement.
-
-### Child partition
-
-`packages/generator-core/src/geographicChildPartition.ts`
-
-Generates children on demand from exact parent membership.
-
-The implementation:
-
-- detects disconnected parent components;
-- allocates at least one deterministic seed per component;
-- derives child count from exact next-scale hex coverage;
-- grows only through parent membership;
-- uses the established coastline, elevation, biome, climate, plate, lake, and river evidence;
-- completely covers all and only the parent;
-- produces stable IDs from project, world, parent, level, scale, and seed cell;
-- retains world-relative coordinates;
-- produces a deterministic partition signature.
-
-### Windowed renderer
-
-`apps/desktop/src/regions/geographicWindowedMap.ts`
+`packages/generator-core/src/geographicTileWindow.ts`
 
 Provides:
 
-- seam-aware rectangular rendering;
-- Natural and Terrain presentations;
-- context outside the selected parent;
-- heavy parent boundaries;
-- child boundaries and selection tint;
-- a world-anchored hex overlay.
+- selected-extent generation rather than a fine full-world grid;
+- world-relative `q/r` iteration;
+- compact longitude wrapping;
+- exact parent and context role classification;
+- a one-tile halo for deterministic edge decisions;
+- stable river and ridge edges across overlapping windows;
+- deterministic window signatures.
 
-Known limitation: it resamples the existing world map and becomes visibly splotchy when enlarged. It should be superseded at region and deeper scales by the canonical tile-window rendering path.
+Current boundary: the runtime classifier mirrors established exporter classification behavior, but `packages/exporters/src/index.ts` still owns its existing parallel implementation. Moving exporter generation onto the canonical runtime classifier remains required before issue #10 is complete.
+
+### Generic hierarchy orchestration
+
+`apps/desktop/src/regions/geographicHierarchyPreview.ts`
+
+Now supports:
+
+- opening macro areas and regions;
+- generic child construction for region, subregion, and local parents;
+- opening subregion, local, and detail children through one path;
+- cache keys including project, algorithm versions, parent, child level, and scale.
+
+The established `buildGeographicChildPartition(...)` engine remains the source of child membership and stable child IDs.
+
+### Canonical 2D renderer
+
+`apps/desktop/src/regions/geographicTileWindowMap.ts`
+
+Provides:
+
+- direct tile-window rendering without enlarging the world raster;
+- Natural and Terrain fills from the same canonical tile facts;
+- context dimming;
+- heavy parent borders;
+- child boundaries and selected-child tint;
+- river and ridge rendering;
+- optional hex lines.
+
+The old `geographicWindowedMap.ts` remains available for geographic transforms and as historical hierarchy-proof code. The atlas no longer uses its raster enlargement as the primary map surface.
 
 ### Atlas UI
 
 Relevant files:
 
-- `apps/desktop/src/regions/GeographicHierarchyPanel.tsx`
 - `apps/desktop/src/regions/GeographicAtlasModal.tsx`
 - `apps/desktop/src/regions/GeographicAtlasCards.tsx`
 - `apps/desktop/src/regions/useGeographicAtlasController.ts`
 - `apps/desktop/src/regions/geographicHierarchyPreview.ts`
 - `apps/desktop/src/regions/geographicHierarchy.css`
-- `apps/desktop/src/panels/RightPanel.tsx`
 
-The right-side World panel includes **Geographic atlas → Open geographic atlas**.
+The atlas now provides:
 
-The atlas provides:
-
-- continent, archipelago, and ocean-basin cards;
-- adaptive scale and footprint diagnostics;
-- Natural and Terrain toggles;
-- optional world-relative hex display;
-- region selection and opening;
-- on-demand subregion generation;
-- subregion selection and opening;
-- breadcrumb and parent navigation.
-
-## Existing tile translation work
-
-The current hex-tile export pipeline already classifies:
-
-- biome;
-- morphology;
-- elevation;
-- temperature;
-- wetness;
-- water and ice;
-- river strength and river edges;
-- ridge edges;
-- volcanism;
-- terrain and feature details.
-
-Relevant implementation begins in `packages/exporters/src/index.ts` with `generateHexTileMap(...)`.
-
-The next implementation should extract this classification into a canonical extent-aware runtime tile translation layer. Exporters should serialize or draw the shared tile model rather than own the classification logic.
+- a compact title and breadcrumb row;
+- compact map controls;
+- a dominant map area;
+- a bounded right-side inspector;
+- macro, region, subregion, local, and detail navigation;
+- generic child generation and selection;
+- a terminal detail-level card;
+- responsive stacking only at narrower widths.
 
 ## Automated coverage
 
-Focused tests cover:
+Existing tests continue to cover:
 
 - deterministic adaptive scale selection;
-- `10 x 10` through `50 x 50` viewport behavior;
-- compact longitude-seam extents;
-- exact parent membership;
+- `10 x 10` through `50 x 50` footprint behavior;
+- compact seam extents;
+- exact membership;
 - deterministic child IDs and signatures;
 - complete parent-only child coverage;
 - disconnected island components.
 
-The full repository suite passed after the adaptive-scale performance correction.
+New tests cover:
 
-## Browser inspection
+- deterministic tile-window signatures and tile facts;
+- stable tile IDs;
+- explicit parent and context roles;
+- overlapping-window fact equality;
+- seam-crossing world coordinates;
+- sequential subregion, local, and detail partition generation.
 
-Use:
+These tests are committed but are not recorded as passing until repository verification produces a real result.
 
-`refs/testing/geographic-region-drilldown-qa.md`
+## Required browser QA
 
-The initial pass completed at least one full:
+Use `refs/testing/geographic-region-drilldown-qa.md`.
 
-`World → archipelago → region → subregion`
+At minimum inspect:
 
-sequence and confirmed the hierarchy is usable enough to continue.
-
-Additional required coverage remains:
-
-- fixed seed `2850873 / 1001001`;
+- star seed `2850873`, world seed `1001001`;
 - world seed `9776542`;
-- one Pangea world;
-- a longitude-seam parent;
-- repeatability after closing and reopening;
-- larger-topology performance.
+- one fresh Archipelago preset;
+- one fresh Pangea preset;
+- one seam-crossing parent;
+- one maximum-footprint or larger-topology case.
+
+Complete at least one full:
+
+`World -> macro area -> region -> subregion -> local -> detail`
+
+Record:
+
+- commit SHA and visible version;
+- topology and map resolution;
+- every adaptive scale and viewport;
+- child counts and generation times;
+- overlap and reopen stability;
+- Natural and Terrain readability;
+- river, ridge, coastline, biome, and boundary continuity;
+- widescreen layout behavior;
+- screenshots under `refs/testing/`.
 
 ## Current boundaries
 
 This slice does not:
 
 - activate `world-regions-v2` as saved-world authority;
-- persist macro areas or child partitions;
-- generate new higher-resolution terrain facts;
+- persist hierarchy or tile-window results;
+- modify generator or replay compatibility;
+- produce final high-resolution erosion or hydrology simulation at local scales;
 - provide final URL routing or context menus;
-- generate local or detail children;
-- split a global open ocean into multiple scientifically named basins and seas;
-- provide production 3D terrain or procedural PBR materials;
-- define politics, cultures, settlements, roads, or resources.
+- scientifically decompose oceans and seas;
+- define politics, cultures, settlements, roads, or resources;
+- provide 3D terrain, PBR materials, blend maps, or procedural transition systems.
 
-The windowed renderer resamples the existing world map facts. Higher-resolution regional terrain generation and tile translation remain separate product increments.
+## Immediate next actions
 
-## Next owner priorities
+1. Obtain a real `npm audit` and `npm run verify` result for the current `dev` head.
+2. Fix any type, test, or build failures before browser evaluation.
+3. Complete the required browser QA matrix through detail level.
+4. Capture screenshots and record findings in the QA reference.
+5. Refactor exporter hex generation to consume the canonical classifier rather than retaining parallel ownership.
+6. Confirm overlapping windows and adjacent hierarchy levels preserve rivers, ridges, coastlines, and tile facts.
+7. Update this handoff and the rendering roadmap with the accepted verdict.
+8. Promote the exact accepted `dev` commit to `qa`, then `main`, following the established single-developer promotion process.
+9. Begin the regional 3D proof only after this tile model is accepted.
 
-Work directly on `dev`.
+## Acceptance boundary
 
-1. Read `refs/handoffs/geographic-drilldown-rendering-roadmap.md`.
-2. Refactor the existing hex-tile classifier into an extent-aware, world-anchored canonical tile-window generator.
-3. Correct the atlas to a widescreen-first layout with a compact header and right-side inspector.
-4. Replace direct raster enlargement at region and deeper levels with a clean 2D tile renderer.
-5. Implement local and detail hierarchy levels using inherited parent facts as constraints.
-6. Retain exact membership, context-only tiles, seam behavior, stable IDs, and deterministic regeneration.
-7. Complete the remaining browser QA worlds and capture screenshots under `refs/testing/`.
-8. Begin the 3D proof only after the canonical tile model is stable and visually cleaner than the current raster path.
+The tile-window increment is ready to promote when:
 
-## Acceptance boundary for the next slice
-
-The tile-window and deeper-drilldown slice is ready to advance when:
-
-- the atlas is usable without page-level vertical scrolling at a common widescreen desktop resolution;
-- region, subregion, local, and detail maps use canonical world-anchored tile windows;
-- exact parent membership remains distinct from contextual tiles;
-- tile IDs remain stable across reopening and adjacent windows;
-- coastlines, major rivers, ridges, climate, and biome remain consistent with parent facts;
-- close-scale maps are materially cleaner and more legible than the current enlarged raster;
-- local and detail children cover all and only their parent;
-- seam-crossing windows remain compact;
-- deterministic regeneration reproduces IDs and membership;
 - `npm audit` reports zero vulnerabilities;
 - `npm run verify` passes;
-- browser QA accepts the full world-to-detail path.
+- region, subregion, local, and detail maps use canonical world-anchored tile windows;
+- the full world-to-detail path passes browser QA;
+- the atlas requires no normal page-level vertical scrolling at a recorded widescreen resolution;
+- close-scale rendering is materially cleaner than the former enlarged raster;
+- exact parent membership remains distinct from contextual tiles;
+- tile IDs and facts remain stable across reopening and overlapping windows;
+- seam-crossing windows remain compact and usable;
+- local and detail children cover all and only their parent;
+- exporters consume the canonical classifier or the remaining duplication is explicitly split into a separately approved follow-up;
+- updated QA evidence and handoff status are committed to `dev`.
