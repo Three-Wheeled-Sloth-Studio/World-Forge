@@ -38,6 +38,15 @@
   width: 100%;
 }
 
+.geographic-drilldown-surface.inspecting {
+  pointer-events: none;
+}
+
+.geographic-drilldown-surface.inspecting .geographic-drilldown-bar,
+.geographic-drilldown-surface.inspecting .geographic-drilldown-context-menu {
+  pointer-events: auto;
+}
+
 .map-canvas-frame.geographic-drilldown-active > canvas,
 .map-canvas-frame.geographic-drilldown-active > .hex-overlay-canvas,
 .map-canvas-frame.geographic-drilldown-active > .inspection-map-marker,
@@ -56,6 +65,10 @@
   max-width: none;
   outline-offset: -3px;
   width: 100%;
+}
+
+.geographic-drilldown-surface.inspecting .geographic-drilldown-canvas {
+  cursor: default;
 }
 
 .geographic-drilldown-surface.world .geographic-drilldown-canvas {
@@ -151,6 +164,17 @@
   color: #fff2c0;
 }
 
+.geographic-drilldown-inspection-chip {
+  border: 1px solid rgba(157, 208, 209, 0.5);
+  border-radius: 999px;
+  color: #c9f0ec;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
 .geographic-drilldown-exit {
   flex: 0 0 auto;
 }
@@ -170,6 +194,37 @@
   top: 52px;
   transform: translateX(-50%);
   z-index: 7;
+}
+
+.geographic-drilldown-context-menu {
+  backdrop-filter: blur(8px);
+  background: rgba(20, 27, 32, 0.96);
+  border: 1px solid rgba(237, 226, 192, 0.48);
+  border-radius: 7px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+  display: grid;
+  gap: 3px;
+  min-width: 180px;
+  padding: 5px;
+  position: absolute;
+  z-index: 9;
+}
+
+.geographic-drilldown-context-menu button {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #f5efdf;
+  justify-content: flex-start;
+  min-height: 28px;
+  padding: 4px 7px;
+  text-align: left;
+}
+
+.geographic-drilldown-context-menu button:hover,
+.geographic-drilldown-context-menu button:focus-visible {
+  background: rgba(218, 185, 100, 0.2);
+  border-color: rgba(237, 226, 192, 0.25);
 }
 
 .geographic-drilldown-inspector {
@@ -272,5 +327,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .geographic-drilldown-inspection-chip {
+    display: none;
   }
 }
