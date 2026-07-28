@@ -5,7 +5,7 @@ import {
   type TopologyLayers,
 } from '@world-forge/shared';
 import { deriveAdaptiveGeographicScale } from './geographicAdaptiveScale';
-import { buildGeographicChildPartition } from './geographicChildPartition';
+import { buildGeographicChildPartition, childMembershipMask } from './geographicChildPartition';
 
 describe('geographic child partition', () => {
   it('covers all and only the parent with deterministic children', () => {
@@ -76,7 +76,73 @@ describe('geographic child partition', () => {
     expect(partition.children.length).toBeGreaterThanOrEqual(2);
     expect(partition.membership.childIndexByTopologyCell.some((value) => value !== 0xffff)).toBe(true);
   });
+
+  it('uses the same deterministic engine through local and detail levels', () => {
+    const topology = buildCubedSphereTopology(10);
+    const layers = syntheticLayers(topology.latitudes, topology.longitudes);
+    const regionMembership = new Uint8Array(topology.cellCount);
+    for (let cell = 0; cell < topology.cellCount; cell += 1) {
+      const latitude = topology.latitudes[cell] * 180 / Math.PI;
+      const longitude = topology.longitudes[cell] * 180 / Math.PI;
+      if (latitude >= -35 && latitude <= 45 && longitude >= -75 && longitude <= 45) regionMembership[cell] = 1;
+    }
+    const regionScale = deriveAdaptiveGeographicScale(topology, 24881, regionMembership).scale;
+    const subregions = buildGeographicChildPartition(topology, layers, {
+      projectId: 'deep-project',
+      worldSeed: 'deep-world',
+      parentId: 'region-deep',
+      parentLevel: 'region',
+      childLevel: 'subregion',
+      parentMembership: regionMembership,
+      parentScale: regionScale,
+      planetCircumferenceMiles: 24881,
+      targetChildCount: 3,
+    });
+    const subregionMembership = childMembershipMask(subregions, subregions.children[0].id);
+    const locals = buildGeographicChildPartition(topology, layers, {
+      projectId: 'deep-project',
+      worldSeed: 'deep-world',
+      parentId: subregions.children[0].id,
+      parentLevel: 'subregion',
+      childLevel: 'local',
+      parentMembership: subregionMembership,
+      parentScale: subregions.scale,
+      planetCircumferenceMiles: 24881,
+      targetChildCount: 2,
+    });
+    const localMembership = childMembershipMask(locals, locals.children[0].id);
+    const details = buildGeographicChildPartition(topology, layers, {
+      projectId: 'deep-project',
+      worldSeed: 'deep-world',
+      parentId: locals.children[0].id,
+      parentLevel: 'local',
+      childLevel: 'detail',
+      parentMembership: localMembership,
+      parentScale: locals.scale,
+      planetCircumferenceMiles: 24881,
+      targetChildCount: 2,
+    });
+
+    expect(subregions.hierarchyLevel).toBe('subregion');
+    expect(locals.hierarchyLevel).toBe('local');
+    expect(details.hierarchyLevel).toBe('detail');
+    expect(locals.children.every((child) => child.parentId === subregions.children[0].id)).toBe(true);
+    expect(details.children.every((child) => child.parentId === locals.children[0].id)).toBe(true);
+    expect(countAssigned(details.membership.childIndexByTopologyCell)).toBe(countSelected(localMembership));
+  });
 });
+
+function countAssigned(values: Uint16Array): number {
+  let count = 0;
+  for (const value of values) if (value !== 0xffff) count += 1;
+  return count;
+}
+
+function countSelected(values: Uint8Array): number {
+  let count = 0;
+  for (const value of values) if (value === 1) count += 1;
+  return count;
+}
 
 function syntheticLayers(latitudes: Float32Array, longitudes: Float32Array): TopologyLayers {
   const cellCount = latitudes.length;
