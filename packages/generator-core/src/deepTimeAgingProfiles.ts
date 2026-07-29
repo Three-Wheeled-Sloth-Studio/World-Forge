@@ -34,6 +34,7 @@ export const boundedThreeEraAgingProfile: DeepTimeAgingProfile = {
 export function deepTimeAgingProfileForWorkflow(workflowId: string | undefined): DeepTimeAgingProfile {
   return workflowId === 'core.performance-foundation'
     || workflowId === 'core.performance-foundation-aging-control'
+    || workflowId === 'core.performance-foundation-derived-control'
     ? boundedThreeEraAgingProfile
     : legacyDeepTimeAgingProfile;
 }
