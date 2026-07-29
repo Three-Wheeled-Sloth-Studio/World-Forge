@@ -1,11 +1,17 @@
 import React from 'react';
 import { ChevronDown, RefreshCw, Shuffle, User } from 'lucide-react';
+import {
+  generationWorkflowDescriptor,
+  generationWorkflowDescriptors,
+  type GenerationWorkflowId
+} from '@world-forge/generator-core/workflows';
 import type { GenerationConfig } from '@world-forge/shared';
 import './generatorPanel.css';
 
 export type StarPresetId = 'sol-like' | 'habitable';
 
 type ExtendedGenerationConfig = GenerationConfig & {
+  workflowId?: GenerationWorkflowId;
   starPresetId?: StarPresetId;
   worldPresetId?: string;
   seeds?: { star?: string; world?: string };
@@ -60,9 +66,15 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
     onPresetChange, onPreviewResolutionChange, onExportResolutionChange, onOceanToleranceChange
   } = props;
   const extended = config as ExtendedGenerationConfig;
+  const workflow = generationWorkflowDescriptor(extended.workflowId);
   const starPresetId = extended.starPresetId === 'habitable' ? 'habitable' : 'sol-like';
   const starSeed = extended.seeds?.star || config.seed;
   const starPreset = starPresetOptions.find((option) => option.id === starPresetId) ?? starPresetOptions[0];
+
+  const updateWorkflow = (workflowId: GenerationWorkflowId) => onConfigChange({
+    ...config,
+    workflowId
+  } as GenerationConfig);
 
   const updateStarPreset = (next: StarPresetId) => onConfigChange({
     ...config,
@@ -102,6 +114,25 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
 
   return (
     <div className="generator-panel simplified-generator" role="tabpanel" aria-label="World generator">
+      <section className="generator-section" aria-labelledby="workflow-settings-heading">
+        <h3 id="workflow-settings-heading">Workflow</h3>
+        <div className="generator-field-row">
+          <label htmlFor="generation-workflow">Generation path</label>
+          <select
+            id="generation-workflow"
+            value={workflow.id}
+            disabled={isGenerating}
+            title={workflow.description}
+            onChange={(event) => updateWorkflow(event.target.value as GenerationWorkflowId)}
+          >
+            {generationWorkflowDescriptors.map((option) => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+        <p className="generator-field-help">{workflow.description}</p>
+      </section>
+
       <div className="generator-primary-actions">
         <button type="button" className="secondary-button randomize-all-button" onClick={randomizeAll} title="Randomize star and world seeds"><Shuffle size={16} />Randomize All</button>
         <button type="button" className="primary-button" disabled={invalidRanges.length > 0 || isGenerating} onClick={onGenerate} title="Generate world"><RefreshCw size={16} />Generate</button>
