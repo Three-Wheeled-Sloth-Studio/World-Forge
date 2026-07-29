@@ -127,7 +127,23 @@ function withNodeRandom<TInput extends { rng: SeededRandom }, TOutput>(node: Gen
   };
 }
 
+// The production workflow preserves its existing shared-stream contract exactly.
 const liveWorkflowNodes: readonly RegisteredNode[] = [
+  topologyConstructionNode,
+  primordialTerrainNode,
+  plateConstructionNode,
+  crustFieldsNode,
+  topologyElevationNode,
+  terrainFinalizationNode,
+  waterGeologyNode,
+  climateGlaciationNode,
+  hydrologyBiomesNode,
+  projectionAssemblyNode
+];
+
+// The experimental workflow starts with the same semantic nodes but isolates
+// stochastic work by node so later edits cannot perturb unrelated downstream stages.
+const performanceFoundationWorkflowNodes: readonly RegisteredNode[] = [
   topologyConstructionNode,
   withNodeRandom(primordialTerrainNode),
   withNodeRandom(plateConstructionNode),
@@ -139,10 +155,6 @@ const liveWorkflowNodes: readonly RegisteredNode[] = [
   hydrologyBiomesNode,
   projectionAssemblyNode
 ];
-
-// Deliberately independent workflow list. Experimental implementations can replace
-// individual nodes here without mutating the live workflow or its A/B baseline.
-const performanceFoundationWorkflowNodes: readonly RegisteredNode[] = [...liveWorkflowNodes];
 
 function workflowNodes(workflowId: GenerationWorkflowId): readonly RegisteredNode[] {
   return workflowId === 'core.performance-foundation'
