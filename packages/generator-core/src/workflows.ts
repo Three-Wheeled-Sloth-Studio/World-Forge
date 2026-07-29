@@ -20,6 +20,11 @@ export type GenerationWorkflowDescriptor = {
   selectableInGenerator: boolean;
 };
 
+export type GenerationWorkflowDeepTimeFeatures = {
+  reusePresentClimateDerivedFields: boolean;
+  optimizeHydrologyTraversal: boolean;
+};
+
 export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.live-world';
 
 export const generationWorkflowDescriptors: readonly GenerationWorkflowDescriptor[] = [
@@ -77,4 +82,16 @@ export function generationWorkflowDescriptor(id: string | undefined): Generation
 
 export function normalizeGenerationWorkflowId(id: string | undefined): GenerationWorkflowId {
   return generationWorkflowDescriptor(id).id;
+}
+
+export function generationWorkflowDeepTimeFeatures(
+  id: string | undefined
+): GenerationWorkflowDeepTimeFeatures {
+  const workflowId = generationWorkflowDescriptor(id).id;
+  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation-derived-control'
+    || workflowId === 'core.performance-foundation';
+  return {
+    reusePresentClimateDerivedFields,
+    optimizeHydrologyTraversal: workflowId === 'core.performance-foundation'
+  };
 }

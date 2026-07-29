@@ -19,7 +19,11 @@ describe('deep-time aging profiles', () => {
   });
 
   it('uses three bounded eras for the candidate and reuse control workflows', () => {
-    for (const workflowId of ['core.performance-foundation-aging-control', 'core.performance-foundation']) {
+    for (const workflowId of [
+      'core.performance-foundation-aging-control',
+      'core.performance-foundation-derived-control',
+      'core.performance-foundation'
+    ]) {
       const profile = deepTimeAgingProfileForWorkflow(workflowId);
       const epochs = buildDeepTimeEpochs(9.5, profile);
       expect(profile.id).toBe(boundedThreeEraAgingProfile.id);

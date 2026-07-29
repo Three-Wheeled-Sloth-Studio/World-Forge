@@ -22,7 +22,9 @@ import {
   unitVectorToLonLat
 } from './fragmentSphericalTransform';
 import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';
+import { stableDescendingFloat32Indices, traceCachedDownstreamPath } from './hydrologyTraversal';
 import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
+import { generationWorkflowDeepTimeFeatures } from './workflows';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -2333,7 +2335,11 @@ function buildPresentClimateDiagnostics(
   };
 }
 
-function rebuildTopologyHydrology(project: DeepTimeProject, topology: CubedSphereTopology): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {
+function rebuildTopologyHydrology(
+  project: DeepTimeProject,
+  topology: CubedSphereTopology,
+  optimizeTraversal = false
+): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
   const count = topology.cellCount;
@@ -2361,7 +2367,9 @@ function rebuildTopologyHydrology(project: DeepTimeProject, topology: CubedSpher
     if (best < 0) layers.lakes[cell] = 1;
   }
 
-  const order = Array.from({ length: count }, (_, index) => index).sort((a, b) => layers.elevation[b] - layers.elevation[a]);
+  const order = optimizeTraversal
+    ? stableDescendingFloat32Indices(layers.elevation)
+    : Array.from({ length: count }, (_, index) => index).sort((a, b) => layers.elevation[b] - layers.elevation[a]);
   for (const cell of order) {
     const target = downstream[cell];
     if (target >= 0) accumulation[target] += accumulation[cell];
@@ -2375,10 +2383,15 @@ function rebuildTopologyHydrology(project: DeepTimeProject, topology: CubedSpher
     layers.river[cell] = clamp(accumulation[cell] / Math.max(0.001, maxAccumulation) / riverThreshold, 0, 1);
   }
 
-  const candidateSources = order
+  const candidateSources = Array.from(order)
     .filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04);
+  const routeCache = optimizeTraversal
+    ? new Map<number, { path: number[]; terminus: River['terminus'] }>()
+    : undefined;
   const tracedCandidates = candidateSources
-    .map((source) => traceHydrologyCandidate(source, downstream, layers, world.seaLevel, count))
+    .map((source) => routeCache
+      ? traceCachedHydrologyCandidate(source, downstream, layers, count, routeCache)
+      : traceHydrologyCandidate(source, downstream, layers, world.seaLevel, count))
     .filter((candidate) => candidate.path.length >= 5)
     .sort((a, b) => hydrologyTrunkScore(b, accumulation, layers, world.seaLevel) - hydrologyTrunkScore(a, accumulation, layers, world.seaLevel));
   const claimed = new Uint8Array(count);
@@ -2431,6 +2444,29 @@ function traceHydrologyCandidate(
   }
   void seaLevel;
   return { source, path, terminus };
+}
+
+function traceCachedHydrologyCandidate(
+  source: number,
+  downstream: Int32Array,
+  layers: DeepTimeProject['primaryWorld']['topologyLayers'],
+  maxSteps: number,
+  cache: Map<number, { path: number[]; terminus: River['terminus'] }>
+): HydrologyCandidate {
+  const route = traceCachedDownstreamPath({
+    source,
+    downstream,
+    maxSteps,
+    defaultTerminus: 'basin' as const,
+    terminusAt: (cell): River['terminus'] | undefined => {
+      if (layers.water[cell]) return 'ocean';
+      if (layers.lakes[cell]) return 'lake';
+      if (downstream[cell] < 0) return layers.wetness[cell] > 0.75 ? 'wetland' : 'basin';
+      return undefined;
+    },
+    cache
+  });
+  return { source, path: route.path, terminus: route.terminus };
 }
 
 function hydrologyTrunkScore(
@@ -2788,6 +2824,7 @@ export function applyDeepTimeFoundation(
   const fragmentLineageSeeds = captureFragmentLineageSeeds(mutable.primaryWorld.topologyLayers.plates, topology, plateLookup);
   const workflowId = (project.config as GenerationConfig & { workflowId?: string }).workflowId;
   const agingProfile = deepTimeAgingProfileForWorkflow(workflowId);
+  const workflowFeatures = generationWorkflowDeepTimeFeatures(workflowId);
   const epochs = buildDeepTimeEpochs(project.selectedValues.systemAgeGy, agingProfile);
   const forcingSamples: OrbitalForcingSample[] = [];
   let persistentIceCells = 0;
@@ -2888,11 +2925,10 @@ export function applyDeepTimeFoundation(
   const marineDepthAdjustedCells = shapeFinalMarineDepths(mutable.primaryWorld, topology);
 
   onProgress?.({ phase: 'reconciling', progress: 0.84, message: 'Rebuilding present-day climate and moisture' });
-  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation';
-  const climateRefresh = refreshTopologyClimate(mutable, topology, reusePresentClimateDerivedFields);
+  const climateRefresh = refreshTopologyClimate(mutable, topology, workflowFeatures.reusePresentClimateDerivedFields);
 
   onProgress?.({ phase: 'reconciling', progress: 0.89, message: 'Rebuilding drainage, rivers, lakes, and wetlands' });
-  const hydrology = rebuildTopologyHydrology(mutable, topology);
+  const hydrology = rebuildTopologyHydrology(mutable, topology, workflowFeatures.optimizeHydrologyTraversal);
   mutable.primaryWorld.rivers = hydrology.rivers;
   const finalWater = buildFinalWaterDiagnostics(mutable, topology, topologyWaterMaskCorrections, marineDepthAdjustedCells);
   const presentClimate = buildPresentClimateDiagnostics(mutable, topology, climateRefresh.derivedFields);

@@ -43,6 +43,15 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
         }
       : node);
   }
+  if (workflowId === 'core.performance-foundation-derived-control') {
+    return nodes.map((node) => node.id === 'world.deep-time-aging'
+      ? {
+          ...node,
+          implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-control',
+          version: '3-control'
+        }
+      : node);
+  }
   if (workflowId !== 'core.performance-foundation') return nodes;
   return nodes.map((node) => node.id === 'world.deep-time-aging'
     ? {
