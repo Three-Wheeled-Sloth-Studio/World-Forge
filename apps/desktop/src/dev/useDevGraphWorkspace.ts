@@ -230,7 +230,7 @@ export function useDevGraphWorkspace() {
 
   const actions = useMemo(() => ({
     selectNode: (id: string) => setSelectedNodeId((current) => current === id ? null : id),
-    setWorkflow: (workflowId: string) => markDirty({ workflowId }),
+    setWorkflow: (workflowId: GenerationWorkflowId) => markDirty({ workflowId }),
     setFidelity: (fidelity: string) => markDirty({ fidelity }),
     setSeed: (seed: string) => markDirty({ seed }),
     validate: () => setToolbar((current) => ({ ...current, validationStatus: 'valid' })),
