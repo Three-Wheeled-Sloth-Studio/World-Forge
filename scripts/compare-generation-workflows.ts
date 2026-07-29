@@ -47,6 +47,25 @@ type PairComparison = {
   runtimeDeltaPercent: number;
   signaturesEqual: boolean;
 };
+type WorkflowComparisonReport = {
+  format: 'world-forge-workflow-comparison';
+  version: 1;
+  generatedAt: string;
+  environment: {
+    node: string;
+    platform: string;
+    arch: string;
+    sourceCommit: string;
+  };
+  options: {
+    seeds: string[];
+    workflows: [GenerationWorkflowId, GenerationWorkflowId];
+    resolution: string;
+    runs: number;
+  };
+  results: WorkflowResult[];
+  comparisons: PairComparison[];
+};
 
 const args = parseArgs(process.argv.slice(2));
 const sourceCommit = process.env.GITHUB_SHA || process.env.SOURCE_COMMIT || args.sourceCommit || 'unknown';
@@ -64,7 +83,7 @@ for (const seed of args.seeds) {
 }
 
 const comparisons = comparePairs(results, args.workflows[0], args.workflows[1]);
-const report = {
+const report: WorkflowComparisonReport = {
   format: 'world-forge-workflow-comparison',
   version: 1,
   generatedAt: new Date().toISOString(),
@@ -236,7 +255,7 @@ function memorySnapshot(): MemorySnapshot {
   };
 }
 
-function renderMarkdown(report: typeof report): string {
+function renderMarkdown(report: WorkflowComparisonReport): string {
   return [
     '# Generation Workflow Comparison',
     '',
