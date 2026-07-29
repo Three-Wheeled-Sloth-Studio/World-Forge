@@ -18,17 +18,19 @@ describe('deep-time aging profiles', () => {
     expect(scheduledDeepTimeIterations(epochs)).toBe(103);
   });
 
-  it('uses three bounded eras for the experimental workflow', () => {
-    const profile = deepTimeAgingProfileForWorkflow('core.performance-foundation');
-    const epochs = buildDeepTimeEpochs(9.5, profile);
-    expect(profile.id).toBe(boundedThreeEraAgingProfile.id);
-    expect(epochs).toHaveLength(3);
-    expect(epochs.map((epoch) => epoch.climateSamples)).toEqual([1, 2, 2]);
-    expect(epochs.at(-1)?.endAgeMy).toBe(9500);
-    expect(scheduledDeepTimeIterations(epochs)).toBe(24);
+  it('uses three bounded eras for the candidate and reuse control workflows', () => {
+    for (const workflowId of ['core.performance-foundation-aging-control', 'core.performance-foundation']) {
+      const profile = deepTimeAgingProfileForWorkflow(workflowId);
+      const epochs = buildDeepTimeEpochs(9.5, profile);
+      expect(profile.id).toBe(boundedThreeEraAgingProfile.id);
+      expect(epochs).toHaveLength(3);
+      expect(epochs.map((epoch) => epoch.climateSamples)).toEqual([1, 2, 2]);
+      expect(epochs.at(-1)?.endAgeMy).toBe(9500);
+      expect(scheduledDeepTimeIterations(epochs)).toBe(24);
+    }
   });
 
-  it('keeps the semantic-seed control on legacy six-epoch aging', () => {
+  it('keeps the semantic-seed aging control on legacy six-epoch aging', () => {
     const profile = deepTimeAgingProfileForWorkflow('core.performance-foundation-control');
     const epochs = buildDeepTimeEpochs(4.6, profile);
     expect(profile.id).toBe(legacyDeepTimeAgingProfile.id);

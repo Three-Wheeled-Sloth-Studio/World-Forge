@@ -1,0 +1,3249 @@
+{
+  "format": "world-forge-workflow-comparison",
+  "version": 2,
+  "generatedAt": "2026-07-29T16:16:13.128Z",
+  "environment": {
+    "node": "v22.23.1",
+    "platform": "linux",
+    "arch": "x64",
+    "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a"
+  },
+  "options": {
+    "seeds": [
+      "1001001",
+      "3141592",
+      "8675309"
+    ],
+    "scenarios": [
+      "earthlike-standard",
+      "archipelago-standard",
+      "geology-glacial-stress"
+    ],
+    "workflows": [
+      "core.performance-foundation-aging-control",
+      "core.performance-foundation"
+    ],
+    "resolution": "512x256",
+    "runs": 1
+  },
+  "scenarioDefinitions": [
+    {
+      "id": "earthlike-standard",
+      "label": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "selectedValues": {
+        "systemAgeGy": 4.6,
+        "oceanPercentage": 66,
+        "averageTemperatureC": 15,
+        "aridity": 0.48,
+        "axialTiltDeg": 23.4,
+        "plateCount": 23,
+        "continentCount": 5,
+        "continentScale": 0.58,
+        "islandDensity": 0.38,
+        "impactFrequency": 1,
+        "riverDensity": 1.9
+      }
+    },
+    {
+      "id": "archipelago-standard",
+      "label": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "selectedValues": {
+        "systemAgeGy": 5.2,
+        "oceanPercentage": 72,
+        "averageTemperatureC": 17,
+        "aridity": 0.46,
+        "axialTiltDeg": 27,
+        "plateCount": 31,
+        "continentCount": 8,
+        "continentScale": 0.26,
+        "islandDensity": 0.84,
+        "impactFrequency": 1.15,
+        "riverDensity": 1.3
+      }
+    },
+    {
+      "id": "geology-glacial-stress",
+      "label": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "selectedValues": {
+        "systemAgeGy": 9.5,
+        "oceanPercentage": 62,
+        "averageTemperatureC": 2,
+        "aridity": 0.42,
+        "axialTiltDeg": 42,
+        "orbitalEccentricity": 0.14,
+        "plateCount": 60,
+        "continentCount": 7,
+        "continentScale": 0.62,
+        "islandDensity": 0.64,
+        "impactFrequency": 2.2,
+        "riverDensity": 2.8
+      }
+    }
+  ],
+  "results": [
+    {
+      "pairId": "earthlike-standard-1001001-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "earthlike-standard",
+      "scenarioLabel": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "seed": "1001001",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 8059.692,
+      "reportedTotalMs": 8058.847,
+      "memoryBefore": {
+        "rssMb": 107.1,
+        "heapUsedMb": 10.4,
+        "heapTotalMb": 17
+      },
+      "memoryAfter": {
+        "rssMb": 226.2,
+        "heapUsedMb": 56.6,
+        "heapTotalMb": 82.5
+      },
+      "outputSignature": "c7a9a832:bbf7a3d4:30045faa:41f771c1:4a896fa6:d117f1a1:74.6100:1.5100:80",
+      "authoritativeSignature": "wf-a1-541edba30d1f89a2",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 5497.052,
+        "attributedMs": 5256.952,
+        "unattributedMs": 240.1,
+        "attributionShare": 0.95632,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 35.14,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 9,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 140.467,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 66292,
+              "targetCells": 62323,
+              "movingFragments": 21,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9401285222952995
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 610.865,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 200492,
+              "affectedCellProcessTotal": 8101,
+              "tectonicOperations": 0,
+              "impactOperations": 4887,
+              "weatheringOperations": 17261,
+              "glacialOperations": 2190,
+              "coastalOperations": 6540
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 74.029,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 21,
+              "keyframeCount": 105,
+              "pairEvaluations": 1697,
+              "terrainResponseCellShare": 0.128581,
+              "volcanismResponseCellShare": 0.039012
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 129.469,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 4675,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 56028
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1962.621,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1480.365,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1863,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 823.996,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 33709,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 240.1,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 200492,
+              "depositedCells": 2366,
+              "depositionOperations": 4161,
+              "unclassifiedMutationOperations": 186800
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 74.61,
+        "icePercentage": 1.51,
+        "riverCount": 80,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "earthlike-standard-1001001-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "earthlike-standard",
+      "scenarioLabel": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "seed": "1001001",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 7014.598,
+      "reportedTotalMs": 7014.377,
+      "memoryBefore": {
+        "rssMb": 231.7,
+        "heapUsedMb": 63.8,
+        "heapTotalMb": 82.5
+      },
+      "memoryAfter": {
+        "rssMb": 237.3,
+        "heapUsedMb": 37.6,
+        "heapTotalMb": 74
+      },
+      "outputSignature": "c7a9a832:bbf7a3d4:30045faa:41f771c1:4a896fa6:d117f1a1:74.6100:1.5100:80",
+      "authoritativeSignature": "wf-a1-541edba30d1f89a2",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4852.806,
+        "attributedMs": 4634.133,
+        "unattributedMs": 218.673,
+        "attributionShare": 0.95494,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 30.1,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 9,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 125.381,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 66292,
+              "targetCells": 62323,
+              "movingFragments": 21,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9401285222952995
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 581.513,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 200492,
+              "affectedCellProcessTotal": 8101,
+              "tectonicOperations": 0,
+              "impactOperations": 4887,
+              "weatheringOperations": 17261,
+              "glacialOperations": 2190,
+              "coastalOperations": 6540
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 83.471,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 21,
+              "keyframeCount": 105,
+              "pairEvaluations": 1697,
+              "terrainResponseCellShare": 0.128581,
+              "volcanismResponseCellShare": 0.039012
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 127.827,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 4675,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 56028
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1927.883,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 943.418,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1863,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 814.54,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 33709,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 218.673,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 200492,
+              "depositedCells": 2366,
+              "depositionOperations": 4161,
+              "unclassifiedMutationOperations": 186800
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 74.61,
+        "icePercentage": 1.51,
+        "riverCount": 80,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "earthlike-standard-3141592-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "earthlike-standard",
+      "scenarioLabel": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "seed": "3141592",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 7506.556,
+      "reportedTotalMs": 7506.264,
+      "memoryBefore": {
+        "rssMb": 239.2,
+        "heapUsedMb": 47.7,
+        "heapTotalMb": 74
+      },
+      "memoryAfter": {
+        "rssMb": 238.9,
+        "heapUsedMb": 32.7,
+        "heapTotalMb": 74.6
+      },
+      "outputSignature": "7ad71a3d:0a821026:4f5d7b6e:4fcfd1f9:072086a1:875af7c3:74.3600:1.6600:80",
+      "authoritativeSignature": "wf-a1-892794ab0fc4b6b4",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 5291.024,
+        "attributedMs": 5087.526,
+        "unattributedMs": 203.498,
+        "attributionShare": 0.96154,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 35.117,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 8,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 89.098,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 50590,
+              "targetCells": 45613,
+              "movingFragments": 17,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9016208736904526
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 598.911,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 184843,
+              "affectedCellProcessTotal": 9144,
+              "tectonicOperations": 0,
+              "impactOperations": 4911,
+              "weatheringOperations": 18501,
+              "glacialOperations": 1967,
+              "coastalOperations": 8819
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 90.051,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 17,
+              "keyframeCount": 85,
+              "pairEvaluations": 964,
+              "terrainResponseCellShare": 0.111053,
+              "volcanismResponseCellShare": 0.033193
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 130.794,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2395,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 56643
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1912.598,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1483.713,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 4246,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 747.244,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 32560,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 203.498,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 184843,
+              "depositedCells": 2932,
+              "depositionOperations": 5037,
+              "unclassifiedMutationOperations": 169487
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 74.36,
+        "icePercentage": 1.66,
+        "riverCount": 80,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "earthlike-standard-3141592-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "earthlike-standard",
+      "scenarioLabel": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "seed": "3141592",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6340.65,
+      "reportedTotalMs": 6340.44,
+      "memoryBefore": {
+        "rssMb": 237.9,
+        "heapUsedMb": 26.4,
+        "heapTotalMb": 74.6
+      },
+      "memoryAfter": {
+        "rssMb": 240.1,
+        "heapUsedMb": 33.2,
+        "heapTotalMb": 68.9
+      },
+      "outputSignature": "7ad71a3d:0a821026:4f5d7b6e:4fcfd1f9:072086a1:875af7c3:74.3600:1.6600:80",
+      "authoritativeSignature": "wf-a1-892794ab0fc4b6b4",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4379.295,
+        "attributedMs": 4221.775,
+        "unattributedMs": 157.52,
+        "attributionShare": 0.96403,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 16.118,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 8,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 69.619,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 50590,
+              "targetCells": 45613,
+              "movingFragments": 17,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9016208736904526
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 592.956,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 184843,
+              "affectedCellProcessTotal": 9144,
+              "tectonicOperations": 0,
+              "impactOperations": 4911,
+              "weatheringOperations": 18501,
+              "glacialOperations": 1967,
+              "coastalOperations": 8819
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 28.374,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 17,
+              "keyframeCount": 85,
+              "pairEvaluations": 964,
+              "terrainResponseCellShare": 0.111053,
+              "volcanismResponseCellShare": 0.033193
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 127.248,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2395,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 56643
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1889.622,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 913.94,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 4246,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 583.898,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 32560,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 157.52,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 184843,
+              "depositedCells": 2932,
+              "depositionOperations": 5037,
+              "unclassifiedMutationOperations": 169487
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 74.36,
+        "icePercentage": 1.66,
+        "riverCount": 80,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "earthlike-standard-8675309-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "earthlike-standard",
+      "scenarioLabel": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "seed": "8675309",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 7133.193,
+      "reportedTotalMs": 7132.971,
+      "memoryBefore": {
+        "rssMb": 240.1,
+        "heapUsedMb": 25.6,
+        "heapTotalMb": 68.9
+      },
+      "memoryAfter": {
+        "rssMb": 242.9,
+        "heapUsedMb": 38.5,
+        "heapTotalMb": 75.2
+      },
+      "outputSignature": "b8f5eed0:378df7d8:afaf2fd8:986b4cfd:671f823c:97a4a56b:73.0300:1.8700:80",
+      "authoritativeSignature": "wf-a1-bcb4fbba6119364d",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 5123.164,
+        "attributedMs": 4943.041,
+        "unattributedMs": 180.123,
+        "attributionShare": 0.96484,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 24.151,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 14,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 145.637,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 81758,
+              "targetCells": 70780,
+              "movingFragments": 27,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8657256782210915
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 569.912,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 228615,
+              "affectedCellProcessTotal": 8332,
+              "tectonicOperations": 0,
+              "impactOperations": 4815,
+              "weatheringOperations": 14584,
+              "glacialOperations": 2065,
+              "coastalOperations": 6446
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 74.375,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 27,
+              "keyframeCount": 135,
+              "pairEvaluations": 2563,
+              "terrainResponseCellShare": 0.141022,
+              "volcanismResponseCellShare": 0.045431
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 119.791,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 5895,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 57015
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1904.298,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1512.657,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 2846,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 592.22,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 34705,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 180.123,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 228615,
+              "depositedCells": 2436,
+              "depositionOperations": 4017,
+              "unclassifiedMutationOperations": 215472
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 73.03,
+        "icePercentage": 1.87,
+        "riverCount": 80,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "earthlike-standard-8675309-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "earthlike-standard",
+      "scenarioLabel": "Earthlike standard activity",
+      "worldPresetId": "Earthlike",
+      "seed": "8675309",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6368.395,
+      "reportedTotalMs": 6368.08,
+      "memoryBefore": {
+        "rssMb": 242.9,
+        "heapUsedMb": 41.3,
+        "heapTotalMb": 75.2
+      },
+      "memoryAfter": {
+        "rssMb": 255.5,
+        "heapUsedMb": 58.3,
+        "heapTotalMb": 80.7
+      },
+      "outputSignature": "b8f5eed0:378df7d8:afaf2fd8:986b4cfd:671f823c:97a4a56b:73.0300:1.8700:80",
+      "authoritativeSignature": "wf-a1-bcb4fbba6119364d",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4442.163,
+        "attributedMs": 4251.412,
+        "unattributedMs": 190.751,
+        "attributionShare": 0.95706,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 29.056,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 14,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 143.954,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 81758,
+              "targetCells": 70780,
+              "movingFragments": 27,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8657256782210915
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 552.4,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 228615,
+              "affectedCellProcessTotal": 8332,
+              "tectonicOperations": 0,
+              "impactOperations": 4815,
+              "weatheringOperations": 14584,
+              "glacialOperations": 2065,
+              "coastalOperations": 6446
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 100.338,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 27,
+              "keyframeCount": 135,
+              "pairEvaluations": 2563,
+              "terrainResponseCellShare": 0.141022,
+              "volcanismResponseCellShare": 0.045431
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 119.473,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 5895,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 57015
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1892.482,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 902.014,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 2846,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 511.695,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 34705,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 190.751,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 228615,
+              "depositedCells": 2436,
+              "depositionOperations": 4017,
+              "unclassifiedMutationOperations": 215472
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 73.03,
+        "icePercentage": 1.87,
+        "riverCount": 80,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "archipelago-standard-1001001-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "archipelago-standard",
+      "scenarioLabel": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "seed": "1001001",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6636.222,
+      "reportedTotalMs": 6635.947,
+      "memoryBefore": {
+        "rssMb": 255.3,
+        "heapUsedMb": 60.6,
+        "heapTotalMb": 81.2
+      },
+      "memoryAfter": {
+        "rssMb": 262.3,
+        "heapUsedMb": 48.3,
+        "heapTotalMb": 82.4
+      },
+      "outputSignature": "c1e4bd0a:9a7ae7f0:ec5b56ee:54761623:508cd5fa:d32b20b1:70.1900:8.3100:55",
+      "authoritativeSignature": "wf-a1-c7b58103f985480b",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4698.614,
+        "attributedMs": 4542.929,
+        "unattributedMs": 155.685,
+        "attributionShare": 0.96687,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 29.693,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 104.771,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 81968,
+              "targetCells": 70479,
+              "movingFragments": 33,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8598355455787624
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 530.087,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 234102,
+              "affectedCellProcessTotal": 11239,
+              "tectonicOperations": 0,
+              "impactOperations": 6312,
+              "weatheringOperations": 15572,
+              "glacialOperations": 6916,
+              "coastalOperations": 7383
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 32.803,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 33,
+              "keyframeCount": 160,
+              "pairEvaluations": 3094,
+              "terrainResponseCellShare": 0.160828,
+              "volcanismResponseCellShare": 0.052297
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 122.291,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 5540,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 57337
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1898.125,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1342.497,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1119,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 482.662,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 37157,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 155.685,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 234102,
+              "depositedCells": 2714,
+              "depositionOperations": 4889,
+              "unclassifiedMutationOperations": 216263
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 70.19,
+        "icePercentage": 8.31,
+        "riverCount": 55,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "archipelago-standard-1001001-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "archipelago-standard",
+      "scenarioLabel": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "seed": "1001001",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6277.283,
+      "reportedTotalMs": 6277.076,
+      "memoryBefore": {
+        "rssMb": 261,
+        "heapUsedMb": 55.9,
+        "heapTotalMb": 82.4
+      },
+      "memoryAfter": {
+        "rssMb": 260.4,
+        "heapUsedMb": 65,
+        "heapTotalMb": 91.6
+      },
+      "outputSignature": "c1e4bd0a:9a7ae7f0:ec5b56ee:54761623:508cd5fa:d32b20b1:70.1900:8.3100:55",
+      "authoritativeSignature": "wf-a1-c7b58103f985480b",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4337.944,
+        "attributedMs": 4155.576,
+        "unattributedMs": 182.368,
+        "attributionShare": 0.95796,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 24.611,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 145.434,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 81968,
+              "targetCells": 70479,
+              "movingFragments": 33,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8598355455787624
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 517.618,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 234102,
+              "affectedCellProcessTotal": 11239,
+              "tectonicOperations": 0,
+              "impactOperations": 6312,
+              "weatheringOperations": 15572,
+              "glacialOperations": 6916,
+              "coastalOperations": 7383
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 90.176,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 33,
+              "keyframeCount": 160,
+              "pairEvaluations": 3094,
+              "terrainResponseCellShare": 0.160828,
+              "volcanismResponseCellShare": 0.052297
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 129.391,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 5540,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 57337
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1846.992,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 899.417,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1119,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 501.937,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 37157,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 182.368,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 234102,
+              "depositedCells": 2714,
+              "depositionOperations": 4889,
+              "unclassifiedMutationOperations": 216263
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 70.19,
+        "icePercentage": 8.31,
+        "riverCount": 55,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "archipelago-standard-3141592-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "archipelago-standard",
+      "scenarioLabel": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "seed": "3141592",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6759.743,
+      "reportedTotalMs": 6759.417,
+      "memoryBefore": {
+        "rssMb": 257.8,
+        "heapUsedMb": 72.5,
+        "heapTotalMb": 92.4
+      },
+      "memoryAfter": {
+        "rssMb": 251.4,
+        "heapUsedMb": 46,
+        "heapTotalMb": 81
+      },
+      "outputSignature": "1f16b0d1:5014f43e:de902572:8968dd34:4b1fa11f:d4535f91:75.4100:3.7800:55",
+      "authoritativeSignature": "wf-a1-3a0dc98e4420113c",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4839.763,
+        "attributedMs": 4650.443,
+        "unattributedMs": 189.32,
+        "attributionShare": 0.96088,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 16.568,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 8,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 94.184,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 52790,
+              "targetCells": 43785,
+              "movingFragments": 20,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.829418450464103
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 561.586,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 195405,
+              "affectedCellProcessTotal": 9139,
+              "tectonicOperations": 0,
+              "impactOperations": 6352,
+              "weatheringOperations": 15321,
+              "glacialOperations": 2818,
+              "coastalOperations": 8151
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 97,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 20,
+              "keyframeCount": 100,
+              "pairEvaluations": 1466,
+              "terrainResponseCellShare": 0.132568,
+              "volcanismResponseCellShare": 0.042409
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 122.256,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2207,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 62474
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1838.714,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1299.587,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1820,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 620.548,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 31459,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 189.32,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 195405,
+              "depositedCells": 2732,
+              "depositionOperations": 4650,
+              "unclassifiedMutationOperations": 180467
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 75.41,
+        "icePercentage": 3.78,
+        "riverCount": 55,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "archipelago-standard-3141592-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "archipelago-standard",
+      "scenarioLabel": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "seed": "3141592",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6130.775,
+      "reportedTotalMs": 6130.538,
+      "memoryBefore": {
+        "rssMb": 251.4,
+        "heapUsedMb": 36.6,
+        "heapTotalMb": 81
+      },
+      "memoryAfter": {
+        "rssMb": 260.8,
+        "heapUsedMb": 51,
+        "heapTotalMb": 77.8
+      },
+      "outputSignature": "1f16b0d1:5014f43e:de902572:8968dd34:4b1fa11f:d4535f91:75.4100:3.7800:55",
+      "authoritativeSignature": "wf-a1-3a0dc98e4420113c",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4218.092,
+        "attributedMs": 4057.56,
+        "unattributedMs": 160.532,
+        "attributionShare": 0.96194,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 21.377,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 8,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 72.918,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 52790,
+              "targetCells": 43785,
+              "movingFragments": 20,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.829418450464103
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 546.969,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 195405,
+              "affectedCellProcessTotal": 9139,
+              "tectonicOperations": 0,
+              "impactOperations": 6352,
+              "weatheringOperations": 15321,
+              "glacialOperations": 2818,
+              "coastalOperations": 8151
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 29.986,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 20,
+              "keyframeCount": 100,
+              "pairEvaluations": 1466,
+              "terrainResponseCellShare": 0.132568,
+              "volcanismResponseCellShare": 0.042409
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 124.158,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2207,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 62474
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1833.621,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 875.45,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1820,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 553.081,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 31459,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 160.532,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 195405,
+              "depositedCells": 2732,
+              "depositionOperations": 4650,
+              "unclassifiedMutationOperations": 180467
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 75.41,
+        "icePercentage": 3.78,
+        "riverCount": 55,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "archipelago-standard-8675309-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "archipelago-standard",
+      "scenarioLabel": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "seed": "8675309",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6870.643,
+      "reportedTotalMs": 6870.455,
+      "memoryBefore": {
+        "rssMb": 259.3,
+        "heapUsedMb": 56.9,
+        "heapTotalMb": 77.8
+      },
+      "memoryAfter": {
+        "rssMb": 261.3,
+        "heapUsedMb": 59.9,
+        "heapTotalMb": 80.9
+      },
+      "outputSignature": "71847522:a1a51aaa:c81beb65:35d7256f:facc5a62:156a9981:79.8400:0.1400:55",
+      "authoritativeSignature": "wf-a1-54094c50db98d477",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4915.913,
+        "attributedMs": 4734.576,
+        "unattributedMs": 181.337,
+        "attributionShare": 0.96311,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 30.382,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 108.03,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 85271,
+              "targetCells": 70468,
+              "movingFragments": 36,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8264005347656296
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 548.63,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 238245,
+              "affectedCellProcessTotal": 8750,
+              "tectonicOperations": 0,
+              "impactOperations": 6300,
+              "weatheringOperations": 18221,
+              "glacialOperations": 66,
+              "coastalOperations": 8740
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 86.474,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 36,
+              "keyframeCount": 180,
+              "pairEvaluations": 3239,
+              "terrainResponseCellShare": 0.160716,
+              "volcanismResponseCellShare": 0.052399
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 124.669,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 3845,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 57914
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1835.221,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1349.853,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1294,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 651.317,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 36139,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 181.337,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 238245,
+              "depositedCells": 3170,
+              "depositionOperations": 5374,
+              "unclassifiedMutationOperations": 223532
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 79.84,
+        "icePercentage": 0.14,
+        "riverCount": 55,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "archipelago-standard-8675309-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "archipelago-standard",
+      "scenarioLabel": "Archipelago standard activity",
+      "worldPresetId": "Archipelago",
+      "seed": "8675309",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6395.922,
+      "reportedTotalMs": 6395.784,
+      "memoryBefore": {
+        "rssMb": 259.4,
+        "heapUsedMb": 50.1,
+        "heapTotalMb": 81.6
+      },
+      "memoryAfter": {
+        "rssMb": 259.8,
+        "heapUsedMb": 54.3,
+        "heapTotalMb": 81.5
+      },
+      "outputSignature": "71847522:a1a51aaa:c81beb65:35d7256f:facc5a62:156a9981:79.8400:0.1400:55",
+      "authoritativeSignature": "wf-a1-54094c50db98d477",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4462.318,
+        "attributedMs": 4272.227,
+        "unattributedMs": 190.091,
+        "attributionShare": 0.9574,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 30.302,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 108.15,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 85271,
+              "targetCells": 70468,
+              "movingFragments": 36,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8264005347656296
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 531.198,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 238245,
+              "affectedCellProcessTotal": 8750,
+              "tectonicOperations": 0,
+              "impactOperations": 6300,
+              "weatheringOperations": 18221,
+              "glacialOperations": 66,
+              "coastalOperations": 8740
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 109.804,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 36,
+              "keyframeCount": 180,
+              "pairEvaluations": 3239,
+              "terrainResponseCellShare": 0.160716,
+              "volcanismResponseCellShare": 0.052399
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 122.796,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 3845,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 57914
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1838.619,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 881.773,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1294,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 649.585,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 36139,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 190.091,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 238245,
+              "depositedCells": 3170,
+              "depositionOperations": 5374,
+              "unclassifiedMutationOperations": 223532
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 79.84,
+        "icePercentage": 0.14,
+        "riverCount": 55,
+        "oceanWithinTolerance": false,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "geology-glacial-stress-1001001-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "geology-glacial-stress",
+      "scenarioLabel": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "seed": "1001001",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6966.407,
+      "reportedTotalMs": 6966.267,
+      "memoryBefore": {
+        "rssMb": 259.8,
+        "heapUsedMb": 59.8,
+        "heapTotalMb": 81.7
+      },
+      "memoryAfter": {
+        "rssMb": 268.9,
+        "heapUsedMb": 57.5,
+        "heapTotalMb": 85.9
+      },
+      "outputSignature": "ad56cb28:298005dc:b73b97c5:a6a93cdd:3f4a44a4:b311a918:60.8000:11.1600:118",
+      "authoritativeSignature": "wf-a1-da001c542e112ca9",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4907.888,
+        "attributedMs": 4744.077,
+        "unattributedMs": 163.811,
+        "attributionShare": 0.96662,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 29.062,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 29,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 99.549,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 76172,
+              "targetCells": 58898,
+              "movingFragments": 56,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.7732237567610145
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 590.833,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 253715,
+              "affectedCellProcessTotal": 18669,
+              "tectonicOperations": 0,
+              "impactOperations": 16337,
+              "weatheringOperations": 21178,
+              "glacialOperations": 10383,
+              "coastalOperations": 8777
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 37.972,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 56,
+              "keyframeCount": 280,
+              "pairEvaluations": 3527,
+              "terrainResponseCellShare": 0.198639,
+              "volcanismResponseCellShare": 0.063883
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 116.456,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 9431,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 50220
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1933.506,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1587.093,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 8145,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 349.606,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 41676,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 163.811,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 253715,
+              "depositedCells": 3738,
+              "depositionOperations": 6856,
+              "unclassifiedMutationOperations": 224955
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 60.8,
+        "icePercentage": 11.16,
+        "riverCount": 118,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "geology-glacial-stress-1001001-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "geology-glacial-stress",
+      "scenarioLabel": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "seed": "1001001",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6598.546,
+      "reportedTotalMs": 6598.399,
+      "memoryBefore": {
+        "rssMb": 267.2,
+        "heapUsedMb": 65.4,
+        "heapTotalMb": 85.9
+      },
+      "memoryAfter": {
+        "rssMb": 266,
+        "heapUsedMb": 52.4,
+        "heapTotalMb": 86.5
+      },
+      "outputSignature": "ad56cb28:298005dc:b73b97c5:a6a93cdd:3f4a44a4:b311a918:60.8000:11.1600:118",
+      "authoritativeSignature": "wf-a1-da001c542e112ca9",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4484.897,
+        "attributedMs": 4292.72,
+        "unattributedMs": 192.177,
+        "attributionShare": 0.95715,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 29.71,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 29,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 99.351,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 76172,
+              "targetCells": 58898,
+              "movingFragments": 56,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.7732237567610145
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 587.078,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 253715,
+              "affectedCellProcessTotal": 18669,
+              "tectonicOperations": 0,
+              "impactOperations": 16337,
+              "weatheringOperations": 21178,
+              "glacialOperations": 10383,
+              "coastalOperations": 8777
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 88.807,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 56,
+              "keyframeCount": 280,
+              "pairEvaluations": 3527,
+              "terrainResponseCellShare": 0.198639,
+              "volcanismResponseCellShare": 0.063883
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 119.531,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 9431,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 50220
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1959.118,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 994.532,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 8145,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 414.593,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 41676,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 192.177,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 253715,
+              "depositedCells": 3738,
+              "depositionOperations": 6856,
+              "unclassifiedMutationOperations": 224955
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 60.8,
+        "icePercentage": 11.16,
+        "riverCount": 118,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "geology-glacial-stress-3141592-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "geology-glacial-stress",
+      "scenarioLabel": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "seed": "3141592",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 7165.459,
+      "reportedTotalMs": 7165.318,
+      "memoryBefore": {
+        "rssMb": 266,
+        "heapUsedMb": 60.3,
+        "heapTotalMb": 86.5
+      },
+      "memoryAfter": {
+        "rssMb": 268.9,
+        "heapUsedMb": 58.9,
+        "heapTotalMb": 90
+      },
+      "outputSignature": "0a16268e:d8dcc518:b447bc0c:360ecd75:22942e43:29ef650c:68.6700:4.2800:118",
+      "authoritativeSignature": "wf-a1-75549c2d57a606d8",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 5083.322,
+        "attributedMs": 4889.768,
+        "unattributedMs": 193.554,
+        "attributionShare": 0.96192,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 20.793,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 63.291,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 44774,
+              "targetCells": 40258,
+              "movingFragments": 36,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8991378925269129
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 629.628,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 206454,
+              "affectedCellProcessTotal": 17777,
+              "tectonicOperations": 0,
+              "impactOperations": 16373,
+              "weatheringOperations": 24417,
+              "glacialOperations": 6149,
+              "coastalOperations": 9971
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 92.844,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 36,
+              "keyframeCount": 170,
+              "pairEvaluations": 1600,
+              "terrainResponseCellShare": 0.129567,
+              "volcanismResponseCellShare": 0.037181
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 117.921,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 3270,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 53066
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1924.246,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1565.062,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 6815,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 475.983,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 30201,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 193.554,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 206454,
+              "depositedCells": 4124,
+              "depositionOperations": 7329,
+              "unclassifiedMutationOperations": 178862
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 68.67,
+        "icePercentage": 4.28,
+        "riverCount": 118,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "geology-glacial-stress-3141592-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "geology-glacial-stress",
+      "scenarioLabel": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "seed": "3141592",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6493.831,
+      "reportedTotalMs": 6493.684,
+      "memoryBefore": {
+        "rssMb": 268.9,
+        "heapUsedMb": 53.2,
+        "heapTotalMb": 90
+      },
+      "memoryAfter": {
+        "rssMb": 267.6,
+        "heapUsedMb": 69.7,
+        "heapTotalMb": 96.3
+      },
+      "outputSignature": "0a16268e:d8dcc518:b447bc0c:360ecd75:22942e43:29ef650c:68.6700:4.2800:118",
+      "authoritativeSignature": "wf-a1-75549c2d57a606d8",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4392.454,
+        "attributedMs": 4233.153,
+        "unattributedMs": 159.301,
+        "attributionShare": 0.96373,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 14.042,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 65.694,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 44774,
+              "targetCells": 40258,
+              "movingFragments": 36,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8991378925269129
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 641.536,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 206454,
+              "affectedCellProcessTotal": 17777,
+              "tectonicOperations": 0,
+              "impactOperations": 16373,
+              "weatheringOperations": 24417,
+              "glacialOperations": 6149,
+              "coastalOperations": 9971
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 30.902,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 36,
+              "keyframeCount": 170,
+              "pairEvaluations": 1600,
+              "terrainResponseCellShare": 0.129567,
+              "volcanismResponseCellShare": 0.037181
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 120.082,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 3270,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 53066
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1985.556,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 963.834,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 6815,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 411.507,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 30201,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 159.301,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 206454,
+              "depositedCells": 4124,
+              "depositionOperations": 7329,
+              "unclassifiedMutationOperations": 178862
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 68.67,
+        "icePercentage": 4.28,
+        "riverCount": 118,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "geology-glacial-stress-8675309-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "geology-glacial-stress",
+      "scenarioLabel": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "seed": "8675309",
+      "workflowId": "core.performance-foundation-aging-control",
+      "workflowVersion": "0.1.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-0b04d0c0",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 7250.026,
+      "reportedTotalMs": 7249.875,
+      "memoryBefore": {
+        "rssMb": 267.9,
+        "heapUsedMb": 64.3,
+        "heapTotalMb": 97
+      },
+      "memoryAfter": {
+        "rssMb": 252.5,
+        "heapUsedMb": 28.5,
+        "heapTotalMb": 72.8
+      },
+      "outputSignature": "a0954065:b71709c0:d44eede5:71bc80ae:1d9995b7:6c8923a9:71.7000:0.7500:118",
+      "authoritativeSignature": "wf-a1-f08a4534affeabcd",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 5121.036,
+        "attributedMs": 4929.355,
+        "unattributedMs": 191.681,
+        "attributionShare": 0.96257,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 23.68,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 27,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 100.071,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 76568,
+              "targetCells": 60032,
+              "movingFragments": 54,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.7840351060495246
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 597.677,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 248925,
+              "affectedCellProcessTotal": 14832,
+              "tectonicOperations": 0,
+              "impactOperations": 16377,
+              "weatheringOperations": 22453,
+              "glacialOperations": 1307,
+              "coastalOperations": 9628
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 96.225,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 54,
+              "keyframeCount": 270,
+              "pairEvaluations": 4068,
+              "terrainResponseCellShare": 0.185496,
+              "volcanismResponseCellShare": 0.05899
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 116.297,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 8274,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 51121
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1929.22,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 1560.113,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 8984,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 506.072,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 42975,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 191.681,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 248925,
+              "depositedCells": 3983,
+              "depositionOperations": 6797,
+              "unclassifiedMutationOperations": 226233
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 71.7,
+        "icePercentage": 0.75,
+        "riverCount": 118,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    },
+    {
+      "pairId": "geology-glacial-stress-8675309-512x256-run1",
+      "runIndex": 0,
+      "scenarioId": "geology-glacial-stress",
+      "scenarioLabel": "High-age geological and glacial stress",
+      "worldPresetId": "Habitable World",
+      "seed": "8675309",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "0.3.0",
+      "seedStrategy": "semantic-node",
+      "workflowContractSignature": "wf-g1-f7ad5a81",
+      "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+      "resolution": "512x256",
+      "topologyCells": 98304,
+      "measuredWallMs": 6671.784,
+      "reportedTotalMs": 6671.644,
+      "memoryBefore": {
+        "rssMb": 252.5,
+        "heapUsedMb": 33.4,
+        "heapTotalMb": 72.8
+      },
+      "memoryAfter": {
+        "rssMb": 264,
+        "heapUsedMb": 60.1,
+        "heapTotalMb": 79.7
+      },
+      "outputSignature": "a0954065:b71709c0:d44eede5:71bc80ae:1d9995b7:6c8923a9:71.7000:0.7500:118",
+      "authoritativeSignature": "wf-a1-f08a4534affeabcd",
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 4569.192,
+        "attributedMs": 4381.225,
+        "unattributedMs": 187.967,
+        "attributionShare": 0.95886,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 28.375,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 27,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 103.517,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 76568,
+              "targetCells": 60032,
+              "movingFragments": 54,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.7840351060495246
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 627.661,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 248925,
+              "affectedCellProcessTotal": 14832,
+              "tectonicOperations": 0,
+              "impactOperations": 16377,
+              "weatheringOperations": 22453,
+              "glacialOperations": 1307,
+              "coastalOperations": 9628
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 116.185,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 54,
+              "keyframeCount": 270,
+              "pairEvaluations": 4068,
+              "terrainResponseCellShare": 0.185496,
+              "volcanismResponseCellShare": 0.05899
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 117.676,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 8274,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 51121
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 1934.016,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 961.101,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 8984,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 492.694,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 42975,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 187.967,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 248925,
+              "depositedCells": 3983,
+              "depositionOperations": 6797,
+              "unclassifiedMutationOperations": 226233
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "oceanPercentage": 71.7,
+        "icePercentage": 0.75,
+        "riverCount": 118,
+        "oceanWithinTolerance": true,
+        "riverPathsValid": true
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "pairId": "earthlike-standard-1001001-512x256-run1",
+      "scenarioId": "earthlike-standard",
+      "seed": "1001001",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 8058.847,
+      "candidateMs": 7014.377,
+      "runtimeDeltaMs": -1044.47,
+      "runtimeDeltaPercent": -12.961,
+      "baselineDeepTimeMs": 5497.052,
+      "candidateDeepTimeMs": 4852.806,
+      "deepTimeDeltaMs": -644.246,
+      "deepTimeDeltaPercent": -11.72,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "earthlike-standard-3141592-512x256-run1",
+      "scenarioId": "earthlike-standard",
+      "seed": "3141592",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 7506.264,
+      "candidateMs": 6340.44,
+      "runtimeDeltaMs": -1165.824,
+      "runtimeDeltaPercent": -15.531,
+      "baselineDeepTimeMs": 5291.024,
+      "candidateDeepTimeMs": 4379.295,
+      "deepTimeDeltaMs": -911.729,
+      "deepTimeDeltaPercent": -17.232,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "earthlike-standard-8675309-512x256-run1",
+      "scenarioId": "earthlike-standard",
+      "seed": "8675309",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 7132.971,
+      "candidateMs": 6368.08,
+      "runtimeDeltaMs": -764.891,
+      "runtimeDeltaPercent": -10.723,
+      "baselineDeepTimeMs": 5123.164,
+      "candidateDeepTimeMs": 4442.163,
+      "deepTimeDeltaMs": -681.001,
+      "deepTimeDeltaPercent": -13.293,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "archipelago-standard-1001001-512x256-run1",
+      "scenarioId": "archipelago-standard",
+      "seed": "1001001",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 6635.947,
+      "candidateMs": 6277.076,
+      "runtimeDeltaMs": -358.871,
+      "runtimeDeltaPercent": -5.408,
+      "baselineDeepTimeMs": 4698.614,
+      "candidateDeepTimeMs": 4337.944,
+      "deepTimeDeltaMs": -360.67,
+      "deepTimeDeltaPercent": -7.676,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "archipelago-standard-3141592-512x256-run1",
+      "scenarioId": "archipelago-standard",
+      "seed": "3141592",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 6759.417,
+      "candidateMs": 6130.538,
+      "runtimeDeltaMs": -628.879,
+      "runtimeDeltaPercent": -9.304,
+      "baselineDeepTimeMs": 4839.763,
+      "candidateDeepTimeMs": 4218.092,
+      "deepTimeDeltaMs": -621.671,
+      "deepTimeDeltaPercent": -12.845,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "archipelago-standard-8675309-512x256-run1",
+      "scenarioId": "archipelago-standard",
+      "seed": "8675309",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 6870.455,
+      "candidateMs": 6395.784,
+      "runtimeDeltaMs": -474.671,
+      "runtimeDeltaPercent": -6.909,
+      "baselineDeepTimeMs": 4915.913,
+      "candidateDeepTimeMs": 4462.318,
+      "deepTimeDeltaMs": -453.595,
+      "deepTimeDeltaPercent": -9.227,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "geology-glacial-stress-1001001-512x256-run1",
+      "scenarioId": "geology-glacial-stress",
+      "seed": "1001001",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 6966.267,
+      "candidateMs": 6598.399,
+      "runtimeDeltaMs": -367.868,
+      "runtimeDeltaPercent": -5.281,
+      "baselineDeepTimeMs": 4907.888,
+      "candidateDeepTimeMs": 4484.897,
+      "deepTimeDeltaMs": -422.991,
+      "deepTimeDeltaPercent": -8.619,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "geology-glacial-stress-3141592-512x256-run1",
+      "scenarioId": "geology-glacial-stress",
+      "seed": "3141592",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 7165.318,
+      "candidateMs": 6493.684,
+      "runtimeDeltaMs": -671.634,
+      "runtimeDeltaPercent": -9.373,
+      "baselineDeepTimeMs": 5083.322,
+      "candidateDeepTimeMs": 4392.454,
+      "deepTimeDeltaMs": -690.868,
+      "deepTimeDeltaPercent": -13.591,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    },
+    {
+      "pairId": "geology-glacial-stress-8675309-512x256-run1",
+      "scenarioId": "geology-glacial-stress",
+      "seed": "8675309",
+      "baselineWorkflowId": "core.performance-foundation-aging-control",
+      "candidateWorkflowId": "core.performance-foundation",
+      "baselineMs": 7249.875,
+      "candidateMs": 6671.644,
+      "runtimeDeltaMs": -578.231,
+      "runtimeDeltaPercent": -7.976,
+      "baselineDeepTimeMs": 5121.036,
+      "candidateDeepTimeMs": 4569.192,
+      "deepTimeDeltaMs": -551.844,
+      "deepTimeDeltaPercent": -10.776,
+      "signaturesEqual": true,
+      "authoritativeSignaturesEqual": true
+    }
+  ]
+}
