@@ -1,0 +1,186 @@
+{
+  "format": "world-forge-bounded-aging-benchmark-summary",
+  "version": 1,
+  "generatedAt": "2026-07-29T15:35:27.153Z",
+  "sourceCommit": "13feff7d60f1ebcebb2a45aa763e4cefea9adaa4",
+  "resolution": "512x256",
+  "seeds": [
+    "1001001",
+    "3141592",
+    "8675309"
+  ],
+  "scenarios": [
+    "earthlike-standard",
+    "archipelago-standard",
+    "geology-glacial-stress"
+  ],
+  "baselineWorkflow": "core.live-world",
+  "candidateWorkflow": "core.performance-foundation",
+  "runPairs": 9,
+  "totalRuntimeDeltaPercent": {
+    "mean": -20.155,
+    "median": -19.01,
+    "min": -25.807,
+    "max": -17.229
+  },
+  "deepTimeDeltaPercent": {
+    "mean": -24.694,
+    "median": -24.228,
+    "min": -31.058,
+    "max": -22.4
+  },
+  "surfaceAgingDeltaPercent": -73.37,
+  "candidateEpochCounts": [
+    3
+  ],
+  "candidateForcingSampleCounts": [
+    5
+  ],
+  "baselineEpochCounts": [
+    6
+  ],
+  "baselineForcingSampleCounts": [
+    14
+  ],
+  "candidateOceanWithinTolerance": 5,
+  "baselineOceanWithinTolerance": 5,
+  "candidateRiverPathsValid": 9,
+  "baselineRiverPathsValid": 9,
+  "qualityRegressions": [
+    {
+      "pairId": "earthlike-standard-3141592-512x256-run1",
+      "kind": "ocean-tolerance"
+    },
+    {
+      "pairId": "earthlike-standard-8675309-512x256-run1",
+      "kind": "ocean-tolerance"
+    }
+  ],
+  "scenarioSummary": [
+    {
+      "scenarioId": "earthlike-standard",
+      "totalRuntimeDeltaPercent": {
+        "mean": -23.48,
+        "median": -23.36,
+        "min": -25.807,
+        "max": -21.274
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -26.696,
+        "median": -25.795,
+        "min": -31.058,
+        "max": -23.234
+      },
+      "candidateOceanWithinTolerance": 0,
+      "baselineOceanWithinTolerance": 2,
+      "candidateRiverPathsValid": 3,
+      "baselineRiverPathsValid": 3,
+      "runCount": 3
+    },
+    {
+      "scenarioId": "archipelago-standard",
+      "totalRuntimeDeltaPercent": {
+        "mean": -18.349,
+        "median": -18.808,
+        "min": -19.01,
+        "max": -17.229
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -23.849,
+        "median": -24.228,
+        "min": -24.621,
+        "max": -22.698
+      },
+      "candidateOceanWithinTolerance": 2,
+      "baselineOceanWithinTolerance": 0,
+      "candidateRiverPathsValid": 3,
+      "baselineRiverPathsValid": 3,
+      "runCount": 3
+    },
+    {
+      "scenarioId": "geology-glacial-stress",
+      "totalRuntimeDeltaPercent": {
+        "mean": -18.636,
+        "median": -18.491,
+        "min": -19.796,
+        "max": -17.622
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -23.536,
+        "median": -22.84,
+        "min": -25.369,
+        "max": -22.4
+      },
+      "candidateOceanWithinTolerance": 3,
+      "baselineOceanWithinTolerance": 3,
+      "candidateRiverPathsValid": 3,
+      "baselineRiverPathsValid": 3,
+      "runCount": 3
+    }
+  ],
+  "substageSummary": [
+    {
+      "stageId": "surface-aging",
+      "baselineMeanMs": 1371.572,
+      "candidateMeanMs": 365.246,
+      "deltaMs": -1006.326,
+      "deltaPercent": -73.37
+    },
+    {
+      "stageId": "climate-rebuild",
+      "baselineMeanMs": 1281.335,
+      "candidateMeanMs": 1262.016,
+      "deltaMs": -19.319,
+      "deltaPercent": -1.508
+    },
+    {
+      "stageId": "hydrology-rebuild",
+      "baselineMeanMs": 944.913,
+      "candidateMeanMs": 944.412,
+      "deltaMs": -0.501,
+      "deltaPercent": -0.053
+    },
+    {
+      "stageId": "biome-projection-validation",
+      "baselineMeanMs": 380.029,
+      "candidateMeanMs": 350.936,
+      "deltaMs": -29.093,
+      "deltaPercent": -7.655
+    },
+    {
+      "stageId": "ledger-and-unattributed",
+      "baselineMeanMs": 126.672,
+      "candidateMeanMs": 119.744,
+      "deltaMs": -6.928,
+      "deltaPercent": -5.469
+    },
+    {
+      "stageId": "water-reconciliation",
+      "baselineMeanMs": 78.786,
+      "candidateMeanMs": 76.045,
+      "deltaMs": -2.741,
+      "deltaPercent": -3.478
+    },
+    {
+      "stageId": "fragment-placement",
+      "baselineMeanMs": 58.044,
+      "candidateMeanMs": 57.582,
+      "deltaMs": -0.462,
+      "deltaPercent": -0.796
+    },
+    {
+      "stageId": "fragment-history",
+      "baselineMeanMs": 52.078,
+      "candidateMeanMs": 51.128,
+      "deltaMs": -0.95,
+      "deltaPercent": -1.824
+    },
+    {
+      "stageId": "setup-models",
+      "baselineMeanMs": 16.503,
+      "candidateMeanMs": 15.179,
+      "deltaMs": -1.324,
+      "deltaPercent": -8.024
+    }
+  ]
+}

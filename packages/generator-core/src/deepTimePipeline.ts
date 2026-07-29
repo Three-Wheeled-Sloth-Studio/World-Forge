@@ -21,6 +21,7 @@ import {
   rotateUnitVector,
   unitVectorToLonLat
 } from './fragmentSphericalTransform';
+import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -546,30 +547,6 @@ function buildPlanetaryDynamics(project: WorldProject, stellar: StellarModel, rn
     magneticFieldStrengthEarth: round(clamp(massEarth / radiusEarth * rng.range(0.55, 1.45), 0.05, 3)),
     atmosphericRetention: round(clamp((massEarth / radiusEarth) * (1 - stellar.flareFrequency * 0.08), 0.15, 1.5))
   };
-}
-
-function buildEpochs(ageGy: number): AgingEpoch[] {
-  const totalMy = Math.max(250, ageGy * 1000);
-  const fractions = [0.08, 0.12, 0.16, 0.2, 0.22, 0.22];
-  let cursor = 0;
-  return fractions.map((fraction, index) => {
-    const durationMy = totalMy * fraction;
-    const startAgeMy = cursor;
-    cursor += durationMy;
-    const maturity = index / Math.max(1, fractions.length - 1);
-    return {
-      index,
-      startAgeMy: round(startAgeMy, 1),
-      endAgeMy: round(cursor, 1),
-      durationMy: round(durationMy, 1),
-      tectonicIterations: index < 3 ? 3 : 2,
-      impactIntensity: round((1 - maturity) ** 2, 3),
-      climateSamples: index < 2 ? 1 : 3,
-      erosionIterations: index < 2 ? 1 : 2,
-      glacialIterations: index < 3 ? 0 : 2,
-      coastalIterations: index < 4 ? 0 : 2
-    };
-  });
 }
 
 function buildCratons(project: WorldProject, rng: RandomSource): Craton[] {
@@ -2790,7 +2767,9 @@ export function applyDeepTimeFoundation(
   const resistance = createPlateResistanceLookup(resistanceByPlate, mutable.primaryWorld.plates);
   const plateLookup = createPlateLookup(mutable.primaryWorld.plates);
   const fragmentLineageSeeds = captureFragmentLineageSeeds(mutable.primaryWorld.topologyLayers.plates, topology, plateLookup);
-  const epochs = buildEpochs(project.selectedValues.systemAgeGy);
+  const workflowId = (project.config as GenerationConfig & { workflowId?: string }).workflowId;
+  const agingProfile = deepTimeAgingProfileForWorkflow(workflowId);
+  const epochs = buildDeepTimeEpochs(project.selectedValues.systemAgeGy, agingProfile);
   const forcingSamples: OrbitalForcingSample[] = [];
   let persistentIceCells = 0;
   let glaciallyErodedCells = 0;
@@ -2933,6 +2912,7 @@ export function applyDeepTimeFoundation(
     notes: [
       'Deep-time orchestration runs from generator-core for worker and fallback parity.',
       'Authoritative fragment placement establishes continental ownership before final sea-level, climate, hydrology, biome, and projection passes.',
+      `Surface aging profile ${agingProfile.id} used ${epochs.length} eras and ${forcingSamples.length} forcing samples.`,
       'Surface aging samples orbital, erosion, impact, glacial, and coastal history without the retired motion-coupled terrain and sparse ownership mutation paths.',
       'Mass-conserving whole-fragment transforms place continental membership, carried elevation, and carried volcanism before surface aging; stationary fragments use identity transforms and bounded spill placement resolves most overlap.',
       'Crust reconstruction is intentionally strong enough to create material continental separation and complementary margins over deep time.',

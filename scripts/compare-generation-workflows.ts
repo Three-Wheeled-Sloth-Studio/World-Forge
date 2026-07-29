@@ -8,7 +8,6 @@ import {
 } from '../packages/generator-core/src/deepTimeInstrumentation';
 import {
   generationWorkflowDescriptor,
-  generationWorkflowIds,
   type GenerationSeedStrategy,
   type GenerationWorkflowId
 } from '../packages/generator-core/src/workflows';
@@ -212,7 +211,7 @@ function parseArgs(argv: string[]): {
   const seeds = split(value('seeds')) ?? ['1001001', '3141592', '8675309'];
   const scenarioValues = split(value('scenarios')) ?? benchmarkScenarios.map((scenario) => scenario.id);
   const scenarios = scenarioValues.map((id) => resolveScenario(id).id);
-  const workflowValues = split(value('workflows')) ?? [...generationWorkflowIds];
+  const workflowValues = split(value('workflows')) ?? ['core.live-world', 'core.performance-foundation'];
   if (workflowValues.length !== 2) throw new Error('Workflow comparison requires exactly two workflow IDs.');
   const workflows = workflowValues.map((id) => generationWorkflowDescriptor(id).id) as [GenerationWorkflowId, GenerationWorkflowId];
   if (workflows[0] === workflows[1]) throw new Error('Workflow comparison requires two distinct workflow IDs.');

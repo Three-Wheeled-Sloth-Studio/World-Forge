@@ -157,7 +157,7 @@ const performanceFoundationWorkflowNodes: readonly RegisteredNode[] = [
 ];
 
 function workflowNodes(workflowId: GenerationWorkflowId): readonly RegisteredNode[] {
-  return workflowId === 'core.performance-foundation'
+  return generationWorkflowDescriptor(workflowId).seedStrategy === 'semantic-node'
     ? performanceFoundationWorkflowNodes
     : liveWorkflowNodes;
 }

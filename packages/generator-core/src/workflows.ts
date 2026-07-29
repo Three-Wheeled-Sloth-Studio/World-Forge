@@ -1,5 +1,6 @@
 export const generationWorkflowIds = [
   'core.live-world',
+  'core.performance-foundation-control',
   'core.performance-foundation'
 ] as const;
 
@@ -14,6 +15,7 @@ export type GenerationWorkflowDescriptor = {
   description: string;
   status: GenerationWorkflowStatus;
   seedStrategy: GenerationSeedStrategy;
+  selectableInGenerator: boolean;
 };
 
 export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.live-world';
@@ -25,15 +27,26 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
     label: 'Live world generation',
     description: 'Current production workflow retained as the stable comparison and rollback path.',
     status: 'production',
-    seedStrategy: 'legacy-shared'
+    seedStrategy: 'legacy-shared',
+    selectableInGenerator: true
+  },
+  {
+    id: 'core.performance-foundation-control',
+    version: '0.1.0',
+    label: 'Performance foundation control',
+    description: 'Developer-only A/B control using semantic node seeds with the legacy six-epoch aging schedule.',
+    status: 'experimental',
+    seedStrategy: 'semantic-node',
+    selectableInGenerator: false
   },
   {
     id: 'core.performance-foundation',
-    version: '0.1.0',
+    version: '0.2.0',
     label: 'Performance foundation (experimental)',
-    description: 'Copy of the live workflow with semantic node seed isolation for structural-generation and deep-time experiments.',
+    description: 'Experimental workflow with semantic node seeds and bounded three-era deep-time surface aging.',
     status: 'experimental',
-    seedStrategy: 'semantic-node'
+    seedStrategy: 'semantic-node',
+    selectableInGenerator: true
   }
 ];
 
