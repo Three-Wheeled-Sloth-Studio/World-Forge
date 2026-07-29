@@ -1,0 +1,142 @@
+name: Apply Bounded Aging Integration Patch
+
+on:
+  push:
+    branches:
+      - agent/bounded-three-era-aging
+    paths:
+      - .github/agent-bounded-aging-patch.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/bounded-three-era-aging
+          fetch-depth: 0
+
+      - name: Apply exact source patches
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          pipeline_path = Path('packages/generator-core/src/deepTimePipeline.ts')
+          pipeline = pipeline_path.read_text()
+          pipeline = replace_once(
+              pipeline,
+              "} from './fragmentSphericalTransform';\n",
+              "} from './fragmentSphericalTransform';\nimport { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';\n",
+              'pipeline import'
+          )
+          pipeline = replace_once(
+              pipeline,
+              """function buildEpochs(ageGy: number): AgingEpoch[] {
+            const totalMy = Math.max(250, ageGy * 1000);
+            const fractions = [0.08, 0.12, 0.16, 0.2, 0.22, 0.22];
+            let cursor = 0;
+            return fractions.map((fraction, index) => {
+              const durationMy = totalMy * fraction;
+              const startAgeMy = cursor;
+              cursor += durationMy;
+              const maturity = index / Math.max(1, fractions.length - 1);
+              return {
+                index,
+                startAgeMy: round(startAgeMy, 1),
+                endAgeMy: round(cursor, 1),
+                durationMy: round(durationMy, 1),
+                tectonicIterations: index < 3 ? 3 : 2,
+                impactIntensity: round((1 - maturity) ** 2, 3),
+                climateSamples: index < 2 ? 1 : 3,
+                erosionIterations: index < 2 ? 1 : 2,
+                glacialIterations: index < 3 ? 0 : 2,
+                coastalIterations: index < 4 ? 0 : 2
+              };
+            });
+          }
+
+          """.replace('          ', ''),
+              '',
+              'legacy epoch builder'
+          )
+          pipeline = replace_once(
+              pipeline,
+              "  const epochs = buildEpochs(project.selectedValues.systemAgeGy);\n",
+              "  const workflowId = (project.config as GenerationConfig & { workflowId?: string }).workflowId;\n  const agingProfile = deepTimeAgingProfileForWorkflow(workflowId);\n  const epochs = buildDeepTimeEpochs(project.selectedValues.systemAgeGy, agingProfile);\n",
+              'epoch selection'
+          )
+          pipeline = replace_once(
+              pipeline,
+              "      'Surface aging samples orbital, erosion, impact, glacial, and coastal history without the retired motion-coupled terrain and sparse ownership mutation paths.',\n",
+              "      `Surface aging profile ${agingProfile.id} used ${epochs.length} eras and ${forcingSamples.length} forcing samples.`,\n      'Surface aging samples orbital, erosion, impact, glacial, and coastal history without the retired motion-coupled terrain and sparse ownership mutation paths.',\n",
+              'profile provenance note'
+          )
+          pipeline_path.write_text(pipeline)
+
+          ledger_path = Path('packages/generator-core/src/deepTimeMutationLedger.ts')
+          ledger = ledger_path.read_text()
+          ledger = replace_once(
+              ledger,
+              "import { applyDeepTimeFoundation, type DeepTimeProgress, type DeepTimeProject } from './deepTimePipeline';\n",
+              "import { applyDeepTimeFoundation, type DeepTimeProgress, type DeepTimeProject } from './deepTimePipeline';\nimport { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';\n",
+              'ledger import'
+          )
+          ledger = replace_once(
+              ledger,
+              """function buildSamplePlans(): SamplePlan[] {
+            const fractions = [0.08, 0.12, 0.16, 0.2, 0.22, 0.22];
+            return fractions.flatMap((_, index) => {
+              const climateSamples = index < 2 ? 1 : 3;
+              const plan: SamplePlan = {
+                tectonicSets: index < 3 ? 3 : 2,
+                weatheringSets: index < 2 ? 1 : 2,
+                coastalSets: index < 4 ? 0 : 1
+              };
+              return Array.from({ length: climateSamples }, () => plan);
+            });
+          }
+          """.replace('          ', ''),
+              """function buildSamplePlans(project: WorldProject): SamplePlan[] {
+            const workflowId = (project.config as WorldProject['config'] & { workflowId?: string }).workflowId;
+            const profile = deepTimeAgingProfileForWorkflow(workflowId);
+            return buildDeepTimeEpochs(project.selectedValues.systemAgeGy, profile).flatMap((epoch) => {
+              const plan: SamplePlan = {
+                tectonicSets: epoch.tectonicIterations,
+                weatheringSets: epoch.erosionIterations,
+                coastalSets: epoch.coastalIterations > 0 ? 1 : 0
+              };
+              return Array.from({ length: Math.max(1, epoch.climateSamples) }, () => plan);
+            });
+          }
+          """.replace('          ', ''),
+              'ledger sample plans'
+          )
+          ledger = replace_once(
+              ledger,
+              '  const plans = buildSamplePlans();\n',
+              '  const plans = buildSamplePlans(project);\n',
+              'ledger plan selection'
+          )
+          ledger_path.write_text(ledger)
+          PY
+
+      - name: Remove temporary patch trigger
+        run: rm .github/workflows/agent-bounded-aging-patch.yml .github/agent-bounded-aging-patch.trigger
+
+      - name: Commit patched sources
+        run: |
+          git config user.name "world-forge-agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add packages/generator-core/src/deepTimePipeline.ts packages/generator-core/src/deepTimeMutationLedger.ts .github
+          git commit -m "Integrate bounded three-era aging"
+          git push origin HEAD:agent/bounded-three-era-aging
