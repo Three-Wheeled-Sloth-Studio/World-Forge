@@ -29,9 +29,9 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
   },
   {
     id: 'core.performance-foundation',
-    version: '0.1.0',
+    version: '0.2.0',
     label: 'Performance foundation (experimental)',
-    description: 'Copy of the live workflow with semantic node seed isolation for structural-generation and deep-time experiments.',
+    description: 'Experimental workflow with semantic node seeds and bounded three-era deep-time surface aging.',
     status: 'experimental',
     seedStrategy: 'semantic-node'
   }
