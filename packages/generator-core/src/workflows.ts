@@ -2,6 +2,7 @@ export const generationWorkflowIds = [
   'core.live-world',
   'core.performance-foundation-control',
   'core.performance-foundation-aging-control',
+  'core.performance-foundation-derived-control',
   'core.performance-foundation'
 ] as const;
 
@@ -50,10 +51,19 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
     selectableInGenerator: false
   },
   {
+    id: 'core.performance-foundation-derived-control',
+    version: '0.1.0',
+    label: 'Derived climate control',
+    description: 'Developer-only A/B control using bounded aging and climate-field reuse without optimized hydrology traversal.',
+    status: 'experimental',
+    seedStrategy: 'semantic-node',
+    selectableInGenerator: false
+  },
+  {
     id: 'core.performance-foundation',
-    version: '0.3.0',
+    version: '0.4.0',
     label: 'Performance foundation (experimental)',
-    description: 'Experimental workflow with bounded three-era aging and present-climate derived-field reuse.',
+    description: 'Experimental workflow with bounded aging, climate-field reuse, and exact hydrology ordering and route reuse.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true
