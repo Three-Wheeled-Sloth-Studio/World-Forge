@@ -64,7 +64,7 @@ export function buildWorldReplayManifest(project: WorldProject): WorldReplayMani
     config: structuredClone(project.config),
     selectedValues: structuredClone(project.selectedValues),
     graph: {
-      contractSignature: stableSignature(nodes),
+      contractSignature: workflowContractSignature(workflow.id),
       nodes,
     },
     schemaVersions: {
@@ -87,7 +87,7 @@ export function assessWorldReplayCompatibility(manifest: WorldReplayManifestV1):
 }
 
 export function currentGraphContractSignature(workflowId: GenerationWorkflowId = defaultGenerationWorkflowId): string {
-  return stableSignature(currentGraphContracts(workflowId));
+  return workflowContractSignature(workflowId);
 }
 
 export function authoritativeWorldSignature(project: WorldProject): string {
@@ -118,6 +118,15 @@ function workflowForConfig(config: GenerationConfig) {
 
 function workflowIdForConfig(config: GenerationConfig): GenerationWorkflowId {
   return generationWorkflowDescriptor((config as WorkflowAwareGenerationConfig).workflowId).id;
+}
+
+function workflowContractSignature(workflowId: GenerationWorkflowId): string {
+  const workflow = generationWorkflowDescriptor(workflowId);
+  return stableSignature({
+    workflowId: workflow.id,
+    workflowVersion: workflow.version,
+    nodes: currentGraphContracts(workflow.id)
+  });
 }
 
 function currentGraphContracts(workflowId: GenerationWorkflowId): WorldReplayManifestV1['graph']['nodes'] {
