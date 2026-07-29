@@ -14,10 +14,11 @@ Complete the workflow and graph foundation before replacing structural-generatio
 - Register two selectable workflows:
   - `core.live-world@1.0.0`
   - `core.performance-foundation@0.1.0`
-- Keep the experimental workflow as an independent graph definition initially populated with the production node sequence.
+- Keep the experimental workflow as an independent graph definition initially populated with the production semantic node sequence.
 - Preserve semantic node IDs across workflows so shared stages can be compared directly.
-- Derive random streams from the root seed and semantic node or stage identity.
-- Keep workflow and implementation identities in provenance, not in random seed derivation.
+- Preserve the production workflow's existing shared random-stream contract exactly.
+- Use root-seed and semantic-node streams in the experimental workflow so edits cannot perturb unrelated downstream nodes.
+- Record each workflow's seed strategy as explicit provenance.
 - Keep the production workflow as the default until the benchmark and quality gates support promotion.
 
 ## Implementation sequence
@@ -38,14 +39,15 @@ Complete the workflow and graph foundation before replacing structural-generatio
 
 ### 3. Deterministic seed isolation
 
-- Replace shared mutable graph RNG consumption with node-scoped streams.
-- Keep unchanged semantic nodes on identical streams across workflows and implementation replacements.
+- Preserve `core.live-world` shared-stream behavior for exact compatibility and rollback.
+- Apply semantic node-scoped streams to `core.performance-foundation`.
+- Keep unchanged experimental nodes on stable streams even when an upstream experimental node changes its random consumption.
 - Retain named substreams for future process-level isolation within large nodes.
-- Add tests for deterministic replay, node isolation, and cross-workflow equivalence.
+- Add tests for deterministic replay, node isolation, and semantic-stage equivalence in the general workflow runtime.
 
 ### 4. Provenance and replay
 
-- Record workflow ID and version in replay manifests.
+- Record workflow ID, version, and seed strategy in the workflow catalog and comparison output.
 - Include workflow identity, version, node contracts, and implementation IDs in the workflow contract signature.
 - Preserve source commit, application version, generator version, resolved configuration, selected values, and output signature.
 - Treat missing workflow provenance in older manifests as the production workflow for backward compatibility.
@@ -59,14 +61,14 @@ Add `npm run benchmark:workflows` with:
 - identical resolution and resolved configuration;
 - sequential execution to avoid CPU and memory interference;
 - source commit and runtime environment;
-- workflow ID, version, and contract signature;
+- workflow ID, version, seed strategy, and contract signature;
 - total and wall-clock runtime;
 - memory snapshots;
 - output signatures;
 - core quality and validity metrics;
 - direct per-pair runtime deltas.
 
-The first comparison should produce identical signatures because the experimental workflow begins as a copy of the production workflow. Once experimental nodes are replaced, signature differences are expected and must be evaluated through the PI quality scorecard.
+The workflows have the same initial semantic node sequence, but signatures may differ because the experimental workflow intentionally adopts node-scoped random streams while the production workflow preserves its legacy random contract. That difference is explicit provenance and must be evaluated through the same quality scorecard as later algorithm changes.
 
 ## Acceptance for this slice
 
@@ -74,7 +76,8 @@ The first comparison should produce identical signatures because the experimenta
 - The production workflow remains the default.
 - The worker and generator execute the selected workflow.
 - Production and experimental graph definitions are independent objects.
-- Shared semantic stages receive the same random streams across workflows.
+- Production generation retains its existing random behavior and quality invariants.
+- Experimental nodes use stable semantic node streams.
 - Replay manifests identify the workflow and reject incompatible workflow contracts.
 - The duplicate `system.orbit` artifact-summary key is removed.
 - Pairwise workflow comparison output contains exact workflow and source provenance.
