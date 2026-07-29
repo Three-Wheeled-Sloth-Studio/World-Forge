@@ -54,6 +54,15 @@ export class DeterministicRandomStream implements RandomStream {
   }
 }
 
-export function createStageRandom(rootSeed: string, workflowId: string, stageId: string, implementationId: string, bodyId?: string, iteration?: number): RandomStream {
-  return new DeterministicRandomStream(deriveSeedPath(rootSeed, workflowId, stageId, implementationId, bodyId, iteration));
+export function createStageRandom(
+  rootSeed: string,
+  _workflowId: string,
+  stageId: string,
+  _implementationId: string,
+  bodyId?: string,
+  iteration?: number
+): RandomStream {
+  // Workflow and implementation identity belong in provenance, not the random seed.
+  // Shared semantic stages must receive identical starting streams during A/B runs.
+  return new DeterministicRandomStream(deriveSeedPath(rootSeed, 'stage', stageId, bodyId, iteration));
 }
