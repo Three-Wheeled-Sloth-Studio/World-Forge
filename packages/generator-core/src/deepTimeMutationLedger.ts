@@ -1,5 +1,6 @@
 import { buildCubedSphereTopology, clamp, type WorldProject } from '@world-forge/shared';
 import { applyDeepTimeFoundation, type DeepTimeProgress, type DeepTimeProject } from './deepTimePipeline';
+import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';
 import type { GenerateProjectOptions } from './index';
 
 export type MutationPopulationSummary = {
@@ -94,16 +95,16 @@ function emptyCategoryVolumes(): CategoryVolumes {
   return { basin: 0, river: 0, coastal: 0, shelf: 0, deepOcean: 0 };
 }
 
-function buildSamplePlans(): SamplePlan[] {
-  const fractions = [0.08, 0.12, 0.16, 0.2, 0.22, 0.22];
-  return fractions.flatMap((_, index) => {
-    const climateSamples = index < 2 ? 1 : 3;
+function buildSamplePlans(project: WorldProject): SamplePlan[] {
+  const workflowId = (project.config as WorldProject['config'] & { workflowId?: string }).workflowId;
+  const profile = deepTimeAgingProfileForWorkflow(workflowId);
+  return buildDeepTimeEpochs(project.selectedValues.systemAgeGy, profile).flatMap((epoch) => {
     const plan: SamplePlan = {
-      tectonicSets: index < 3 ? 3 : 2,
-      weatheringSets: index < 2 ? 1 : 2,
-      coastalSets: index < 4 ? 0 : 1
+      tectonicSets: epoch.tectonicIterations,
+      weatheringSets: epoch.erosionIterations,
+      coastalSets: epoch.coastalIterations > 0 ? 1 : 0
     };
-    return Array.from({ length: climateSamples }, () => plan);
+    return Array.from({ length: Math.max(1, epoch.climateSamples) }, () => plan);
   });
 }
 
@@ -273,7 +274,7 @@ export function applyDeepTimeFoundationWithMutationLedger(
   const river = world.topologyLayers.river;
   const preAgingElevation = new Float32Array(originalElevation);
   const relief = baselineRelief(preAgingElevation, world.topology.resolution);
-  const plans = buildSamplePlans();
+  const plans = buildSamplePlans(project);
   const accumulators: Record<ProcessKey, ProcessAccumulator> = {
     tectonicGain: emptyAccumulator(originalElevation.length), impactGain: emptyAccumulator(originalElevation.length), impactLoss: emptyAccumulator(originalElevation.length),
     weatheringLoss: emptyAccumulator(originalElevation.length), glacialLoss: emptyAccumulator(originalElevation.length), coastalLoss: emptyAccumulator(originalElevation.length), sedimentGain: emptyAccumulator(originalElevation.length)
