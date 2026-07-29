@@ -25,6 +25,15 @@ function copyGraph(nodes: readonly GenerationGraphNodeDefinition[]): GenerationG
 
 function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNodeDefinition[] {
   const nodes = copyGraph(coreGenerationGraph);
+  if (workflowId === 'core.performance-foundation-control') {
+    return nodes.map((node) => node.id === 'world.deep-time-aging'
+      ? {
+          ...node,
+          implementationId: 'core.world.deep-time-aging.semantic-seed-control',
+          version: '1-control'
+        }
+      : node);
+  }
   if (workflowId !== 'core.performance-foundation') return nodes;
   return nodes.map((node) => node.id === 'world.deep-time-aging'
     ? {
@@ -37,8 +46,8 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
 
 export const generationGraphWorkflows: readonly GenerationGraphWorkflow[] = generationWorkflowDescriptors.map((workflow) => ({
   ...workflow,
-  // Keep an independent workflow definition so experimental nodes can be replaced
-  // without mutating the production workflow or its comparison baseline.
+  // Keep independent workflow definitions so experimental implementations can
+  // diverge without mutating production or the semantic-seed control baseline.
   nodes: nodesForWorkflow(workflow.id)
 }));
 
