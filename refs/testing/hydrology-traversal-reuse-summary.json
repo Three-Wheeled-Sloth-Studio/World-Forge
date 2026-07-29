@@ -1,0 +1,72 @@
+{
+  "format": "world-forge-hydrology-traversal-reuse-summary",
+  "version": 1,
+  "generatedAt": "2026-07-29T18:47:42.547Z",
+  "sourceCommit": "0703e596ea16fbe20efdce1eb5babf4ea3fa9298",
+  "baselineWorkflow": "core.performance-foundation-derived-control",
+  "candidateWorkflow": "core.performance-foundation",
+  "candidateWorkflowVersion": "0.4.0",
+  "matrix": {
+    "seeds": [
+      "1001001",
+      "3141592",
+      "8675309"
+    ],
+    "scenarios": [
+      "earthlike-standard",
+      "archipelago-standard",
+      "geology-glacial-stress"
+    ],
+    "resolution": "512x256",
+    "runsPerPair": 1,
+    "pairCount": 9
+  },
+  "qualityGates": {
+    "coarseSignaturesEqual": 9,
+    "normalizedAuthoritativeSignaturesEqual": 9,
+    "metricObjectsEqual": 9,
+    "riverCountsEqual": 9,
+    "riverPathsValid": 9,
+    "hydrologyDiagnosticsEqual": 9,
+    "qualityRegressions": 0,
+    "passed": true
+  },
+  "performance": {
+    "hydrologyRebuildDeltaPercent": {
+      "mean": -68.5,
+      "median": -68.09,
+      "minimum": -73.07,
+      "maximum": -62.68,
+      "improvedPairs": 9
+    },
+    "deepTimeDeltaPercent": {
+      "mean": -15.57,
+      "median": -15.08,
+      "improvedPairs": 9
+    },
+    "totalGenerationDeltaPercent": {
+      "mean": -10.28,
+      "median": -10.36,
+      "minimum": -19.3,
+      "maximum": -0.65,
+      "improvedPairs": 9
+    }
+  },
+  "memory": {
+    "measurement": "process RSS snapshots before and after each sequential workflow run; not a peak-memory measurement",
+    "baselineMaximumAfterRunMb": 374.2,
+    "candidateMaximumAfterRunMb": 366,
+    "baselineMeanBeforeAfterDeltaMb": 13.5,
+    "candidateMeanBeforeAfterDeltaMb": 4.8,
+    "conclusion": "No retained-RSS regression was observed, but the benchmark does not establish peak-memory equivalence."
+  },
+  "rollback": {
+    "productionDefaultChanged": false,
+    "controlsChangedToOptimizedHydrology": false,
+    "strategy": "Select core.live-world or a control workflow; rebuildTopologyHydrology defaults optimizeTraversal to false."
+  },
+  "evidence": {
+    "benchmarkJson": "refs/testing/hydrology-traversal-reuse-benchmark.json",
+    "benchmarkMarkdown": "refs/testing/hydrology-traversal-reuse-benchmark.md"
+  }
+}

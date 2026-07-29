@@ -2,6 +2,7 @@ export const generationWorkflowIds = [
   'core.live-world',
   'core.performance-foundation-control',
   'core.performance-foundation-aging-control',
+  'core.performance-foundation-derived-control',
   'core.performance-foundation'
 ] as const;
 
@@ -17,6 +18,11 @@ export type GenerationWorkflowDescriptor = {
   status: GenerationWorkflowStatus;
   seedStrategy: GenerationSeedStrategy;
   selectableInGenerator: boolean;
+};
+
+export type GenerationWorkflowDeepTimeFeatures = {
+  reusePresentClimateDerivedFields: boolean;
+  optimizeHydrologyTraversal: boolean;
 };
 
 export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.live-world';
@@ -50,10 +56,19 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
     selectableInGenerator: false
   },
   {
+    id: 'core.performance-foundation-derived-control',
+    version: '0.1.0',
+    label: 'Derived climate control',
+    description: 'Developer-only A/B control using bounded aging and climate-field reuse without optimized hydrology traversal.',
+    status: 'experimental',
+    seedStrategy: 'semantic-node',
+    selectableInGenerator: false
+  },
+  {
     id: 'core.performance-foundation',
-    version: '0.3.0',
+    version: '0.4.0',
     label: 'Performance foundation (experimental)',
-    description: 'Experimental workflow with bounded three-era aging and present-climate derived-field reuse.',
+    description: 'Experimental workflow with bounded aging, climate-field reuse, and exact hydrology ordering and route reuse.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true
@@ -67,4 +82,16 @@ export function generationWorkflowDescriptor(id: string | undefined): Generation
 
 export function normalizeGenerationWorkflowId(id: string | undefined): GenerationWorkflowId {
   return generationWorkflowDescriptor(id).id;
+}
+
+export function generationWorkflowDeepTimeFeatures(
+  id: string | undefined
+): GenerationWorkflowDeepTimeFeatures {
+  const workflowId = generationWorkflowDescriptor(id).id;
+  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation-derived-control'
+    || workflowId === 'core.performance-foundation';
+  return {
+    reusePresentClimateDerivedFields,
+    optimizeHydrologyTraversal: workflowId === 'core.performance-foundation'
+  };
 }
