@@ -1,6 +1,7 @@
 export const generationWorkflowIds = [
   'core.live-world',
   'core.performance-foundation-control',
+  'core.performance-foundation-aging-control',
   'core.performance-foundation'
 ] as const;
 
@@ -35,6 +36,15 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
     version: '0.1.0',
     label: 'Performance foundation control',
     description: 'Developer-only A/B control using semantic node seeds with the legacy six-epoch aging schedule.',
+    status: 'experimental',
+    seedStrategy: 'semantic-node',
+    selectableInGenerator: false
+  },
+  {
+    id: 'core.performance-foundation-aging-control',
+    version: '0.1.0',
+    label: 'Bounded aging control',
+    description: 'Developer-only A/B control using bounded three-era aging without present-climate derived-field reuse.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: false
