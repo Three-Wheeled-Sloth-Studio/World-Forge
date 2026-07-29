@@ -5,6 +5,7 @@ import { generateProjectWithMotionAwareDeepTime } from '../packages/generator-co
 import {
   generationWorkflowDescriptor,
   generationWorkflowIds,
+  type GenerationSeedStrategy,
   type GenerationWorkflowId
 } from '../packages/generator-core/src/workflows';
 import { generationGraphWorkflow } from '../packages/generation-runtime/src/graph/generationWorkflows';
@@ -19,6 +20,7 @@ type WorkflowResult = {
   seed: string;
   workflowId: GenerationWorkflowId;
   workflowVersion: string;
+  seedStrategy: GenerationSeedStrategy;
   workflowContractSignature: string;
   sourceCommit: string;
   resolution: string;
@@ -159,6 +161,7 @@ function runWorkflow(
     seed,
     workflowId,
     workflowVersion: workflow.version,
+    seedStrategy: workflow.seedStrategy,
     workflowContractSignature: workflowContractSignature(workflowId),
     sourceCommit,
     resolution: formatResolution(resolution),
@@ -256,12 +259,17 @@ function memorySnapshot(): MemorySnapshot {
 }
 
 function renderMarkdown(report: WorkflowComparisonReport): string {
+  const strategies = report.results
+    .filter((result, index, all) => all.findIndex((candidate) => candidate.workflowId === result.workflowId) === index)
+    .map((result) => `${result.workflowId}=${result.seedStrategy}`)
+    .join(', ');
   return [
     '# Generation Workflow Comparison',
     '',
     `Generated: ${report.generatedAt}`,
     `Source commit: ${report.environment.sourceCommit}`,
     `Workflows: ${report.options.workflows.join(' versus ')}`,
+    `Seed strategies: ${strategies}`,
     `Seeds: ${report.options.seeds.join(', ')}`,
     `Resolution: ${report.options.resolution}`,
     '',
@@ -269,7 +277,7 @@ function renderMarkdown(report: WorkflowComparisonReport): string {
     '| --- | ---: | ---: | ---: | ---: | --- |',
     ...report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} |`),
     '',
-    'The workflows run sequentially with the same seed and resolved configuration. Workflow and implementation identities are provenance and do not alter semantic stage seed streams.',
+    'The workflows run sequentially with the same seed and resolved configuration. Production preserves its legacy shared-stream contract; the experimental workflow uses semantic node streams, so signature differences are expected and must be evaluated through the quality scorecard.',
     ''
   ].join('\n');
 }
