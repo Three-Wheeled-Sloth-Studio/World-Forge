@@ -399,7 +399,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
         window.alert('No generator configuration is available. Open the Generator tab once before running the graph.');
         return;
       }
-      generate({ ...sourceConfig, seed: detail.seed || sourceConfig.seed }, { startNodeId: detail.startNodeId, source: 'dev-graph' });
+      generate({ ...sourceConfig, seed: detail.seed || sourceConfig.seed, workflowId: detail.workflowId } as GenerationConfig, { startNodeId: detail.startNodeId, source: 'dev-graph' });
     };
     window.addEventListener(developerGenerationRunEvent, handleDeveloperRun);
     return () => window.removeEventListener(developerGenerationRunEvent, handleDeveloperRun);

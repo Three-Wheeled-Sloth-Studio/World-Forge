@@ -4,6 +4,7 @@ export * from './contracts';
 export * from './core';
 export * from './executor';
 export * from './graph/generationGraph';
+export * from './graph/generationWorkflows';
 export * from './legacy';
 export * from './loaders';
 export * from './mods';

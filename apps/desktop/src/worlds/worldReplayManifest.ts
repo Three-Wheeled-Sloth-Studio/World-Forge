@@ -1,11 +1,20 @@
 import type { GenerationConfig, SelectedValues, WorldProject } from '@world-forge/shared';
-import { coreGenerationGraph } from '@world-forge/generation-runtime/graph/generationGraph';
+import {
+  defaultGenerationWorkflowId,
+  generationWorkflowDescriptor,
+  type GenerationWorkflowId
+} from '@world-forge/generator-core/workflows';
+import { generationGraphWorkflow } from '@world-forge/generation-runtime/graph/generationWorkflows';
 
 export const WORLD_REPLAY_MANIFEST_FORMAT = 'world-forge-replay' as const;
 export const WORLD_REPLAY_MANIFEST_VERSION = 1 as const;
 export const CURRENT_WORLD_FORGE_GENERATOR_VERSION = '0.1.1-mvp';
 
 export type WorldReplayCompatibility = 'ready' | 'incompatible';
+
+type WorkflowAwareGenerationConfig = GenerationConfig & {
+  workflowId?: GenerationWorkflowId;
+};
 
 export type WorldReplayManifestV1 = {
   format: typeof WORLD_REPLAY_MANIFEST_FORMAT;
@@ -17,6 +26,8 @@ export type WorldReplayManifestV1 = {
   sourceCommit: string | null;
   generatorVersion: string;
   generationProfile: GenerationConfig['generationProfile'];
+  workflowId?: GenerationWorkflowId;
+  workflowVersion?: string;
   config: GenerationConfig;
   selectedValues: SelectedValues;
   graph: {
@@ -36,7 +47,8 @@ export type WorldReplayManifestV1 = {
 };
 
 export function buildWorldReplayManifest(project: WorldProject): WorldReplayManifestV1 {
-  const nodes = currentGraphContracts();
+  const workflow = workflowForConfig(project.config);
+  const nodes = currentGraphContracts(workflow.id);
   return {
     format: WORLD_REPLAY_MANIFEST_FORMAT,
     formatVersion: WORLD_REPLAY_MANIFEST_VERSION,
@@ -47,10 +59,12 @@ export function buildWorldReplayManifest(project: WorldProject): WorldReplayMani
     sourceCommit: cleanText(project.sourceCommit),
     generatorVersion: project.generatorVersion,
     generationProfile: project.config.generationProfile,
+    workflowId: workflow.id,
+    workflowVersion: workflow.version,
     config: structuredClone(project.config),
     selectedValues: structuredClone(project.selectedValues),
     graph: {
-      contractSignature: stableSignature(nodes),
+      contractSignature: workflowContractSignature(workflow.id),
       nodes,
     },
     schemaVersions: {
@@ -67,11 +81,13 @@ export function assessWorldReplayCompatibility(manifest: WorldReplayManifestV1):
     || manifest.formatVersion !== WORLD_REPLAY_MANIFEST_VERSION
     || manifest.generatorVersion !== CURRENT_WORLD_FORGE_GENERATOR_VERSION
   ) return 'incompatible';
-  return manifest.graph.contractSignature === currentGraphContractSignature() ? 'ready' : 'incompatible';
+  const workflow = generationWorkflowDescriptor(manifest.workflowId ?? workflowIdForConfig(manifest.config));
+  if (manifest.workflowVersion && manifest.workflowVersion !== workflow.version) return 'incompatible';
+  return manifest.graph.contractSignature === currentGraphContractSignature(workflow.id) ? 'ready' : 'incompatible';
 }
 
-export function currentGraphContractSignature(): string {
-  return stableSignature(currentGraphContracts());
+export function currentGraphContractSignature(workflowId: GenerationWorkflowId = defaultGenerationWorkflowId): string {
+  return workflowContractSignature(workflowId);
 }
 
 export function authoritativeWorldSignature(project: WorldProject): string {
@@ -96,8 +112,25 @@ export function isWorldReplayManifest(value: unknown): value is WorldReplayManif
   return true;
 }
 
-function currentGraphContracts(): WorldReplayManifestV1['graph']['nodes'] {
-  return coreGenerationGraph.map((node) => ({
+function workflowForConfig(config: GenerationConfig) {
+  return generationWorkflowDescriptor(workflowIdForConfig(config));
+}
+
+function workflowIdForConfig(config: GenerationConfig): GenerationWorkflowId {
+  return generationWorkflowDescriptor((config as WorkflowAwareGenerationConfig).workflowId).id;
+}
+
+function workflowContractSignature(workflowId: GenerationWorkflowId): string {
+  const workflow = generationWorkflowDescriptor(workflowId);
+  return stableSignature({
+    workflowId: workflow.id,
+    workflowVersion: workflow.version,
+    nodes: currentGraphContracts(workflow.id)
+  });
+}
+
+function currentGraphContracts(workflowId: GenerationWorkflowId): WorldReplayManifestV1['graph']['nodes'] {
+  return generationGraphWorkflow(workflowId).nodes.map((node) => ({
     nodeId: node.id,
     implementationId: node.implementationId,
     inputs: [...node.inputs],

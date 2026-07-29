@@ -51,12 +51,16 @@ function stage(input: {
 }
 
 describe('deterministic random streams', () => {
-  it('keeps stage streams stable and isolated', () => {
-    const first = createStageRandom('root', 'workflow', 'star', 'core.star', 'star-primary');
-    const second = createStageRandom('root', 'workflow', 'star', 'core.star', 'star-primary');
-    const other = createStageRandom('root', 'workflow', 'orbits', 'core.orbits', 'system');
-    expect([first.next(), first.next(), first.int(1, 10)]).toEqual([second.next(), second.next(), second.int(1, 10)]);
-    expect(other.next()).not.toBe(second.next());
+  it('keeps semantic stage streams stable across workflows and implementations', () => {
+    const values = (workflowId: string, implementationId: string) => {
+      const random = createStageRandom('root', workflowId, 'star', implementationId, 'star-primary');
+      return [random.next(), random.next(), random.int(1, 10)];
+    };
+    expect(values('workflow-a', 'core.star')).toEqual(values('workflow-a', 'core.star'));
+    expect(values('workflow-a', 'core.star')).toEqual(values('workflow-b', 'experimental.star'));
+
+    const other = createStageRandom('root', 'workflow-a', 'orbits', 'core.orbits', 'system');
+    expect(other.next()).not.toBe(values('workflow-a', 'core.star')[0]);
   });
 });
 

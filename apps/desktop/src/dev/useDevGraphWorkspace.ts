@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DeepTimeProject } from '@world-forge/generator-core/deepTimePipeline';
-import { coreGenerationGraph } from '@world-forge/generation-runtime/graph/generationGraph';
+import type { GenerationWorkflowId } from '@world-forge/generator-core/workflows';
+import { generationGraphWorkflow } from '@world-forge/generation-runtime/graph/generationWorkflows';
 import type { GenerationConfig, WorldProject } from '@world-forge/shared';
 import {
   generationStageTelemetryEvent,
@@ -19,6 +20,7 @@ export const defaultGraphToolbar: GraphToolbarState = {
 
 type StageState = GenerationStageTelemetryDetail;
 type ExtendedGenerationConfig = GenerationConfig & {
+  workflowId?: GenerationWorkflowId;
   starPresetId?: string;
   worldPresetId?: string;
   seeds?: { star?: string; world?: string };
@@ -36,35 +38,19 @@ function projectArtifactSummary(project: WorldProject | undefined): Record<strin
   const config = project.config as ExtendedGenerationConfig;
   return {
     'system.orbit': [
-      `Star type ${config.starPresetId === 'habitable' ? 'Earthlike-Friendly' : 'Sol-Like'} · star seed ${config.seeds?.star ?? project.seed}`,
-      `World type ${config.worldPresetId ?? 'Earthlike'} · world seed ${config.seeds?.world ?? project.seed}`,
+      `Star type ${config.starPresetId === 'habitable' ? 'Earthlike-Friendly' : 'Sol-Like'} - star seed ${config.seeds?.star ?? project.seed}`,
+      `World type ${config.worldPresetId ?? 'Earthlike'} - world seed ${config.seeds?.world ?? project.seed}`,
       `${project.selectedValues.moonCount} moons`,
       `${project.selectedValues.systemAgeGy.toFixed(2)} Gy system age`,
       ...(stellar ? [
-        `${stellar.spectralClass}${stellar.luminosityClass} · ${stellar.effectiveTemperatureK.toLocaleString()} K`,
-        `${Math.round(stellar.massSolar * 100)}% solar mass · ${Math.round(stellar.radiusSolar * 100)}% solar radius · ${Math.round(stellar.luminositySolar * 100)}% solar luminosity`,
-        `${stellar.activityClass} activity · ${stellar.cyclePeriodYears.toFixed(1)} year cycle`,
+        `${stellar.spectralClass}${stellar.luminosityClass} - ${stellar.effectiveTemperatureK.toLocaleString()} K`,
+        `${Math.round(stellar.massSolar * 100)}% solar mass - ${Math.round(stellar.radiusSolar * 100)}% solar radius - ${Math.round(stellar.luminositySolar * 100)}% solar luminosity`,
+        `${stellar.activityClass} activity - ${stellar.cyclePeriodYears.toFixed(1)} year cycle`,
         `Habitable zone ${stellar.habitableZoneInnerAu.toFixed(2)}-${stellar.habitableZoneOuterAu.toFixed(2)} AU`
       ] : []),
       ...(dynamics ? [
-        `${dynamics.orbitalPeriodDays.toFixed(1)} day year · ${dynamics.rotationPeriodHours.toFixed(1)} hour day · ${dynamics.semiMajorAxisAu.toFixed(3)} AU orbit`,
-        `${dynamics.obliquityMeanDeg.toFixed(1)} deg axial tilt · ${dynamics.eccentricityMean.toFixed(3)} orbital eccentricity`
-      ] : [])
-    ],
-    'system-orbit': [
-      `Star type ${config.starPresetId === 'habitable' ? 'Earthlike-Friendly' : 'Sol-Like'} · star seed ${config.seeds?.star ?? project.seed}`,
-      `World type ${config.worldPresetId ?? 'Earthlike'} · world seed ${config.seeds?.world ?? project.seed}`,
-      `${project.selectedValues.moonCount} moons`,
-      `${project.selectedValues.systemAgeGy.toFixed(2)} Gy system age`,
-      ...(stellar ? [
-        `${stellar.spectralClass}${stellar.luminosityClass} · ${stellar.effectiveTemperatureK.toLocaleString()} K`,
-        `${Math.round(stellar.massSolar * 100)}% solar mass · ${Math.round(stellar.radiusSolar * 100)}% solar radius · ${Math.round(stellar.luminositySolar * 100)}% solar luminosity`,
-        `${stellar.activityClass} activity · ${stellar.cyclePeriodYears.toFixed(1)} year cycle`,
-        `Habitable zone ${stellar.habitableZoneInnerAu.toFixed(2)}–${stellar.habitableZoneOuterAu.toFixed(2)} AU`
-      ] : []),
-      ...(dynamics ? [
-        `${dynamics.orbitalPeriodDays.toFixed(1)} day year · ${dynamics.rotationPeriodHours.toFixed(1)} hour day · ${dynamics.semiMajorAxisAu.toFixed(3)} AU orbit`,
-        `${dynamics.obliquityMeanDeg.toFixed(1)}° axial tilt · ${dynamics.eccentricityMean.toFixed(3)} orbital eccentricity`
+        `${dynamics.orbitalPeriodDays.toFixed(1)} day year - ${dynamics.rotationPeriodHours.toFixed(1)} hour day - ${dynamics.semiMajorAxisAu.toFixed(3)} AU orbit`,
+        `${dynamics.obliquityMeanDeg.toFixed(1)} deg axial tilt - ${dynamics.eccentricityMean.toFixed(3)} orbital eccentricity`
       ] : [])
     ],
     'primordial-crust': [
@@ -77,7 +63,7 @@ function projectArtifactSummary(project: WorldProject | undefined): Record<strin
       ...(cratons.length ? [`${cratons.length} persistent cratons`] : []),
       ...(drift ? [
         `${drift.activeBoundaryPairs.toLocaleString()} active plate-boundary pairs`,
-        `${drift.driftMode} drift · ${Math.round(drift.puzzleFitPotential * 100)}% puzzle-fit proxy`
+        `${drift.driftMode} drift - ${Math.round(drift.puzzleFitPotential * 100)}% puzzle-fit proxy`
       ] : [])
     ],
     'initial-terrain': [
@@ -89,15 +75,15 @@ function projectArtifactSummary(project: WorldProject | undefined): Record<strin
       `${deepTime.forcingSamples.length} orbital-forcing samples`,
       `${deepTime.tectonicAdjustedCells.toLocaleString()} tectonic adjustments`,
       `${deepTime.impactAdjustedCells.toLocaleString()} impact adjustments`,
-      `${deepTime.impactHistory.appliedEvents.toLocaleString()} impact events · ${deepTime.impactHistory.visibleEvents.toLocaleString()} visible`,
+      `${deepTime.impactHistory.appliedEvents.toLocaleString()} impact events - ${deepTime.impactHistory.visibleEvents.toLocaleString()} visible`,
       `${Math.round(deepTime.impactHistory.meanSurvivalRatio * 100)}% mean impact relief survival`,
-      ...(drift ? [`${drift.continentalCollisionPairs.toLocaleString()} continental collision pairs · ${drift.continentalRiftPairs.toLocaleString()} rift pairs`] : []),
+      ...(drift ? [`${drift.continentalCollisionPairs.toLocaleString()} continental collision pairs - ${drift.continentalRiftPairs.toLocaleString()} rift pairs`] : []),
       ...(deepTime.fragmentHistory ? [
-        `${deepTime.fragmentHistory.fragmentCount.toLocaleString()} continental fragments · ${deepTime.fragmentHistory.conjugateMarginCandidatePairs.toLocaleString()} conjugate margin candidates`,
-        `${deepTime.fragmentHistory.collisionEventCandidatePairs.toLocaleString()} keyframed collision candidates · ${deepTime.fragmentHistory.riftSplitCandidateFragments.toLocaleString()} rift split candidates`,
-        `${Math.round(deepTime.fragmentHistory.terrainResponseCellShare * 100)}% fragment terrain-response cells · ${Math.round(deepTime.fragmentHistory.terrainResponseScale * 100)}% applied scale`,
-        `${Math.round(deepTime.fragmentHistory.volcanismResponseCellShare * 100)}% fragment volcanism-response cells · ${Math.round(deepTime.fragmentHistory.volcanismResponseScale * 100)}% applied scale`,
-        `${Math.round(deepTime.fragmentHistory.puzzleFitScore * 100)}% fragment-history puzzle-fit score · ${Math.round(deepTime.fragmentHistory.motionEventScore * 100)}% motion-event score`
+        `${deepTime.fragmentHistory.fragmentCount.toLocaleString()} continental fragments - ${deepTime.fragmentHistory.conjugateMarginCandidatePairs.toLocaleString()} conjugate margin candidates`,
+        `${deepTime.fragmentHistory.collisionEventCandidatePairs.toLocaleString()} keyframed collision candidates - ${deepTime.fragmentHistory.riftSplitCandidateFragments.toLocaleString()} rift split candidates`,
+        `${Math.round(deepTime.fragmentHistory.terrainResponseCellShare * 100)}% fragment terrain-response cells - ${Math.round(deepTime.fragmentHistory.terrainResponseScale * 100)}% applied scale`,
+        `${Math.round(deepTime.fragmentHistory.volcanismResponseCellShare * 100)}% fragment volcanism-response cells - ${Math.round(deepTime.fragmentHistory.volcanismResponseScale * 100)}% applied scale`,
+        `${Math.round(deepTime.fragmentHistory.puzzleFitScore * 100)}% fragment-history puzzle-fit score - ${Math.round(deepTime.fragmentHistory.motionEventScore * 100)}% motion-event score`
       ] : []),
       `${deepTime.weatheredCells.toLocaleString()} weathered cells`,
       `${deepTime.glaciallyErodedCells.toLocaleString()} glacial erosion operations`
@@ -154,7 +140,7 @@ function projectArtifactSummary(project: WorldProject | undefined): Record<strin
       `${world.plates.length} motion-scaled plates`,
       ...(drift ? [
         `${drift.activeBoundaryPairs.toLocaleString()} active boundary pairs`,
-        `${drift.driftMode} drift · ${Math.round(drift.puzzleFitPotential * 100)}% puzzle-fit proxy`
+        `${drift.driftMode} drift - ${Math.round(drift.puzzleFitPotential * 100)}% puzzle-fit proxy`
       ] : [])
     ],
     'world.deep-time-aging': deepTime ? [
@@ -180,6 +166,7 @@ export function useDevGraphWorkspace() {
   const [telemetry, setTelemetry] = useState<GenerationTelemetryDetail | null>(null);
   const [stageStates, setStageStates] = useState<Record<string, StageState>>({});
   const [lastProject, setLastProject] = useState<WorldProject | undefined>();
+  const workflow = useMemo(() => generationGraphWorkflow(toolbar.workflowId), [toolbar.workflowId]);
 
   useEffect(() => {
     const handleTelemetry = (event: Event) => {
@@ -206,13 +193,13 @@ export function useDevGraphWorkspace() {
   }, []);
 
   const artifactSummary = useMemo(() => projectArtifactSummary(lastProject), [lastProject]);
-  const requestedStartIndex = telemetry?.startNodeId ? coreGenerationGraph.findIndex((node) => node.id === telemetry.startNodeId) : 0;
+  const requestedStartIndex = telemetry?.startNodeId ? workflow.nodes.findIndex((node) => node.id === telemetry.startNodeId) : 0;
   const graphDiagnosticsByNode = useMemo(() => {
     const entries = lastProject?.diagnostics?.graph?.nodes ?? [];
     return new Map(entries.map((entry) => [entry.nodeId, entry]));
   }, [lastProject]);
 
-  const nodes = useMemo<GraphNode[]>(() => coreGenerationGraph.map((definition, index) => {
+  const nodes = useMemo<GraphNode[]>(() => workflow.nodes.map((definition, index) => {
     const graphDiagnostic = graphDiagnosticsByNode.get(definition.id);
     const retained = Boolean(telemetry?.startNodeId) && index < Math.max(0, requestedStartIndex) && Boolean(lastProject);
     const stage = stageStates[definition.id];
@@ -239,11 +226,11 @@ export function useDevGraphWorkspace() {
       artifactSummary: graphDiagnostic?.outputs ?? artifactSummary[definition.id] ?? [],
       findings
     };
-  }), [artifactSummary, graphDiagnosticsByNode, lastProject, requestedStartIndex, stageStates, telemetry]);
+  }), [artifactSummary, graphDiagnosticsByNode, lastProject, requestedStartIndex, stageStates, telemetry, workflow.nodes]);
 
   const actions = useMemo(() => ({
     selectNode: (id: string) => setSelectedNodeId((current) => current === id ? null : id),
-    setWorkflow: (workflowId: string) => markDirty({ workflowId }),
+    setWorkflow: (workflowId: GenerationWorkflowId) => markDirty({ workflowId }),
     setFidelity: (fidelity: string) => markDirty({ fidelity }),
     setSeed: (seed: string) => markDirty({ seed }),
     validate: () => setToolbar((current) => ({ ...current, validationStatus: 'valid' })),

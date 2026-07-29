@@ -1,3 +1,4 @@
+import type { GenerationWorkflowId } from '@world-forge/generator-core/workflows';
 import type { WorldProject } from '@world-forge/shared';
 
 export const generationTelemetryEvent = 'world-forge:generation-telemetry';
@@ -38,5 +39,6 @@ export type GenerationStageTelemetryDetail = {
 
 export type DeveloperGenerationRunDetail = {
   seed: string;
+  workflowId: GenerationWorkflowId;
   startNodeId: string | null;
 };

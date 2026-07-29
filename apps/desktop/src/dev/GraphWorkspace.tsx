@@ -1,5 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, CircleDot, Clock3, Focus, LoaderCircle, Maximize2, Minus, PanelRightOpen, Play, Plus, RotateCcw, Save, Search, SkipForward, Workflow, X, XCircle } from 'lucide-react';
+import {
+  generationWorkflowDescriptor,
+  generationWorkflowDescriptors,
+  type GenerationWorkflowId
+} from '@world-forge/generator-core/workflows';
 import { developerGenerationRunEvent, type DeveloperGenerationRunDetail } from '../generation/generationEvents';
 
 export type GraphNodeStatus = 'waiting' | 'running' | 'complete' | 'retained' | 'warning' | 'failed' | 'skipped';
@@ -21,7 +26,7 @@ export type GraphNode = {
 };
 
 export type GraphToolbarState = {
-  workflowId: string;
+  workflowId: GenerationWorkflowId;
   fidelity: string;
   seed: string;
   validationStatus: '' | 'valid';
@@ -32,7 +37,7 @@ export type GraphWorkspaceProps = {
   selectedNodeId: string | null;
   toolbar: GraphToolbarState;
   onSelectNode: (id: string) => void;
-  onWorkflowChange: (id: string) => void;
+  onWorkflowChange: (id: GenerationWorkflowId) => void;
   onFidelityChange: (fidelity: string) => void;
   onSeedChange: (seed: string) => void;
   onValidate: () => void;
@@ -88,6 +93,7 @@ export function GraphWorkspace({
   const selected = nodes.find((candidate) => candidate.id === selectedNodeId) ?? null;
   const running = nodes.find((candidate) => candidate.status === 'running');
   const completedCount = nodes.filter((candidate) => candidate.status === 'complete' || candidate.status === 'retained').length;
+  const activeWorkflow = generationWorkflowDescriptor(toolbar.workflowId);
   const runDisabledReason = running
     ? 'A generation run is already active.'
     : '';
@@ -104,6 +110,7 @@ export function GraphWorkspace({
     if (!canRun) return;
     const detail: DeveloperGenerationRunDetail = {
       seed: toolbar.seed,
+      workflowId: toolbar.workflowId,
       startNodeId: null
     };
     window.dispatchEvent(new CustomEvent<DeveloperGenerationRunDetail>(developerGenerationRunEvent, { detail }));
@@ -234,8 +241,10 @@ export function GraphWorkspace({
         <div className="graph-toolbar-fields">
           <label>
             Workflow
-            <select value={toolbar.workflowId} onChange={(event) => onWorkflowChange(event.target.value)} disabled={Boolean(running)}>
-              <option value="core.live-world">Live world generation</option>
+            <select value={toolbar.workflowId} onChange={(event) => onWorkflowChange(event.target.value as GenerationWorkflowId)} disabled={Boolean(running)}>
+              {generationWorkflowDescriptors.map((workflow) => (
+                <option key={workflow.id} value={workflow.id}>{workflow.label}</option>
+              ))}
             </select>
           </label>
           <label>
@@ -292,7 +301,6 @@ export function GraphWorkspace({
                       type="button"
                       className={`graph-node status-${graphNode.status} ${selectedNodeId === graphNode.id ? 'selected' : ''}`}
                       onClick={() => inspectNode(graphNode.id)}
-                      aria-pressed={selectedNodeId === graphNode.id}
                     >
                       <span className="graph-node-header">
                         {statusIcon(graphNode.status)}
@@ -351,7 +359,7 @@ export function GraphWorkspace({
                   {toolbar.validationStatus === 'valid' ? <CheckCircle2 size={16} /> : <CircleDot size={16} />}
                   <span>{toolbar.validationStatus === 'valid' ? 'Workflow shape validated' : 'Not validated in this session'}</span>
                 </div>
-                <div className="graph-summary"><span>core.live-world@0.3.1</span><span>{nodes.length} stages</span><span>{Math.max(0, nodes.length - 1)} edges</span></div>
+                <div className="graph-summary"><span>{activeWorkflow.id}@{activeWorkflow.version}</span><span>{nodes.length} stages</span><span>{Math.max(0, nodes.length - 1)} edges</span></div>
               </>
             ) : (
               <div className="dev-empty-inspector">Select a graph node to inspect its contract and live run state. Leave all nodes unselected to run from the beginning.</div>
