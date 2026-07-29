@@ -1,0 +1,173 @@
+{
+  "format": "world-forge-present-climate-derived-field-reuse-summary",
+  "version": 1,
+  "generatedAt": "2026-07-29T16:16:13.128Z",
+  "sourceCommit": "49734abb7351c61171da9f6cca54c39afe59011a",
+  "resolution": "512x256",
+  "seeds": [
+    "1001001",
+    "3141592",
+    "8675309"
+  ],
+  "scenarios": [
+    "earthlike-standard",
+    "archipelago-standard",
+    "geology-glacial-stress"
+  ],
+  "controlWorkflow": "core.performance-foundation-aging-control",
+  "candidateWorkflow": "core.performance-foundation",
+  "runPairs": 9,
+  "totalRuntimeDeltaPercent": {
+    "mean": -9.274,
+    "median": -9.304,
+    "min": -15.531,
+    "max": -5.281
+  },
+  "deepTimeDeltaPercent": {
+    "mean": -11.664,
+    "median": -11.72,
+    "min": -17.232,
+    "max": -7.676
+  },
+  "climateRebuildDeltaPercent": -0.179,
+  "hydrologyRebuildDeltaPercent": -36.761,
+  "coarseSignaturesEqual": 9,
+  "authoritativeSignaturesEqual": 9,
+  "signatureFailures": [],
+  "authoritativeSignatureFailures": [],
+  "metricMismatches": [],
+  "qualityRegressions": [],
+  "scenarioSummary": [
+    {
+      "scenarioId": "earthlike-standard",
+      "totalRuntimeDeltaPercent": {
+        "mean": -13.072,
+        "median": -12.961,
+        "min": -15.531,
+        "max": -10.723
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -14.082,
+        "median": -13.293,
+        "min": -17.232,
+        "max": -11.72
+      },
+      "coarseSignaturesEqual": 3,
+      "authoritativeSignaturesEqual": 3,
+      "controlOceanWithinTolerance": 0,
+      "candidateOceanWithinTolerance": 0,
+      "controlRiverPathsValid": 3,
+      "candidateRiverPathsValid": 3,
+      "runCount": 3
+    },
+    {
+      "scenarioId": "archipelago-standard",
+      "totalRuntimeDeltaPercent": {
+        "mean": -7.207,
+        "median": -6.909,
+        "min": -9.304,
+        "max": -5.408
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -9.916,
+        "median": -9.227,
+        "min": -12.845,
+        "max": -7.676
+      },
+      "coarseSignaturesEqual": 3,
+      "authoritativeSignaturesEqual": 3,
+      "controlOceanWithinTolerance": 2,
+      "candidateOceanWithinTolerance": 2,
+      "controlRiverPathsValid": 3,
+      "candidateRiverPathsValid": 3,
+      "runCount": 3
+    },
+    {
+      "scenarioId": "geology-glacial-stress",
+      "totalRuntimeDeltaPercent": {
+        "mean": -7.543,
+        "median": -7.976,
+        "min": -9.373,
+        "max": -5.281
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -10.995,
+        "median": -10.776,
+        "min": -13.591,
+        "max": -8.619
+      },
+      "coarseSignaturesEqual": 3,
+      "authoritativeSignaturesEqual": 3,
+      "controlOceanWithinTolerance": 3,
+      "candidateOceanWithinTolerance": 3,
+      "controlRiverPathsValid": 3,
+      "candidateRiverPathsValid": 3,
+      "runCount": 3
+    }
+  ],
+  "substageSummary": [
+    {
+      "stageId": "climate-rebuild",
+      "controlMeanMs": 1904.283,
+      "candidateMeanMs": 1900.879,
+      "deltaMs": -3.404,
+      "deltaPercent": -0.179
+    },
+    {
+      "stageId": "hydrology-rebuild",
+      "controlMeanMs": 1464.549,
+      "candidateMeanMs": 926.164,
+      "deltaMs": -538.385,
+      "deltaPercent": -36.761
+    },
+    {
+      "stageId": "biome-projection-validation",
+      "controlMeanMs": 583.294,
+      "candidateMeanMs": 548.17,
+      "deltaMs": -35.124,
+      "deltaPercent": -6.022
+    },
+    {
+      "stageId": "surface-aging",
+      "controlMeanMs": 582.014,
+      "candidateMeanMs": 575.437,
+      "deltaMs": -6.578,
+      "deltaPercent": -1.13
+    },
+    {
+      "stageId": "ledger-and-unattributed",
+      "controlMeanMs": 188.79,
+      "candidateMeanMs": 182.153,
+      "deltaMs": -6.637,
+      "deltaPercent": -3.515
+    },
+    {
+      "stageId": "water-reconciliation",
+      "controlMeanMs": 122.216,
+      "candidateMeanMs": 123.131,
+      "deltaMs": 0.915,
+      "deltaPercent": 0.749
+    },
+    {
+      "stageId": "fragment-placement",
+      "controlMeanMs": 105.011,
+      "candidateMeanMs": 103.78,
+      "deltaMs": -1.231,
+      "deltaPercent": -1.172
+    },
+    {
+      "stageId": "fragment-history",
+      "controlMeanMs": 75.753,
+      "candidateMeanMs": 75.338,
+      "deltaMs": -0.414,
+      "deltaPercent": -0.547
+    },
+    {
+      "stageId": "setup-models",
+      "controlMeanMs": 27.176,
+      "candidateMeanMs": 24.855,
+      "deltaMs": -2.322,
+      "deltaPercent": -8.543
+    }
+  ]
+}
