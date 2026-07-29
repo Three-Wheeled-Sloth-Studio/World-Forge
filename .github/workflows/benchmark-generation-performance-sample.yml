@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - benchmark/generation-performance-sample
+  pull_request:
+    branches:
+      - dev
 
 permissions:
   contents: read
