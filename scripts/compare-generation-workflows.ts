@@ -12,6 +12,7 @@ import {
   type GenerationWorkflowId
 } from '../packages/generator-core/src/workflows';
 import { generationGraphWorkflow } from '../packages/generation-runtime/src/graph/generationWorkflows';
+import { authoritativeWorldSignature } from '../apps/desktop/src/worlds/worldReplayManifest';
 import type { GenerationConfig, SelectedValues, WorldProject } from '@world-forge/shared';
 
 type Resolution = { width: number; height: number };
@@ -43,6 +44,7 @@ type WorkflowResult = {
   memoryBefore: MemorySnapshot;
   memoryAfter: MemorySnapshot;
   outputSignature: string;
+  authoritativeSignature: string;
   deepTime: DeepTimeInstrumentationProfile;
   metrics: {
     oceanPercentage: number;
@@ -67,10 +69,11 @@ type PairComparison = {
   deepTimeDeltaMs: number;
   deepTimeDeltaPercent: number;
   signaturesEqual: boolean;
+  authoritativeSignaturesEqual: boolean;
 };
 type WorkflowComparisonReport = {
   format: 'world-forge-workflow-comparison';
-  version: 2;
+  version: 3;
   generatedAt: string;
   environment: {
     node: string;
@@ -275,6 +278,7 @@ function runWorkflow(
     memoryBefore,
     memoryAfter: memorySnapshot(),
     outputSignature: outputSignature(project),
+    authoritativeSignature: normalizedAuthoritativeSignature(project),
     deepTime: profile,
     metrics: {
       oceanPercentage: project.metrics.oceanPercentage,
@@ -317,7 +321,8 @@ function comparePairs(
       candidateDeepTimeMs: candidate.deepTime.reportedDeepTimeMs,
       deepTimeDeltaMs: round(deepTimeDeltaMs),
       deepTimeDeltaPercent: percentDelta(deepTimeDeltaMs, baseline.deepTime.reportedDeepTimeMs),
-      signaturesEqual: baseline.outputSignature === candidate.outputSignature
+      signaturesEqual: baseline.outputSignature === candidate.outputSignature,
+      authoritativeSignaturesEqual: baseline.authoritativeSignature === candidate.authoritativeSignature
     };
   });
 }
@@ -329,6 +334,12 @@ function workflowContractSignature(workflowId: GenerationWorkflowId): string {
     workflow.version,
     ...workflow.nodes.map((node) => `${node.id}:${node.implementationId}:${node.inputs.join(',')}:${node.outputs.join(',')}`)
   ].join('|'));
+}
+
+function normalizedAuthoritativeSignature(project: WorldProject): string {
+  const config = { ...project.config } as GenerationConfig & { workflowId?: string };
+  delete config.workflowId;
+  return authoritativeWorldSignature({ ...project, config });
 }
 
 function outputSignature(project: WorldProject): string {
@@ -374,7 +385,7 @@ function renderMarkdown(report: WorkflowComparisonReport): string {
     .filter((result, index, all) => all.findIndex((candidate) => candidate.workflowId === result.workflowId) === index)
     .map((result) => `${result.workflowId}=${result.seedStrategy}`)
     .join(', ');
-  const comparisonRows = report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.baselineDeepTimeMs.toFixed(1)} | ${comparison.candidateDeepTimeMs.toFixed(1)} | ${comparison.deepTimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} |`);
+  const comparisonRows = report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.baselineDeepTimeMs.toFixed(1)} | ${comparison.candidateDeepTimeMs.toFixed(1)} | ${comparison.deepTimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} | ${comparison.authoritativeSignaturesEqual ? 'yes' : 'no'} |`);
   const substageRows = report.comparisons.flatMap((comparison) => {
     const pair = report.results.filter((result) => result.pairId === comparison.pairId);
     const baseline = pair.find((result) => result.workflowId === comparison.baselineWorkflowId);
@@ -403,8 +414,8 @@ function renderMarkdown(report: WorkflowComparisonReport): string {
     '',
     '## Runtime comparison',
     '',
-    '| Pair | Baseline total ms | Candidate total ms | Total delta | Baseline deep-time ms | Candidate deep-time ms | Deep-time delta | Same signature |',
-    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+    '| Pair | Baseline total ms | Candidate total ms | Total delta | Baseline deep-time ms | Candidate deep-time ms | Deep-time delta | Same coarse signature | Same authoritative signature |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ...comparisonRows,
     '',
     '## Deep-time substage comparison',
