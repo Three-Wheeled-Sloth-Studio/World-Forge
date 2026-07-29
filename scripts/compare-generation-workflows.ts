@@ -1,7 +1,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createDefaultConfig } from '../packages/generator-core/src/index';
-import { generateProjectWithMotionAwareDeepTime } from '../packages/generator-core/src/plateMotionPipeline';
+import {
+  generateProjectWithDeepTimeInstrumentation,
+  type DeepTimeInstrumentationProfile,
+  type DeepTimeSubstageId
+} from '../packages/generator-core/src/deepTimeInstrumentation';
 import {
   generationWorkflowDescriptor,
   generationWorkflowIds,
@@ -9,14 +13,24 @@ import {
   type GenerationWorkflowId
 } from '../packages/generator-core/src/workflows';
 import { generationGraphWorkflow } from '../packages/generation-runtime/src/graph/generationWorkflows';
-import type { GenerationConfig, WorldProject } from '@world-forge/shared';
+import type { GenerationConfig, SelectedValues, WorldProject } from '@world-forge/shared';
 
 type Resolution = { width: number; height: number };
-type WorkflowConfig = GenerationConfig & { workflowId: GenerationWorkflowId };
+type ScenarioId = 'earthlike-standard' | 'archipelago-standard' | 'geology-glacial-stress';
+type BenchmarkScenario = {
+  id: ScenarioId;
+  label: string;
+  worldPresetId: string;
+  selectedValues: Partial<SelectedValues>;
+};
+type WorkflowConfig = GenerationConfig & { workflowId: GenerationWorkflowId; worldPresetId?: string };
 type MemorySnapshot = { rssMb: number; heapUsedMb: number; heapTotalMb: number };
 type WorkflowResult = {
   pairId: string;
   runIndex: number;
+  scenarioId: ScenarioId;
+  scenarioLabel: string;
+  worldPresetId: string;
   seed: string;
   workflowId: GenerationWorkflowId;
   workflowVersion: string;
@@ -30,6 +44,7 @@ type WorkflowResult = {
   memoryBefore: MemorySnapshot;
   memoryAfter: MemorySnapshot;
   outputSignature: string;
+  deepTime: DeepTimeInstrumentationProfile;
   metrics: {
     oceanPercentage: number;
     icePercentage: number;
@@ -40,6 +55,7 @@ type WorkflowResult = {
 };
 type PairComparison = {
   pairId: string;
+  scenarioId: ScenarioId;
   seed: string;
   baselineWorkflowId: GenerationWorkflowId;
   candidateWorkflowId: GenerationWorkflowId;
@@ -47,11 +63,15 @@ type PairComparison = {
   candidateMs: number;
   runtimeDeltaMs: number;
   runtimeDeltaPercent: number;
+  baselineDeepTimeMs: number;
+  candidateDeepTimeMs: number;
+  deepTimeDeltaMs: number;
+  deepTimeDeltaPercent: number;
   signaturesEqual: boolean;
 };
 type WorkflowComparisonReport = {
   format: 'world-forge-workflow-comparison';
-  version: 1;
+  version: 2;
   generatedAt: string;
   environment: {
     node: string;
@@ -61,25 +81,88 @@ type WorkflowComparisonReport = {
   };
   options: {
     seeds: string[];
+    scenarios: ScenarioId[];
     workflows: [GenerationWorkflowId, GenerationWorkflowId];
     resolution: string;
     runs: number;
   };
+  scenarioDefinitions: BenchmarkScenario[];
   results: WorkflowResult[];
   comparisons: PairComparison[];
 };
 
+const benchmarkScenarios: readonly BenchmarkScenario[] = [
+  {
+    id: 'earthlike-standard',
+    label: 'Earthlike standard activity',
+    worldPresetId: 'Earthlike',
+    selectedValues: {
+      systemAgeGy: 4.6,
+      oceanPercentage: 66,
+      averageTemperatureC: 15,
+      aridity: 0.48,
+      axialTiltDeg: 23.4,
+      plateCount: 23,
+      continentCount: 5,
+      continentScale: 0.58,
+      islandDensity: 0.38,
+      impactFrequency: 1,
+      riverDensity: 1.9
+    }
+  },
+  {
+    id: 'archipelago-standard',
+    label: 'Archipelago standard activity',
+    worldPresetId: 'Archipelago',
+    selectedValues: {
+      systemAgeGy: 5.2,
+      oceanPercentage: 72,
+      averageTemperatureC: 17,
+      aridity: 0.46,
+      axialTiltDeg: 27,
+      plateCount: 31,
+      continentCount: 8,
+      continentScale: 0.26,
+      islandDensity: 0.84,
+      impactFrequency: 1.15,
+      riverDensity: 1.3
+    }
+  },
+  {
+    id: 'geology-glacial-stress',
+    label: 'High-age geological and glacial stress',
+    worldPresetId: 'Habitable World',
+    selectedValues: {
+      systemAgeGy: 9.5,
+      oceanPercentage: 62,
+      averageTemperatureC: 2,
+      aridity: 0.42,
+      axialTiltDeg: 42,
+      orbitalEccentricity: 0.14,
+      plateCount: 60,
+      continentCount: 7,
+      continentScale: 0.62,
+      islandDensity: 0.64,
+      impactFrequency: 2.2,
+      riverDensity: 2.8
+    }
+  }
+];
+
 const args = parseArgs(process.argv.slice(2));
 const sourceCommit = process.env.GITHUB_SHA || process.env.SOURCE_COMMIT || args.sourceCommit || 'unknown';
+const selectedScenarios = args.scenarios.map(resolveScenario);
 const results: WorkflowResult[] = [];
 
-for (const seed of args.seeds) {
-  for (let runIndex = 0; runIndex < args.runs; runIndex += 1) {
-    const pairId = `${seed}-${formatResolution(args.resolution)}-run${runIndex + 1}`;
-    for (const workflowId of args.workflows) {
-      results.push(runWorkflow(pairId, seed, runIndex, workflowId, sourceCommit, args.resolution));
-      const current = results[results.length - 1];
-      console.log(`${current.pairId} ${current.workflowId}: ${current.reportedTotalMs.toFixed(1)} ms`);
+for (const scenario of selectedScenarios) {
+  for (const seed of args.seeds) {
+    for (let runIndex = 0; runIndex < args.runs; runIndex += 1) {
+      const pairId = `${scenario.id}-${seed}-${formatResolution(args.resolution)}-run${runIndex + 1}`;
+      for (const workflowId of args.workflows) {
+        results.push(runWorkflow(pairId, scenario, seed, runIndex, workflowId, sourceCommit, args.resolution));
+        const current = results[results.length - 1];
+        console.log(`${current.pairId} ${current.workflowId}: total ${current.reportedTotalMs.toFixed(1)} ms, deep-time ${current.deepTime.reportedDeepTimeMs.toFixed(1)} ms`);
+      }
     }
   }
 }
@@ -87,7 +170,7 @@ for (const seed of args.seeds) {
 const comparisons = comparePairs(results, args.workflows[0], args.workflows[1]);
 const report: WorkflowComparisonReport = {
   format: 'world-forge-workflow-comparison',
-  version: 1,
+  version: 2,
   generatedAt: new Date().toISOString(),
   environment: {
     node: process.version,
@@ -97,10 +180,12 @@ const report: WorkflowComparisonReport = {
   },
   options: {
     seeds: args.seeds,
+    scenarios: args.scenarios,
     workflows: args.workflows,
     resolution: formatResolution(args.resolution),
     runs: args.runs
   },
+  scenarioDefinitions: selectedScenarios,
   results,
   comparisons
 };
@@ -117,6 +202,7 @@ console.log(`Wrote ${markdownPath}`);
 
 function parseArgs(argv: string[]): {
   seeds: string[];
+  scenarios: ScenarioId[];
   workflows: [GenerationWorkflowId, GenerationWorkflowId];
   resolution: Resolution;
   runs: number;
@@ -124,12 +210,15 @@ function parseArgs(argv: string[]): {
 } {
   const value = (name: string) => argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const seeds = split(value('seeds')) ?? ['1001001', '3141592', '8675309'];
+  const scenarioValues = split(value('scenarios')) ?? benchmarkScenarios.map((scenario) => scenario.id);
+  const scenarios = scenarioValues.map((id) => resolveScenario(id).id);
   const workflowValues = split(value('workflows')) ?? [...generationWorkflowIds];
   if (workflowValues.length !== 2) throw new Error('Workflow comparison requires exactly two workflow IDs.');
   const workflows = workflowValues.map((id) => generationWorkflowDescriptor(id).id) as [GenerationWorkflowId, GenerationWorkflowId];
   if (workflows[0] === workflows[1]) throw new Error('Workflow comparison requires two distinct workflow IDs.');
   return {
     seeds,
+    scenarios,
     workflows,
     resolution: parseResolution(value('resolution') ?? '512x256'),
     runs: Math.max(1, Math.round(Number(value('runs') ?? '1'))),
@@ -137,8 +226,15 @@ function parseArgs(argv: string[]): {
   };
 }
 
+function resolveScenario(id: string): BenchmarkScenario {
+  const scenario = benchmarkScenarios.find((candidate) => candidate.id === id);
+  if (!scenario) throw new Error(`Unknown benchmark scenario: ${id}`);
+  return scenario;
+}
+
 function runWorkflow(
   pairId: string,
+  scenario: BenchmarkScenario,
   seed: string,
   runIndex: number,
   workflowId: GenerationWorkflowId,
@@ -148,16 +244,25 @@ function runWorkflow(
   const workflow = generationWorkflowDescriptor(workflowId);
   const config = createDefaultConfig(seed, resolution) as WorkflowConfig;
   config.workflowId = workflowId;
+  config.worldPresetId = scenario.worldPresetId;
+  config.selectedValues = {
+    ...config.selectedValues,
+    ...scenario.selectedValues,
+    oceanTolerancePercentagePoints: scenario.id === 'geology-glacial-stress' ? 10 : 6
+  };
   const memoryBefore = memorySnapshot();
   const started = performance.now();
-  const project = generateProjectWithMotionAwareDeepTime(config, {
-    appVersion: 'workflow-comparison',
+  const { project, profile } = generateProjectWithDeepTimeInstrumentation(config, {
+    appVersion: 'workflow-comparison-v2',
     sourceCommit
   });
   const measuredWallMs = performance.now() - started;
   return {
     pairId,
     runIndex,
+    scenarioId: scenario.id,
+    scenarioLabel: scenario.label,
+    worldPresetId: scenario.worldPresetId,
     seed,
     workflowId,
     workflowVersion: workflow.version,
@@ -171,6 +276,7 @@ function runWorkflow(
     memoryBefore,
     memoryAfter: memorySnapshot(),
     outputSignature: outputSignature(project),
+    deepTime: profile,
     metrics: {
       oceanPercentage: project.metrics.oceanPercentage,
       icePercentage: project.metrics.icePercentage,
@@ -197,15 +303,21 @@ function comparePairs(
     const candidate = pair.find((result) => result.workflowId === candidateWorkflowId);
     if (!baseline || !candidate) throw new Error(`Incomplete workflow pair: ${pairId}`);
     const runtimeDeltaMs = candidate.reportedTotalMs - baseline.reportedTotalMs;
+    const deepTimeDeltaMs = candidate.deepTime.reportedDeepTimeMs - baseline.deepTime.reportedDeepTimeMs;
     return {
       pairId,
+      scenarioId: baseline.scenarioId,
       seed: baseline.seed,
       baselineWorkflowId,
       candidateWorkflowId,
       baselineMs: baseline.reportedTotalMs,
       candidateMs: candidate.reportedTotalMs,
       runtimeDeltaMs: round(runtimeDeltaMs),
-      runtimeDeltaPercent: round((runtimeDeltaMs / Math.max(0.001, baseline.reportedTotalMs)) * 100),
+      runtimeDeltaPercent: percentDelta(runtimeDeltaMs, baseline.reportedTotalMs),
+      baselineDeepTimeMs: baseline.deepTime.reportedDeepTimeMs,
+      candidateDeepTimeMs: candidate.deepTime.reportedDeepTimeMs,
+      deepTimeDeltaMs: round(deepTimeDeltaMs),
+      deepTimeDeltaPercent: percentDelta(deepTimeDeltaMs, baseline.deepTime.reportedDeepTimeMs),
       signaturesEqual: baseline.outputSignature === candidate.outputSignature
     };
   });
@@ -263,6 +375,22 @@ function renderMarkdown(report: WorkflowComparisonReport): string {
     .filter((result, index, all) => all.findIndex((candidate) => candidate.workflowId === result.workflowId) === index)
     .map((result) => `${result.workflowId}=${result.seedStrategy}`)
     .join(', ');
+  const comparisonRows = report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.baselineDeepTimeMs.toFixed(1)} | ${comparison.candidateDeepTimeMs.toFixed(1)} | ${comparison.deepTimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} |`);
+  const substageRows = report.comparisons.flatMap((comparison) => {
+    const pair = report.results.filter((result) => result.pairId === comparison.pairId);
+    const baseline = pair.find((result) => result.workflowId === comparison.baselineWorkflowId);
+    const candidate = pair.find((result) => result.workflowId === comparison.candidateWorkflowId);
+    if (!baseline || !candidate) return [];
+    const stageIds = new Set<DeepTimeSubstageId>([
+      ...baseline.deepTime.substages.map((stage) => stage.id),
+      ...candidate.deepTime.substages.map((stage) => stage.id)
+    ]);
+    return [...stageIds].map((stageId) => {
+      const baselineMs = baseline.deepTime.substages.find((stage) => stage.id === stageId)?.elapsedMs ?? 0;
+      const candidateMs = candidate.deepTime.substages.find((stage) => stage.id === stageId)?.elapsedMs ?? 0;
+      return `| ${comparison.pairId} | ${stageId} | ${baselineMs.toFixed(1)} | ${candidateMs.toFixed(1)} | ${percentDelta(candidateMs - baselineMs, baselineMs).toFixed(2)}% |`;
+    });
+  });
   return [
     '# Generation Workflow Comparison',
     '',
@@ -271,13 +399,24 @@ function renderMarkdown(report: WorkflowComparisonReport): string {
     `Workflows: ${report.options.workflows.join(' versus ')}`,
     `Seed strategies: ${strategies}`,
     `Seeds: ${report.options.seeds.join(', ')}`,
+    `Scenarios: ${report.options.scenarios.join(', ')}`,
     `Resolution: ${report.options.resolution}`,
     '',
-    '| Pair | Baseline ms | Candidate ms | Delta ms | Delta % | Same signature |',
-    '| --- | ---: | ---: | ---: | ---: | --- |',
-    ...report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} |`),
+    '## Runtime comparison',
     '',
-    'The workflows run sequentially with the same seed and resolved configuration. Production preserves its legacy shared-stream contract; the experimental workflow uses semantic node streams, so signature differences are expected and must be evaluated through the quality scorecard.',
+    '| Pair | Baseline total ms | Candidate total ms | Total delta | Baseline deep-time ms | Candidate deep-time ms | Deep-time delta | Same signature |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+    ...comparisonRows,
+    '',
+    '## Deep-time substage comparison',
+    '',
+    '| Pair | Substage | Baseline ms | Candidate ms | Delta |',
+    '| --- | --- | ---: | ---: | ---: |',
+    ...substageRows,
+    '',
+    'The workflows run sequentially with the same seed, scenario, and resolved configuration. Production preserves its legacy shared-stream contract; the experimental workflow uses semantic node streams, so signature differences are expected and must be evaluated through the quality scorecard.',
+    '',
+    'Substage timing is captured from the existing deep-time progress contract. The ledger-and-unattributed row exposes mutation-ledger setup/finalization and any work not yet bounded by an explicit progress transition.',
     ''
   ].join('\n');
 }
@@ -294,6 +433,10 @@ function parseResolution(value: string): Resolution {
 
 function formatResolution(value: Resolution): string {
   return `${value.width}x${value.height}`;
+}
+
+function percentDelta(delta: number, baseline: number): number {
+  return round((delta / Math.max(0.001, baseline)) * 100);
 }
 
 function round(value: number, places = 3): number {
