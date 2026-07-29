@@ -24,21 +24,33 @@ The present-climate diagnostics pass currently recomputes several fields that we
 
 The climate pass already computes wind and orographic response for every topology cell. Final diagnostics run immediately after hydrology, which changes river and lake fields but does not change elevation, temperature, water masks, or the orographic inputs. Reusing those fields removes a second wind, terrain-gradient, and upwind barrier walk across every land cell.
 
-Production and `core.performance-foundation-control` retain the original recomputation path. This preserves the rollback baseline and allows clean control-versus-candidate measurement.
+Production and the existing six-epoch semantic control retain the original recomputation path.
+
+## Matched reuse control
+
+`core.performance-foundation-aging-control` is a developer-only comparison workflow with:
+
+- semantic node seeds;
+- bounded three-era aging;
+- five forcing samples and 24 scheduled process iterations;
+- the original present-climate diagnostic recomputation path.
+
+The candidate shares the same semantic seeds, bounded aging profile, graph nodes, and all non-deep-time implementations. It differs only at the deep-time implementation contract, where derived-field reuse is enabled. This isolates the reuse increment from both RNG strategy and the earlier aging optimization.
 
 ## Influence-field reuse
 
-The candidate also derives the 28-cell climate ocean influence and 16-cell diagnostic ocean influence from one maximum-radius topology distance pass. Tests verify that each derived radius is byte-for-byte equal to an independently computed field using the previous algorithm.
+The candidate derives the 28-cell climate ocean influence and 16-cell diagnostic ocean influence from one maximum-radius topology distance pass. Tests verify that each derived radius is byte-for-byte equal to an independently computed field using the previous algorithm.
 
 ## Output-equivalence gate
 
 This slice is intended to change runtime only. Before merge:
 
 - repository typecheck, tests, and build pass;
-- fixed-seed candidate output signatures match the merged bounded-aging baseline;
+- every fixed-seed pair matches the coarse terrain signature;
+- every fixed-seed pair matches a normalized authoritative-world signature covering configuration, selected values, solar system, primary world, metrics, topology arrays, projected arrays, and deep-time diagnostics while ignoring only workflow ID;
 - present-climate diagnostics remain exactly equal for all benchmark scenarios;
 - ocean tolerance, river validity, and stress-world ice metrics remain unchanged;
-- the matched control benchmark shows a material reduction in climate or hydrology reconciliation cost.
+- the matched bounded-aging control benchmark shows a material reduction in climate or hydrology reconciliation cost.
 
 ## Next step
 
