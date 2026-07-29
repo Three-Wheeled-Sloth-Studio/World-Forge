@@ -1,0 +1,189 @@
+{
+  "format": "world-forge-bounded-aging-control-summary",
+  "version": 1,
+  "generatedAt": "2026-07-29T15:49:18.534Z",
+  "sourceCommit": "bc085dd6f118c10863694f1526c8d9a9cc9b992e",
+  "resolution": "512x256",
+  "seeds": [
+    "1001001",
+    "3141592",
+    "8675309"
+  ],
+  "scenarios": [
+    "earthlike-standard",
+    "archipelago-standard",
+    "geology-glacial-stress"
+  ],
+  "controlWorkflow": "core.performance-foundation-control",
+  "candidateWorkflow": "core.performance-foundation",
+  "runPairs": 9,
+  "totalRuntimeDeltaPercent": {
+    "mean": -19.247,
+    "median": -18.814,
+    "min": -23.62,
+    "max": -15.213
+  },
+  "deepTimeDeltaPercent": {
+    "mean": -24.224,
+    "median": -24.286,
+    "min": -27.676,
+    "max": -20.331
+  },
+  "surfaceAgingDeltaPercent": -72.95,
+  "controlEpochCounts": [
+    6
+  ],
+  "candidateEpochCounts": [
+    3
+  ],
+  "controlForcingSampleCounts": [
+    14
+  ],
+  "candidateForcingSampleCounts": [
+    5
+  ],
+  "controlOceanWithinTolerance": 5,
+  "candidateOceanWithinTolerance": 5,
+  "controlRiverPathsValid": 9,
+  "candidateRiverPathsValid": 9,
+  "qualityRegressions": [],
+  "scenarioSummary": [
+    {
+      "scenarioId": "earthlike-standard",
+      "totalRuntimeDeltaPercent": {
+        "mean": -21.929,
+        "median": -23.374,
+        "min": -23.62,
+        "max": -18.794
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -25.637,
+        "median": -26.188,
+        "min": -27.676,
+        "max": -23.046
+      },
+      "controlOceanWithinTolerance": 0,
+      "candidateOceanWithinTolerance": 0,
+      "controlRiverPathsValid": 3,
+      "candidateRiverPathsValid": 3,
+      "controlMeanOceanPercentage": 74.027,
+      "candidateMeanOceanPercentage": 74.0,
+      "controlMeanIcePercentage": 1.073,
+      "candidateMeanIcePercentage": 1.68,
+      "runCount": 3
+    },
+    {
+      "scenarioId": "archipelago-standard",
+      "totalRuntimeDeltaPercent": {
+        "mean": -17.425,
+        "median": -18.242,
+        "min": -18.82,
+        "max": -15.213
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -22.87,
+        "median": -23.522,
+        "min": -24.758,
+        "max": -20.331
+      },
+      "controlOceanWithinTolerance": 2,
+      "candidateOceanWithinTolerance": 2,
+      "controlRiverPathsValid": 3,
+      "candidateRiverPathsValid": 3,
+      "controlMeanOceanPercentage": 75.173,
+      "candidateMeanOceanPercentage": 75.147,
+      "controlMeanIcePercentage": 3.887,
+      "candidateMeanIcePercentage": 4.077,
+      "runCount": 3
+    },
+    {
+      "scenarioId": "geology-glacial-stress",
+      "totalRuntimeDeltaPercent": {
+        "mean": -18.388,
+        "median": -18.814,
+        "min": -20.36,
+        "max": -15.989
+      },
+      "deepTimeDeltaPercent": {
+        "mean": -24.166,
+        "median": -24.286,
+        "min": -26.897,
+        "max": -21.316
+      },
+      "controlOceanWithinTolerance": 3,
+      "candidateOceanWithinTolerance": 3,
+      "controlRiverPathsValid": 3,
+      "candidateRiverPathsValid": 3,
+      "controlMeanOceanPercentage": 67.07,
+      "candidateMeanOceanPercentage": 67.057,
+      "controlMeanIcePercentage": 5.2,
+      "candidateMeanIcePercentage": 5.397,
+      "runCount": 3
+    }
+  ],
+  "substageSummary": [
+    {
+      "stageId": "surface-aging",
+      "controlMeanMs": 2220.442,
+      "candidateMeanMs": 600.633,
+      "deltaMs": -1619.809,
+      "deltaPercent": -72.95
+    },
+    {
+      "stageId": "climate-rebuild",
+      "controlMeanMs": 1955.353,
+      "candidateMeanMs": 1957.688,
+      "deltaMs": 2.335,
+      "deltaPercent": 0.119
+    },
+    {
+      "stageId": "hydrology-rebuild",
+      "controlMeanMs": 1496.156,
+      "candidateMeanMs": 1510.601,
+      "deltaMs": 14.445,
+      "deltaPercent": 0.965
+    },
+    {
+      "stageId": "biome-projection-validation",
+      "controlMeanMs": 567.933,
+      "candidateMeanMs": 545.931,
+      "deltaMs": -22.002,
+      "deltaPercent": -3.874
+    },
+    {
+      "stageId": "ledger-and-unattributed",
+      "controlMeanMs": 186.379,
+      "candidateMeanMs": 178.403,
+      "deltaMs": -7.977,
+      "deltaPercent": -4.28
+    },
+    {
+      "stageId": "water-reconciliation",
+      "controlMeanMs": 128.909,
+      "candidateMeanMs": 126.157,
+      "deltaMs": -2.752,
+      "deltaPercent": -2.134
+    },
+    {
+      "stageId": "fragment-placement",
+      "controlMeanMs": 124.464,
+      "candidateMeanMs": 111.292,
+      "deltaMs": -13.172,
+      "deltaPercent": -10.583
+    },
+    {
+      "stageId": "fragment-history",
+      "controlMeanMs": 73.863,
+      "candidateMeanMs": 74.627,
+      "deltaMs": 0.764,
+      "deltaPercent": 1.035
+    },
+    {
+      "stageId": "setup-models",
+      "controlMeanMs": 27.241,
+      "candidateMeanMs": 26.928,
+      "deltaMs": -0.312,
+      "deltaPercent": -1.147
+    }
+  ]
+}
