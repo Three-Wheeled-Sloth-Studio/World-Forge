@@ -125,7 +125,7 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
             title={workflow.description}
             onChange={(event) => updateWorkflow(event.target.value as GenerationWorkflowId)}
           >
-            {generationWorkflowDescriptors.map((option) => (
+            {generationWorkflowDescriptors.filter((option) => option.selectableInGenerator).map((option) => (
               <option key={option.id} value={option.id}>{option.label}</option>
             ))}
           </select>
