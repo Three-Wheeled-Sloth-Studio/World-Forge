@@ -1,11 +1,9 @@
 name: Apply Exact Hydrology Traversal Optimization
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/hydrology-ordering-route-reuse
-    paths:
-      - .github/agent-hydrology-traversal-patch.trigger
+      - dev
 
 permissions:
   contents: write
