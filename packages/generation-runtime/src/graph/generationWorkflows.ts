@@ -23,11 +23,23 @@ function copyGraph(nodes: readonly GenerationGraphNodeDefinition[]): GenerationG
   }));
 }
 
+function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNodeDefinition[] {
+  const nodes = copyGraph(coreGenerationGraph);
+  if (workflowId !== 'core.performance-foundation') return nodes;
+  return nodes.map((node) => node.id === 'world.deep-time-aging'
+    ? {
+        ...node,
+        implementationId: 'core.world.deep-time-aging.bounded-three-era-v1',
+        version: '2'
+      }
+    : node);
+}
+
 export const generationGraphWorkflows: readonly GenerationGraphWorkflow[] = generationWorkflowDescriptors.map((workflow) => ({
   ...workflow,
   // Keep an independent workflow definition so experimental nodes can be replaced
   // without mutating the production workflow or its comparison baseline.
-  nodes: copyGraph(coreGenerationGraph)
+  nodes: nodesForWorkflow(workflow.id)
 }));
 
 export function generationGraphWorkflow(id: string | undefined): GenerationGraphWorkflow {
