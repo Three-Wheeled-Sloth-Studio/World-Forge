@@ -9,6 +9,7 @@ import {
 import { runGenerationFoundation } from './graph/run-generation-foundation';
 import { SeededRandom } from './random';
 import type { GenerateProjectOptions } from './index';
+import type { GenerationWorkflowId } from './workflows';
 import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
 import { buildFlatWorldHexOverlay } from './worldHexOverlay';
 import { buildWorldRegions } from './worldRegions';
@@ -42,6 +43,10 @@ export type LegacyPrimaryWorldOperations = {
   projectTopologyRiver: (...args: any[]) => any;
 };
 
+type WorkflowAwareGenerationConfig = GenerationConfig & {
+  workflowId?: GenerationWorkflowId;
+};
+
 export function orchestratePrimaryWorld(
   config: GenerationConfig,
   values: SelectedValues,
@@ -54,6 +59,7 @@ export function orchestratePrimaryWorld(
   const primaryBody = solarSystem.bodies.find((body) => body.isPrimaryWorld);
   const moons = primaryBody?.moons ?? [];
   const tideInfluence = round(clamp(moons.reduce((sum, moon) => sum + moon.tideInfluence, 0), 0, 2), 2);
+  const workflowId = (config as WorkflowAwareGenerationConfig).workflowId ?? options.workflowId;
 
   const foundation = runGenerationFoundation(config.seed, {
     topology: {
@@ -62,6 +68,7 @@ export function orchestratePrimaryWorld(
     },
     values,
     rng,
+    workflowId,
     terrainFinalization: {
       values,
       rng,
