@@ -1,0 +1,162 @@
+name: Record Bounded Three-Era Aging Benchmark
+
+on:
+  push:
+    branches:
+      - agent/bounded-three-era-aging
+    paths:
+      - .github/agent-pr19-durable-benchmark.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/bounded-three-era-aging
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run full workflow comparison
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: npm run benchmark:workflows -- --seeds=1001001,3141592,8675309 --scenarios=earthlike-standard,archipelago-standard,geology-glacial-stress --resolution=512x256 --runs=1
+
+      - name: Preserve raw reports and build decision summary
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+          import statistics
+
+          testing = Path('refs/testing')
+          json_source = max(testing.glob('generation-workflow-comparison-*.json'), key=lambda path: path.stat().st_mtime)
+          markdown_source = max(testing.glob('generation-workflow-comparison-*.md'), key=lambda path: path.stat().st_mtime)
+          report = json.loads(json_source.read_text())
+          results = report['results']
+          comparisons = report['comparisons']
+          baseline_id, candidate_id = report['options']['workflows']
+
+          def round_value(value, digits=3):
+              return round(float(value), digits)
+
+          def stats(values):
+              values = [float(value) for value in values]
+              return {
+                  'mean': round_value(statistics.mean(values)),
+                  'median': round_value(statistics.median(values)),
+                  'min': round_value(min(values)),
+                  'max': round_value(max(values))
+              }
+
+          by_pair = {}
+          for result in results:
+              by_pair.setdefault(result['pairId'], {})[result['workflowId']] = result
+
+          scenario_summary = []
+          for scenario in report['options']['scenarios']:
+              matches = [comparison for comparison in comparisons if comparison['scenarioId'] == scenario]
+              candidate_results = [result for result in results if result['scenarioId'] == scenario and result['workflowId'] == candidate_id]
+              baseline_results = [result for result in results if result['scenarioId'] == scenario and result['workflowId'] == baseline_id]
+              scenario_summary.append({
+                  'scenarioId': scenario,
+                  'totalRuntimeDeltaPercent': stats([match['runtimeDeltaPercent'] for match in matches]),
+                  'deepTimeDeltaPercent': stats([match['deepTimeDeltaPercent'] for match in matches]),
+                  'candidateOceanWithinTolerance': sum(1 for result in candidate_results if result['metrics']['oceanWithinTolerance']),
+                  'baselineOceanWithinTolerance': sum(1 for result in baseline_results if result['metrics']['oceanWithinTolerance']),
+                  'candidateRiverPathsValid': sum(1 for result in candidate_results if result['metrics']['riverPathsValid']),
+                  'baselineRiverPathsValid': sum(1 for result in baseline_results if result['metrics']['riverPathsValid']),
+                  'runCount': len(matches)
+              })
+
+          stage_ids = sorted({stage['id'] for result in results for stage in result['deepTime']['substages']})
+          stage_summary = []
+          for stage_id in stage_ids:
+              baseline_values = []
+              candidate_values = []
+              for pair in by_pair.values():
+                  baseline = next((stage for stage in pair[baseline_id]['deepTime']['substages'] if stage['id'] == stage_id), None)
+                  candidate = next((stage for stage in pair[candidate_id]['deepTime']['substages'] if stage['id'] == stage_id), None)
+                  baseline_values.append(baseline['elapsedMs'] if baseline else 0)
+                  candidate_values.append(candidate['elapsedMs'] if candidate else 0)
+              baseline_mean = statistics.mean(baseline_values)
+              candidate_mean = statistics.mean(candidate_values)
+              stage_summary.append({
+                  'stageId': stage_id,
+                  'baselineMeanMs': round_value(baseline_mean),
+                  'candidateMeanMs': round_value(candidate_mean),
+                  'deltaMs': round_value(candidate_mean - baseline_mean),
+                  'deltaPercent': round_value(((candidate_mean - baseline_mean) / max(0.001, baseline_mean)) * 100)
+              })
+
+          candidate_results = [result for result in results if result['workflowId'] == candidate_id]
+          baseline_results = [result for result in results if result['workflowId'] == baseline_id]
+          regressions = []
+          for pair_id, pair in by_pair.items():
+              baseline = pair[baseline_id]
+              candidate = pair[candidate_id]
+              if baseline['metrics']['oceanWithinTolerance'] and not candidate['metrics']['oceanWithinTolerance']:
+                  regressions.append({'pairId': pair_id, 'kind': 'ocean-tolerance'})
+              if baseline['metrics']['riverPathsValid'] and not candidate['metrics']['riverPathsValid']:
+                  regressions.append({'pairId': pair_id, 'kind': 'river-validity'})
+
+          summary = {
+              'format': 'world-forge-bounded-aging-benchmark-summary',
+              'version': 1,
+              'generatedAt': report['generatedAt'],
+              'sourceCommit': report['environment']['sourceCommit'],
+              'resolution': report['options']['resolution'],
+              'seeds': report['options']['seeds'],
+              'scenarios': report['options']['scenarios'],
+              'baselineWorkflow': baseline_id,
+              'candidateWorkflow': candidate_id,
+              'runPairs': len(comparisons),
+              'totalRuntimeDeltaPercent': stats([comparison['runtimeDeltaPercent'] for comparison in comparisons]),
+              'deepTimeDeltaPercent': stats([comparison['deepTimeDeltaPercent'] for comparison in comparisons]),
+              'surfaceAgingDeltaPercent': next(item['deltaPercent'] for item in stage_summary if item['stageId'] == 'surface-aging'),
+              'candidateEpochCounts': sorted({result['deepTime']['epochs'] for result in candidate_results}),
+              'candidateForcingSampleCounts': sorted({result['deepTime']['surfaceAgingSamples'] for result in candidate_results}),
+              'baselineEpochCounts': sorted({result['deepTime']['epochs'] for result in baseline_results}),
+              'baselineForcingSampleCounts': sorted({result['deepTime']['surfaceAgingSamples'] for result in baseline_results}),
+              'candidateOceanWithinTolerance': sum(1 for result in candidate_results if result['metrics']['oceanWithinTolerance']),
+              'baselineOceanWithinTolerance': sum(1 for result in baseline_results if result['metrics']['oceanWithinTolerance']),
+              'candidateRiverPathsValid': sum(1 for result in candidate_results if result['metrics']['riverPathsValid']),
+              'baselineRiverPathsValid': sum(1 for result in baseline_results if result['metrics']['riverPathsValid']),
+              'qualityRegressions': regressions,
+              'scenarioSummary': scenario_summary,
+              'substageSummary': sorted(stage_summary, key=lambda item: item['baselineMeanMs'], reverse=True)
+          }
+
+          raw_json = testing / 'bounded-three-era-aging-benchmark.json'
+          raw_markdown = testing / 'bounded-three-era-aging-benchmark.md'
+          compact_summary = testing / 'bounded-three-era-aging-summary.json'
+          raw_json.write_text(json.dumps(report, indent=2) + '\n')
+          raw_markdown.write_text(markdown_source.read_text())
+          compact_summary.write_text(json.dumps(summary, indent=2) + '\n')
+          json_source.unlink()
+          markdown_source.unlink()
+          PY
+
+      - name: Remove temporary benchmark harness
+        run: rm .github/workflows/agent-pr19-durable-benchmark.yml .github/agent-pr19-durable-benchmark.trigger
+
+      - name: Commit benchmark evidence
+        run: |
+          git config user.name "world-forge-agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add refs/testing .github
+          git commit -m "Record bounded three-era aging benchmark"
+          git push origin HEAD:agent/bounded-three-era-aging
