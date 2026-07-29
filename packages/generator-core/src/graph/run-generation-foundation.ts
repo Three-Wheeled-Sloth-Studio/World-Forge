@@ -1,8 +1,13 @@
 import { SelectedValues } from '@world-forge/shared';
-import { SeededRandom } from '../random';
+import { SeededRandom, createNodeRandom } from '../random';
+import {
+  defaultGenerationWorkflowId,
+  generationWorkflowDescriptor,
+  type GenerationWorkflowId
+} from '../workflows';
 import { GenerationGraphRunner } from './runner';
 import type { GenerationDiagnostics } from '@world-forge/shared';
-import type { GenerationGraphNodeRunEvent } from './types';
+import type { GenerationGraphNodeRunEvent, GenerationNode } from './types';
 import {
   CrustFieldsOutput,
   crustFieldsNode,
@@ -64,12 +69,19 @@ export type GenerationFoundationInput = {
   topology: TopologyConstructionInput;
   values: SelectedValues;
   rng: SeededRandom;
+  workflowId?: GenerationWorkflowId;
   terrainFinalization?: TerrainFinalizationInput;
   waterGeology?: WaterGeologyInput;
   climateGlaciation?: ClimateGlaciationInput;
   hydrologyBiomes?: HydrologyBiomesInput;
   projectionAssembly?: ProjectionAssemblyInput;
   onNodeEvent?: (event: GenerationGraphNodeRunEvent) => void;
+};
+
+export type GenerationFoundationGraphDiagnostics = NonNullable<GenerationDiagnostics['graph']> & {
+  workflowId: GenerationWorkflowId;
+  workflowVersion: string;
+  contractSignature: string;
 };
 
 export type GenerationFoundationOutput = {
@@ -96,25 +108,54 @@ export type GenerationFoundationOutput = {
     hydrologyBiomesMs?: number;
     projectionAssemblyMs?: number;
   };
-  graph: NonNullable<GenerationDiagnostics['graph']>;
+  graph: GenerationFoundationGraphDiagnostics;
 };
+
+type RegisteredNode = GenerationNode<any, any>;
+
+function withNodeRandom<TInput extends { rng: SeededRandom }, TOutput>(node: GenerationNode<TInput, TOutput>): GenerationNode<TInput, TOutput> {
+  return {
+    ...node,
+    version: `${node.version}-node-seed`,
+    execute(context, input, dependencies) {
+      return node.execute(
+        context,
+        { ...input, rng: createNodeRandom(context.rootSeed, node.id) },
+        dependencies
+      );
+    }
+  };
+}
+
+const liveWorkflowNodes: readonly RegisteredNode[] = [
+  topologyConstructionNode,
+  withNodeRandom(primordialTerrainNode),
+  withNodeRandom(plateConstructionNode),
+  withNodeRandom(crustFieldsNode),
+  topologyElevationNode,
+  withNodeRandom(terrainFinalizationNode),
+  waterGeologyNode,
+  climateGlaciationNode,
+  hydrologyBiomesNode,
+  projectionAssemblyNode
+];
+
+// Deliberately independent workflow list. Experimental implementations can replace
+// individual nodes here without mutating the live workflow or its A/B baseline.
+const performanceFoundationWorkflowNodes: readonly RegisteredNode[] = [...liveWorkflowNodes];
+
+function workflowNodes(workflowId: GenerationWorkflowId): readonly RegisteredNode[] {
+  return workflowId === 'core.performance-foundation'
+    ? performanceFoundationWorkflowNodes
+    : liveWorkflowNodes;
+}
 
 export function runGenerationFoundation(
   rootSeed: string,
   input: GenerationFoundationInput
 ): GenerationFoundationOutput {
-  const nodes = [
-    topologyConstructionNode,
-    primordialTerrainNode,
-    plateConstructionNode,
-    crustFieldsNode,
-    topologyElevationNode,
-    terrainFinalizationNode,
-    waterGeologyNode,
-    climateGlaciationNode,
-    hydrologyBiomesNode,
-    projectionAssemblyNode
-  ] as const;
+  const workflow = generationWorkflowDescriptor(input.workflowId ?? defaultGenerationWorkflowId);
+  const nodes = workflowNodes(workflow.id);
   const runner = new GenerationGraphRunner(nodes);
   const inputs = new Map<string, unknown>([
     [topologyConstructionNodeId, input.topology],
@@ -180,6 +221,9 @@ export function runGenerationFoundation(
       projectionAssemblyMs: projectionAssemblyExecution?.durationMs
     },
     graph: {
+      workflowId: workflow.id,
+      workflowVersion: workflow.version,
+      contractSignature: workflowContractSignature(workflow.id, workflow.version, nodes),
       targetNodeId: run.targetNodeId,
       nodes: Array.from(run.results.values()).map((execution) => {
         const node = nodes.find((candidate) => candidate.id === execution.nodeId);
@@ -194,6 +238,20 @@ export function runGenerationFoundation(
       })
     }
   };
+}
+
+function workflowContractSignature(workflowId: GenerationWorkflowId, workflowVersion: string, nodes: readonly RegisteredNode[]): string {
+  let hash = 2166136261;
+  const text = [
+    workflowId,
+    workflowVersion,
+    ...nodes.map((node) => `${node.id}@${node.version}<-${node.dependencies.join(',')}`)
+  ].join('|');
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `wf-g1-${(hash >>> 0).toString(16).padStart(8, '0')}`;
 }
 
 function summarizeNodeOutput(nodeId: string, output: unknown): string[] {
