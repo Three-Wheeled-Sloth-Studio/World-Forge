@@ -59,7 +59,7 @@ export function orchestratePrimaryWorld(
   const primaryBody = solarSystem.bodies.find((body) => body.isPrimaryWorld);
   const moons = primaryBody?.moons ?? [];
   const tideInfluence = round(clamp(moons.reduce((sum, moon) => sum + moon.tideInfluence, 0), 0, 2), 2);
-  const workflowId = (config as WorkflowAwareGenerationConfig).workflowId ?? options.workflowId;
+  const workflowId = (config as WorkflowAwareGenerationConfig).workflowId;
 
   const foundation = runGenerationFoundation(config.seed, {
     topology: {
