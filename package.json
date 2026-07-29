@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "benchmark:generation": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark-generation.ts",
+    "benchmark:workflows": "tsx --tsconfig tsconfig.scripts.json scripts/compare-generation-workflows.ts",
     "evaluate:regions": "tsx --tsconfig tsconfig.scripts.json scripts/evaluate-geographic-regions.ts",
     "investigate:striping": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-vertical-striping.ts",
     "triage:surface": "tsx --tsconfig tsconfig.scripts.json scripts/run-surface-quality-triage.ts",
