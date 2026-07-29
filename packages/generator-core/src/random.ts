@@ -26,6 +26,14 @@ export class SeededRandom {
   }
 }
 
+export function nodeSeedPath(rootSeed: string, nodeId: string, stream = 'default'): string {
+  return `${rootSeed}::node::${nodeId}::${stream}`;
+}
+
+export function createNodeRandom(rootSeed: string, nodeId: string, stream = 'default'): SeededRandom {
+  return new SeededRandom(nodeSeedPath(rootSeed, nodeId, stream));
+}
+
 export function hashSeed(seed: string): number {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i += 1) {
