@@ -1,0 +1,173 @@
+name: Record Present-Climate Derived-Field Reuse Benchmark
+
+on:
+  push:
+    branches:
+      - agent/deep-time-derived-field-reuse
+    paths:
+      - .github/agent-derived-field-reuse-benchmark.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/deep-time-derived-field-reuse
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run bounded-aging reuse comparison
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: npm run benchmark:workflows -- --workflows=core.performance-foundation-aging-control,core.performance-foundation --seeds=1001001,3141592,8675309 --scenarios=earthlike-standard,archipelago-standard,geology-glacial-stress --resolution=512x256 --runs=1
+
+      - name: Preserve reports and build reuse summary
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+          import statistics
+
+          testing = Path('refs/testing')
+          json_source = max(testing.glob('generation-workflow-comparison-*.json'), key=lambda path: path.stat().st_mtime)
+          markdown_source = max(testing.glob('generation-workflow-comparison-*.md'), key=lambda path: path.stat().st_mtime)
+          report = json.loads(json_source.read_text())
+          results = report['results']
+          comparisons = report['comparisons']
+          control_id, candidate_id = report['options']['workflows']
+
+          def rounded(value, digits=3):
+              return round(float(value), digits)
+
+          def stats(values):
+              values = [float(value) for value in values]
+              return {
+                  'mean': rounded(statistics.mean(values)),
+                  'median': rounded(statistics.median(values)),
+                  'min': rounded(min(values)),
+                  'max': rounded(max(values))
+              }
+
+          by_pair = {}
+          for result in results:
+              by_pair.setdefault(result['pairId'], {})[result['workflowId']] = result
+
+          stage_ids = sorted({stage['id'] for result in results for stage in result['deepTime']['substages']})
+          stage_summary = []
+          for stage_id in stage_ids:
+              control_values = []
+              candidate_values = []
+              for pair in by_pair.values():
+                  control = next((stage for stage in pair[control_id]['deepTime']['substages'] if stage['id'] == stage_id), None)
+                  candidate = next((stage for stage in pair[candidate_id]['deepTime']['substages'] if stage['id'] == stage_id), None)
+                  control_values.append(control['elapsedMs'] if control else 0)
+                  candidate_values.append(candidate['elapsedMs'] if candidate else 0)
+              control_mean = statistics.mean(control_values)
+              candidate_mean = statistics.mean(candidate_values)
+              stage_summary.append({
+                  'stageId': stage_id,
+                  'controlMeanMs': rounded(control_mean),
+                  'candidateMeanMs': rounded(candidate_mean),
+                  'deltaMs': rounded(candidate_mean - control_mean),
+                  'deltaPercent': rounded(((candidate_mean - control_mean) / max(0.001, control_mean)) * 100)
+              })
+
+          signature_failures = [comparison['pairId'] for comparison in comparisons if not comparison['signaturesEqual']]
+          authoritative_signature_failures = [comparison['pairId'] for comparison in comparisons if not comparison['authoritativeSignaturesEqual']]
+          metric_mismatches = []
+          quality_regressions = []
+          scenario_summary = []
+
+          for pair_id, pair in by_pair.items():
+              control = pair[control_id]
+              candidate = pair[candidate_id]
+              if control['metrics'] != candidate['metrics']:
+                  metric_mismatches.append({
+                      'pairId': pair_id,
+                      'control': control['metrics'],
+                      'candidate': candidate['metrics']
+                  })
+              if control['metrics']['oceanWithinTolerance'] and not candidate['metrics']['oceanWithinTolerance']:
+                  quality_regressions.append({'pairId': pair_id, 'kind': 'ocean-tolerance'})
+              if control['metrics']['riverPathsValid'] and not candidate['metrics']['riverPathsValid']:
+                  quality_regressions.append({'pairId': pair_id, 'kind': 'river-validity'})
+
+          for scenario in report['options']['scenarios']:
+              matches = [comparison for comparison in comparisons if comparison['scenarioId'] == scenario]
+              controls = [result for result in results if result['scenarioId'] == scenario and result['workflowId'] == control_id]
+              candidates = [result for result in results if result['scenarioId'] == scenario and result['workflowId'] == candidate_id]
+              scenario_summary.append({
+                  'scenarioId': scenario,
+                  'totalRuntimeDeltaPercent': stats([match['runtimeDeltaPercent'] for match in matches]),
+                  'deepTimeDeltaPercent': stats([match['deepTimeDeltaPercent'] for match in matches]),
+                  'coarseSignaturesEqual': sum(1 for match in matches if match['signaturesEqual']),
+                  'authoritativeSignaturesEqual': sum(1 for match in matches if match['authoritativeSignaturesEqual']),
+                  'controlOceanWithinTolerance': sum(1 for result in controls if result['metrics']['oceanWithinTolerance']),
+                  'candidateOceanWithinTolerance': sum(1 for result in candidates if result['metrics']['oceanWithinTolerance']),
+                  'controlRiverPathsValid': sum(1 for result in controls if result['metrics']['riverPathsValid']),
+                  'candidateRiverPathsValid': sum(1 for result in candidates if result['metrics']['riverPathsValid']),
+                  'runCount': len(matches)
+              })
+
+          summary = {
+              'format': 'world-forge-present-climate-derived-field-reuse-summary',
+              'version': 1,
+              'generatedAt': report['generatedAt'],
+              'sourceCommit': report['environment']['sourceCommit'],
+              'resolution': report['options']['resolution'],
+              'seeds': report['options']['seeds'],
+              'scenarios': report['options']['scenarios'],
+              'controlWorkflow': control_id,
+              'candidateWorkflow': candidate_id,
+              'runPairs': len(comparisons),
+              'totalRuntimeDeltaPercent': stats([comparison['runtimeDeltaPercent'] for comparison in comparisons]),
+              'deepTimeDeltaPercent': stats([comparison['deepTimeDeltaPercent'] for comparison in comparisons]),
+              'climateRebuildDeltaPercent': next(item['deltaPercent'] for item in stage_summary if item['stageId'] == 'climate-rebuild'),
+              'hydrologyRebuildDeltaPercent': next(item['deltaPercent'] for item in stage_summary if item['stageId'] == 'hydrology-rebuild'),
+              'coarseSignaturesEqual': len(comparisons) - len(signature_failures),
+              'authoritativeSignaturesEqual': len(comparisons) - len(authoritative_signature_failures),
+              'signatureFailures': signature_failures,
+              'authoritativeSignatureFailures': authoritative_signature_failures,
+              'metricMismatches': metric_mismatches,
+              'qualityRegressions': quality_regressions,
+              'scenarioSummary': scenario_summary,
+              'substageSummary': sorted(stage_summary, key=lambda item: item['controlMeanMs'], reverse=True)
+          }
+
+          raw_json = testing / 'present-climate-derived-field-reuse-benchmark.json'
+          raw_markdown = testing / 'present-climate-derived-field-reuse-benchmark.md'
+          compact_summary = testing / 'present-climate-derived-field-reuse-summary.json'
+          raw_json.write_text(json.dumps(report, indent=2) + '\n')
+          raw_markdown.write_text(markdown_source.read_text())
+          compact_summary.write_text(json.dumps(summary, indent=2) + '\n')
+          json_source.unlink()
+          markdown_source.unlink()
+
+          if signature_failures or authoritative_signature_failures or metric_mismatches or quality_regressions:
+              raise SystemExit('Derived-field reuse failed output-equivalence or quality gates.')
+          PY
+
+      - name: Remove temporary benchmark harness
+        run: rm .github/workflows/agent-derived-field-reuse-benchmark.yml .github/agent-derived-field-reuse-benchmark.trigger
+
+      - name: Commit benchmark evidence
+        run: |
+          git config user.name "world-forge-agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add refs/testing .github
+          git commit -m "Record present-climate derived-field reuse benchmark"
+          git push origin HEAD:agent/deep-time-derived-field-reuse
