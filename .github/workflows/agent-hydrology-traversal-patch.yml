@@ -1,0 +1,135 @@
+name: Apply Exact Hydrology Traversal Optimization
+
+on:
+  push:
+    branches:
+      - agent/hydrology-ordering-route-reuse
+    paths:
+      - .github/agent-hydrology-traversal-patch.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/hydrology-ordering-route-reuse
+          fetch-depth: 0
+
+      - name: Apply exact source patches
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          path = Path('packages/generator-core/src/deepTimePipeline.ts')
+          text = path.read_text()
+
+          text = replace_once(
+              text,
+              "import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';\n",
+              "import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';\nimport { stableDescendingFloat32Indices, traceCachedDownstreamPath, type CachedDownstreamPath } from './hydrologyTraversal';\n",
+              'hydrology traversal import'
+          )
+
+          text = replace_once(
+              text,
+              "function rebuildTopologyHydrology(project: DeepTimeProject, topology: CubedSphereTopology): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {\n",
+              "function rebuildTopologyHydrology(\n  project: DeepTimeProject,\n  topology: CubedSphereTopology,\n  optimizeTraversal = false\n): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {\n",
+              'hydrology signature'
+          )
+
+          text = replace_once(
+              text,
+              "  const order = Array.from({ length: count }, (_, index) => index).sort((a, b) => layers.elevation[b] - layers.elevation[a]);\n",
+              "  const order = optimizeTraversal\n    ? stableDescendingFloat32Indices(layers.elevation)\n    : Array.from({ length: count }, (_, index) => index).sort((a, b) => layers.elevation[b] - layers.elevation[a]);\n",
+              'hydrology ordering'
+          )
+
+          old_candidates = """  const candidateSources = order
+            .filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04);
+          const tracedCandidates = candidateSources
+            .map((source) => traceHydrologyCandidate(source, downstream, layers, world.seaLevel, count))
+            .filter((candidate) => candidate.path.length >= 5)
+            .sort((a, b) => hydrologyTrunkScore(b, accumulation, layers, world.seaLevel) - hydrologyTrunkScore(a, accumulation, layers, world.seaLevel));
+          """.replace('          ', '')
+          new_candidates = """  const candidateSources = optimizeTraversal
+            ? Array.from(order).filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04)
+            : (order as number[]).filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04);
+          const routeCache = optimizeTraversal
+            ? new Map<number, CachedDownstreamPath<River['terminus']>>()
+            : undefined;
+          const tracedCandidates = candidateSources
+            .map((source) => routeCache
+              ? traceHydrologyCandidateCached(source, downstream, layers, count, routeCache)
+              : traceHydrologyCandidate(source, downstream, layers, world.seaLevel, count))
+            .filter((candidate) => candidate.path.length >= 5)
+            .sort((a, b) => hydrologyTrunkScore(b, accumulation, layers, world.seaLevel) - hydrologyTrunkScore(a, accumulation, layers, world.seaLevel));
+          """.replace('          ', '')
+          text = replace_once(text, old_candidates, new_candidates, 'hydrology candidate tracing')
+
+          trace_marker = """function hydrologyTrunkScore(
+          """.replace('          ', '')
+          cached_trace = """function traceHydrologyCandidateCached(
+            source: number,
+            downstream: Int32Array,
+            layers: DeepTimeProject['primaryWorld']['topologyLayers'],
+            maxSteps: number,
+            cache: Map<number, CachedDownstreamPath<River['terminus']>>
+          ): HydrologyCandidate {
+            const traced = traceCachedDownstreamPath({
+              source,
+              downstream,
+              maxSteps,
+              defaultTerminus: 'basin' as River['terminus'],
+              terminusAt: (cell) => {
+                if (layers.water[cell]) return 'ocean';
+                if (layers.lakes[cell]) return 'lake';
+                if (downstream[cell] < 0) return layers.wetness[cell] > 0.75 ? 'wetland' : 'basin';
+                return undefined;
+              },
+              cache
+            });
+            return { source, path: traced.path, terminus: traced.terminus };
+          }
+
+          function hydrologyTrunkScore(
+          """.replace('          ', '')
+          text = replace_once(text, trace_marker, cached_trace, 'cached trace helper')
+
+          text = replace_once(
+              text,
+              "  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation';\n",
+              "  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation'\n    || workflowId === 'core.performance-foundation-derived-control';\n",
+              'derived field control routing'
+          )
+
+          text = replace_once(
+              text,
+              "  const hydrology = rebuildTopologyHydrology(mutable, topology);\n",
+              "  const optimizeHydrologyTraversal = workflowId === 'core.performance-foundation';\n  const hydrology = rebuildTopologyHydrology(mutable, topology, optimizeHydrologyTraversal);\n",
+              'hydrology candidate routing'
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Remove temporary patch harness
+        run: rm .github/workflows/agent-hydrology-traversal-patch.yml .github/agent-hydrology-traversal-patch.trigger
+
+      - name: Commit optimized hydrology path
+        run: |
+          git config user.name "world-forge-agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add packages/generator-core/src/deepTimePipeline.ts .github
+          git commit -m "Optimize exact hydrology ordering and route reuse"
+          git push origin HEAD:agent/hydrology-ordering-route-reuse
