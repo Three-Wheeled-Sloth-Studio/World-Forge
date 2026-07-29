@@ -38,8 +38,8 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
   return nodes.map((node) => node.id === 'world.deep-time-aging'
     ? {
         ...node,
-        implementationId: 'core.world.deep-time-aging.bounded-three-era-v1',
-        version: '2'
+        implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-v1',
+        version: '3'
       }
     : node);
 }
