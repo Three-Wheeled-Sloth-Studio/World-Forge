@@ -28,6 +28,14 @@ describe('deep-time aging profiles', () => {
     expect(scheduledDeepTimeIterations(epochs)).toBe(24);
   });
 
+  it('keeps the semantic-seed control on legacy six-epoch aging', () => {
+    const profile = deepTimeAgingProfileForWorkflow('core.performance-foundation-control');
+    const epochs = buildDeepTimeEpochs(4.6, profile);
+    expect(profile.id).toBe(legacyDeepTimeAgingProfile.id);
+    expect(epochs).toHaveLength(6);
+    expect(scheduledDeepTimeIterations(epochs)).toBe(103);
+  });
+
   it('defaults unknown workflows to the production schedule', () => {
     expect(deepTimeAgingProfileForWorkflow(undefined).id).toBe('legacy-six-epoch');
     expect(deepTimeAgingProfileForWorkflow('unknown').id).toBe('legacy-six-epoch');
