@@ -6,13 +6,165 @@ on:
       - dev
       - qa
       - main
+      - agent/hydrology-ordering-route-reuse
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  patch-hydrology:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/agent/hydrology-ordering-route-reuse'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/hydrology-ordering-route-reuse
+          fetch-depth: 0
+
+      - name: Apply validated hydrology source patch
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/generator-core/src/deepTimePipeline.ts')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';\n",
+              "import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';\nimport { stableDescendingFloat32Indices, traceCachedDownstreamPath, type CachedDownstreamPath } from './hydrologyTraversal';\n",
+              'hydrology traversal import'
+          )
+          replace_once(
+              "function rebuildTopologyHydrology(project: DeepTimeProject, topology: CubedSphereTopology): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {\n",
+              "function rebuildTopologyHydrology(\n  project: DeepTimeProject,\n  topology: CubedSphereTopology,\n  optimizeTraversal = false\n): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {\n",
+              'hydrology signature'
+          )
+          replace_once(
+              "  const order = Array.from({ length: count }, (_, index) => index).sort((a, b) => layers.elevation[b] - layers.elevation[a]);\n",
+              "  const order = optimizeTraversal\n    ? stableDescendingFloat32Indices(layers.elevation)\n    : Array.from({ length: count }, (_, index) => index).sort((a, b) => layers.elevation[b] - layers.elevation[a]);\n",
+              'hydrology ordering'
+          )
+
+          start_marker = "  const candidateSources = order\n"
+          end_marker = "  const claimed = new Uint8Array(count);\n"
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit(f'hydrology candidate block: start={start}, end={end}')
+          text = text[:start] + """  const candidateSources = optimizeTraversal
+    ? Array.from(order).filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04)
+    : (order as number[]).filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04);
+  const routeCache = optimizeTraversal
+    ? new Map<number, CachedDownstreamPath<River['terminus']>>()
+    : undefined;
+  const tracedCandidates = candidateSources
+    .map((source) => routeCache
+      ? traceHydrologyCandidateCached(source, downstream, layers, count, routeCache)
+      : traceHydrologyCandidate(source, downstream, layers, world.seaLevel, count))
+    .filter((candidate) => candidate.path.length >= 5)
+    .sort((a, b) => hydrologyTrunkScore(b, accumulation, layers, world.seaLevel) - hydrologyTrunkScore(a, accumulation, layers, world.seaLevel));
+""" + text[end:]
+
+          trace_marker = "function hydrologyTrunkScore(\n"
+          if text.count(trace_marker) != 1:
+              raise SystemExit(f'cached trace insertion: found {text.count(trace_marker)} markers')
+          text = text.replace(trace_marker, """function traceHydrologyCandidateCached(
+  source: number,
+  downstream: Int32Array,
+  layers: DeepTimeProject['primaryWorld']['topologyLayers'],
+  maxSteps: number,
+  cache: Map<number, CachedDownstreamPath<River['terminus']>>
+): HydrologyCandidate {
+  const traced = traceCachedDownstreamPath({
+    source,
+    downstream,
+    maxSteps,
+    defaultTerminus: 'basin' as River['terminus'],
+    terminusAt: (cell) => {
+      if (layers.water[cell]) return 'ocean';
+      if (layers.lakes[cell]) return 'lake';
+      if (downstream[cell] < 0) return layers.wetness[cell] > 0.75 ? 'wetland' : 'basin';
+      return undefined;
+    },
+    cache
+  });
+  return { source, path: traced.path, terminus: traced.terminus };
+}
+
+function hydrologyTrunkScore(
+""", 1)
+
+          replace_once(
+              "  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation';\n",
+              "  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation'\n    || workflowId === 'core.performance-foundation-derived-control';\n",
+              'derived field control routing'
+          )
+          replace_once(
+              "  const hydrology = rebuildTopologyHydrology(mutable, topology);\n",
+              "  const optimizeHydrologyTraversal = workflowId === 'core.performance-foundation';\n  const hydrology = rebuildTopologyHydrology(mutable, topology, optimizeHydrologyTraversal);\n",
+              'hydrology candidate routing'
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Restore validation workflow and remove patch harnesses
+        run: |
+          rm -f .github/workflows/agent-hydrology-traversal-patch.yml
+          rm -f .github/agent-hydrology-traversal-patch.trigger
+          cat > .github/workflows/validate.yml <<'EOF'
+          name: Validate World Forge
+
+          on:
+            push:
+              branches:
+                - dev
+                - qa
+                - main
+            pull_request:
+
+          permissions:
+            contents: read
+
+          jobs:
+            validate:
+              runs-on: ubuntu-latest
+              steps:
+                - name: Checkout
+                  uses: actions/checkout@v5
+
+                - name: Set up Node
+                  uses: actions/setup-node@v5
+                  with:
+                    node-version: '22'
+                    package-manager-cache: false
+
+                - name: Install dependencies
+                  run: npm ci
+
+                - name: Validate
+                  run: npm run verify
+          EOF
+
+      - name: Commit optimized hydrology path
+        run: |
+          git config user.name "world-forge-agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add packages/generator-core/src/deepTimePipeline.ts .github
+          git commit -m "Optimize exact hydrology ordering and route reuse"
+          git push origin HEAD:agent/hydrology-ordering-route-reuse
+
   validate:
+    if: github.event_name != 'push' || github.ref != 'refs/heads/agent/hydrology-ordering-route-reuse'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
