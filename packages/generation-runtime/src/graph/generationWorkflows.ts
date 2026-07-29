@@ -34,6 +34,15 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
         }
       : node);
   }
+  if (workflowId === 'core.performance-foundation-aging-control') {
+    return nodes.map((node) => node.id === 'world.deep-time-aging'
+      ? {
+          ...node,
+          implementationId: 'core.world.deep-time-aging.bounded-three-era-control',
+          version: '2-control'
+        }
+      : node);
+  }
   if (workflowId !== 'core.performance-foundation') return nodes;
   return nodes.map((node) => node.id === 'world.deep-time-aging'
     ? {
@@ -47,7 +56,7 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
 export const generationGraphWorkflows: readonly GenerationGraphWorkflow[] = generationWorkflowDescriptors.map((workflow) => ({
   ...workflow,
   // Keep independent workflow definitions so experimental implementations can
-  // diverge without mutating production or the semantic-seed control baseline.
+  // diverge without mutating production or either attribution control baseline.
   nodes: nodesForWorkflow(workflow.id)
 }));
 
