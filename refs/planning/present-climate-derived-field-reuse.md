@@ -2,21 +2,30 @@
 
 Updated: 2026-07-29
 
-Status: second experimental performance slice for issue #14
+Status: validated second experimental performance slice for issue #14
 
 ## Evidence
 
-After bounded three-era aging, present-climate and hydrology reconciliation remain the dominant deep-time costs. In the matched control benchmark, mean substage runtime was approximately:
+After bounded three-era aging, present-climate and hydrology reconciliation remained the dominant deep-time costs. The present-climate diagnostics pass recomputed several fields immediately after climate generation had already calculated the same physics.
 
-- present-climate rebuild: 1,955 ms;
-- hydrology rebuild plus present-climate diagnostics: 1,496 ms;
-- surface aging after optimization: 601 ms.
+The final matched benchmark compared `core.performance-foundation-aging-control` with `core.performance-foundation` across three seeds and three scenarios at 512 x 256. Both workflows used semantic node seeds and bounded three-era aging. They differed only at the derived-field reuse implementation.
 
-The present-climate diagnostics pass currently recomputes several fields that were just calculated during climate generation.
+Results across nine matched world pairs:
+
+- total runtime decreased 9.27 percent on average;
+- deep-time runtime decreased 11.66 percent on average;
+- hydrology rebuild plus present-climate diagnostics decreased 36.76 percent;
+- every scenario and seed improved total runtime, ranging from 5.28 to 15.53 percent;
+- all nine coarse terrain signatures matched;
+- all nine normalized authoritative-world signatures matched;
+- no metric mismatches occurred;
+- no ocean-tolerance or river-validity regressions occurred.
+
+The climate-rebuild stage itself remained nearly unchanged because the reusable fields are produced during that pass. The gain appears in the following hydrology stage, whose timing boundary also contains final present-climate diagnostics.
 
 ## Candidate-only change
 
-`core.performance-foundation@0.3.0` now retains and reuses:
+`core.performance-foundation@0.3.0` retains and reuses:
 
 - the 16-cell ocean influence field used for coastal versus inland diagnostics;
 - per-cell orographic lift;
@@ -41,17 +50,23 @@ The candidate shares the same semantic seeds, bounded aging profile, graph nodes
 
 The candidate derives the 28-cell climate ocean influence and 16-cell diagnostic ocean influence from one maximum-radius topology distance pass. Tests verify that each derived radius is byte-for-byte equal to an independently computed field using the previous algorithm.
 
-## Output-equivalence gate
+## Validation result
 
-This slice is intended to change runtime only. Before merge:
+The slice cleared all merge requirements:
 
-- repository typecheck, tests, and build pass;
-- every fixed-seed pair matches the coarse terrain signature;
-- every fixed-seed pair matches a normalized authoritative-world signature covering configuration, selected values, solar system, primary world, metrics, topology arrays, projected arrays, and deep-time diagnostics while ignoring only workflow ID;
-- present-climate diagnostics remain exactly equal for all benchmark scenarios;
-- ocean tolerance, river validity, and stress-world ice metrics remain unchanged;
-- the matched bounded-aging control benchmark shows a material reduction in climate or hydrology reconciliation cost.
+- repository typecheck, tests, and build passed;
+- every fixed-seed pair matched the coarse terrain signature;
+- every fixed-seed pair matched a normalized authoritative-world signature covering configuration, selected values, solar system, primary world, metrics, topology arrays, projected arrays, and deep-time diagnostics while ignoring only workflow ID;
+- present-climate diagnostics remained exactly equal for all benchmark scenarios;
+- ocean tolerance, river validity, stress-world ice, and headline metrics remained unchanged;
+- the matched bounded-aging control benchmark showed a material runtime reduction.
+
+Durable evidence is stored in:
+
+- `refs/testing/present-climate-derived-field-reuse-benchmark.json`;
+- `refs/testing/present-climate-derived-field-reuse-benchmark.md`;
+- `refs/testing/present-climate-derived-field-reuse-summary.json`.
 
 ## Next step
 
-If the reuse gate passes, merge the slice and then address hydrology's full-cell elevation sort and repeated candidate tracing. Those changes are more algorithmically invasive and should remain separate from this exact-output reuse increment.
+Merge this slice. The next optimization should address hydrology's full-cell elevation sort and repeated candidate tracing. Those changes are more algorithmically invasive and should remain separate from this exact-output reuse increment.
