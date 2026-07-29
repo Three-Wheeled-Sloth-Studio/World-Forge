@@ -1,0 +1,121 @@
+name: Apply Authoritative Benchmark Signature
+
+on:
+  push:
+    branches:
+      - agent/deep-time-derived-field-reuse
+    paths:
+      - .github/agent-authoritative-benchmark-signature.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/deep-time-derived-field-reuse
+          fetch-depth: 0
+
+      - name: Apply exact benchmark patch
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          path = Path('scripts/compare-generation-workflows.ts')
+          text = path.read_text()
+
+          text = replace_once(
+              text,
+              "import { generationGraphWorkflow } from '../packages/generation-runtime/src/graph/generationWorkflows';\nimport type { GenerationConfig, SelectedValues, WorldProject } from '@world-forge/shared';\n",
+              "import { generationGraphWorkflow } from '../packages/generation-runtime/src/graph/generationWorkflows';\nimport { authoritativeWorldSignature } from '../apps/desktop/src/worlds/worldReplayManifest';\nimport type { GenerationConfig, SelectedValues, WorldProject } from '@world-forge/shared';\n",
+              'authoritative signature import'
+          )
+
+          text = replace_once(
+              text,
+              "  outputSignature: string;\n  deepTime: DeepTimeInstrumentationProfile;\n",
+              "  outputSignature: string;\n  authoritativeSignature: string;\n  deepTime: DeepTimeInstrumentationProfile;\n",
+              'workflow result signature field'
+          )
+
+          text = replace_once(
+              text,
+              "  deepTimeDeltaPercent: number;\n  signaturesEqual: boolean;\n",
+              "  deepTimeDeltaPercent: number;\n  signaturesEqual: boolean;\n  authoritativeSignaturesEqual: boolean;\n",
+              'comparison signature field'
+          )
+
+          text = replace_once(
+              text,
+              "  version: 2;\n",
+              "  version: 3;\n",
+              'report version'
+          )
+
+          text = replace_once(
+              text,
+              "    outputSignature: outputSignature(project),\n    deepTime: profile,\n",
+              "    outputSignature: outputSignature(project),\n    authoritativeSignature: normalizedAuthoritativeSignature(project),\n    deepTime: profile,\n",
+              'run authoritative signature'
+          )
+
+          text = replace_once(
+              text,
+              "      deepTimeDeltaPercent: percentDelta(deepTimeDeltaMs, baseline.deepTime.reportedDeepTimeMs),\n      signaturesEqual: baseline.outputSignature === candidate.outputSignature\n",
+              "      deepTimeDeltaPercent: percentDelta(deepTimeDeltaMs, baseline.deepTime.reportedDeepTimeMs),\n      signaturesEqual: baseline.outputSignature === candidate.outputSignature,\n      authoritativeSignaturesEqual: baseline.authoritativeSignature === candidate.authoritativeSignature\n",
+              'pair authoritative comparison'
+          )
+
+          marker = """function outputSignature(project: WorldProject): string {
+            const world = project.primaryWorld;
+            return [
+          """.replace('          ', '')
+          replacement = """function normalizedAuthoritativeSignature(project: WorldProject): string {
+            const config = { ...project.config } as GenerationConfig & { workflowId?: string };
+            delete config.workflowId;
+            return authoritativeWorldSignature({ ...project, config });
+          }
+
+          function outputSignature(project: WorldProject): string {
+            const world = project.primaryWorld;
+            return [
+          """.replace('          ', '')
+          text = replace_once(text, marker, replacement, 'normalized authoritative signature function')
+
+          text = replace_once(
+              text,
+              "  const comparisonRows = report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.baselineDeepTimeMs.toFixed(1)} | ${comparison.candidateDeepTimeMs.toFixed(1)} | ${comparison.deepTimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} |`);\n",
+              "  const comparisonRows = report.comparisons.map((comparison) => `| ${comparison.pairId} | ${comparison.baselineMs.toFixed(1)} | ${comparison.candidateMs.toFixed(1)} | ${comparison.runtimeDeltaPercent.toFixed(2)}% | ${comparison.baselineDeepTimeMs.toFixed(1)} | ${comparison.candidateDeepTimeMs.toFixed(1)} | ${comparison.deepTimeDeltaPercent.toFixed(2)}% | ${comparison.signaturesEqual ? 'yes' : 'no'} | ${comparison.authoritativeSignaturesEqual ? 'yes' : 'no'} |`);\n",
+              'markdown comparison rows'
+          )
+
+          text = replace_once(
+              text,
+              "    '| Pair | Baseline total ms | Candidate total ms | Total delta | Baseline deep-time ms | Candidate deep-time ms | Deep-time delta | Same signature |',\n    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',\n",
+              "    '| Pair | Baseline total ms | Candidate total ms | Total delta | Baseline deep-time ms | Candidate deep-time ms | Deep-time delta | Same coarse signature | Same authoritative signature |',\n    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',\n",
+              'markdown signature headers'
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Remove temporary patch harness
+        run: rm .github/workflows/agent-authoritative-benchmark-signature.yml .github/agent-authoritative-benchmark-signature.trigger
+
+      - name: Commit patched benchmark
+        run: |
+          git config user.name "world-forge-agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add scripts/compare-generation-workflows.ts .github
+          git commit -m "Add authoritative workflow comparison signatures"
+          git push origin HEAD:agent/deep-time-derived-field-reuse
