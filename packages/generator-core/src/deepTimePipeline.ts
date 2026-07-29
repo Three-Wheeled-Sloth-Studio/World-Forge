@@ -22,6 +22,7 @@ import {
   unitVectorToLonLat
 } from './fragmentSphericalTransform';
 import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';
+import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -1954,24 +1955,6 @@ function stepTopologyByVector(topology: CubedSphereTopology, cell: number, vecto
   return best;
 }
 
-function computeTopologyInfluence(mask: Uint8Array, topology: CubedSphereTopology, radius: number, targetValue: number): Float32Array {
-  const distance = new Float32Array(mask.length);
-  const maxDistance = radius + 1;
-  for (let cell = 0; cell < mask.length; cell += 1) distance[cell] = mask[cell] === targetValue ? 0 : maxDistance;
-  for (let pass = 0; pass < radius; pass += 1) {
-    for (let cell = 0; cell < mask.length; cell += 1) {
-      let best = distance[cell];
-      for (let direction = 0; direction < 4; direction += 1) {
-        const neighbor = topology.neighbors[cell * 4 + direction];
-        if (neighbor >= 0) best = Math.min(best, distance[neighbor] + 1);
-      }
-      distance[cell] = best;
-    }
-  }
-  for (let cell = 0; cell < distance.length; cell += 1) distance[cell] = clamp(1 - distance[cell] / maxDistance, 0, 1);
-  return distance;
-}
-
 function presentDayWindVector(topology: CubedSphereTopology, elevation: Float32Array, temperature: Float32Array, cell: number, averageTemperatureC: number): { x: number; y: number } {
   const latitude = topology.latitudes[cell];
   const lat01 = latitude / (Math.PI / 2);
@@ -2158,14 +2141,35 @@ function buildFinalWaterDiagnostics(
   };
 }
 
-function refreshTopologyClimate(project: DeepTimeProject, topology: CubedSphereTopology): number {
+type PresentClimateDerivedFields = {
+  oceanInfluence: Float32Array;
+  orographicLift: Float32Array;
+  orographicShadow: Float32Array;
+};
+
+type PresentClimateRefresh = {
+  cells: number;
+  derivedFields?: PresentClimateDerivedFields;
+};
+
+function refreshTopologyClimate(
+  project: DeepTimeProject,
+  topology: CubedSphereTopology,
+  captureDerivedFields = false
+): PresentClimateRefresh {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
   const count = topology.cellCount;
-  const oceanInfluence = computeTopologyInfluence(layers.water, topology, 28, 1);
+  const oceanInfluenceSet = captureDerivedFields
+    ? computeTopologyInfluenceSet(layers.water, topology, [28, 16], 1)
+    : undefined;
+  const oceanInfluence = oceanInfluenceSet?.get(28) ?? computeTopologyInfluence(layers.water, topology, 28, 1);
+  const diagnosticOceanInfluence = oceanInfluenceSet?.get(16);
   const landInfluence = computeTopologyInfluence(layers.water, topology, 10, 0);
   const precipitation = new Float32Array(count);
   const moisture = new Float32Array(count);
+  const orographicLift = captureDerivedFields ? new Float32Array(count) : undefined;
+  const orographicShadow = captureDerivedFields ? new Float32Array(count) : undefined;
 
   for (let cell = 0; cell < count; cell += 1) {
     const latitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
@@ -2180,6 +2184,8 @@ function refreshTopologyClimate(project: DeepTimeProject, topology: CubedSphereT
     const wind = presentDayWindVector(topology, layers.elevation, layers.temperature, cell, world.averageTemperatureC);
     const fetch = presentDayMoistureFetch(layers.elevation, layers.water, topology, cell, wind.x, wind.y, oceanInfluence[cell]);
     const orographic = presentDayOrographicEffect(layers.elevation, topology, cell, wind.x, wind.y);
+    if (orographicLift) orographicLift[cell] = orographic.lift;
+    if (orographicShadow) orographicShadow[cell] = orographic.shadow;
     const absLatitude = Math.abs(topology.latitudes[cell]);
     const itcz = Math.exp(-(topology.latitudes[cell] ** 2) / 0.085) * 0.22;
     const stormTrack = Math.exp(-((absLatitude - 0.72) ** 2) / 0.055) * 0.16;
@@ -2216,10 +2222,19 @@ function refreshTopologyClimate(project: DeepTimeProject, topology: CubedSphereT
       'Present-day layers refreshed after deep-time terrain, water, and ice reconciliation.'
     ];
   }
-  return count;
+  return {
+    cells: count,
+    derivedFields: diagnosticOceanInfluence && orographicLift && orographicShadow
+      ? { oceanInfluence: diagnosticOceanInfluence, orographicLift, orographicShadow }
+      : undefined
+  };
 }
 
-function buildPresentClimateDiagnostics(project: DeepTimeProject, topology: CubedSphereTopology): PresentClimateDiagnostics {
+function buildPresentClimateDiagnostics(
+  project: DeepTimeProject,
+  topology: CubedSphereTopology,
+  derivedFields?: PresentClimateDerivedFields
+): PresentClimateDiagnostics {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
   const landTemperature: number[] = [];
@@ -2237,15 +2252,19 @@ function buildPresentClimateDiagnostics(project: DeepTimeProject, topology: Cube
   let tundraRisk = 0;
   let wetlandRisk = 0;
   let desertWetlandOverlap = 0;
-  const oceanInfluence = computeTopologyInfluence(layers.water, topology, 16, 1);
+  const oceanInfluence = derivedFields?.oceanInfluence ?? computeTopologyInfluence(layers.water, topology, 16, 1);
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (layers.water[cell]) {
       marineCells += 1;
       continue;
     }
-    const wind = presentDayWindVector(topology, layers.elevation, layers.temperature, cell, world.averageTemperatureC);
-    const orographic = presentDayOrographicEffect(layers.elevation, topology, cell, wind.x, wind.y);
+    const orographic = derivedFields
+    ? { lift: derivedFields.orographicLift[cell], shadow: derivedFields.orographicShadow[cell] }
+    : (() => {
+        const wind = presentDayWindVector(topology, layers.elevation, layers.temperature, cell, world.averageTemperatureC);
+        return presentDayOrographicEffect(layers.elevation, topology, cell, wind.x, wind.y);
+      })();
     liftTotal += orographic.lift;
     shadowTotal += orographic.shadow;
     if (orographic.shadow > 0.2 && layers.climatePrecipitation[cell] < 0.28) rainShadowCells += 1;
@@ -2869,13 +2888,14 @@ export function applyDeepTimeFoundation(
   const marineDepthAdjustedCells = shapeFinalMarineDepths(mutable.primaryWorld, topology);
 
   onProgress?.({ phase: 'reconciling', progress: 0.84, message: 'Rebuilding present-day climate and moisture' });
-  const climateCellsRefreshed = refreshTopologyClimate(mutable, topology);
+  const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation';
+  const climateRefresh = refreshTopologyClimate(mutable, topology, reusePresentClimateDerivedFields);
 
   onProgress?.({ phase: 'reconciling', progress: 0.89, message: 'Rebuilding drainage, rivers, lakes, and wetlands' });
   const hydrology = rebuildTopologyHydrology(mutable, topology);
   mutable.primaryWorld.rivers = hydrology.rivers;
   const finalWater = buildFinalWaterDiagnostics(mutable, topology, topologyWaterMaskCorrections, marineDepthAdjustedCells);
-  const presentClimate = buildPresentClimateDiagnostics(mutable, topology);
+  const presentClimate = buildPresentClimateDiagnostics(mutable, topology, climateRefresh.derivedFields);
 
   onProgress?.({ phase: 'reconciling', progress: 0.93, message: 'Reclassifying final biomes and projecting aged topology' });
   const topologyBiomeCorrections = classifyTopologyBiomes(mutable);
@@ -2887,7 +2907,7 @@ export function applyDeepTimeFoundation(
   if (fragmentPlacement.mergedCollisionCellShare > 0.01) consistency.findings.push('Fragment placement required merged collision handling across more than one percent of topology cells.');
   consistency.topologyWaterMaskCorrections = topologyWaterMaskCorrections;
   consistency.biomeCorrections += topologyBiomeCorrections;
-  consistency.climateCellsRefreshed = climateCellsRefreshed;
+  consistency.climateCellsRefreshed = climateRefresh.cells;
   consistency.hydrologyCellsRebuilt = hydrology.cells;
   consistency.projectedCellsRefreshed = projectedCellsRefreshed;
   mutable.primaryWorld.deepTime = {
