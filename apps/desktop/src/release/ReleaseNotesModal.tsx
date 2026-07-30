@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.30</p>
+            <h3>Build controls that describe what they do</h3>
+            <ul>
+              <li>Quick Build now keeps world, star, seeds, generation quality, randomization, and the primary action together.</li>
+              <li>Generate becomes Regenerate when replacing a loaded world, which remains visible until replacement succeeds.</li>
+              <li>Advanced generation inputs are grouped by world shape, climate, geology, hydrology, and system, with corrected continent terminology.</li>
+              <li>Preview and PNG output resolution moved to Explore and Export instead of pretending to be generation inputs.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.29</p>
             <h3>One workspace mode owner</h3>
             <ul>

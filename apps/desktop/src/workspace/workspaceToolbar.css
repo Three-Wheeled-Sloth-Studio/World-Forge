@@ -97,6 +97,32 @@
   white-space: nowrap;
 }
 
+.workspace-inline-setting {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-inline-setting > span {
+  color: var(--pm-muted);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.workspace-inline-setting select {
+  max-width: 165px;
+  min-width: 0;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.export-resolution-setting select {
+  max-width: 150px;
+}
+
 .view-mode-toggle {
   display: inline-flex;
   gap: 0;

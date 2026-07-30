@@ -38,6 +38,7 @@ export type WorldWorkspaceProps = {
   viewZoom: number;
   onViewZoomChange: (zoom: number) => void;
   exportActions: ReactNode;
+  displayActions?: ReactNode;
   developerActions?: ReactNode;
   developerMode?: boolean;
   mapContent: ReactNode;
@@ -75,6 +76,7 @@ export function WorldWorkspace({
   viewZoom,
   onViewZoomChange,
   exportActions,
+  displayActions,
   developerActions,
   developerMode = false,
   mapContent,
@@ -161,6 +163,7 @@ export function WorldWorkspace({
                   <option value="toned">Toned coast</option>
                   <option value="outlined">Outlined coast</option>
                 </select>
+                {displayActions}
                 <div className="view-zoom-controls" role="group" aria-label="View zoom">
                   <button type="button" className="zoom-pill" title="Current zoom. Right-click for common zoom levels." onContextMenu={openZoomMenu} onClick={() => setZoomMenu(null)}>{Math.round(viewZoom * 100)}%</button>
                   {showHexes && hexOverlayLabel && <output className="hex-scale-readout" title="Current hex overlay scale">{hexOverlayLabel}</output>}

@@ -1,12 +1,19 @@
 import React from 'react';
-import { ChevronDown, RefreshCw, Shuffle, User } from 'lucide-react';
+import { ChevronDown, RefreshCw, Shuffle } from 'lucide-react';
 import {
   generationWorkflowDescriptor,
   generationWorkflowDescriptors,
   type GenerationWorkflowId
 } from '@world-forge/generator-core/workflows';
-import type { GenerationConfig } from '@world-forge/shared';
+import { parameterControlBounds, type GenerationConfig, type NumericRange } from '@world-forge/shared';
 import type { WorkspaceMode } from '../workspace/workspaceModes';
+import {
+  generationActionLabel,
+  generationParameterGroups,
+  updateGenerationParameterRange,
+  type GenerationParameterControl,
+  type GenerationRangeBound
+} from './generationParameterControls';
 import './generatorPanel.css';
 
 export type StarPresetId = 'sol-like' | 'habitable';
@@ -19,29 +26,24 @@ type ExtendedGenerationConfig = GenerationConfig & {
 };
 
 export type ResolutionOption = { label: string; width: number; height: number };
-export type GeneratorProfileStatus = { className: string; label: string; title: string };
 
 export type GeneratorPanelProps = {
   workspaceMode: WorkspaceMode;
+  hasCurrentProject: boolean;
   config: GenerationConfig;
   selectedPreset: string;
   presetLabels: string[];
-  previewResolution: ResolutionOption;
-  previewResolutionOptions: ResolutionOption[];
-  exportResolution: ResolutionOption;
   resolutionOptions: ResolutionOption[];
   sourceTopologyResolution: number;
   invalidRanges: string[];
   isGenerating: boolean;
-  profileStatus: GeneratorProfileStatus;
+  generationStage: string;
+  generationProgress: number;
   onConfigChange: (config: GenerationConfig) => void;
   onRandomizeSeed: () => void;
   onGenerate: () => void;
-  onOpenSyncSettings: () => void;
-  onGenerationResolutionChange: (resolution: ResolutionOption) => void;
+  onGenerationQualityChange: (resolution: ResolutionOption) => void;
   onPresetChange: (preset: string) => void;
-  onPreviewResolutionChange: (resolution: ResolutionOption) => void;
-  onExportResolutionChange: (resolution: ResolutionOption) => void;
   onOceanToleranceChange: (value: number) => void;
 };
 
@@ -60,18 +62,68 @@ function selectedValuesForNewSeed(config: GenerationConfig): GenerationConfig['s
   };
 }
 
+function ParameterRangeEditor({
+  control,
+  range,
+  disabled,
+  onChange
+}: {
+  control: GenerationParameterControl;
+  range: NumericRange;
+  disabled: boolean;
+  onChange: (bound: GenerationRangeBound, value: number) => void;
+}) {
+  const allowed = parameterControlBounds[control.key];
+  const unit = range.unit ?? allowed.unit;
+  return (
+    <div className="parameter-range-control">
+      <div className="parameter-range-label">
+        <strong>{control.label}</strong>
+        <span>{control.description}</span>
+      </div>
+      <div className="parameter-range-inputs">
+        <label>
+          <span>Min{unit ? ` (${unit})` : ''}</span>
+          <input
+            type="number"
+            min={allowed.min}
+            max={allowed.max}
+            step={control.step}
+            value={range.min}
+            disabled={disabled}
+            onChange={(event) => onChange('min', event.currentTarget.valueAsNumber)}
+          />
+        </label>
+        <label>
+          <span>Max{unit ? ` (${unit})` : ''}</span>
+          <input
+            type="number"
+            min={allowed.min}
+            max={allowed.max}
+            step={control.step}
+            value={range.max}
+            disabled={disabled}
+            onChange={(event) => onChange('max', event.currentTarget.valueAsNumber)}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export function GeneratorPanel(props: GeneratorPanelProps) {
   const {
-    workspaceMode, config, selectedPreset, presetLabels, previewResolution, previewResolutionOptions, exportResolution,
-    resolutionOptions, sourceTopologyResolution, invalidRanges, isGenerating, profileStatus,
-    onConfigChange, onRandomizeSeed, onGenerate, onOpenSyncSettings, onGenerationResolutionChange,
-    onPresetChange, onPreviewResolutionChange, onExportResolutionChange, onOceanToleranceChange
+    workspaceMode, hasCurrentProject, config, selectedPreset, presetLabels, resolutionOptions,
+    sourceTopologyResolution, invalidRanges, isGenerating, generationStage, generationProgress,
+    onConfigChange, onRandomizeSeed, onGenerate, onGenerationQualityChange, onPresetChange,
+    onOceanToleranceChange
   } = props;
   const extended = config as ExtendedGenerationConfig;
   const workflow = generationWorkflowDescriptor(extended.workflowId);
   const starPresetId = extended.starPresetId === 'habitable' ? 'habitable' : 'sol-like';
   const starSeed = extended.seeds?.star || config.seed;
   const starPreset = starPresetOptions.find((option) => option.id === starPresetId) ?? starPresetOptions[0];
+  const generationAction = generationActionLabel(hasCurrentProject, isGenerating);
 
   const updateWorkflow = (workflowId: GenerationWorkflowId) => onConfigChange({
     ...config,
@@ -114,78 +166,162 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
     } as GenerationConfig);
   };
 
+  const updateRange = (
+    control: GenerationParameterControl,
+    bound: GenerationRangeBound,
+    value: number
+  ) => onConfigChange(updateGenerationParameterRange(config, control.key, bound, value));
+
   return (
     <div className="generator-panel simplified-generator" role="tabpanel" aria-label="World generator" data-workspace-mode={workspaceMode}>
-      <section className="generator-section" aria-labelledby="workflow-settings-heading">
-        <h3 id="workflow-settings-heading">Workflow</h3>
-        <div className="generator-field-row">
-          <label htmlFor="generation-workflow">Generation path</label>
-          <select
-            id="generation-workflow"
-            value={workflow.id}
-            disabled={isGenerating}
-            title={workflow.description}
-            onChange={(event) => updateWorkflow(event.target.value as GenerationWorkflowId)}
+      <section className="generator-section quick-build-section" aria-labelledby="quick-build-heading">
+        <div className="quick-build-header">
+          <div>
+            <span className="generator-kicker">Build</span>
+            <h3 id="quick-build-heading">Quick build</h3>
+          </div>
+          <span className={`build-target-status ${hasCurrentProject ? 'replacement' : ''}`}>
+            {hasCurrentProject ? 'Replace current world' : 'New world'}
+          </span>
+        </div>
+
+        <div className="quick-build-grid">
+          <label className="generator-control" htmlFor="world-preset">
+            <span>World type</span>
+            <select id="world-preset" value={selectedPreset} disabled={isGenerating} onChange={(event) => onPresetChange(event.target.value)}>
+              {presetLabels.map((label) => <option key={label} value={label}>{label}</option>)}
+            </select>
+          </label>
+
+          <label className="generator-control" htmlFor="world-seed">
+            <span>World seed</span>
+            <div className="seed-input-row">
+              <input id="world-seed" inputMode="numeric" pattern="[0-9]*" value={config.seed} disabled={isGenerating} onChange={(event) => updateWorldSeed(event.target.value.replace(/\D/g, ''))} />
+              <button type="button" title="Randomize world seed" aria-label="Randomize world seed" className="secondary-button icon-button" disabled={isGenerating} onClick={onRandomizeSeed}><Shuffle size={16} /></button>
+            </div>
+          </label>
+
+          <label className="generator-control" htmlFor="star-preset">
+            <span>Star type</span>
+            <select id="star-preset" value={starPresetId} disabled={isGenerating} title={starPreset.description} onChange={(event) => updateStarPreset(event.target.value as StarPresetId)}>
+              {starPresetOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </select>
+          </label>
+
+          <label className="generator-control" htmlFor="star-seed">
+            <span>Star seed</span>
+            <div className="seed-input-row">
+              <input id="star-seed" inputMode="numeric" pattern="[0-9]*" value={starSeed} disabled={isGenerating} onChange={(event) => updateStarSeed(event.target.value.replace(/\D/g, ''))} />
+              <button type="button" title="Randomize star seed" aria-label="Randomize star seed" className="secondary-button icon-button" disabled={isGenerating} onClick={() => updateStarSeed(randomSeed())}><Shuffle size={16} /></button>
+            </div>
+          </label>
+
+          <label className="generator-control generation-quality-control" htmlFor="generation-quality">
+            <span>Generation quality</span>
+            <select
+              id="generation-quality"
+              value={`${config.outputResolution.width}x${config.outputResolution.height}`}
+              disabled={isGenerating}
+              onChange={(event) => {
+                const resolution = resolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
+                if (resolution) onGenerationQualityChange(resolution);
+              }}
+            >
+              {resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <p className="generation-quality-note">
+          {config.outputResolution.width} x {config.outputResolution.height} generated map from {sourceTopologyResolution} cubed-sphere source topology.
+        </p>
+
+        <div className="generator-primary-actions">
+          <button type="button" className="secondary-button randomize-all-button" disabled={isGenerating} onClick={randomizeAll} title="Randomize star and world seeds"><Shuffle size={16} />Randomize All</button>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={invalidRanges.length > 0 || isGenerating}
+            onClick={onGenerate}
+            title={hasCurrentProject ? 'Generate a replacement world. The current world remains available unless generation succeeds.' : 'Generate a world.'}
           >
-            {generationWorkflowDescriptors.filter((option) => option.selectableInGenerator).map((option) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
+            <RefreshCw size={16} />{generationAction}
+          </button>
         </div>
-        <p className="generator-field-help">{workflow.description}</p>
+
+        {isGenerating && (
+          <div className="build-generation-progress" role="status" aria-live="polite">
+            <span>{generationStage || generationAction}</span>
+            <progress value={generationProgress} max={1} />
+            <output>{Math.round(generationProgress * 100)}%</output>
+          </div>
+        )}
+        {hasCurrentProject && <p className="replacement-note">The current world stays visible until its replacement finishes successfully.</p>}
+        {invalidRanges.length > 0 && <div className="validation">Invalid advanced ranges: {invalidRanges.join(', ')}</div>}
       </section>
 
-      <div className="generator-primary-actions">
-        <button type="button" className="secondary-button randomize-all-button" onClick={randomizeAll} title="Randomize star and world seeds"><Shuffle size={16} />Randomize All</button>
-        <button type="button" className="primary-button" disabled={invalidRanges.length > 0 || isGenerating} onClick={onGenerate} title="Generate world"><RefreshCw size={16} />Generate</button>
-      </div>
-
-      <section className="generator-section" aria-labelledby="star-settings-heading">
-        <h3 id="star-settings-heading">Star</h3>
-        <div className="generator-field-row">
-          <label htmlFor="star-preset">Star Type</label>
-          <select id="star-preset" value={starPresetId} title={starPreset.description} onChange={(event) => updateStarPreset(event.target.value as StarPresetId)}>
-            {starPresetOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </select>
-        </div>
-        <p className="generator-field-help">{starPreset.description}</p>
-        <div className="generator-seed-row">
-          <label htmlFor="star-seed">Star Seed</label>
-          <input id="star-seed" inputMode="numeric" pattern="[0-9]*" value={starSeed} onChange={(event) => updateStarSeed(event.target.value.replace(/\D/g, ''))} />
-          <button type="button" title="Randomize star seed" aria-label="Randomize star seed" className="secondary-button icon-button" onClick={() => updateStarSeed(randomSeed())}><Shuffle size={16} /></button>
-        </div>
-      </section>
-
-      <section className="generator-section" aria-labelledby="world-settings-heading">
-        <h3 id="world-settings-heading">World</h3>
-        <div className="generator-field-row">
-          <label htmlFor="world-preset">World Type</label>
-          <select id="world-preset" value={selectedPreset} onChange={(event) => onPresetChange(event.target.value)}>
-            {presetLabels.map((label) => <option key={label} value={label}>{label}</option>)}
-          </select>
-        </div>
-        <div className="generator-seed-row">
-          <label htmlFor="world-seed">World Seed</label>
-          <input id="world-seed" inputMode="numeric" pattern="[0-9]*" value={config.seed} onChange={(event) => updateWorldSeed(event.target.value.replace(/\D/g, ''))} />
-          <button type="button" title="Randomize world seed" aria-label="Randomize world seed" className="secondary-button icon-button" onClick={() => { onRandomizeSeed(); }}><Shuffle size={16} /></button>
-        </div>
-        <div className="generator-field-row">
-          <label htmlFor="generation-resolution">Map Size</label>
-          <select id="generation-resolution" value={`${config.outputResolution.width}x${config.outputResolution.height}`} onChange={(event) => { const resolution = resolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value); if (resolution) onGenerationResolutionChange(resolution); }}>{resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}</select>
-        </div>
-      </section>
-
-      {invalidRanges.length > 0 && <div className="validation">Invalid advanced ranges: {invalidRanges.join(', ')}</div>}
       <details className="advanced-generator-settings">
-        <summary><ChevronDown size={16} /> Advanced Settings</summary>
+        <summary><ChevronDown size={16} /> Advanced generation</summary>
         <div className="advanced-settings-content">
-          <button type="button" className={`profile-pill ${profileStatus.className}`} title={profileStatus.title} onClick={onOpenSyncSettings}><User size={15} /><span>{profileStatus.label}</span></button>
-          <section className="advanced-settings-group"><h4>Generation Quality and Output</h4>
-            <div className="resolution-row readout-row"><span>Source topology</span><span>{sourceTopologyResolution} cubed-sphere</span></div>
-            <div className="resolution-row"><label htmlFor="preview-resolution">Preview</label><select id="preview-resolution" value={`${previewResolution.width}x${previewResolution.height}`} onChange={(event) => { const resolution = previewResolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value); if (resolution) onPreviewResolutionChange(resolution); }}>{previewResolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}</select></div>
-            <div className="resolution-row"><label htmlFor="export-resolution">PNG export</label><select id="export-resolution" value={`${exportResolution.width}x${exportResolution.height}`} onChange={(event) => { const resolution = resolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value); if (resolution) onExportResolutionChange(resolution); }}>{resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}</select></div>
+          <section className="advanced-settings-group" aria-labelledby="generation-engine-heading">
+            <h4 id="generation-engine-heading">Generation engine</h4>
+            <label className="generator-control" htmlFor="generation-workflow">
+              <span>Generation path</span>
+              <select
+                id="generation-workflow"
+                value={workflow.id}
+                disabled={isGenerating}
+                title={workflow.description}
+                onChange={(event) => updateWorkflow(event.target.value as GenerationWorkflowId)}
+              >
+                {generationWorkflowDescriptors.filter((option) => option.selectableInGenerator).map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <p className="generator-field-help">{workflow.description}</p>
           </section>
-          <section className="advanced-settings-group"><h4>Final Water</h4><div className="resolution-row"><label htmlFor="ocean-tolerance">Tolerance</label><input id="ocean-tolerance" min="0" step="0.5" type="number" value={config.selectedValues?.oceanTolerancePercentagePoints ?? 5} onChange={(event) => onOceanToleranceChange(Number(event.target.value))} /></div></section>
+
+          {generationParameterGroups.map((group) => (
+            <section className="advanced-settings-group" aria-labelledby={`generation-${group.id}-heading`} key={group.id}>
+              <h4 id={`generation-${group.id}-heading`}>{group.label}</h4>
+              <div className="parameter-range-grid">
+                {group.controls.map((control) => (
+                  <ParameterRangeEditor
+                    key={control.key}
+                    control={control}
+                    range={config.parameterRanges[control.key]}
+                    disabled={isGenerating}
+                    onChange={(bound, value) => updateRange(control, bound, value)}
+                  />
+                ))}
+                {group.id === 'world-shape' && (
+                  <div className="parameter-range-control single-value-control">
+                    <div className="parameter-range-label">
+                      <strong>Ocean tolerance</strong>
+                      <span>Allowed percentage-point difference between the requested target and final generated ocean share.</span>
+                    </div>
+                    <label className="single-value-input" htmlFor="ocean-tolerance">
+                      <span>Points</span>
+                      <input
+                        id="ocean-tolerance"
+                        min="0"
+                        max="30"
+                        step="0.5"
+                        type="number"
+                        value={config.selectedValues?.oceanTolerancePercentagePoints ?? 5}
+                        disabled={isGenerating}
+                        onChange={(event) => {
+                          const value = event.currentTarget.valueAsNumber;
+                          if (Number.isFinite(value)) onOceanToleranceChange(value);
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </section>
+          ))}
         </div>
       </details>
     </div>

@@ -30,8 +30,6 @@ import {
   WorkspaceUiSettings,
   buildWorkspaceSettings,
   can,
-  isLoggedIn,
-  isLocalOnlyIdentity,
   loadCloudSyncSettings,
   loadIdentity,
   loadWorkspaceSettings,
@@ -41,6 +39,7 @@ import { mergeSavedMapRecords } from './storage';
 import { MyWorldsPanel } from './worlds/MyWorldsPanel';
 import { useWorldLibraryCommands } from './worlds/useWorldLibraryCommands';
 import { GeneratorPanel } from './generator/GeneratorPanel';
+import { generationConfigForQuality, generationParameterLabels } from './generator/generationParameterControls';
 import { WorldWorkspace } from './workspace/WorldWorkspace';
 import { workspaceModeForProject, type WorkspaceMode } from './workspace/workspaceModes';
 import { RightPanel } from './panels/RightPanel';
@@ -73,24 +72,6 @@ type HighestPointTarget = { x: number; y: number; width: number; height: number;
 type HexInspectionTarget = { levelId: string; label: string; nominalHexWidthMiles: number; q: number; r: number; x: number; y: number; width: number; height: number };
 type RightPanelTab = 'world' | 'hex' | 'diagnostics';
 type LeftPanelTab = 'generator' | 'worlds' | 'dev';
-const rangeLabels: Record<RangeKey, string> = {
-  systemAgeGy: 'System age',
-  oceanPercentage: 'Ocean',
-  averageTemperatureC: 'Avg temp',
-  aridity: 'Aridity',
-  seaLevel: 'Sea level',
-  axialTiltDeg: 'Axial tilt',
-  orbitalEccentricity: 'Eccentricity',
-  sizeClass: 'Size',
-  moonCount: 'Moons',
-  impactFrequency: 'Impacts',
-  plateCount: 'Plates',
-  riverDensity: 'Rivers',
-  continentCount: 'Regions',
-  continentScale: 'Continents',
-  islandDensity: 'Islands'
-};
-
 const defaultSeed = '1001001';
 const WORLD_FORGE_BUILD_MESSAGE = 'parchment-worlds:world-forge-build';
 const WORLD_FORGE_BUILD_REQUEST = 'parchment-worlds:request-world-forge-build';
@@ -450,7 +431,7 @@ function App() {
   const invalidRanges = useMemo(() => {
     return Object.entries(config.parameterRanges)
       .filter(([, range]) => range.min > range.max)
-      .map(([key]) => rangeLabels[key as RangeKey]);
+      .map(([key]) => generationParameterLabels[key as RangeKey]);
   }, [config.parameterRanges]);
 
   const generate = (nextConfig = config) => {
@@ -764,13 +745,6 @@ function App() {
     setVttHexSizeMilesInput(String(next));
   };
 
-  const profileStatus = (() => {
-    if (!cloudSync.keepSynced) return { className: 'off', label: 'Sync off', title: 'Sync is turned off.' };
-    if (cloudSync.lastError) return { className: 'warn', label: isLoggedIn(identity) ? identity.displayName : 'Not Logged In', title: cloudSync.lastError };
-    if (isLoggedIn(identity) && cloudSync.serviceBaseUrl && !isLocalOnlyIdentity(identity)) return { className: 'online', label: identity.displayName, title: `Signed in. ${syncStatus}` };
-    if (isLoggedIn(identity)) return { className: 'local', label: identity.displayName, title: 'Signed in locally. Cloud service is not configured or unavailable.' };
-    return { className: 'offline', label: 'Not Logged In', title: syncStatus };
-  })();
   const vttHexMetrics = project && vttGridEnabled ? calculateVttHexMetrics(project, vttResolution.width, vttResolution.height, vttHexSizeMiles) : null;
   const tileHexScaleMiles = project ? Math.round(planetCircumferenceMiles(project) / Math.max(1, tileWidth)) : null;
   const activeHexOverlayLevel = showHexes ? renderedHexOverlayLevel : null;
@@ -844,31 +818,21 @@ function App() {
         {leftPanelTab === 'generator' ? (
           <GeneratorPanel
             workspaceMode={workspaceMode}
+            hasCurrentProject={Boolean(project)}
             config={config}
             selectedPreset={selectedPreset}
             presetLabels={worldPresets.map((preset) => preset.label)}
-            previewResolution={previewResolution}
-            previewResolutionOptions={previewResolutionOptions}
-            exportResolution={exportResolution}
             resolutionOptions={resolutionOptions}
             sourceTopologyResolution={config.topologyResolution ?? topologyResolutionForOutput(config.outputResolution)}
             invalidRanges={invalidRanges}
             isGenerating={isGenerating}
-            profileStatus={profileStatus}
+            generationStage={generationStage}
+            generationProgress={generationProgress}
             onConfigChange={setConfig}
             onRandomizeSeed={randomizeSeed}
             onGenerate={() => generate()}
-            onOpenSyncSettings={() => {
-              setConfigTab('sync');
-              setConfigOpen(true);
-            }}
-            onGenerationResolutionChange={(nextResolution) => setConfig({
-              ...config,
-              outputResolution: { width: nextResolution.width, height: nextResolution.height }
-            })}
+            onGenerationQualityChange={(nextResolution) => setConfig((current) => generationConfigForQuality(current, nextResolution))}
             onPresetChange={applyPreset}
-            onPreviewResolutionChange={setPreviewResolution}
-            onExportResolutionChange={setExportResolution}
             onOceanToleranceChange={updateOceanTolerance}
           />
         ) : leftPanelTab === 'dev' ? (
@@ -920,8 +884,38 @@ function App() {
         onMapModeChange={setMapMode}
         onCoastlineTreatmentChange={setCoastlineTreatment}
         onGlobeDebugModeChange={setGlobeDebugMode}
+        displayActions={(
+          <label className="workspace-inline-setting" htmlFor="preview-resolution">
+            <span>Preview</span>
+            <select
+              id="preview-resolution"
+              aria-label="Preview resolution"
+              value={`${previewResolution.width}x${previewResolution.height}`}
+              onChange={(event) => {
+                const resolution = previewResolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
+                if (resolution) setPreviewResolution(resolution);
+              }}
+            >
+              {previewResolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label.replace(' preview', '')}</option>)}
+            </select>
+          </label>
+        )}
         exportActions={(
           <>
+            <label className="workspace-inline-setting export-resolution-setting" htmlFor="export-resolution">
+              <span>PNG</span>
+              <select
+                id="export-resolution"
+                aria-label="PNG export resolution"
+                value={`${exportResolution.width}x${exportResolution.height}`}
+                onChange={(event) => {
+                  const resolution = resolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
+                  if (resolution) setExportResolution(resolution);
+                }}
+              >
+                {resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}
+              </select>
+            </label>
             <ExportButton icon={<Image size={16} />} label="PNG" task={exportTasks.png} disabled={!project} title="Export PNG" onClick={downloadPng} />
             <ExportButton icon={<Layers size={16} />} label="SVG" task={exportTasks.svg} disabled={!project} title="Export simplified SVG" onClick={downloadSvg} />
             <ExportButton icon={<FileJson size={16} />} label="JSON" task={exportTasks.json} disabled={!project} title="Export JSON" onClick={downloadJson} />
