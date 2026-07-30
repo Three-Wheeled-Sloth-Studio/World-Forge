@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.33</p>
+            <h3>Dropdowns that know when to leave</h3>
+            <ul>
+              <li>Layers and zoom now close on outside interaction, Escape, competing popovers, and workspace-context changes.</li>
+              <li>The right-panel collapse control no longer overlaps world or context titles.</li>
+              <li>The standalone account control restores the signed-in Google avatar with a safe icon fallback.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.32</p>
             <h3>Explore controls without the cockpit clutter</h3>
             <ul>

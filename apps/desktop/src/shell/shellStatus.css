@@ -182,3 +182,16 @@ html[data-parchment-shell-embed="true"] .app-shell {
 @media (max-width: 1180px) {
   .shell-product-identity strong { font-size: 1rem; }
 }
+
+
+.shell-account-avatar {
+  border-radius: 50%;
+  display: block;
+  height: 22px;
+  object-fit: cover;
+  width: 22px;
+}
+
+.summary:not(.panel-collapsed) {
+  padding-top: 48px;
+}

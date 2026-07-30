@@ -136,6 +136,15 @@
   gap: 0;
 }
 
+.zoom-popover {
+  display: inline-flex;
+  position: relative;
+}
+
+.view-zoom-controls.with-scale .zoom-pill {
+  border-radius: 6px 0 0 6px;
+}
+
 .view-zoom-controls output,
 .view-zoom-controls .zoom-pill {
   align-items: center;
@@ -289,7 +298,7 @@
 
 
 .explore-fit-button,
-.explore-layers-menu > summary {
+.explore-layers-trigger {
   align-items: center;
   background: linear-gradient(#fff9ec, #e8decb);
   border: 1px solid var(--pm-border);
@@ -308,8 +317,8 @@
 }
 
 .explore-fit-button:hover,
-.explore-layers-menu > summary:hover,
-.explore-layers-menu[open] > summary {
+.explore-layers-trigger:hover,
+.explore-layers-menu[data-open="true"] > .explore-layers-trigger {
   background: linear-gradient(#e3f5f1, #8ec4c8);
   border-color: #4e8f94;
   color: #17363a;
@@ -318,14 +327,6 @@
 .explore-layers-menu {
   flex: 0 0 auto;
   position: relative;
-}
-
-.explore-layers-menu > summary {
-  list-style: none;
-}
-
-.explore-layers-menu > summary::-webkit-details-marker {
-  display: none;
 }
 
 .explore-layers-popover {

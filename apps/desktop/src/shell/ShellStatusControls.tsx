@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Coffee, FolderOpen, Home, Mail, Settings, UserRound } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { APP_VERSION, APP_VISIBLE_VERSION } from '../appVersion';
@@ -18,7 +18,24 @@ function openReleaseNotes() {
   releaseControl?.click();
 }
 
-export function ShellStatusControls({ onFeedback }: { onFeedback: () => void }) {
+function AccountIdentity({ avatarUrl }: { avatarUrl: string }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => setFailed(false), [avatarUrl]);
+
+  if (!avatarUrl || failed) return <UserRound size={17} aria-hidden="true" />;
+  return <img alt="" className="shell-account-avatar" src={avatarUrl} onError={() => setFailed(true)} />;
+}
+
+export function ShellStatusControls({
+  onFeedback,
+  accountAvatarUrl = '',
+  accountLabel = 'Open the Parchment Worlds account page',
+}: {
+  onFeedback: () => void;
+  accountAvatarUrl?: string;
+  accountLabel?: string;
+}) {
   if (isParchmentShellEmbed()) return null;
 
   const navigation = resolveParchmentNavigation(window.location.href);
@@ -41,8 +58,8 @@ export function ShellStatusControls({ onFeedback }: { onFeedback: () => void }) 
       <a className="shell-status-button shell-support-button" href={SUPPORT_URL} rel="noreferrer" target="_blank" title="Support Parchment Worlds development" aria-label="Support Parchment Worlds development">
         <Coffee size={17} aria-hidden="true" />
       </a>
-      <a className="shell-status-button shell-account-button" href={navigation.accountUrl} title="Open the Parchment Worlds account page" aria-label="Open the Parchment Worlds account page">
-        <UserRound size={17} aria-hidden="true" />
+      <a className="shell-status-button shell-account-button" href={navigation.accountUrl} title={accountLabel} aria-label={accountLabel}>
+        <AccountIdentity avatarUrl={accountAvatarUrl} />
       </a>
       <button type="button" className="shell-version-badge" title={`Open World Forge release notes and roadmap for build ${APP_VERSION}`} aria-label={`Open World Forge release notes and roadmap for version ${APP_VISIBLE_VERSION}`} onClick={openReleaseNotes}>v{APP_VISIBLE_VERSION}</button>
       <button type="button" className="shell-status-button shell-config-button" title="Configure World Forge" aria-label="Configure World Forge" onClick={openConfiguration}>

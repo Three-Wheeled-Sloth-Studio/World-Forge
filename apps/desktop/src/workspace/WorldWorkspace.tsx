@@ -6,6 +6,7 @@ import {
   workspaceModeOptions,
   type WorkspaceMode
 } from './workspaceModes';
+import { useDismissiblePopover } from '../shared/useDismissiblePopover';
 import './workspaceToolbar.css';
 
 export type WorkspaceViewMode = 'map' | 'globe';
@@ -91,7 +92,9 @@ export function WorldWorkspace({
   onCoastlineTreatmentChange
 }: WorldWorkspaceProps) {
   const isDeveloperMode = developerMode || projectName === 'Developer workspace';
-  const [zoomMenu, setZoomMenu] = useState<{ x: number; y: number } | null>(null);
+  const [zoomMenuPosition, setZoomMenuPosition] = useState({ x: 8, y: 8 });
+  const layersPopover = useDismissiblePopover();
+  const zoomPopover = useDismissiblePopover();
   const zoomStops = [0.75, 1, 1.5, 2.25, 4, 5.5, 8];
   const visibleMapMode = normalizeUserFacingMapMode(mapMode);
   const activeWorkspaceMode = workspaceModeOptions.find((option) => option.id === workspaceMode) ?? workspaceModeOptions[0];
@@ -100,23 +103,37 @@ export function WorldWorkspace({
     if (!isDeveloperMode && visibleMapMode !== mapMode) onMapModeChange(visibleMapMode);
   }, [isDeveloperMode, mapMode, onMapModeChange, visibleMapMode]);
 
+  useEffect(() => {
+    if (workspaceMode === 'explore') return;
+    layersPopover.close();
+    zoomPopover.close();
+  }, [layersPopover.close, workspaceMode, zoomPopover.close]);
 
-  const openZoomMenu = (event: React.MouseEvent) => {
+  const openZoomMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    setZoomMenu({ x: event.clientX, y: event.clientY });
+    setZoomMenuPosition({
+      x: Math.max(8, Math.min(window.innerWidth - 92, event.clientX)),
+      y: Math.max(8, Math.min(window.innerHeight - 224, event.clientY))
+    });
+    if (!zoomPopover.open) zoomPopover.openPopover(false);
   };
 
   const toggleZoomMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (zoomPopover.open) {
+      zoomPopover.close();
+      return;
+    }
     const bounds = event.currentTarget.getBoundingClientRect();
-    setZoomMenu((current) => current ? null : {
+    setZoomMenuPosition({
       x: Math.max(8, Math.min(window.innerWidth - 92, bounds.left)),
-      y: bounds.bottom + 4
+      y: Math.max(8, Math.min(window.innerHeight - 224, bounds.bottom + 4))
     });
+    zoomPopover.openPopover(false);
   };
 
   const fitView = () => {
     onViewZoomChange(1);
-    setZoomMenu(null);
+    zoomPopover.close();
   };
 
   return (
@@ -166,49 +183,91 @@ export function WorldWorkspace({
                 </select>
                 <button type="button" className={`icon-button diagnostic-toggle ${diagnosticMode ? 'active' : ''}`} aria-label={diagnosticMode ? 'Disable point inspector' : 'Enable point inspector'} aria-pressed={diagnosticMode} title={diagnosticMode ? 'Point inspector on' : 'Point inspector off'} onClick={onToggleDiagnostics}><Search size={16} /></button>
                 <button type="button" className="explore-fit-button" aria-label="Fit view" title="Fit map or globe to the workspace" onClick={fitView}><Maximize2 size={16} /><span>Fit</span></button>
-                <details className="explore-layers-menu">
-                  <summary aria-label="Layers and display options"><Layers size={16} /><span>Layers</span></summary>
-                  <div className="explore-layers-popover">
-                    <div className="explore-layers-section">
-                      <strong>Visible layers</strong>
-                      <button type="button" className={`explore-layer-toggle ${showRivers ? 'active' : ''}`} aria-pressed={showRivers} onClick={() => onShowRiversChange(!showRivers)}><span><Waves size={15} />Rivers</span><small>{showRivers ? 'On' : 'Off'}</small></button>
-                      <button type="button" className={`explore-layer-toggle plates-toggle ${showPlates ? 'active' : ''}`} aria-pressed={showPlates} onClick={() => onShowPlatesChange(!showPlates)}><span><Waypoints size={15} />Plate boundaries</span><small>{showPlates ? 'On' : 'Off'}</small></button>
-                      <button type="button" className={`explore-layer-toggle hex-toggle ${showHexes ? 'active' : ''}`} aria-pressed={showHexes} onClick={() => onShowHexesChange(!showHexes)}><span><Hexagon size={15} />Hex overlay</span><small>{showHexes ? (hexOverlayLabel || 'On') : 'Off'}</small></button>
-                      {viewMode === 'globe' && <button type="button" className={`explore-layer-toggle shell-toggle ${showGlobeShells ? 'active' : ''}`} aria-pressed={showGlobeShells} onClick={onToggleGlobeShells}><span><Cloud size={15} />Ocean and atmosphere</span><small>{showGlobeShells ? 'On' : 'Off'}</small></button>}
+                <div className="dismissible-popover explore-layers-menu" data-open={layersPopover.open} ref={layersPopover.rootRef}>
+                  <button
+                    type="button"
+                    className="explore-layers-trigger"
+                    id={layersPopover.triggerId}
+                    ref={layersPopover.triggerRef}
+                    aria-controls={layersPopover.panelId}
+                    aria-expanded={layersPopover.open}
+                    aria-haspopup="dialog"
+                    aria-label="Layers and display options"
+                    onClick={() => layersPopover.togglePopover(false)}
+                    onKeyDown={layersPopover.onTriggerKeyDown}
+                  ><Layers size={16} /><span>Layers</span></button>
+                  {layersPopover.open && (
+                    <div
+                      className="explore-layers-popover"
+                      id={layersPopover.panelId}
+                      ref={layersPopover.panelRef}
+                      role="dialog"
+                      aria-labelledby={layersPopover.triggerId}
+                    >
+                      <div className="explore-layers-section">
+                        <strong>Visible layers</strong>
+                        <button type="button" className={`explore-layer-toggle ${showRivers ? 'active' : ''}`} aria-pressed={showRivers} onClick={() => onShowRiversChange(!showRivers)}><span><Waves size={15} />Rivers</span><small>{showRivers ? 'On' : 'Off'}</small></button>
+                        <button type="button" className={`explore-layer-toggle plates-toggle ${showPlates ? 'active' : ''}`} aria-pressed={showPlates} onClick={() => onShowPlatesChange(!showPlates)}><span><Waypoints size={15} />Plate boundaries</span><small>{showPlates ? 'On' : 'Off'}</small></button>
+                        <button type="button" className={`explore-layer-toggle hex-toggle ${showHexes ? 'active' : ''}`} aria-pressed={showHexes} onClick={() => onShowHexesChange(!showHexes)}><span><Hexagon size={15} />Hex overlay</span><small>{showHexes ? (hexOverlayLabel || 'On') : 'Off'}</small></button>
+                        {viewMode === 'globe' && <button type="button" className={`explore-layer-toggle shell-toggle ${showGlobeShells ? 'active' : ''}`} aria-pressed={showGlobeShells} onClick={onToggleGlobeShells}><span><Cloud size={15} />Ocean and atmosphere</span><small>{showGlobeShells ? 'On' : 'Off'}</small></button>}
+                      </div>
+                      <div className="explore-layers-section explore-display-options">
+                        <strong>Display</strong>
+                        <label htmlFor="coastline-treatment"><span>Coastline</span><select id="coastline-treatment" aria-label="Coastline treatment" value={coastlineTreatment} onChange={(event) => onCoastlineTreatmentChange(event.target.value as CoastlineTreatment)} disabled={visibleMapMode !== 'biomes'}>
+                          <option value="bare">Bare coast</option>
+                          <option value="toned">Toned coast</option>
+                          <option value="outlined">Outlined coast</option>
+                        </select></label>
+                        {displayActions}
+                      </div>
                     </div>
-                    <div className="explore-layers-section explore-display-options">
-                      <strong>Display</strong>
-                      <label htmlFor="coastline-treatment"><span>Coastline</span><select id="coastline-treatment" aria-label="Coastline treatment" value={coastlineTreatment} onChange={(event) => onCoastlineTreatmentChange(event.target.value as CoastlineTreatment)} disabled={visibleMapMode !== 'biomes'}>
-                        <option value="bare">Bare coast</option>
-                        <option value="toned">Toned coast</option>
-                        <option value="outlined">Outlined coast</option>
-                      </select></label>
-                      {displayActions}
-                    </div>
+                  )}
+                </div>
+                <div className={`view-zoom-controls ${showHexes && hexOverlayLabel ? 'with-scale' : ''}`} role="group" aria-label="View zoom">
+                  <div className="dismissible-popover zoom-popover" data-open={zoomPopover.open} ref={zoomPopover.rootRef}>
+                    <button
+                      type="button"
+                      className="zoom-pill"
+                      id={zoomPopover.triggerId}
+                      ref={zoomPopover.triggerRef}
+                      aria-controls={zoomPopover.panelId}
+                      aria-expanded={zoomPopover.open}
+                      aria-haspopup="menu"
+                      aria-label={`Zoom ${Math.round(viewZoom * 100)} percent`}
+                      title="Click for common zoom levels. Right-click to open at the pointer."
+                      onContextMenu={openZoomMenu}
+                      onClick={toggleZoomMenu}
+                      onKeyDown={zoomPopover.onTriggerKeyDown}
+                    >{Math.round(viewZoom * 100)}%</button>
+                    {zoomPopover.open && (
+                      <div
+                        className="zoom-context-menu"
+                        id={zoomPopover.panelId}
+                        ref={zoomPopover.panelRef}
+                        role="menu"
+                        aria-labelledby={zoomPopover.triggerId}
+                        style={{ left: zoomMenuPosition.x, top: zoomMenuPosition.y }}
+                        onKeyDown={zoomPopover.onPanelKeyDown}
+                      >
+                        {zoomStops.map((stop) => (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            key={stop}
+                            className={Math.abs(viewZoom - stop) < 0.01 ? 'active' : ''}
+                            onClick={() => {
+                              onViewZoomChange(stop);
+                              zoomPopover.close();
+                            }}
+                          >
+                            {Math.round(stop * 100)}%
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </details>
-                <div className="view-zoom-controls" role="group" aria-label="View zoom">
-                  <button type="button" className="zoom-pill" aria-label={`Zoom ${Math.round(viewZoom * 100)} percent`} title="Click for common zoom levels. Right-click to open at the pointer." onContextMenu={openZoomMenu} onClick={toggleZoomMenu}>{Math.round(viewZoom * 100)}%</button>
                   {showHexes && hexOverlayLabel && <output className="hex-scale-readout" title="Current hex overlay scale">{hexOverlayLabel}</output>}
                 </div>
-                {zoomMenu && (
-                  <div className="zoom-context-menu" role="menu" style={{ left: zoomMenu.x, top: zoomMenu.y }} onMouseLeave={() => setZoomMenu(null)}>
-                    {zoomStops.map((stop) => (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        key={stop}
-                        className={Math.abs(viewZoom - stop) < 0.01 ? 'active' : ''}
-                        onClick={() => {
-                          onViewZoomChange(stop);
-                          setZoomMenu(null);
-                        }}
-                      >
-                        {Math.round(stop * 100)}%
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           )}

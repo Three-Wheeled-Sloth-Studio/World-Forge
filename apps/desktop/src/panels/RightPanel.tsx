@@ -17,6 +17,8 @@ type RightPanelProps = {
   developerMode: boolean;
   collapsed: boolean;
   feedbackStatus: string;
+  accountAvatarUrl?: string;
+  accountLabel?: string;
   inspectorContent: React.ReactNode;
   diagnosticsContent: React.ReactNode;
   project: WorldProject | null;
@@ -117,7 +119,7 @@ function ExportStatusList({ entries }: { entries: Array<{ label: string; task: E
 
 export function RightPanel(props: RightPanelProps) {
   const {
-    workspaceMode, developerMode, collapsed, feedbackStatus, inspectorContent, diagnosticsContent, project,
+    workspaceMode, developerMode, collapsed, feedbackStatus, accountAvatarUrl, accountLabel, inspectorContent, diagnosticsContent, project,
     config, selectedPreset, isGenerating, generationStage, generationProgress, hexInspection, commonExportActions,
     tilePresetId, tileWidth, tileHeight, tileFeatures, tileFeatureLabels, tileHexScaleMiles, vttResolution,
     resolutionOptions, vttGridEnabled, vttHexSizeMilesInput, vttHexMetrics, pngTask, svgTask, jsonTask,
@@ -153,7 +155,7 @@ export function RightPanel(props: RightPanelProps) {
 
   return (
     <>
-      <ShellStatusControls onFeedback={onFeedback} />
+      <ShellStatusControls onFeedback={onFeedback} accountAvatarUrl={accountAvatarUrl} accountLabel={accountLabel} />
       <aside className={`summary ${collapsed ? 'panel-collapsed' : ''}`} aria-label="Context panel" data-workspace-mode={workspaceMode} data-context={context}>
         <button type="button" title={collapsed ? 'Expand context panel' : 'Collapse context panel'} aria-label={collapsed ? 'Expand context panel' : 'Collapse context panel'} className="icon-button panel-toggle right-panel-boundary-toggle" onClick={() => onCollapsedChange(!collapsed)}>
           {collapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}

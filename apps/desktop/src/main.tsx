@@ -632,6 +632,11 @@ function App() {
     setInspectionRecord(inspectWorldPoint(project, { source: 'globe', x, y, screen }, mapTheme, renderMode, mapMode));
   }, [diagnosticMode, mapMode, mapTheme, project, renderMode]);
 
+  const shellAccountAvatarUrl = identity.avatarUrl || identity.profile.avatarUrl || identity.linkedIdentities.find((entry) => entry.avatarUrl)?.avatarUrl || '';
+  const shellHasAccount = Boolean(identity.email || identity.externalIds.googleId || identity.externalIds.steamId || identity.linkedIdentities.length);
+  const shellAccountLabel = shellHasAccount
+    ? `Signed in as ${identity.displayName}${identity.email ? ` (${identity.email})` : ''}`
+    : 'Open the Parchment Worlds account page';
   const currentViewZoom = viewMode === 'globe' ? globeZoom : mapZoom;
   const handleMapWheelZoom = useCallback((event: WheelEvent, frame: HTMLDivElement) => {
     event.preventDefault();
@@ -946,6 +951,8 @@ function App() {
   developerMode={leftPanelTab === 'dev'}
   collapsed={rightPanelCollapsed}
   feedbackStatus={feedbackStatus}
+  accountAvatarUrl={shellAccountAvatarUrl}
+  accountLabel={shellAccountLabel}
   inspectorContent={inspectionRecord ? (
     <PointInspectorPanel
       record={inspectionRecord}
