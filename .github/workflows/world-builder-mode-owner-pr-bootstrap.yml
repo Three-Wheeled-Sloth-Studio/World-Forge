@@ -35,6 +35,10 @@ jobs:
           import subprocess
           import textwrap
 
+          def run_shell(block: str, label: str) -> None:
+              print(label, flush=True)
+              subprocess.run(['bash', '-euo', 'pipefail', '-c', block], check=True)
+
           text = Path('/tmp/world-builder-mode-owner-runner.yml').read_text()
           blocks = []
           lines = text.splitlines()
@@ -53,10 +57,15 @@ jobs:
                   continue
               index += 1
 
-          if len(blocks) != 7:
-              raise RuntimeError(f'Expected 7 runner blocks, found {len(blocks)}')
+          if len(blocks) != 5:
+              raise RuntimeError(f'Expected 5 multiline runner blocks, found {len(blocks)}')
 
-          for number, block in enumerate(blocks, start=1):
-              print(f'Executing runner block {number}/{len(blocks)}', flush=True)
-              subprocess.run(['bash', '-euo', 'pipefail', '-c', block], check=True)
+          run_shell('npm ci', 'Installing dependencies')
+          run_shell(blocks[0], 'Applying workspace mode ownership changes')
+          run_shell('npm run verify 2>&1 | tee /tmp/world-forge-verify.log', 'Running repository verification')
+          run_shell('npx playwright install --with-deps chromium', 'Installing Chromium for browser QA')
+          run_shell(blocks[1], 'Running focused browser QA')
+          run_shell(blocks[2], 'Committing functional increment')
+          run_shell(blocks[3], 'Updating cleanup handoff')
+          run_shell(blocks[4], 'Pushing dev and removing runner branch')
           PY
