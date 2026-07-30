@@ -1,5 +1,5 @@
 import React, { useEffect, useState, type ReactNode } from 'react';
-import { Cloud, Globe2, Hexagon, Map, Search, Waves, Waypoints } from 'lucide-react';
+import { Cloud, Globe2, Hexagon, Layers, Map, Maximize2, Search, Waves, Waypoints } from 'lucide-react';
 import type { CoastlineTreatment, MapMode, RenderMode } from '@world-forge/renderer';
 import {
   normalizeUserFacingMapMode,
@@ -106,6 +106,19 @@ export function WorldWorkspace({
     setZoomMenu({ x: event.clientX, y: event.clientY });
   };
 
+  const toggleZoomMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setZoomMenu((current) => current ? null : {
+      x: Math.max(8, Math.min(window.innerWidth - 92, bounds.left)),
+      y: bounds.bottom + 4
+    });
+  };
+
+  const fitView = () => {
+    onViewZoomChange(1);
+    setZoomMenu(null);
+  };
+
   return (
     <section className={`map-pane ${isDeveloperMode ? 'developer-mode' : ''}`} aria-label={isDeveloperMode ? 'Developer generation workspace' : 'Generated world map'}>
       {!isDeveloperMode && (
@@ -135,11 +148,6 @@ export function WorldWorkspace({
                   <button type="button" className={`icon-button ${viewMode === 'map' ? 'active' : ''}`} aria-label="Map view" aria-pressed={viewMode === 'map'} title="Map view" onClick={() => onViewModeChange('map')}><Map size={16} /></button>
                   <button type="button" className={`icon-button ${viewMode === 'globe' ? 'active' : ''}`} aria-label="Globe view" aria-pressed={viewMode === 'globe'} title="Globe view" onClick={() => onViewModeChange('globe')}><Globe2 size={16} /></button>
                 </div>
-                <button type="button" className={`icon-button layer-icon-toggle rivers-toggle ${showRivers ? 'active' : ''}`} aria-label={showRivers ? 'Hide rivers' : 'Show rivers'} aria-pressed={showRivers} title={showRivers ? 'Rivers visible' : 'Rivers hidden'} onClick={() => onShowRiversChange(!showRivers)}><Waves size={16} /></button>
-                <button type="button" className={`icon-button layer-icon-toggle plates-toggle ${showPlates ? 'active' : ''}`} aria-label={showPlates ? 'Hide plate boundaries' : 'Show plate boundaries'} aria-pressed={showPlates} title={showPlates ? 'Plate boundaries visible' : 'Plate boundaries hidden'} onClick={() => onShowPlatesChange(!showPlates)}><Waypoints size={16} /></button>
-                <button type="button" className={`icon-button layer-icon-toggle hex-toggle ${showHexes ? 'active' : ''}`} aria-label={showHexes ? 'Hide hex overlay' : 'Show hex overlay'} aria-pressed={showHexes} title={showHexes ? `Hex overlay visible${hexOverlayLabel ? `: ${hexOverlayLabel}` : ''}` : 'Hex overlay hidden'} onClick={() => onShowHexesChange(!showHexes)}><Hexagon size={16} /></button>
-                <button type="button" className={`icon-button diagnostic-toggle ${diagnosticMode ? 'active' : ''}`} aria-label={diagnosticMode ? 'Disable point inspector' : 'Enable point inspector'} aria-pressed={diagnosticMode} title={diagnosticMode ? 'Point inspector on' : 'Point inspector off'} onClick={onToggleDiagnostics}><Search size={16} /></button>
-                {viewMode === 'globe' && <button type="button" className={`icon-button shell-toggle ${showGlobeShells ? 'active' : ''}`} aria-label={showGlobeShells ? 'Hide globe ocean and atmosphere shells' : 'Show globe ocean and atmosphere shells'} aria-pressed={showGlobeShells} title={showGlobeShells ? 'Globe ocean and atmosphere visible' : 'Globe ocean and atmosphere hidden'} onClick={onToggleGlobeShells}><Cloud size={16} /></button>}
                 <select aria-label="Presentation" value={renderMode} onChange={(event) => onRenderModeChange(event.target.value as RenderMode)} disabled={visibleMapMode !== 'biomes'}>
                   <option value="data">Data</option>
                   <option value="natural">Natural</option>
@@ -156,14 +164,31 @@ export function WorldWorkspace({
                   <option value="current">Current</option>
                   <option value="terrain-only">Terrain only</option>
                 </select>
-                <select aria-label="Coastline treatment" value={coastlineTreatment} onChange={(event) => onCoastlineTreatmentChange(event.target.value as CoastlineTreatment)} disabled={visibleMapMode !== 'biomes'}>
-                  <option value="bare">Bare coast</option>
-                  <option value="toned">Toned coast</option>
-                  <option value="outlined">Outlined coast</option>
-                </select>
-                {displayActions}
+                <button type="button" className={`icon-button diagnostic-toggle ${diagnosticMode ? 'active' : ''}`} aria-label={diagnosticMode ? 'Disable point inspector' : 'Enable point inspector'} aria-pressed={diagnosticMode} title={diagnosticMode ? 'Point inspector on' : 'Point inspector off'} onClick={onToggleDiagnostics}><Search size={16} /></button>
+                <button type="button" className="explore-fit-button" aria-label="Fit view" title="Fit map or globe to the workspace" onClick={fitView}><Maximize2 size={16} /><span>Fit</span></button>
+                <details className="explore-layers-menu">
+                  <summary aria-label="Layers and display options"><Layers size={16} /><span>Layers</span></summary>
+                  <div className="explore-layers-popover">
+                    <div className="explore-layers-section">
+                      <strong>Visible layers</strong>
+                      <button type="button" className={`explore-layer-toggle ${showRivers ? 'active' : ''}`} aria-pressed={showRivers} onClick={() => onShowRiversChange(!showRivers)}><span><Waves size={15} />Rivers</span><small>{showRivers ? 'On' : 'Off'}</small></button>
+                      <button type="button" className={`explore-layer-toggle plates-toggle ${showPlates ? 'active' : ''}`} aria-pressed={showPlates} onClick={() => onShowPlatesChange(!showPlates)}><span><Waypoints size={15} />Plate boundaries</span><small>{showPlates ? 'On' : 'Off'}</small></button>
+                      <button type="button" className={`explore-layer-toggle hex-toggle ${showHexes ? 'active' : ''}`} aria-pressed={showHexes} onClick={() => onShowHexesChange(!showHexes)}><span><Hexagon size={15} />Hex overlay</span><small>{showHexes ? (hexOverlayLabel || 'On') : 'Off'}</small></button>
+                      {viewMode === 'globe' && <button type="button" className={`explore-layer-toggle shell-toggle ${showGlobeShells ? 'active' : ''}`} aria-pressed={showGlobeShells} onClick={onToggleGlobeShells}><span><Cloud size={15} />Ocean and atmosphere</span><small>{showGlobeShells ? 'On' : 'Off'}</small></button>}
+                    </div>
+                    <div className="explore-layers-section explore-display-options">
+                      <strong>Display</strong>
+                      <label htmlFor="coastline-treatment"><span>Coastline</span><select id="coastline-treatment" aria-label="Coastline treatment" value={coastlineTreatment} onChange={(event) => onCoastlineTreatmentChange(event.target.value as CoastlineTreatment)} disabled={visibleMapMode !== 'biomes'}>
+                        <option value="bare">Bare coast</option>
+                        <option value="toned">Toned coast</option>
+                        <option value="outlined">Outlined coast</option>
+                      </select></label>
+                      {displayActions}
+                    </div>
+                  </div>
+                </details>
                 <div className="view-zoom-controls" role="group" aria-label="View zoom">
-                  <button type="button" className="zoom-pill" title="Current zoom. Right-click for common zoom levels." onContextMenu={openZoomMenu} onClick={() => setZoomMenu(null)}>{Math.round(viewZoom * 100)}%</button>
+                  <button type="button" className="zoom-pill" aria-label={`Zoom ${Math.round(viewZoom * 100)} percent`} title="Click for common zoom levels. Right-click to open at the pointer." onContextMenu={openZoomMenu} onClick={toggleZoomMenu}>{Math.round(viewZoom * 100)}%</button>
                   {showHexes && hexOverlayLabel && <output className="hex-scale-readout" title="Current hex overlay scale">{hexOverlayLabel}</output>}
                 </div>
                 {zoomMenu && (

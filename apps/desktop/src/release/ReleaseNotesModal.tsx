@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.32</p>
+            <h3>Explore controls without the cockpit clutter</h3>
+            <ul>
+              <li>Map and globe, presentation, map subject, point inspection, zoom, and Fit remain immediately available.</li>
+              <li>Rivers, plate boundaries, hex overlays, coastline treatment, globe shells, and preview detail now live in one Layers menu.</li>
+              <li>The zoom readout opens common zoom levels on a normal click, while Fit resets the active map or globe view.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.31</p>
             <h3>One context at a time</h3>
             <ul>
