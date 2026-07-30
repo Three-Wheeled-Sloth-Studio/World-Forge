@@ -10,14 +10,14 @@ Parent PI: issue `#13` — **Clean up world builder workflow and controls**
 
 Completed work package: issue `#24` — **World builder workspace mode shell**
 
-Status: **App-owned workspace mode accepted; continue with Build/right-panel recomposition**
+Status: **Build panel accepted; continue with contextual right-panel routing**
 
 ## Accepted baseline
 
 Functional code baseline before this documentation-only handoff:
 
-- commit `bb5b671e7c181affb13366dba8146e4d55acecdc`
-- visible World Forge version `0.3.29`
+- commit `45e99811fa71a7e7f59fa0e906603f94bbd4bd48`
+- visible World Forge version `0.3.30`
 - `npm run verify` passed in GitHub Actions
 - Vitest suite passed
 - TypeScript build passed
@@ -56,6 +56,24 @@ Implemented in `0.3.29`:
 - clearing the current project returns to Build.
 - `GeneratorPanel` and `RightPanel` receive the same mode state, ready for contextual recomposition.
 - workspace mode remains session-only and is not added to persistence or saved-world schemas.
+
+### Build panel recomposition
+
+Implemented in `0.3.30`:
+
+- Quick Build keeps world type, world seed, star type, star seed, generation quality, Randomize All, and the primary generation action together.
+- the primary action reads **Generate** without a current world and **Regenerate** when replacing one.
+- regeneration preserves the current world until the replacement completes successfully.
+- generation stage and overall progress appear beside the Build action.
+- Generation Quality updates both projected map resolution and source topology resolution through the existing quality mapping.
+- advanced generation controls are grouped into World shape, Climate, Geology and history, Hydrology, and System.
+- every supported generation range is exposed with bounded minimum and maximum inputs.
+- `continentCount` is labeled **Continent count**.
+- `continentScale` is labeled **Continent size and cohesion**, matching its effect on landmass radius and major rift suppression.
+- account controls remain in the shell.
+- preview resolution moved to Explore.
+- PNG resolution moved to Export.
+- no generator algorithm, replay, persistence, or saved-world schema changes were made.
 
 ### WP1: control inventory
 
@@ -173,54 +191,19 @@ Completed in `0.3.29`.
 - focused transition tests cover Build without a project and Explore with an available project.
 - no persistence field was added.
 
-### Step 2: recompose the Build panel
+### Step 2: recompose the Build panel - completed
 
-Current component:
+Completed in `0.3.30`.
 
-- `apps/desktop/src/generator/GeneratorPanel.tsx`
-
-Create a compact quick-build area containing:
-
-- World type
-- World seed
-- Star type
-- Star seed
-- generation quality/source size
-- Randomize All
-- Generate when no current world exists
-- Regenerate when replacing the active world
-
-Keep the current world visible until replacement generation succeeds.
-
-Move advanced controls into clear groups using existing configuration state:
-
-- **World shape**: ocean target, tolerance, continent count, continent size/cohesion, islands
-- **Climate**: temperature, aridity, axial tilt, eccentricity
-- **Geology and history**: plate count, impacts, age
-- **Hydrology**: river density
-- **System**: planet size and moons
-- **Display/output**: only controls that truly belong there
-
-Correct terminology before moving controls:
-
-- `continentCount` → **Continent count**
-- `continentScale` → **Continent size**, **Continent cohesion**, or similarly accurate wording based on actual generator effect
-- never label `continentCount` as `Regions`
-- never label `continentScale` as `Continents`
-
-Current incorrect labels still exist in `apps/desktop/src/main.tsx` in `rangeLabels`.
-
-Move these out of Build:
-
-- profile/account pill → shell/account settings
-- PNG export resolution → Export
-- preview-only resolution → Explore/display preferences unless investigation proves it changes authoritative generation
-
-Open questions from WP1 that must be answered from code behavior, not guessed:
-
-- Does generation `Map Size` change authoritative projected output, topology fidelity, or both?
-- Does Preview resolution affect only canvas rendering?
-- Which advanced values are true generation inputs versus display/export preferences?
+- Quick Build contains the primary world, star, seed, quality, randomization, and generation controls.
+- Generate and Regenerate are distinct and replacement is non-destructive until success.
+- generation progress is shown near the primary action.
+- advanced ranges are grouped by the systems they control.
+- preview resolution is confirmed as a canvas-rendering preference and now lives in Explore.
+- PNG export resolution now lives in Export.
+- Generation Quality deliberately changes both authoritative projected output resolution and source topology fidelity.
+- account access remains in the shell.
+- terminology is corrected and backed by focused tests.
 
 ### Step 3: make the right panel contextual
 
@@ -304,13 +287,14 @@ Do not reintroduce developer diagnostics into this menu wearing a fake mustache.
 
 ### WP3: Build panel
 
-Not complete.
+Complete for this PI.
 
 - quick-build controls
-- grouped advanced settings
-- accurate terminology
+- grouped advanced generation ranges
+- accurate continent terminology
 - Generate versus Regenerate behavior
-- progress/error feedback near the action
+- replacement warning and generation progress near the action
+- preview and PNG resolution removed from Build
 
 ### WP4: Explore controls
 
