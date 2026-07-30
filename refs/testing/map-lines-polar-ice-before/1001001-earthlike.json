@@ -1,0 +1,119 @@
+{
+  "seed": "1001001",
+  "preset": "Earthlike",
+  "generationMs": 2051.51,
+  "selectedValues": {
+    "systemAgeGy": 2.55,
+    "oceanPercentage": 70.8,
+    "averageTemperatureC": 13.2,
+    "aridity": 0.42,
+    "seaLevel": 0,
+    "axialTiltDeg": 13.9,
+    "orbitalEccentricity": 0.055,
+    "sizeClass": 1.01,
+    "moonCount": 1,
+    "impactFrequency": 0.66,
+    "plateCount": 23,
+    "riverDensity": 1.82,
+    "continentCount": 5,
+    "continentScale": 0.63,
+    "islandDensity": 0.32,
+    "oceanTolerancePercentagePoints": 5
+  },
+  "riverDiagnostics": {
+    "riverCount": 76,
+    "topologySegments": 630,
+    "invalidTopologyJumps": 0,
+    "seamSegments": 11,
+    "projectedWrapSegments": 0,
+    "unexplainedLongProjectedSegments": 0,
+    "suspiciousSegments": []
+  },
+  "iceDiagnostics": {
+    "totalIceShare": 0.027832,
+    "landIceShare": 0.133397,
+    "waterIceShare": 0,
+    "northPolarIceShare": 0.086392,
+    "southPolarIceShare": 0.038381,
+    "topologyProjectionMismatchShare": 0.026016,
+    "latitudeBands": [
+      {
+        "minimumLatitudeDeg": 0,
+        "maximumLatitudeDeg": 15,
+        "cells": 21504,
+        "landCells": 6837,
+        "waterCells": 14667,
+        "meanTemperatureC": 23.796,
+        "iceShare": 0,
+        "landIceShare": 0,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 15,
+        "maximumLatitudeDeg": 30,
+        "cells": 22528,
+        "landCells": 7674,
+        "waterCells": 14854,
+        "meanTemperatureC": 18.812,
+        "iceShare": 0,
+        "landIceShare": 0,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 30,
+        "maximumLatitudeDeg": 45,
+        "cells": 21504,
+        "landCells": 6101,
+        "waterCells": 15403,
+        "meanTemperatureC": 13.079,
+        "iceShare": 0,
+        "landIceShare": 0,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 45,
+        "maximumLatitudeDeg": 60,
+        "cells": 21504,
+        "landCells": 3673,
+        "waterCells": 17831,
+        "meanTemperatureC": 6.193,
+        "iceShare": 0.041899,
+        "landIceShare": 0.245304,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 60,
+        "maximumLatitudeDeg": 75,
+        "cells": 22528,
+        "landCells": 2848,
+        "waterCells": 19680,
+        "meanTemperatureC": -0.981,
+        "iceShare": 0.112438,
+        "landIceShare": 0.889396,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 75,
+        "maximumLatitudeDeg": 90,
+        "cells": 21504,
+        "landCells": 214,
+        "waterCells": 21290,
+        "meanTemperatureC": -8.421,
+        "iceShare": 0.009952,
+        "landIceShare": 1,
+        "waterIceShare": 0
+      }
+    ]
+  },
+  "biomeCounts": {
+    "ocean": 103725,
+    "ice_cap": 3648,
+    "tundra": 1991,
+    "desert": 746,
+    "grassland": 4375,
+    "forest": 12794,
+    "rainforest": 3592,
+    "mountain": 0,
+    "wetland": 201
+  }
+}

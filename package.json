@@ -10,6 +10,7 @@
     "benchmark:generation": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark-generation.ts",
     "benchmark:workflows": "tsx --tsconfig tsconfig.scripts.json scripts/compare-generation-workflows.ts",
     "evaluate:regions": "tsx --tsconfig tsconfig.scripts.json scripts/evaluate-geographic-regions.ts",
+    "investigate:map-lines-polar-ice": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-map-lines-polar-ice.ts",
     "investigate:striping": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-vertical-striping.ts",
     "triage:surface": "tsx --tsconfig tsconfig.scripts.json scripts/run-surface-quality-triage.ts",
     "validate:presets": "tsx --tsconfig tsconfig.scripts.json scripts/run-preset-validation.ts",

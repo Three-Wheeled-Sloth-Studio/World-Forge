@@ -1,0 +1,504 @@
+{
+  "seed": "5336649",
+  "preset": "Earthlike",
+  "generationMs": 2391.19,
+  "selectedValues": {
+    "systemAgeGy": 3.29,
+    "oceanPercentage": 71.6,
+    "averageTemperatureC": 14.3,
+    "aridity": 0.5,
+    "seaLevel": -0.002,
+    "axialTiltDeg": 10.8,
+    "orbitalEccentricity": 0.044,
+    "sizeClass": 0.88,
+    "moonCount": 2,
+    "impactFrequency": 0.61,
+    "plateCount": 20,
+    "riverDensity": 1.85,
+    "continentCount": 6,
+    "continentScale": 0.58,
+    "islandDensity": 0.42,
+    "oceanTolerancePercentagePoints": 5
+  },
+  "riverDiagnostics": {
+    "riverCount": 78,
+    "topologySegments": 620,
+    "invalidTopologyJumps": 0,
+    "seamSegments": 5,
+    "projectedWrapSegments": 0,
+    "longProjectedNeighborSegments": 16,
+    "suspiciousSegments": [
+      {
+        "riverId": "river-25",
+        "pathIndex": 1,
+        "sourceCell": 11157,
+        "destinationCell": 11158,
+        "sourceFace": 2,
+        "destinationFace": 2,
+        "sourceRaster": [
+          76,
+          41
+        ],
+        "destinationRaster": [
+          80,
+          40
+        ],
+        "sourceLongitudeDeg": -125.90973,
+        "sourceLatitudeDeg": 60.77502,
+        "destinationLongitudeDeg": -123.23171,
+        "destinationLatitudeDeg": 61.55485,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-25",
+        "pathIndex": 2,
+        "sourceCell": 11158,
+        "destinationCell": 11159,
+        "sourceFace": 2,
+        "destinationFace": 2,
+        "sourceRaster": [
+          80,
+          40
+        ],
+        "destinationRaster": [
+          84,
+          39
+        ],
+        "sourceLongitudeDeg": -123.23171,
+        "sourceLatitudeDeg": 61.55485,
+        "destinationLongitudeDeg": -120.37912,
+        "destinationLatitudeDeg": 62.28967,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-37",
+        "pathIndex": 1,
+        "sourceCell": 13336,
+        "destinationCell": 13337,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          91,
+          215
+        ],
+        "destinationRaster": [
+          95,
+          216
+        ],
+        "sourceLongitudeDeg": -115.82099,
+        "sourceLatitudeDeg": -61.71534,
+        "destinationLongitudeDeg": -112.75097,
+        "destinationLatitudeDeg": -62.28967,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-37",
+        "pathIndex": 4,
+        "sourceCell": 13209,
+        "destinationCell": 13210,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          99,
+          212
+        ],
+        "destinationRaster": [
+          103,
+          213
+        ],
+        "sourceLongitudeDeg": -110.37644,
+        "sourceLatitudeDeg": -59.74157,
+        "destinationLongitudeDeg": -107.44719,
+        "destinationLatitudeDeg": -60.1766,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-37",
+        "pathIndex": 6,
+        "sourceCell": 13146,
+        "destinationCell": 13147,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          104,
+          211
+        ],
+        "destinationRaster": [
+          108,
+          212
+        ],
+        "sourceLongitudeDeg": -106.55707,
+        "sourceLatitudeDeg": -58.90443,
+        "destinationLongitudeDeg": -103.67131,
+        "destinationLatitudeDeg": -59.24811,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-51",
+        "pathIndex": 1,
+        "sourceCell": 13461,
+        "destinationCell": 13462,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          74,
+          216
+        ],
+        "destinationRaster": [
+          78,
+          217
+        ],
+        "sourceLongitudeDeg": -127.87498,
+        "sourceLatitudeDeg": -61.8774,
+        "destinationLongitudeDeg": -125.13419,
+        "destinationLatitudeDeg": -62.71252,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-51",
+        "pathIndex": 2,
+        "sourceCell": 13462,
+        "destinationCell": 13463,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          78,
+          217
+        ],
+        "destinationRaster": [
+          82,
+          218
+        ],
+        "sourceLongitudeDeg": -125.13419,
+        "sourceLatitudeDeg": -62.71252,
+        "destinationLongitudeDeg": -122.19573,
+        "destinationLatitudeDeg": -63.50223,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-51",
+        "pathIndex": 3,
+        "sourceCell": 13463,
+        "destinationCell": 13464,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          82,
+          218
+        ],
+        "destinationRaster": [
+          86,
+          219
+        ],
+        "sourceLongitudeDeg": -122.19573,
+        "sourceLatitudeDeg": -63.50223,
+        "destinationLongitudeDeg": -119.05461,
+        "destinationLatitudeDeg": -64.23769,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-51",
+        "pathIndex": 4,
+        "sourceCell": 13464,
+        "destinationCell": 13465,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          86,
+          219
+        ],
+        "destinationRaster": [
+          91,
+          220
+        ],
+        "sourceLongitudeDeg": -119.05461,
+        "sourceLatitudeDeg": -64.23769,
+        "destinationLongitudeDeg": -115.70995,
+        "destinationLatitudeDeg": -64.90965,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 5.099
+      },
+      {
+        "riverId": "river-51",
+        "pathIndex": 6,
+        "sourceCell": 13529,
+        "destinationCell": 13530,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          88,
+          222
+        ],
+        "destinationRaster": [
+          94,
+          223
+        ],
+        "sourceLongitudeDeg": -117.47443,
+        "sourceLatitudeDeg": -66.237,
+        "destinationLongitudeDeg": -113.74949,
+        "destinationLatitudeDeg": -66.88888,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 6.083
+      },
+      {
+        "riverId": "river-76",
+        "pathIndex": 1,
+        "sourceCell": 13399,
+        "destinationCell": 13400,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          84,
+          216
+        ],
+        "destinationRaster": [
+          89,
+          217
+        ],
+        "sourceLongitudeDeg": -120.37912,
+        "sourceLatitudeDeg": -62.28967,
+        "destinationLongitudeDeg": -117.34988,
+        "destinationLatitudeDeg": -62.97156,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 5.099
+      },
+      {
+        "riverId": "river-76",
+        "pathIndex": 2,
+        "sourceCell": 13400,
+        "destinationCell": 13401,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          89,
+          217
+        ],
+        "destinationRaster": [
+          93,
+          218
+        ],
+        "sourceLongitudeDeg": -117.34988,
+        "sourceLatitudeDeg": -62.97156,
+        "destinationLongitudeDeg": -114.14554,
+        "destinationLatitudeDeg": -63.59237,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-76",
+        "pathIndex": 3,
+        "sourceCell": 13401,
+        "destinationCell": 13402,
+        "sourceFace": 3,
+        "destinationFace": 3,
+        "sourceRaster": [
+          93,
+          218
+        ],
+        "destinationRaster": [
+          98,
+          219
+        ],
+        "sourceLongitudeDeg": -114.14554,
+        "sourceLatitudeDeg": -63.59237,
+        "destinationLongitudeDeg": -110.77225,
+        "destinationLatitudeDeg": -64.14392,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 5.099
+      },
+      {
+        "riverId": "river-78",
+        "pathIndex": 1,
+        "sourceCell": 11092,
+        "destinationCell": 11093,
+        "sourceFace": 2,
+        "destinationFace": 2,
+        "sourceRaster": [
+          70,
+          41
+        ],
+        "destinationRaster": [
+          74,
+          39
+        ],
+        "sourceLongitudeDeg": -130.42608,
+        "sourceLatitudeDeg": 61.00513,
+        "destinationLongitudeDeg": -127.87498,
+        "destinationLatitudeDeg": 61.8774,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.472
+      },
+      {
+        "riverId": "river-78",
+        "pathIndex": 2,
+        "sourceCell": 11093,
+        "destinationCell": 11094,
+        "sourceFace": 2,
+        "destinationFace": 2,
+        "sourceRaster": [
+          74,
+          39
+        ],
+        "destinationRaster": [
+          78,
+          38
+        ],
+        "sourceLongitudeDeg": -127.87498,
+        "sourceLatitudeDeg": 61.8774,
+        "destinationLongitudeDeg": -125.13419,
+        "destinationLatitudeDeg": 62.71252,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.123
+      },
+      {
+        "riverId": "river-78",
+        "pathIndex": 4,
+        "sourceCell": 11030,
+        "destinationCell": 10966,
+        "sourceFace": 2,
+        "destinationFace": 2,
+        "sourceRaster": [
+          75,
+          37
+        ],
+        "destinationRaster": [
+          71,
+          35
+        ],
+        "sourceLongitudeDeg": -127.23484,
+        "sourceLatitudeDeg": 63.86581,
+        "destinationLongitudeDeg": -129.55967,
+        "destinationLatitudeDeg": 65.00796,
+        "topologyNeighbors": true,
+        "faceSeam": false,
+        "horizontalWrap": false,
+        "rasterDistance": 4.472
+      }
+    ]
+  },
+  "iceDiagnostics": {
+    "totalIceShare": 0.115005,
+    "landIceShare": 0.076439,
+    "waterIceShare": 0.126245,
+    "northPolarIceShare": 0.314816,
+    "southPolarIceShare": 0.369413,
+    "topologyProjectionMismatchShare": 0,
+    "latitudeBands": [
+      {
+        "minimumLatitudeDeg": 0,
+        "maximumLatitudeDeg": 15,
+        "cells": 21504,
+        "landCells": 6618,
+        "waterCells": 14886,
+        "meanTemperatureC": 26.223,
+        "iceShare": 0,
+        "landIceShare": 0,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 15,
+        "maximumLatitudeDeg": 30,
+        "cells": 22528,
+        "landCells": 7626,
+        "waterCells": 14902,
+        "meanTemperatureC": 21.286,
+        "iceShare": 0,
+        "landIceShare": 0,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 30,
+        "maximumLatitudeDeg": 45,
+        "cells": 21504,
+        "landCells": 5483,
+        "waterCells": 16021,
+        "meanTemperatureC": 15.672,
+        "iceShare": 0,
+        "landIceShare": 0,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 45,
+        "maximumLatitudeDeg": 60,
+        "cells": 21504,
+        "landCells": 5136,
+        "waterCells": 16368,
+        "meanTemperatureC": 8.886,
+        "iceShare": 0.000465,
+        "landIceShare": 0.001947,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 60,
+        "maximumLatitudeDeg": 75,
+        "cells": 22528,
+        "landCells": 3779,
+        "waterCells": 18749,
+        "meanTemperatureC": 1.357,
+        "iceShare": 0.058327,
+        "landIceShare": 0.347711,
+        "waterIceShare": 0
+      },
+      {
+        "minimumLatitudeDeg": 75,
+        "maximumLatitudeDeg": 90,
+        "cells": 21504,
+        "landCells": 937,
+        "waterCells": 20567,
+        "meanTemperatureC": -6.259,
+        "iceShare": 0.639416,
+        "landIceShare": 1,
+        "waterIceShare": 0.622988
+      }
+    ]
+  },
+  "biomeCounts": {
+    "ocean": 101493,
+    "ice_cap": 2261,
+    "tundra": 1789,
+    "desert": 6,
+    "grassland": 3218,
+    "forest": 16530,
+    "rainforest": 5692,
+    "mountain": 0,
+    "wetland": 83
+  }
+}

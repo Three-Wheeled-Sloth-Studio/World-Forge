@@ -658,12 +658,15 @@ export function worldToSvg(project: WorldProject, theme: MapTheme = cleanGameMap
     .filter((river) => river.path.length > 12)
     .slice(0, 48)
     .map((river) => {
-      const points = river.path
+      const sampledPath = river.path
         .filter((_, index) => index % 3 === 0)
-        .map((index) => `${index % width},${Math.floor(index / width)}`)
-        .join(' ');
-      return `<polyline points="${points}" fill="none" stroke="${theme.colors.river}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />`;
-    });
+      return splitWrappedRiverPath(sampledPath, width, 1, 1)
+        .map((segment) => {
+          const points = segment.map((point) => `${round(point.x - 0.5)},${round(point.y - 0.5)}`).join(' ');
+          return `<polyline points="${points}" fill="none" stroke="${theme.colors.river}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />`;
+        });
+    })
+    .flat();
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(project.projectName)}">`,
     `<title>${escapeXml(project.projectName)}</title>`,
@@ -1236,7 +1239,7 @@ function downhillRiverNeighbor(world: PrimaryWorld, index: number, width: number
   return best;
 }
 
-function splitWrappedRiverPath(
+export function splitWrappedRiverPath(
   path: number[],
   width: number,
   scaleX: number,

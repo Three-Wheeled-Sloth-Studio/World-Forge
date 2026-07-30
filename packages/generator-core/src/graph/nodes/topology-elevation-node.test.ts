@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultConfig } from '@world-forge/shared';
+import { buildCubedSphereTopology, createDefaultConfig } from '@world-forge/shared';
 import { SeededRandom } from '../../random';
 import { GenerationGraphRunner } from '../runner';
 import { crustFieldsNode, crustFieldsNodeId } from './crust-fields-node';
 import { plateConstructionNode, plateConstructionNodeId } from './plate-construction-node';
 import { primordialTerrainNode, primordialTerrainNodeId } from './primordial-terrain-node';
 import { topologyConstructionNode, topologyConstructionNodeId } from './topology-construction-node';
-import { topologyElevationNode, topologyElevationNodeId } from './topology-elevation-node';
+import { generateTopologyElevation, topologyElevationNode, topologyElevationNodeId } from './topology-elevation-node';
 
 const values = {
   systemAgeGy: 4.6,
@@ -59,5 +59,60 @@ describe('topologyElevationNode', () => {
     const first = (run('topology-elevation-repeat')?.output as any).elevation;
     const second = (run('topology-elevation-repeat')?.output as any).elevation;
     expect(Array.from(first)).toEqual(Array.from(second));
+  });
+
+  it('does not trace construction plate allocation boundaries into elevation', () => {
+    const topology = buildCubedSphereTopology(4);
+    const plate = {
+      id: 0,
+      kind: 'continental' as const,
+      centerCell: 0,
+      centerX: 0,
+      centerY: 0,
+      centerX3: 1,
+      centerY3: 0,
+      centerZ3: 0,
+      motionX: 0,
+      motionY: 0,
+      age: 0.5,
+      density: 0.5
+    };
+    const primordial = {
+      elevation: new Float32Array(topology.cellCount),
+      crustThickness: new Float32Array(topology.cellCount),
+      crustAge: new Float32Array(topology.cellCount),
+      basin: new Float32Array(topology.cellCount),
+      impact: new Float32Array(topology.cellCount)
+    };
+    const crust = {
+      continental: new Float32Array(topology.cellCount),
+      thickness: new Float32Array(topology.cellCount),
+      shelf: new Float32Array(topology.cellCount),
+      age: new Float32Array(topology.cellCount),
+      buoyancy: new Float32Array(topology.cellCount)
+    };
+    const phases = { phaseA: 0, phaseB: 0, continentPhase: 0 };
+    const onePlate = new Uint16Array(topology.cellCount);
+    const splitPlates = new Uint16Array(topology.cellCount);
+    splitPlates.fill(1, Math.floor(topology.cellCount / 2));
+    const baseline = generateTopologyElevation(
+      onePlate,
+      [plate, { ...plate, id: 1 }],
+      topology,
+      values,
+      primordial as any,
+      crust as any,
+      phases
+    );
+    const split = generateTopologyElevation(
+      splitPlates,
+      [plate, { ...plate, id: 1 }],
+      topology,
+      values,
+      primordial as any,
+      crust as any,
+      phases
+    );
+    expect(Array.from(split)).toEqual(Array.from(baseline));
   });
 });

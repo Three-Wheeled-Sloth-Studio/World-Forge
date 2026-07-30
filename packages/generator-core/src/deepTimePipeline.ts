@@ -25,6 +25,8 @@ import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTime
 import { stableDescendingFloat32Indices, traceCachedDownstreamPath } from './hydrologyTraversal';
 import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
 import { generationWorkflowDeepTimeFeatures } from './workflows';
+import { classifyPermanentIce } from './permanentIce';
+import { projectTopologyRiverPath } from './riverPathProjection';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -1497,31 +1499,26 @@ function estimateFragmentTerrainResponse(
   let maxAbsDelta = 0;
   const response = new Float32Array(topology.cellCount);
 
-  const addResponse = (cell: number, amount: number, firstRing = 0.42, secondRing = 0.14) => {
+  const addResponse = (cell: number, amount: number) => {
     response[cell] += amount;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
-      if (neighbor < 0) continue;
-      response[neighbor] += amount * firstRing;
-      for (let nextDirection = 0; nextDirection < 4; nextDirection += 1) {
-        const next = topology.neighbors[neighbor * 4 + nextDirection];
-        if (next < 0 || next === cell) continue;
-        response[next] += amount * secondRing;
-      }
-    }
   };
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
-    if (collisionCells[cell]) addResponse(cell, 0.18, 0.22, 0.035);
-    if (subductionCells[cell]) addResponse(cell, 0.15, 0.2, 0.035);
-    if (transformCells[cell]) addResponse(cell, elevation[cell] > seaLevel ? 0.011 : -0.0065, 0.26, 0.055);
-    if (riftCells[cell]) addResponse(cell, -0.046, 0.32, 0.075);
-    if (trenchCells[cell]) addResponse(cell, -0.068, 0.28, 0.055);
+    if (collisionCells[cell]) addResponse(cell, 0.18);
+    if (subductionCells[cell]) addResponse(cell, 0.15);
+    if (transformCells[cell]) addResponse(cell, elevation[cell] > seaLevel ? 0.011 : -0.0065);
+    if (riftCells[cell]) addResponse(cell, -0.046);
+    if (trenchCells[cell]) addResponse(cell, -0.068);
     if (conjugateMarginCells[cell]) {
       marginToneCells[cell] = 1;
-      addResponse(cell, water[cell] || elevation[cell] <= seaLevel + 0.04 ? -0.016 : 0.01, 0.28, 0.06);
+      addResponse(cell, water[cell] || elevation[cell] <= seaLevel + 0.04 ? -0.016 : 0.01);
     }
   }
+
+  // Event masks are one-cell topology traces. Convert them to deformation
+  // zones before mutating elevation so plate allocation edges cannot survive
+  // as global trenches or ridges in the final map.
+  smoothTopologyLayer(response, topology, 7, 0.5);
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const rawDelta = response[cell];
@@ -2180,8 +2177,7 @@ function refreshTopologyClimate(
     const latitudeCooling = Math.pow(latitude, 1.3) * 38;
     const altitudeCooling = altitude * 20;
     const oceanModeration = ocean ? 2.5 * (1 - latitude * 0.4) : 0;
-    const iceCooling = layers.ice[cell] ? 5 : 0;
-    layers.temperature[cell] = world.averageTemperatureC + 10 - latitudeCooling - altitudeCooling + oceanModeration - iceCooling;
+    layers.temperature[cell] = world.averageTemperatureC + 10 - latitudeCooling - altitudeCooling + oceanModeration;
 
     const wind = presentDayWindVector(topology, layers.elevation, layers.temperature, cell, world.averageTemperatureC);
     const fetch = presentDayMoistureFetch(layers.elevation, layers.water, topology, cell, wind.x, wind.y, oceanInfluence[cell]);
@@ -2203,8 +2199,6 @@ function refreshTopologyClimate(
     layers.climatePrecipitation[cell] = precipitation[cell];
     layers.climateWetnessDelta[cell] = 0;
 
-    if (layers.ice[cell] && layers.temperature[cell] > 3) layers.ice[cell] = 0;
-    if (layers.water[cell]) layers.ice[cell] = 0;
   }
 
   smoothTopologyLayer(moisture, topology, 1, 0.18);
@@ -2217,6 +2211,18 @@ function refreshTopologyClimate(
     layers.wetness[cell] = layers.water[cell] ? 1 : clamp(precipitation[cell] * 0.78 + moisture[cell] * 0.22, 0, 1);
     layers.climateWetnessDelta[cell] = layers.wetness[cell] - previous;
   }
+
+  classifyPermanentIce({
+    ice: layers.ice,
+    elevation: layers.elevation,
+    water: layers.water,
+    temperature: layers.temperature,
+    wetness: layers.wetness,
+    topology,
+    seaLevel: world.seaLevel,
+    axialTiltDeg: world.axialTiltDeg,
+    orbitalEccentricity: world.orbitalEccentricity
+  });
 
   if (world.climate) {
     world.climate.notes = [
@@ -2725,15 +2731,7 @@ function projectFinalTopology(project: DeepTimeProject, topology: CubedSphereTop
 function projectRiverPaths(project: DeepTimeProject, topology: CubedSphereTopology, rivers: River[]): River[] {
   const { width, height } = project.primaryWorld.mapModel.resolution;
   return rivers.map((river) => {
-    const path: number[] = [];
-    for (const cell of river.topologyPath ?? []) {
-      const longitude = topology.longitudes[cell];
-      const latitude = topology.latitudes[cell];
-      const x = Math.max(0, Math.min(width - 1, Math.floor(((longitude + Math.PI) / (Math.PI * 2)) * width)));
-      const y = Math.max(0, Math.min(height - 1, Math.floor((0.5 - latitude / Math.PI) * height)));
-      const index = y * width + x;
-      if (path[path.length - 1] !== index) path.push(index);
-    }
+    const path = projectTopologyRiverPath(river.topologyPath ?? [], topology, width, height);
     return {
       ...river,
       path,
