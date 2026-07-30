@@ -29,6 +29,7 @@ jobs:
         run: |
           git fetch origin automation/world-builder-mode-owner-20260730
           git show FETCH_HEAD:.github/workflows/world-builder-mode-owner-runner.yml > /tmp/world-builder-mode-owner-runner.yml
+          git show FETCH_HEAD:scripts/automation-update-world-builder-handoff.py > /tmp/automation-update-world-builder-handoff.py
           python <<'PY'
           from pathlib import Path
           import re
@@ -73,6 +74,11 @@ jobs:
           run_shell('npx playwright install --with-deps chromium', 'Installing Chromium for browser QA')
           run_shell(browser_block, 'Running focused browser QA')
           run_shell(blocks[2], 'Committing functional increment')
-          run_shell(blocks[3], 'Updating cleanup handoff')
+          run_shell(
+              "python /tmp/automation-update-world-builder-handoff.py && "
+              "git add refs/handoffs/world-builder-cleanup.md && "
+              "git commit -m 'Update world builder cleanup handoff'",
+              'Updating cleanup handoff'
+          )
           run_shell(blocks[4], 'Pushing dev and removing runner branch')
           PY
