@@ -60,11 +60,18 @@ jobs:
           if len(blocks) != 5:
               raise RuntimeError(f'Expected 5 multiline runner blocks, found {len(blocks)}')
 
+          browser_block = blocks[1]
+          for label in ('Build', 'Explore', 'Export'):
+              browser_block = browser_block.replace(
+                  f"page.getByRole('tab', {{ name: '{label}' }})",
+                  f"page.getByRole('tab', {{ name: '{label}', exact: true }})"
+              )
+
           run_shell('npm ci', 'Installing dependencies')
           run_shell(blocks[0], 'Applying workspace mode ownership changes')
           run_shell('npm run verify 2>&1 | tee /tmp/world-forge-verify.log', 'Running repository verification')
           run_shell('npx playwright install --with-deps chromium', 'Installing Chromium for browser QA')
-          run_shell(blocks[1], 'Running focused browser QA')
+          run_shell(browser_block, 'Running focused browser QA')
           run_shell(blocks[2], 'Committing functional increment')
           run_shell(blocks[3], 'Updating cleanup handoff')
           run_shell(blocks[4], 'Pushing dev and removing runner branch')
