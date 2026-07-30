@@ -1,0 +1,62 @@
+name: World Builder Mode Ownership PR Bootstrap
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Execute one-time runner
+        shell: bash
+        run: |
+          git fetch origin automation/world-builder-mode-owner-20260730
+          git show FETCH_HEAD:.github/workflows/world-builder-mode-owner-runner.yml > /tmp/world-builder-mode-owner-runner.yml
+          python <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          import textwrap
+
+          text = Path('/tmp/world-builder-mode-owner-runner.yml').read_text()
+          blocks = []
+          lines = text.splitlines()
+          index = 0
+          while index < len(lines):
+              if re.match(r'^\s{8}run: \|$', lines[index]):
+                  index += 1
+                  block = []
+                  while index < len(lines):
+                      line = lines[index]
+                      if line and len(line) - len(line.lstrip()) <= 8:
+                          break
+                      block.append(line[10:] if line.startswith('          ') else line)
+                      index += 1
+                  blocks.append(textwrap.dedent('\n'.join(block)))
+                  continue
+              index += 1
+
+          if len(blocks) != 7:
+              raise RuntimeError(f'Expected 7 runner blocks, found {len(blocks)}')
+
+          for number, block in enumerate(blocks, start=1):
+              print(f'Executing runner block {number}/{len(blocks)}', flush=True)
+              subprocess.run(['bash', '-euo', 'pipefail', '-c', block], check=True)
+          PY
