@@ -17,7 +17,6 @@ import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
 import { applyBasinAwareCirculation } from './basinCirculation';
 import {
   buildRotationBetweenUnitVectors,
-  buildTangentSphericalRotation,
   rotateUnitVector,
   unitVectorToLonLat
 } from './fragmentSphericalTransform';
@@ -27,6 +26,9 @@ import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topolog
 import { generationWorkflowDeepTimeFeatures } from './workflows';
 import { classifyPermanentIce } from './permanentIce';
 import { projectTopologyRiverPath } from './riverPathProjection';
+import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleField';
+import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
+import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -914,6 +916,12 @@ function applyAuthoritativeFragmentTransforms(
   let movingFragmentCount = 0;
   let displacementTotal = 0;
   let maxDisplacement = 0;
+  const plateRotations = buildRigidPlateRotations(
+    sortedSeeds,
+    plateLookup.motionX,
+    plateLookup.motionY,
+    project.selectedValues.systemAgeGy
+  );
 
   for (const seed of sortedSeeds) {
     for (const sourceCell of seed.cells) {
@@ -925,18 +933,8 @@ function applyAuthoritativeFragmentTransforms(
   }
 
   for (const seed of sortedSeeds) {
-    const speed = Math.hypot(plateLookup.motionX[seed.plateId], plateLookup.motionY[seed.plateId]);
-    const displacement = speed > 0.0001
-      ? clamp(speed * Math.max(0.25, project.selectedValues.systemAgeGy) * 0.018, 0.012, 0.42)
-      : 0;
-    const motionX = speed > 0.0001 ? plateLookup.motionX[seed.plateId] / speed : 0;
-    const motionY = speed > 0.0001 ? plateLookup.motionY[seed.plateId] / speed : 0;
-    const rotation = buildTangentSphericalRotation(
-      { x: seed.x, y: seed.y, z: seed.z },
-      motionX,
-      motionY,
-      displacement
-    );
+    const rotation = plateRotations.get(seed.plateId) ?? { axisX: 0, axisY: 1, axisZ: 0, angleRadians: 0 };
+    const displacement = rotation.angleRadians;
     const inverseRotation = { ...rotation, angleRadians: -rotation.angleRadians };
     const candidateMarks = new Uint8Array(topology.cellCount);
     const candidateCells: number[] = [];
@@ -993,6 +991,24 @@ function applyAuthoritativeFragmentTransforms(
     }
   }
 
+  const repairedVacatedCorridors = repairVacatedFragmentCorridors({
+    sourceCells,
+    targetCells,
+    elevation,
+    volcanism,
+    originalElevation,
+    originalVolcanism,
+    seaLevel: world.seaLevel,
+    topology
+  });
+  const vacatedSourceMask = new Uint8Array(topology.cellCount);
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (sourceCells[cell] && !targetCells[cell] && elevation[cell] <= world.seaLevel) {
+      vacatedSourceMask[cell] = 1;
+    }
+  }
+  stabilizeTopologyField(elevation, topology, vacatedSourceMask);
+
   let ownershipChangedCells = 0;
   let vacatedSourceCells = 0;
   let youngOceanCrustCells = 0;
@@ -1010,7 +1026,8 @@ function applyAuthoritativeFragmentTransforms(
     'Fragment placement carries elevation and volcanism, but plate ownership remains the coherent authoritative topology field to avoid raster-fragment plate ribbons.',
     'Inverse sampling reconstructs each rigidly rotated fragment over a bounded target neighborhood, avoiding forward-splat holes and directional spill ribbons.',
     'Overlapping transformed fragments merge relief at the collision target without reassigning coherent plate ownership.',
-    'Vacated source cells receive young-oceanic-crust elevation and volcanism treatment before erosion, impacts, glaciation, climate, and hydrology run.'
+    'Vacated source cells receive young-oceanic-crust elevation and volcanism treatment before erosion, impacts, glaciation, climate, and hydrology run.',
+    `Resolution-scaled corridor repair restored ${repairedVacatedCorridors} narrow vacated cells bounded by retained land while preserving open basins.`
   ];
   if (retainedCellRatio < 0.97) notes.push('Fragment placement retained less than 97 percent of source cells; inspect merged collision pressure.');
 
@@ -1504,21 +1521,23 @@ function estimateFragmentTerrainResponse(
   };
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
-    if (collisionCells[cell]) addResponse(cell, 0.18);
-    if (subductionCells[cell]) addResponse(cell, 0.15);
-    if (transformCells[cell]) addResponse(cell, elevation[cell] > seaLevel ? 0.011 : -0.0065);
-    if (riftCells[cell]) addResponse(cell, -0.046);
-    if (trenchCells[cell]) addResponse(cell, -0.068);
+    const localization = fragmentDeformationLocalization(topology, cell);
+    if (localization <= 0) continue;
+    if (collisionCells[cell]) addResponse(cell, 0.18 * localization);
+    if (subductionCells[cell]) addResponse(cell, 0.15 * localization);
+    if (transformCells[cell]) addResponse(cell, (elevation[cell] > seaLevel ? 0.011 : -0.0065) * localization);
+    if (riftCells[cell]) addResponse(cell, -0.046 * localization);
+    if (trenchCells[cell]) addResponse(cell, -0.068 * localization);
     if (conjugateMarginCells[cell]) {
       marginToneCells[cell] = 1;
-      addResponse(cell, water[cell] || elevation[cell] <= seaLevel + 0.04 ? -0.016 : 0.01);
+      addResponse(cell, (water[cell] || elevation[cell] <= seaLevel + 0.04 ? -0.016 : 0.01) * localization);
     }
   }
 
   // Event masks are one-cell topology traces. Convert them to deformation
   // zones before mutating elevation so plate allocation edges cannot survive
   // as global trenches or ridges in the final map.
-  smoothTopologyLayer(response, topology, 7, 0.5);
+  response.set(broadenTopologySignal(response, topology));
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const rawDelta = response[cell];
@@ -1547,6 +1566,18 @@ function estimateFragmentTerrainResponse(
     meanAbsDelta: absoluteDeltaTotal / Math.max(1, topology.cellCount),
     maxAbsDelta
   };
+}
+
+function fragmentDeformationLocalization(topology: CubedSphereTopology, cell: number): number {
+  const x = topology.positions[cell * 3];
+  const y = topology.positions[cell * 3 + 1];
+  const z = topology.positions[cell * 3 + 2];
+  const province = coherentSphericalNoise(
+    x * 2.8 + 1.73,
+    y * 2.8 - 0.91,
+    z * 2.8 + 2.37
+  );
+  return clamp((province + 0.18) / 0.62, 0, 1);
 }
 
 function estimateFragmentVolcanismResponse(

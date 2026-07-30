@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.25</p>
+            <h3>High-resolution terrain continuity</h3>
+            <ul>
+              <li>Tectonic and fragment-history deformation now retain a stable physical width as source topology resolution increases.</li>
+              <li>Continental fragments on the same plate now share one rigid spherical transform instead of drifting apart independently.</li>
+              <li>Narrow vacated fragment corridors are repaired without filling broad rifts or ocean basins.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.16</p>
             <h3>Structural terrain integrity</h3>
             <ul>

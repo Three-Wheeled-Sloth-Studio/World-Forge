@@ -18,7 +18,11 @@ import { createDefaultConfig, type TerrainDiagnosticSnapshot } from '../packages
 import { generateProjectWithNativeStages } from '../packages/generator-core/src/nativeStagePipeline';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '../packages/generator-core/src/systemOrbitPreset';
 
-type ReproductionCase = { seed: string; preset: 'Earthlike' | 'Archipelago' | 'Random World' };
+type ReproductionCase = {
+  starSeed: string;
+  worldSeed: string;
+  preset: 'Earthlike' | 'Archipelago' | 'Random World';
+};
 
 type PathJump = {
   riverId: string;
@@ -78,15 +82,21 @@ type CaseReport = {
   biomeCounts: Partial<Record<Biome, number>>;
 };
 
-const cases: ReproductionCase[] = [
-  { seed: '1001001', preset: 'Earthlike' },
-  { seed: '1001001', preset: 'Archipelago' },
-  { seed: '1001001', preset: 'Random World' },
-  { seed: '5336649', preset: 'Earthlike' },
-  { seed: '5336649', preset: 'Archipelago' }
+const defaultCases: ReproductionCase[] = [
+  { starSeed: '1001001', worldSeed: '1001001', preset: 'Earthlike' },
+  { starSeed: '1001001', worldSeed: '1001001', preset: 'Archipelago' },
+  { starSeed: '1001001', worldSeed: '1001001', preset: 'Random World' },
+  { starSeed: '5336649', worldSeed: '5336649', preset: 'Earthlike' },
+  { starSeed: '5336649', worldSeed: '5336649', preset: 'Archipelago' }
 ];
+const requestedCase = readOption('case');
+const cases = requestedCase ? [parseCase(requestedCase)] : defaultCases;
+const requestedResolution = readOption('resolution');
+const outputResolution = requestedResolution ? parseResolution(requestedResolution) : { width: 512, height: 256 };
+const topologyResolution = Number(readOption('topology') ?? 64);
+const outputRoot = readOption('output') ?? 'map-lines-polar-ice';
 
-const outputDir = join('refs', 'testing', 'map-lines-polar-ice');
+const outputDir = join('refs', 'testing', outputRoot);
 mkdirSync(outputDir, { recursive: true });
 const reports: CaseReport[] = [];
 
@@ -94,13 +104,13 @@ for (const item of cases) {
   const startedAt = performance.now();
   const config = reproductionConfig(item);
   const terrainSnapshots: TerrainDiagnosticSnapshot[] = [];
-  console.log(`Generating ${item.seed} ${item.preset}...`);
+  console.log(`Generating ${item.starSeed}/${item.worldSeed} ${item.preset}...`);
   const project = reconcileSystemOrbitPresets(generateProjectWithNativeStages(config, {
     appVersion: 'map-lines-polar-ice-investigation',
     onTerrainDiagnosticSnapshot: (snapshot) => terrainSnapshots.push(snapshot)
   }));
   const generationMs = performance.now() - startedAt;
-  const slug = `${item.seed}-${item.preset.toLowerCase().replaceAll(' ', '-')}`;
+  const slug = `${item.starSeed}-${item.worldSeed}-${item.preset.toLowerCase().replaceAll(' ', '-')}`;
   writeLayerImages(project, slug, terrainSnapshots);
   const report = summarizeCase(project, item, generationMs);
   reports.push(report);
@@ -117,25 +127,26 @@ writeFileSync(join(outputDir, 'baseline-report.json'), `${JSON.stringify({
   version: 1,
   generatedAt: new Date().toISOString(),
   workflowId: 'core.performance-foundation',
-  resolution: { width: 512, height: 256 },
+  resolution: outputResolution,
+  topologyResolution,
   reports
 }, null, 2)}\n`);
 
 function reproductionConfig(item: ReproductionCase): GenerationConfig {
-  const config = createDefaultConfig(item.seed, { width: 512, height: 256 }) as GenerationConfig & {
+  const config = createDefaultConfig(item.worldSeed, outputResolution) as GenerationConfig & {
     workflowId?: string;
     seeds?: { star?: string; world?: string };
     starPresetId?: string;
     worldPresetId?: string;
   };
-  config.seed = item.seed;
-  config.seeds = { star: item.seed, world: item.seed };
+  config.seed = item.worldSeed;
+  config.seeds = { star: item.starSeed, world: item.worldSeed };
   config.starPresetId = 'sol-like';
   config.worldPresetId = item.preset;
   config.parameterRanges = reproductionPresetRanges(item.preset);
   config.selectedValues = { oceanTolerancePercentagePoints: item.preset === 'Random World' ? 12 : 5 };
-  config.outputResolution = { width: 512, height: 256 };
-  config.topologyResolution = 64;
+  config.outputResolution = outputResolution;
+  config.topologyResolution = topologyResolution;
   config.workflowId = 'core.performance-foundation';
   return prepareSystemOrbitConfig(config);
 }
@@ -192,7 +203,7 @@ function summarizeCase(project: WorldProject, item: ReproductionCase, generation
     biomeCounts[biome] = (biomeCounts[biome] ?? 0) + 1;
   }
   return {
-    seed: item.seed,
+    seed: `${item.starSeed}:${item.worldSeed}`,
     preset: item.preset,
     generationMs: round(generationMs, 2),
     sourceCommit: project.sourceCommit,
@@ -204,6 +215,28 @@ function summarizeCase(project: WorldProject, item: ReproductionCase, generation
     iceDiagnostics,
     biomeCounts
   };
+}
+
+function readOption(name: string): string | undefined {
+  const prefix = `--${name}=`;
+  return process.argv.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
+}
+
+function parseCase(value: string): ReproductionCase {
+  const [starSeed, worldSeed, ...presetParts] = value.split(':');
+  const preset = presetParts.join(':') as ReproductionCase['preset'];
+  if (!starSeed || !worldSeed || !['Earthlike', 'Archipelago', 'Random World'].includes(preset)) {
+    throw new Error(`Invalid --case value "${value}". Expected starSeed:worldSeed:Earthlike|Archipelago|Random World.`);
+  }
+  return { starSeed, worldSeed, preset };
+}
+
+function parseResolution(value: string): { width: number; height: number } {
+  const [width, height] = value.split('x').map(Number);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
+    throw new Error(`Invalid --resolution value "${value}". Expected WIDTHxHEIGHT.`);
+  }
+  return { width, height };
 }
 
 function summarizeRiverPaths(world: PrimaryWorld, topology: CubedSphereTopology): CaseReport['riverDiagnostics'] {

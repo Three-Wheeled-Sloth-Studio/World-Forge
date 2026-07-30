@@ -4,6 +4,7 @@ import { CrustFieldsOutput, TerrainPhases, crustFieldsNodeId, coherentSphericalN
 import { PlateConstructionOutput, TopologyPlate, plateConstructionNodeId } from './plate-construction-node';
 import { PrimordialTerrainOutput, primordialTerrainNodeId } from './primordial-terrain-node';
 import { TopologyConstructionOutput, topologyConstructionNodeId } from './topology-construction-node';
+import { broadenTopologySignal } from '../../topologyScaleField';
 
 export const topologyElevationNodeId = 'terrain.topology-elevation';
 
@@ -113,8 +114,8 @@ export function generateTopologyElevation(
   // Plate allocation edges are one-cell graph traces. Only physically
   // meaningful relative motion contributes, and that response is broadened
   // into a deformation zone before it reaches authoritative elevation.
-  smoothTopologyLayer(boundaryResponse, topology, 7, 0.5);
-  for (let cell = 0; cell < elevation.length; cell += 1) elevation[cell] += boundaryResponse[cell];
+  const broadBoundaryResponse = broadenTopologySignal(boundaryResponse, topology);
+  for (let cell = 0; cell < elevation.length; cell += 1) elevation[cell] += broadBoundaryResponse[cell];
   smoothTopologyLayer(elevation, topology, 3, 0.22);
   return elevation;
 }
