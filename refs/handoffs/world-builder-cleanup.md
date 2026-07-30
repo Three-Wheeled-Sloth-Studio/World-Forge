@@ -10,14 +10,14 @@ Parent PI: issue `#13` — **Clean up world builder workflow and controls**
 
 Completed work package: issue `#24` — **World builder workspace mode shell**
 
-Status: **Explore toolbar accepted; proceed to combined user testing and PI-close provenance**
+Status: **Combined-test QA polish accepted; resume combined user testing and PI-close provenance**
 
 ## Accepted baseline
 
 Functional code baseline before this documentation-only handoff:
 
-- commit `3d3800c681a7682559a7de1963d315b19d7b1e31`
-- visible World Forge version `0.3.32`
+- commit `c790b6d9d0e9a310e260d74a5ac3dbd5bfb1748c`
+- visible World Forge version `0.3.33`
 - `npm run verify` passed in GitHub Actions
 - 243 tests passed
 - TypeScript build passed
@@ -97,6 +97,19 @@ Implemented in `0.3.32`:
 - the zoom percentage opens common levels on normal click and still supports right-click placement.
 - Fit resets the active map or globe zoom to the existing fitted 100% state.
 - no map state, generator behavior, persistence, replay, or saved-world schema changes were made.
+
+### Combined-test QA polish
+
+Implemented in `0.3.33`:
+
+- Layers and zoom use one shared transient-popover contract.
+- outside pointer interaction closes the active transient surface without swallowing the destination click.
+- Escape closes the active surface and restores focus to its trigger.
+- opening Layers or zoom closes the competing surface.
+- leaving Explore closes both transient surfaces.
+- expanded right-panel content clears the boundary toggle instead of rendering underneath it.
+- the standalone shell account control renders the stored Google avatar and falls back to the generic account icon if the image is unavailable.
+- no generator, map-state, persistence, replay, or saved-world schema changes were made.
 
 ### WP1: control inventory
 
