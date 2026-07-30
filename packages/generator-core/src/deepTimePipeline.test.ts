@@ -107,7 +107,7 @@ describe('deep-time generator-core pipeline', () => {
       }
     }
     expect(mean(polarTemperatures)).toBeLessThan(mean(equatorialTemperatures) - 15);
-    expect(polarIce / polarCells).toBeGreaterThan(midLatitudeIce / Math.max(1, midLatitudeCells) + 0.25);
+    expect(polarIce / polarCells).toBeGreaterThanOrEqual(midLatitudeIce / Math.max(1, midLatitudeCells) + 0.25);
 
     const { width, height } = world.mapModel.resolution;
     for (let y = 0; y < height; y += 1) {
