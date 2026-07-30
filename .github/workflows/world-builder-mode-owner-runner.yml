@@ -1,0 +1,411 @@
+name: World Builder Mode Ownership Runner
+
+on:
+  push:
+    branches:
+      - automation/world-builder-mode-owner-20260730
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lift workspace mode ownership
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'{path}: expected one match, found {count}: {old[:80]!r}')
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "import { WorldWorkspace } from './workspace/WorldWorkspace';",
+              "import { WorldWorkspace } from './workspace/WorldWorkspace';\nimport { workspaceModeForProject, type WorkspaceMode } from './workspace/workspaceModes';"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "  const [project, setProject] = useState<WorldProject | null>(null);",
+              "  const [project, setProject] = useState<WorldProject | null>(null);\n  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => workspaceModeForProject(Boolean(project)));"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "  const suppressNextMapClickRef = useRef(false);\n  const devGraph = useDevGraphWorkspace();",
+              "  const suppressNextMapClickRef = useRef(false);\n  const acceptProject = useCallback((nextProject: WorldProject) => {\n    setProject(nextProject);\n    setWorkspaceMode(workspaceModeForProject(true));\n  }, []);\n  const clearProject = useCallback(() => {\n    setProject(null);\n    setWorkspaceMode(workspaceModeForProject(false));\n  }, []);\n  const devGraph = useDevGraphWorkspace();"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "  const generation = useGenerationWorkflow({\n    canvasRef,\n    previousProject: project,\n    onProjectGenerated: setProject\n  });",
+              "  const generation = useGenerationWorkflow({\n    canvasRef,\n    previousProject: project,\n    onProjectGenerated: acceptProject\n  });"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "    workspace: workspaceSettings,\n    applyPulledWorkspace,\n    clearProject: () => setProject(null)",
+              "    workspace: workspaceSettings,\n    applyPulledWorkspace,\n    clearProject"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "    onWorldLoaded: (loaded) => {\n      setProject(loaded);",
+              "    onWorldLoaded: (loaded) => {\n      acceptProject(loaded);"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "    const parsed = await importWforge(file);\n    setProject(parsed);",
+              "    const parsed = await importWforge(file);\n    acceptProject(parsed);"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "          <GeneratorPanel\n            config={config}",
+              "          <GeneratorPanel\n            workspaceMode={workspaceMode}\n            config={config}"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "      <WorldWorkspace\n        projectName={leftPanelTab === 'dev' ? 'Developer workspace' : project?.projectName}",
+              "      <WorldWorkspace\n        projectName={leftPanelTab === 'dev' ? 'Developer workspace' : project?.projectName}\n        workspaceMode={workspaceMode}\n        onWorkspaceModeChange={setWorkspaceMode}"
+          )
+          replace_once(
+              'apps/desktop/src/main.tsx',
+              "      <RightPanel\n        collapsed={rightPanelCollapsed}",
+              "      <RightPanel\n        workspaceMode={workspaceMode}\n        collapsed={rightPanelCollapsed}"
+          )
+
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "import React, { useEffect, useRef, useState, type ReactNode } from 'react';",
+              "import React, { useEffect, useState, type ReactNode } from 'react';"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "export type WorldWorkspaceProps = {\n  projectName?: string;",
+              "export type WorldWorkspaceProps = {\n  projectName?: string;\n  workspaceMode: WorkspaceMode;"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "  mapContent: ReactNode;\n  legend?: ReactNode;\n  onViewModeChange: (mode: WorkspaceViewMode) => void;",
+              "  mapContent: ReactNode;\n  legend?: ReactNode;\n  onWorkspaceModeChange: (mode: WorkspaceMode) => void;\n  onViewModeChange: (mode: WorkspaceViewMode) => void;"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "export function WorldWorkspace({\n  projectName,\n  isGenerating,",
+              "export function WorldWorkspace({\n  projectName,\n  workspaceMode,\n  isGenerating,"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "  mapContent,\n  legend,\n  onViewModeChange,",
+              "  mapContent,\n  legend,\n  onWorkspaceModeChange,\n  onViewModeChange,"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "  const isDeveloperMode = developerMode || projectName === 'Developer workspace';\n  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(projectName ? 'explore' : 'build');\n  const previousProjectNameRef = useRef(projectName);\n  const wasGeneratingRef = useRef(isGenerating);\n  const [zoomMenu, setZoomMenu] = useState<{ x: number; y: number } | null>(null);",
+              "  const isDeveloperMode = developerMode || projectName === 'Developer workspace';\n  const [zoomMenu, setZoomMenu] = useState<{ x: number; y: number } | null>(null);"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "\n  useEffect(() => {\n    const projectAppeared = !previousProjectNameRef.current && Boolean(projectName);\n    const generationCompleted = wasGeneratingRef.current && !isGenerating && Boolean(projectName);\n    if (projectAppeared || generationCompleted) setWorkspaceMode('explore');\n    previousProjectNameRef.current = projectName;\n    wasGeneratingRef.current = isGenerating;\n  }, [isGenerating, projectName]);\n",
+              "\n"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/WorldWorkspace.tsx',
+              "                  onClick={() => setWorkspaceMode(option.id)}",
+              "                  onClick={() => onWorkspaceModeChange(option.id)}"
+          )
+
+          replace_once(
+              'apps/desktop/src/workspace/workspaceModes.ts',
+              "export type WorkspaceMode = 'build' | 'explore' | 'export';\n",
+              "export type WorkspaceMode = 'build' | 'explore' | 'export';\n\nexport function workspaceModeForProject(hasProject: boolean): WorkspaceMode {\n  return hasProject ? 'explore' : 'build';\n}\n"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/workspaceModes.test.ts',
+              "import { normalizeUserFacingMapMode, workspaceModeOptions } from './workspaceModes';",
+              "import { normalizeUserFacingMapMode, workspaceModeForProject, workspaceModeOptions } from './workspaceModes';"
+          )
+          replace_once(
+              'apps/desktop/src/workspace/workspaceModes.test.ts',
+              "  it('keeps ordinary map subjects available', () => {",
+              "  it('starts in Build without a world and moves to Explore when one becomes available', () => {\n    expect(workspaceModeForProject(false)).toBe('build');\n    expect(workspaceModeForProject(true)).toBe('explore');\n  });\n\n  it('keeps ordinary map subjects available', () => {"
+          )
+
+          replace_once(
+              'apps/desktop/src/generator/GeneratorPanel.tsx',
+              "import type { GenerationConfig } from '@world-forge/shared';\nimport './generatorPanel.css';",
+              "import type { GenerationConfig } from '@world-forge/shared';\nimport type { WorkspaceMode } from '../workspace/workspaceModes';\nimport './generatorPanel.css';"
+          )
+          replace_once(
+              'apps/desktop/src/generator/GeneratorPanel.tsx',
+              "export type GeneratorPanelProps = {\n  config: GenerationConfig;",
+              "export type GeneratorPanelProps = {\n  workspaceMode: WorkspaceMode;\n  config: GenerationConfig;"
+          )
+          replace_once(
+              'apps/desktop/src/generator/GeneratorPanel.tsx',
+              "  const {\n    config, selectedPreset, presetLabels, previewResolution, previewResolutionOptions, exportResolution,",
+              "  const {\n    workspaceMode, config, selectedPreset, presetLabels, previewResolution, previewResolutionOptions, exportResolution,"
+          )
+          replace_once(
+              'apps/desktop/src/generator/GeneratorPanel.tsx',
+              "    <div className=\"generator-panel simplified-generator\" role=\"tabpanel\" aria-label=\"World generator\">",
+              "    <div className=\"generator-panel simplified-generator\" role=\"tabpanel\" aria-label=\"World generator\" data-workspace-mode={workspaceMode}>"
+          )
+
+          replace_once(
+              'apps/desktop/src/panels/RightPanel.tsx',
+              "import { GeographicHierarchyPanel } from '../regions/GeographicHierarchyPanel';",
+              "import { GeographicHierarchyPanel } from '../regions/GeographicHierarchyPanel';\nimport type { WorkspaceMode } from '../workspace/workspaceModes';"
+          )
+          replace_once(
+              'apps/desktop/src/panels/RightPanel.tsx',
+              "type RightPanelProps = {\n  collapsed: boolean;",
+              "type RightPanelProps = {\n  workspaceMode: WorkspaceMode;\n  collapsed: boolean;"
+          )
+          replace_once(
+              'apps/desktop/src/panels/RightPanel.tsx',
+              "  const {\n    collapsed, activeTab, feedbackStatus, inspectorContent, diagnosticsContent, project, exportResolution,",
+              "  const {\n    workspaceMode, collapsed, activeTab, feedbackStatus, inspectorContent, diagnosticsContent, project, exportResolution,"
+          )
+          replace_once(
+              'apps/desktop/src/panels/RightPanel.tsx',
+              "      <aside className={`summary ${collapsed ? 'panel-collapsed' : ''}`} aria-label=\"World details and exports\">",
+              "      <aside className={`summary ${collapsed ? 'panel-collapsed' : ''}`} aria-label=\"World details and exports\" data-workspace-mode={workspaceMode}>"
+          )
+
+          replace_once(
+              'apps/desktop/src/appVersion.ts',
+              "export const APP_VERSION = '0.3.28';",
+              "export const APP_VERSION = '0.3.29';"
+          )
+          replace_once(
+              'apps/desktop/src/release/ReleaseNotesModal.tsx',
+              "          <section>\n            <p className=\"release-kicker\">Release 0.3.28</p>",
+              "          <section>\n            <p className=\"release-kicker\">Release 0.3.29</p>\n            <h3>One workspace mode owner</h3>\n            <ul>\n              <li>Build, Explore, and Export mode now belongs to the application shell instead of the map component.</li>\n              <li>Generated and opened worlds move into Explore through explicit project-loading paths.</li>\n              <li>The generator and details panels now receive the same mode state for the next contextual-panel increment.</li>\n            </ul>\n          </section>\n\n          <section>\n            <p className=\"release-kicker\">Release 0.3.28</p>"
+          )
+          PY
+
+      - name: Verify repository
+        run: npm run verify 2>&1 | tee /tmp/world-forge-verify.log
+
+      - name: Install Chromium for browser QA
+        run: npx playwright install --with-deps chromium
+
+      - name: Run focused browser QA
+        shell: bash
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/world-forge-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({ headless: true });
+          try {
+            for (const viewport of [{ width: 1920, height: 1080 }, { width: 1440, height: 900 }]) {
+              const context = await browser.newContext({ viewport });
+              const page = await context.newPage();
+              await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+
+              const build = page.getByRole('tab', { name: 'Build' });
+              const explore = page.getByRole('tab', { name: 'Explore' });
+              const exportMode = page.getByRole('tab', { name: 'Export' });
+              if (await build.getAttribute('aria-selected') !== 'true') throw new Error('Build was not selected for an empty workspace');
+
+              await page.locator('.canvas-wrap').evaluate((element) => { element.dataset.qaMarker = 'preserved'; });
+              for (const [label, tab] of [['Explore', explore], ['Export', exportMode], ['Build', build]]) {
+                await tab.click();
+                if (await tab.getAttribute('aria-selected') !== 'true') throw new Error(`${label} did not become selected`);
+                const marker = await page.locator('.canvas-wrap').getAttribute('data-qa-marker');
+                if (marker !== 'preserved') throw new Error(`Canvas workspace remounted while switching to ${label}`);
+                const expected = label.toLowerCase();
+                if (await page.locator('.generator-panel').getAttribute('data-workspace-mode') !== expected) throw new Error(`Generator panel did not receive ${expected}`);
+                if (await page.locator('.summary').getAttribute('data-workspace-mode') !== expected) throw new Error(`Right panel did not receive ${expected}`);
+              }
+
+              const layout = await page.evaluate(() => ({
+                scrollHeight: document.documentElement.scrollHeight,
+                clientHeight: document.documentElement.clientHeight,
+                bodyScrollHeight: document.body.scrollHeight,
+                innerHeight: window.innerHeight
+              }));
+              if (layout.scrollHeight > layout.innerHeight + 1 || layout.bodyScrollHeight > layout.innerHeight + 1) {
+                throw new Error(`Page-level vertical scroll at ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`);
+              }
+              await context.close();
+            }
+          } finally {
+            await browser.close();
+          }
+          JS
+
+      - name: Commit functional increment
+        shell: bash
+        run: |
+          git config user.name 'World Forge Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add apps/desktop/src/main.tsx \
+            apps/desktop/src/workspace/WorldWorkspace.tsx \
+            apps/desktop/src/workspace/workspaceModes.ts \
+            apps/desktop/src/workspace/workspaceModes.test.ts \
+            apps/desktop/src/generator/GeneratorPanel.tsx \
+            apps/desktop/src/panels/RightPanel.tsx \
+            apps/desktop/src/appVersion.ts \
+            apps/desktop/src/release/ReleaseNotesModal.tsx
+          git commit -m 'Lift workspace mode ownership into App'
+          git rev-parse HEAD > /tmp/world-forge-functional-sha
+
+      - name: Update cleanup handoff
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('refs/handoffs/world-builder-cleanup.md')
+          text = path.read_text()
+          sha = Path('/tmp/world-forge-functional-sha').read_text().strip()
+          verify_log = Path('/tmp/world-forge-verify.log').read_text()
+          match = re.search(r'Tests\s+(\d+) passed', verify_log)
+          test_line = f'- {match.group(1)} tests passed' if match else '- Vitest suite passed'
+
+          old_baseline = """Functional code baseline before this documentation-only handoff:
+
+- commit `7a6c23bc8eec132816887b5e26ceccf84e17ae20`
+- visible World Forge version `0.3.28`
+- `npm run verify` passed locally
+- 231 tests passed
+- TypeScript build passed
+- production build passed
+- focused browser QA passed"""
+          new_baseline = f"""Functional code baseline before this documentation-only handoff:
+
+- commit `{sha}`
+- visible World Forge version `0.3.29`
+- `npm run verify` passed in GitHub Actions
+{test_line}
+- TypeScript build passed
+- production build passed
+- focused headless browser QA passed at 1920 x 1080 and 1440 x 900"""
+          if old_baseline not in text:
+              raise RuntimeError('Accepted baseline block changed unexpectedly')
+          text = text.replace(old_baseline, new_baseline, 1)
+          text = text.replace(
+              'Status: **WP2 accepted; continue with mode ownership and Build/right-panel recomposition**',
+              'Status: **App-owned workspace mode accepted; continue with Build/right-panel recomposition**',
+              1
+          )
+          marker = """Several old tests had silently depended on Legacy being the default. Those fixtures were corrected to test their actual contracts rather than requiring one fixed seed to preserve Legacy-specific biome or landmass outcomes.
+
+### WP1: control inventory"""
+          insertion = """Several old tests had silently depended on Legacy being the default. Those fixtures were corrected to test their actual contracts rather than requiring one fixed seed to preserve Legacy-specific biome or landmass outcomes.
+
+### App-owned workspace mode
+
+Implemented in `0.3.29`:
+
+- `App` owns the single Build / Explore / Export state.
+- `WorldWorkspace` is controlled through `workspaceMode` and `onWorkspaceModeChange` props.
+- successful generation, saved-world load, and `.wforge` open explicitly move to Explore.
+- clearing the current project returns to Build.
+- `GeneratorPanel` and `RightPanel` receive the same mode state, ready for contextual recomposition.
+- workspace mode remains session-only and is not added to persistence or saved-world schemas.
+
+### WP1: control inventory"""
+          if marker not in text:
+              raise RuntimeError('Work completed insertion marker changed unexpectedly')
+          text = text.replace(marker, insertion, 1)
+
+          old_ownership = """## Important current limitation: workspace mode ownership
+
+`WorkspaceMode` currently lives inside `WorldWorkspace`.
+
+That was sufficient for the first center-workspace slice, but it means `App`, `GeneratorPanel`, and `RightPanel` do not know whether the user is in Build, Explore, or Export.
+
+Do not build additional parallel mode state in the side panels.
+
+The first task for the next worker is to lift workspace mode ownership into `App` in `apps/desktop/src/main.tsx`, then pass the controlled mode and change handler into `WorldWorkspace` and the side-panel composition.
+
+Preserve the current behavior:
+
+- initial mode is Build when no project is loaded
+- initial mode is Explore when a project is already available
+- successful generation or world load moves to Explore
+- switching modes does not regenerate, clear, or remount the map
+- do not add a persistence-schema field for workspace mode during this PI"""
+          new_ownership = """## Workspace mode ownership
+
+`WorkspaceMode` now lives in `App` in `apps/desktop/src/main.tsx`.
+
+`WorldWorkspace`, `GeneratorPanel`, and `RightPanel` receive the same controlled mode. Do not add parallel side-panel state as Build and Export composition proceeds.
+
+Preserved behavior:
+
+- initial mode is Build when no project is loaded
+- an available or newly loaded project moves to Explore
+- successful generation moves to Explore
+- clearing the project returns to Build
+- switching modes does not regenerate, clear, or remount the map
+- workspace mode is not stored in persistence or saved-world schemas"""
+          if old_ownership not in text:
+              raise RuntimeError('Ownership limitation block changed unexpectedly')
+          text = text.replace(old_ownership, new_ownership, 1)
+
+          old_step = """### Step 1: lift and control workspace mode
+
+Move the mode state from `WorldWorkspace` into `App`.
+
+`WorldWorkspace` should receive:
+
+- current `workspaceMode`
+- `onWorkspaceModeChange`
+
+Keep its presentation toolbar mode-specific, but make the surrounding application able to route left and right content from the same source of truth.
+
+Add focused tests around transition rules where practical. Avoid a new persistence field."""
+          new_step = """### Step 1: lift and control workspace mode - completed
+
+Completed in `0.3.29`.
+
+- `App` owns `workspaceMode`.
+- `WorldWorkspace` receives the current mode and change handler.
+- the generator and right panel receive the same mode state.
+- focused transition tests cover Build without a project and Explore with an available project.
+- no persistence field was added."""
+          if old_step not in text:
+              raise RuntimeError('Step 1 block changed unexpectedly')
+          text = text.replace(old_step, new_step, 1)
+          text = text.replace('Not complete.\n\n- lift mode ownership\n- quick-build controls', 'Not complete.\n\n- quick-build controls', 1)
+          path.write_text(text)
+          PY
+          git add refs/handoffs/world-builder-cleanup.md
+          git commit -m 'Update world builder cleanup handoff'
+
+      - name: Push dev and remove runner branch
+        shell: bash
+        run: |
+          git push origin HEAD:dev
+          git push origin --delete automation/world-builder-mode-owner-20260730
