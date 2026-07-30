@@ -37,7 +37,6 @@ export type WorldWorkspaceProps = {
   globeDebugMode: WorkspaceGlobeDebugMode;
   viewZoom: number;
   onViewZoomChange: (zoom: number) => void;
-  exportActions: ReactNode;
   displayActions?: ReactNode;
   developerActions?: ReactNode;
   developerMode?: boolean;
@@ -75,7 +74,6 @@ export function WorldWorkspace({
   coastlineTreatment,
   viewZoom,
   onViewZoomChange,
-  exportActions,
   displayActions,
   developerActions,
   developerMode = false,
@@ -194,9 +192,8 @@ export function WorldWorkspace({
             <div className="map-actions export-mode-actions">
               <div className="export-mode-copy">
                 <strong>Export current world</strong>
-                <span>Common formats are here. Tile and VTT options remain in the details panel for this slice.</span>
+                <span>Choose common files or configure tile and VTT packages in the Export panel.</span>
               </div>
-              <div className="download-actions">{exportActions}</div>
             </div>
           )}
         </div>

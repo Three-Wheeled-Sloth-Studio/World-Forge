@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save } from 'lucide-react';
+import { FolderOpen, Save } from 'lucide-react';
 import type { SavedMapRecord } from '../sync';
 import { WorldLibraryOperationOverlay, type WorldLibraryOperation } from './WorldLibraryOperationOverlay';
 import { WorldNameEditor } from './WorldNameEditor';
@@ -13,6 +13,7 @@ export type MyWorldsPanelProps = {
   onSaveCurrent: () => void | Promise<void>;
   onLoad: (record: SavedMapRecord) => void | Promise<void>;
   onRemove: (record: SavedMapRecord) => void;
+  onOpenPackage: (file: File) => void | Promise<void>;
 };
 
 export function MyWorldsPanel({
@@ -22,7 +23,8 @@ export function MyWorldsPanel({
   status,
   onSaveCurrent,
   onLoad,
-  onRemove
+  onRemove,
+  onOpenPackage,
 }: MyWorldsPanelProps) {
   const [operation, setOperation] = useState<WorldLibraryOperation | null>(null);
 
@@ -39,27 +41,41 @@ export function MyWorldsPanel({
   return (
     <div className="my-worlds-panel" role="tabpanel" aria-label="My Worlds">
       <div className="world-library-actions">
-        <button
-          type="button"
-          disabled={!canSaveCurrent || Boolean(operation)}
-          onClick={() => {
-            void runOperation({
-              kind: 'saving',
-              title: 'Saving current world',
-              detail: 'Writing the generated world and current settings to the local world library.',
-            }, onSaveCurrent).catch(() => undefined);
-          }}
-        >
-          <Save size={16} />
-          Save Current
-        </button>
+        <div className="world-library-primary-actions">
+          <button
+            type="button"
+            disabled={!canSaveCurrent || Boolean(operation)}
+            onClick={() => {
+              void runOperation({
+                kind: 'saving',
+                title: 'Saving current world',
+                detail: 'Writing the generated world and current settings to the local world library.',
+              }, onSaveCurrent).catch(() => undefined);
+            }}
+          >
+            <Save size={16} />
+            Save Current
+          </button>
+          <label className="file-button" title="Open .wforge package">
+            <FolderOpen size={16} />Open .wforge
+            <input
+              type="file"
+              accept=".wforge"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void onOpenPackage(file);
+                event.currentTarget.value = '';
+              }}
+            />
+          </label>
+        </div>
         <span>{records.length} saved</span>
       </div>
       {status && <div className="world-library-status">{status}</div>}
       {records.length === 0 ? (
         <div className="empty-library">
           <strong>No saved worlds</strong>
-          <span>Generate a world, then save it here for in-app loading.</span>
+          <span>Generate a world, open a .wforge package, or save the active world here for in-app loading.</span>
         </div>
       ) : (
         <div className="world-list">
@@ -67,7 +83,7 @@ export function MyWorldsPanel({
             <article key={record.projectId} className={`world-list-item ${activeProjectId === record.projectId ? 'active' : ''}`}>
               <div>
                 <WorldNameEditor value={record.projectName} onSave={(name) => requestWorldRename(record.projectId, name)} />
-                <span>Seed {record.seed} · {new Date(record.updatedAt).toLocaleString()}</span>
+                <span>Seed {record.seed} - {new Date(record.updatedAt).toLocaleString()}</span>
               </div>
               <div className="world-list-actions">
                 <button

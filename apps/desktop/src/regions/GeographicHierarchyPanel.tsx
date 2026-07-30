@@ -22,7 +22,14 @@ export type GeographicHierarchyBuildStatus = 'idle' | 'building' | 'ready' | 'er
 type DrilldownController = ReturnType<typeof useGeographicAtlasController>;
 type DrilldownContextMenu = { x: number; y: number; label: string };
 
-export function GeographicHierarchyPanel({ project }: { project: WorldProject }) {
+type GeographicHierarchyPanelProps = {
+  project: WorldProject;
+  workspaceActive: boolean;
+  showInspector: boolean;
+  onContextActiveChange?: (active: boolean) => void;
+};
+
+export function GeographicHierarchyPanel({ project, workspaceActive, showInspector, onContextActiveChange }: GeographicHierarchyPanelProps) {
   const projectKey = geographicRegionPreviewProjectKey(project);
   const previewCacheRef = useRef(new Map<string, GeographicHierarchyPreview>());
   const partitionCacheRef = useRef(new Map<string, GeographicHierarchyPartition>());
@@ -34,6 +41,10 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
   const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
   const [mapTarget, setMapTarget] = useState<HTMLElement | null>(null);
   const controller = useGeographicAtlasController(project, preview, partitionCacheRef.current);
+
+  useEffect(() => {
+    onContextActiveChange?.(workspaceActive && enabled);
+  }, [enabled, onContextActiveChange, workspaceActive]);
 
   useEffect(() => {
     const cached = previewCacheRef.current.get(projectKey) ?? null;
@@ -70,13 +81,14 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
 
   useEffect(() => {
     if (!mapTarget) return;
-    mapTarget.classList.toggle('geographic-drilldown-enabled', enabled);
-    mapTarget.classList.toggle('geographic-drilldown-active', Boolean(enabled && controller.current));
+    const active = workspaceActive && enabled;
+    mapTarget.classList.toggle('geographic-drilldown-enabled', active);
+    mapTarget.classList.toggle('geographic-drilldown-active', Boolean(active && controller.current));
     return () => {
       mapTarget.classList.remove('geographic-drilldown-enabled');
       mapTarget.classList.remove('geographic-drilldown-active');
     };
-  }, [controller.current, enabled, mapTarget]);
+  }, [controller.current, enabled, mapTarget, workspaceActive]);
 
   const buildPreview = () => {
     if (preview || status === 'building') return;
@@ -118,7 +130,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
 
   return (
     <>
-      {toolbarTarget && createPortal(
+      {workspaceActive && toolbarTarget && createPortal(
         <button
           type="button"
           className={`icon-button geographic-drilldown-toggle ${enabled ? 'active' : ''}`}
@@ -134,7 +146,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
         toolbarTarget,
       )}
 
-      {enabled && mapTarget && createPortal(
+      {workspaceActive && enabled && mapTarget && createPortal(
         <GeographicDrilldownSurface
           project={project}
           preview={preview}
@@ -151,7 +163,7 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
         mapTarget,
       )}
 
-      <section className={`geographic-drilldown-inspector ${enabled ? 'active' : ''}`} aria-label="Geographic drill-down details">
+      {workspaceActive && showInspector && enabled && <section className="geographic-drilldown-inspector active" aria-label="Geographic drill-down details">
         <header>
           <span><MapPinned size={15} /><strong>Drill-down</strong></span>
           <small>{enabled ? (controller.current?.level ?? 'world') : 'off'}</small>
@@ -172,13 +184,14 @@ export function GeographicHierarchyPanel({ project }: { project: WorldProject })
             </dl>
             <div className="geographic-drilldown-inspector-actions">
               {controller.current && <button type="button" className="secondary-button" onClick={controller.back}><ArrowLeft size={14} />Back</button>}
+              <button type="button" className="secondary-button" disabled={!selectedLabel && !controller.current} onClick={controller.reset}>Clear selection</button>
               <button type="button" className="primary-button" disabled={!canOpen || inspectorActive} onClick={openSelected}>Open selected</button>
             </div>
             <p className="geographic-drilldown-help">Left-click selects. Right-click opens an action menu. Double-click or Enter opens the selected area.</p>
             {controller.childError && <p className="geographic-atlas-error" role="alert">{controller.childError}</p>}
           </>
         )}
-      </section>
+      </section>}
     </>
   );
 }

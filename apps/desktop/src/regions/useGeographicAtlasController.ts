@@ -199,6 +199,7 @@ export function useGeographicAtlasController(
   };
 
   const reset = () => {
+    setSelectedMacroId(null);
     setSelectedChildId(null);
     setSelectedRegionId(null);
     setNavigation([]);

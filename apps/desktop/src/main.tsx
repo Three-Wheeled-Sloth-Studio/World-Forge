@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Cloud, Coffee, Copy, Download, FileJson, FolderOpen, Hexagon, Image, Layers, Mail, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, RefreshCw, Save, Search, Settings, Shuffle, Upload, User, X } from 'lucide-react';
+import { Cloud, Coffee, Copy, Download, FileJson, Hexagon, Image, Layers, Mail, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, RefreshCw, Save, Search, Settings, Shuffle, Upload, User, X } from 'lucide-react';
 import JSZip from 'jszip';
 import { createDefaultConfig } from '@world-forge/generator-core';
 import { exportHexGridSvg, exportHexTileMapJson, exportSvg, exportVttGridSvg, exportVttMetadata, exportWforge, importWforge, projectToJson } from '@world-forge/exporters';
@@ -763,8 +763,8 @@ function App() {
     />
   );
   const worldDiagnostics = useMemo(
-    () => project && rightPanelTab === 'diagnostics' ? buildWorldDiagnostics(project, tileExportConfig(), mapTheme) : null,
-    [mapTheme, project, rightPanelTab, tileFeatures, tileHeight, tileWidth]
+    () => project && leftPanelTab === 'dev' ? buildWorldDiagnostics(project, tileExportConfig(), mapTheme) : null,
+    [leftPanelTab, mapTheme, project, tileFeatures, tileHeight, tileWidth]
   );
   const toggleHighestPointTarget = useCallback(() => {
     if (!project || !worldDiagnostics) return;
@@ -846,6 +846,7 @@ function App() {
             onSaveCurrent={saveCurrentWorldInApp}
             onLoad={loadStoredWorld}
             onRemove={deleteStoredWorld}
+            onOpenPackage={openPackage}
           />
         )}
         </>
@@ -900,32 +901,6 @@ function App() {
             </select>
           </label>
         )}
-        exportActions={(
-          <>
-            <label className="workspace-inline-setting export-resolution-setting" htmlFor="export-resolution">
-              <span>PNG</span>
-              <select
-                id="export-resolution"
-                aria-label="PNG export resolution"
-                value={`${exportResolution.width}x${exportResolution.height}`}
-                onChange={(event) => {
-                  const resolution = resolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
-                  if (resolution) setExportResolution(resolution);
-                }}
-              >
-                {resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}
-              </select>
-            </label>
-            <ExportButton icon={<Image size={16} />} label="PNG" task={exportTasks.png} disabled={!project} title="Export PNG" onClick={downloadPng} />
-            <ExportButton icon={<Layers size={16} />} label="SVG" task={exportTasks.svg} disabled={!project} title="Export simplified SVG" onClick={downloadSvg} />
-            <ExportButton icon={<FileJson size={16} />} label="JSON" task={exportTasks.json} disabled={!project} title="Export JSON" onClick={downloadJson} />
-            <ExportButton icon={<Save size={16} />} label=".wforge" task={exportTasks.wforge} disabled={!project} title="Save .wforge package" onClick={downloadPackage} />
-            <label className="file-button" title="Open .wforge package">
-              <FolderOpen size={16} />Open
-              <input type="file" accept=".wforge" onChange={(event) => openPackage(event.target.files?.[0])} />
-            </label>
-          </>
-        )}
         mapContent={leftPanelTab === 'dev' ? (
           devGraphWorkspace
         ) : viewMode === 'map' || isGenerating ? (
@@ -965,58 +940,98 @@ function App() {
         legend={project && mapMode === 'biomes' && renderMode === 'data' && viewMode === 'map' ? <BiomeLegend theme={mapTheme} /> : null}
       />
 
-      <RightPanel
-        workspaceMode={workspaceMode}
-        collapsed={rightPanelCollapsed}
-        activeTab={rightPanelTab}
-        feedbackStatus={feedbackStatus}
-        inspectorContent={inspectionRecord ? (
-          <PointInspectorPanel
-            record={inspectionRecord}
-            copyStatus={inspectionCopyStatus}
-            onCopy={copyInspectionJson}
-            onClear={() => setInspectionRecord(null)}
-          />
-        ) : null}
-        diagnosticsContent={<DiagnosticsPanel project={project} diagnostics={worldDiagnostics} generatorConfig={config} highestPointTargetActive={Boolean(highestPointTarget)} onToggleHighestPoint={toggleHighestPointTarget} />}
-        project={project}
-        exportResolution={exportResolution}
-        tilePresetId={tilePresetId}
-        tileWidth={tileWidth}
-        tileHeight={tileHeight}
-        tileFeatures={tileFeatures}
-        tileFeatureLabels={tileFeatureLabels}
-        tileHexScaleMiles={tileHexScaleMiles}
-        vttResolution={vttResolution}
-        resolutionOptions={resolutionOptions}
-        vttGridEnabled={vttGridEnabled}
-        vttHexSizeMilesInput={vttHexSizeMilesInput}
-        vttHexMetrics={vttHexMetrics}
-        hexSvgTask={exportTasks.hexSvg}
-        tileJsonTask={exportTasks.tileJson}
-        vttTask={exportTasks.vtt}
-        onCollapsedChange={setRightPanelCollapsed}
-        onTabChange={setRightPanelTab}
-        onFeedback={openFeedback}
-        onTilePresetChange={applyTilePreset}
-        onTileWidthChange={(width) => {
-          setTilePresetId('custom');
-          setTileWidth(width);
-        }}
-        onTileHeightChange={(height) => {
-          setTilePresetId('custom');
-          setTileHeight(height);
-        }}
-        onTileFeatureChange={toggleTileFeature}
-        onVttResolutionChange={setVttResolution}
-        onVttGridEnabledChange={setVttGridEnabled}
-        onVttHexSizeInputChange={setVttHexSizeMilesInput}
-        onCommitVttHexSize={() => commitVttHexSizeMiles()}
-        renderExportButton={(props) => <ExportButton {...props} />}
-        onDownloadHexGridSvg={downloadHexGridSvg}
-        onDownloadHexTileJson={downloadHexTileJson}
-        onDownloadVttPackage={downloadVttPackage}
-      />
+
+<RightPanel
+  workspaceMode={workspaceMode}
+  developerMode={leftPanelTab === 'dev'}
+  collapsed={rightPanelCollapsed}
+  feedbackStatus={feedbackStatus}
+  inspectorContent={inspectionRecord ? (
+    <PointInspectorPanel
+      record={inspectionRecord}
+      copyStatus={inspectionCopyStatus}
+      onCopy={copyInspectionJson}
+      onClear={() => setInspectionRecord(null)}
+    />
+  ) : null}
+  diagnosticsContent={<DiagnosticsPanel project={project} diagnostics={worldDiagnostics} generatorConfig={config} highestPointTargetActive={Boolean(highestPointTarget)} onToggleHighestPoint={toggleHighestPointTarget} />}
+  project={project}
+  config={config}
+  selectedPreset={selectedPreset}
+  isGenerating={isGenerating}
+  generationStage={generationStage}
+  generationProgress={generationProgress}
+  hexInspection={showHexes && hexInspectionTarget ? {
+    levelId: hexInspectionTarget.levelId,
+    label: hexInspectionTarget.label,
+    nominalHexWidthMiles: hexInspectionTarget.nominalHexWidthMiles,
+    q: hexInspectionTarget.q,
+    r: hexInspectionTarget.r,
+  } : null}
+  commonExportActions={(
+    <div className="export-common-actions">
+      <label className="workspace-inline-setting export-resolution-setting" htmlFor="export-resolution">
+        <span>PNG size</span>
+        <select
+          id="export-resolution"
+          aria-label="PNG export resolution"
+          value={`${exportResolution.width}x${exportResolution.height}`}
+          onChange={(event) => {
+            const resolution = resolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
+            if (resolution) setExportResolution(resolution);
+          }}
+        >
+          {resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}
+        </select>
+      </label>
+      <div className="tile-export-actions common-file-actions">
+        <ExportButton icon={<Image size={16} />} label="PNG" task={exportTasks.png} disabled={!project} title="Export PNG" onClick={downloadPng} />
+        <ExportButton icon={<Layers size={16} />} label="SVG" task={exportTasks.svg} disabled={!project} title="Export simplified SVG" onClick={downloadSvg} />
+        <ExportButton icon={<FileJson size={16} />} label="JSON" task={exportTasks.json} disabled={!project} title="Export JSON" onClick={downloadJson} />
+        <ExportButton icon={<Save size={16} />} label=".wforge" task={exportTasks.wforge} disabled={!project} title="Save .wforge package" onClick={downloadPackage} />
+      </div>
+    </div>
+  )}
+  tilePresetId={tilePresetId}
+  tileWidth={tileWidth}
+  tileHeight={tileHeight}
+  tileFeatures={tileFeatures}
+  tileFeatureLabels={tileFeatureLabels}
+  tileHexScaleMiles={tileHexScaleMiles}
+  vttResolution={vttResolution}
+  resolutionOptions={resolutionOptions}
+  vttGridEnabled={vttGridEnabled}
+  vttHexSizeMilesInput={vttHexSizeMilesInput}
+  vttHexMetrics={vttHexMetrics}
+  pngTask={exportTasks.png}
+  svgTask={exportTasks.svg}
+  jsonTask={exportTasks.json}
+  wforgeTask={exportTasks.wforge}
+  hexSvgTask={exportTasks.hexSvg}
+  tileJsonTask={exportTasks.tileJson}
+  vttTask={exportTasks.vtt}
+  onCollapsedChange={setRightPanelCollapsed}
+  onFeedback={openFeedback}
+  onClearHexInspection={() => setHexInspectionTarget(null)}
+  onTilePresetChange={applyTilePreset}
+  onTileWidthChange={(width) => {
+    setTilePresetId('custom');
+    setTileWidth(width);
+  }}
+  onTileHeightChange={(height) => {
+    setTilePresetId('custom');
+    setTileHeight(height);
+  }}
+  onTileFeatureChange={toggleTileFeature}
+  onVttResolutionChange={setVttResolution}
+  onVttGridEnabledChange={setVttGridEnabled}
+  onVttHexSizeInputChange={setVttHexSizeMilesInput}
+  onCommitVttHexSize={() => commitVttHexSizeMiles()}
+  renderExportButton={(props) => <ExportButton {...props} />}
+  onDownloadHexGridSvg={downloadHexGridSvg}
+  onDownloadHexTileJson={downloadHexTileJson}
+  onDownloadVttPackage={downloadVttPackage}
+/>
       {configOpen && (
         <ContentConfigModal
           library={contentLibrary}

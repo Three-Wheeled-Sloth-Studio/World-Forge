@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.31</p>
+            <h3>One context at a time</h3>
+            <ul>
+              <li>Build, Explore, Export, and Dev now route the right panel from the shared workspace state.</li>
+              <li>Explore shows one active inspector or the world summary instead of stacking unrelated panels.</li>
+              <li>Export now contains common files, PNG resolution, hex tiles, VTT options, and visible task feedback.</li>
+              <li>.wforge opening moved to My Worlds, while diagnostics moved behind the Dev workspace.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.30</p>
             <h3>Build controls that describe what they do</h3>
             <ul>
