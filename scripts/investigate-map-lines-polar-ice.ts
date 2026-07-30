@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import {
   biomeNames,
   buildCubedSphereTopology,
@@ -17,6 +18,10 @@ import {
 import { createDefaultConfig, type TerrainDiagnosticSnapshot } from '../packages/generator-core/src/index';
 import { generateProjectWithNativeStages } from '../packages/generator-core/src/nativeStagePipeline';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '../packages/generator-core/src/systemOrbitPreset';
+import {
+  setGenerationPerformanceTraceSink,
+  type GenerationPerformanceTraceRecord
+} from '../packages/generator-core/src/generationPerformanceTrace';
 
 type ReproductionCase = {
   starSeed: string;
@@ -58,7 +63,9 @@ type LatitudeBand = {
 type CaseReport = {
   seed: string;
   preset: string;
+  run: number;
   generationMs: number;
+  deterministicSignature: string;
   sourceCommit?: string;
   selectedValues: Record<string, number | string>;
   riverDiagnostics: {
@@ -80,6 +87,9 @@ type CaseReport = {
     latitudeBands: LatitudeBand[];
   };
   biomeCounts: Partial<Record<Biome, number>>;
+  graphNodeTimings: Array<{ name: string; ms: number }>;
+  phaseTimings: Array<{ name: string; ms: number }>;
+  performanceTrace?: Array<GenerationPerformanceTraceRecord & { invocationCount: number }>;
 };
 
 const defaultCases: ReproductionCase[] = [
@@ -95,32 +105,59 @@ const requestedResolution = readOption('resolution');
 const outputResolution = requestedResolution ? parseResolution(requestedResolution) : { width: 512, height: 256 };
 const topologyResolution = Number(readOption('topology') ?? 64);
 const outputRoot = readOption('output') ?? 'map-lines-polar-ice';
+const measuredRuns = positiveIntegerOption('runs', 1);
+const warmupRuns = nonNegativeIntegerOption('warmups', 0);
+const skipImages = process.argv.includes('--skip-images');
+const profileGeneration = process.argv.includes('--profile');
 
 const outputDir = join('refs', 'testing', outputRoot);
 mkdirSync(outputDir, { recursive: true });
 const reports: CaseReport[] = [];
 
 for (const item of cases) {
-  const startedAt = performance.now();
-  const config = reproductionConfig(item);
-  const terrainSnapshots: TerrainDiagnosticSnapshot[] = [];
-  console.log(`Generating ${item.starSeed}/${item.worldSeed} ${item.preset}...`);
-  const project = reconcileSystemOrbitPresets(generateProjectWithNativeStages(config, {
-    appVersion: 'map-lines-polar-ice-investigation',
-    onTerrainDiagnosticSnapshot: (snapshot) => terrainSnapshots.push(snapshot)
-  }));
-  const generationMs = performance.now() - startedAt;
-  const slug = `${item.starSeed}-${item.worldSeed}-${item.preset.toLowerCase().replaceAll(' ', '-')}`;
-  writeLayerImages(project, slug, terrainSnapshots);
-  const report = summarizeCase(project, item, generationMs);
-  reports.push(report);
-  writeFileSync(join(outputDir, `${slug}.json`), `${JSON.stringify(report, null, 2)}\n`);
-  console.log(
-    `${slug}: ${report.riverDiagnostics.invalidTopologyJumps} invalid topology jumps, `
-    + `${report.riverDiagnostics.longProjectedNeighborSegments} long projected neighbor spans, `
-    + `${(report.iceDiagnostics.northPolarIceShare * 100).toFixed(1)}% north / `
-    + `${(report.iceDiagnostics.southPolarIceShare * 100).toFixed(1)}% south polar ice`
-  );
+  const totalRuns = warmupRuns + measuredRuns;
+  for (let runIndex = 0; runIndex < totalRuns; runIndex += 1) {
+    const warmup = runIndex < warmupRuns;
+    const measuredRun = runIndex - warmupRuns + 1;
+    const startedAt = performance.now();
+    const config = reproductionConfig(item);
+    const terrainSnapshots: TerrainDiagnosticSnapshot[] = [];
+    const performanceTrace: GenerationPerformanceTraceRecord[] = [];
+    setGenerationPerformanceTraceSink(profileGeneration ? (record) => performanceTrace.push(record) : undefined);
+    console.log(
+      `Generating ${item.starSeed}/${item.worldSeed} ${item.preset} `
+      + `${warmup ? `warm-up ${runIndex + 1}/${warmupRuns}` : `measured ${measuredRun}/${measuredRuns}`}...`
+    );
+    let generatedProject: ReturnType<typeof generateProjectWithNativeStages>;
+    try {
+      generatedProject = generateProjectWithNativeStages(config, {
+        appVersion: 'map-lines-polar-ice-investigation',
+        onTerrainDiagnosticSnapshot: skipImages ? undefined : (snapshot) => terrainSnapshots.push(snapshot)
+      });
+    } finally {
+      setGenerationPerformanceTraceSink(undefined);
+    }
+    const project = reconcileSystemOrbitPresets(generatedProject);
+    const generationMs = performance.now() - startedAt;
+    if (warmup) {
+      console.log(`Warm-up completed in ${generationMs.toFixed(1)} ms.`);
+      continue;
+    }
+    const baseSlug = `${item.starSeed}-${item.worldSeed}-${item.preset.toLowerCase().replaceAll(' ', '-')}`;
+    const slug = measuredRuns > 1 ? `${baseSlug}-run${measuredRun}` : baseSlug;
+    if (!skipImages) writeLayerImages(project, slug, terrainSnapshots);
+    const report = summarizeCase(project, item, measuredRun, generationMs);
+    if (profileGeneration) report.performanceTrace = aggregatePerformanceTrace(performanceTrace);
+    reports.push(report);
+    writeFileSync(join(outputDir, `${slug}.json`), `${JSON.stringify(report, null, 2)}\n`);
+    console.log(
+      `${slug}: ${generationMs.toFixed(1)} ms, `
+      + `${report.riverDiagnostics.invalidTopologyJumps} invalid topology jumps, `
+      + `${report.riverDiagnostics.longProjectedNeighborSegments} long projected neighbor spans, `
+      + `${(report.iceDiagnostics.northPolarIceShare * 100).toFixed(1)}% north / `
+      + `${(report.iceDiagnostics.southPolarIceShare * 100).toFixed(1)}% south polar ice`
+    );
+  }
 }
 
 writeFileSync(join(outputDir, 'baseline-report.json'), `${JSON.stringify({
@@ -129,6 +166,10 @@ writeFileSync(join(outputDir, 'baseline-report.json'), `${JSON.stringify({
   workflowId: 'core.performance-foundation',
   resolution: outputResolution,
   topologyResolution,
+  warmupRuns,
+  measuredRuns,
+  medianGenerationMs: median(reports.map((report) => report.generationMs)),
+  deterministicSignatures: [...new Set(reports.map((report) => report.deterministicSignature))],
   reports
 }, null, 2)}\n`);
 
@@ -191,7 +232,7 @@ function reproductionPresetRanges(preset: ReproductionCase['preset']): Parameter
   };
 }
 
-function summarizeCase(project: WorldProject, item: ReproductionCase, generationMs: number): CaseReport {
+function summarizeCase(project: WorldProject, item: ReproductionCase, run: number, generationMs: number): CaseReport {
   const world = project.primaryWorld;
   const topology = buildCubedSphereTopology(world.topology.resolution);
   const riverDiagnostics = summarizeRiverPaths(world, topology);
@@ -205,7 +246,9 @@ function summarizeCase(project: WorldProject, item: ReproductionCase, generation
   return {
     seed: `${item.starSeed}:${item.worldSeed}`,
     preset: item.preset,
+    run,
     generationMs: round(generationMs, 2),
+    deterministicSignature: projectSignature(project),
     sourceCommit: project.sourceCommit,
     selectedValues: Object.fromEntries(
       Object.entries(project.selectedValues)
@@ -213,13 +256,81 @@ function summarizeCase(project: WorldProject, item: ReproductionCase, generation
     ),
     riverDiagnostics,
     iceDiagnostics,
-    biomeCounts
+    biomeCounts,
+    graphNodeTimings: [...(project.diagnostics?.graph?.nodes ?? [])]
+      .map((node) => ({ name: node.nodeId, ms: round(node.durationMs, 3) }))
+      .sort((left, right) => right.ms - left.ms),
+    phaseTimings: [...(project.diagnostics?.phases ?? [])]
+      .map((phase) => ({ name: phase.name, ms: round(phase.ms, 3) }))
+      .sort((left, right) => right.ms - left.ms)
   };
+}
+
+function projectSignature(project: WorldProject): string {
+  const hash = createHash('sha256');
+  const world = project.primaryWorld;
+  for (const layer of [
+    world.topologyLayers.elevation,
+    world.topologyLayers.water,
+    world.topologyLayers.biomes,
+    world.topologyLayers.ice,
+    world.layers.elevation,
+    world.layers.water,
+    world.layers.biomes,
+    world.layers.ice
+  ]) {
+    hash.update(Buffer.from(layer.buffer, layer.byteOffset, layer.byteLength));
+  }
+  return hash.digest('hex');
 }
 
 function readOption(name: string): string | undefined {
   const prefix = `--${name}=`;
   return process.argv.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
+}
+
+function positiveIntegerOption(name: string, fallback: number): number {
+  const value = Number(readOption(name) ?? fallback);
+  if (!Number.isInteger(value) || value < 1) throw new Error(`--${name} must be a positive integer.`);
+  return value;
+}
+
+function nonNegativeIntegerOption(name: string, fallback: number): number {
+  const value = Number(readOption(name) ?? fallback);
+  if (!Number.isInteger(value) || value < 0) throw new Error(`--${name} must be a non-negative integer.`);
+  return value;
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  if (sorted.length === 0) return 0;
+  const middle = Math.floor(sorted.length / 2);
+  return round(sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2, 2);
+}
+
+function aggregatePerformanceTrace(
+  records: GenerationPerformanceTraceRecord[]
+): Array<GenerationPerformanceTraceRecord & { invocationCount: number }> {
+  const aggregated = new Map<string, GenerationPerformanceTraceRecord & { invocationCount: number }>();
+  for (const record of records) {
+    const current = aggregated.get(record.name) ?? {
+      ...record,
+      elapsedMs: 0,
+      invocationCount: 0,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    };
+    current.elapsedMs += record.elapsedMs;
+    current.invocationCount += 1;
+    current.topologyCells = Math.max(current.topologyCells ?? 0, record.topologyCells ?? 0);
+    current.activeCells = Math.max(current.activeCells ?? 0, record.activeCells ?? 0);
+    current.fullTopologyPasses = (current.fullTopologyPasses ?? 0) + (record.fullTopologyPasses ?? 0);
+    current.allocatedBufferBytes = (current.allocatedBufferBytes ?? 0) + (record.allocatedBufferBytes ?? 0);
+    aggregated.set(record.name, current);
+  }
+  return [...aggregated.values()]
+    .map((record) => ({ ...record, elapsedMs: round(record.elapsedMs, 3) }))
+    .sort((left, right) => right.elapsedMs - left.elapsedMs);
 }
 
 function parseCase(value: string): ReproductionCase {

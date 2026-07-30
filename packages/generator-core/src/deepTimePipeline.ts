@@ -29,6 +29,7 @@ import { projectTopologyRiverPath } from './riverPathProjection';
 import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleField';
 import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
 import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -916,11 +917,20 @@ function applyAuthoritativeFragmentTransforms(
   let movingFragmentCount = 0;
   let displacementTotal = 0;
   let maxDisplacement = 0;
-  const plateRotations = buildRigidPlateRotations(
-    sortedSeeds,
-    plateLookup.motionX,
-    plateLookup.motionY,
-    project.selectedValues.systemAgeGy
+  const plateRotations = traceGenerationPerformance(
+    'rigid-plate-rotation-construction',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: sortedSeeds.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => buildRigidPlateRotations(
+      sortedSeeds,
+      plateLookup.motionX,
+      plateLookup.motionY,
+      project.selectedValues.systemAgeGy
+    )
   );
 
   for (const seed of sortedSeeds) {
@@ -1007,7 +1017,17 @@ function applyAuthoritativeFragmentTransforms(
       vacatedSourceMask[cell] = 1;
     }
   }
-  stabilizeTopologyField(elevation, topology, vacatedSourceMask);
+  traceGenerationPerformance(
+    'topology-field-stabilization',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: countMarkedCells(vacatedSourceMask),
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0,
+      parent: true
+    },
+    () => stabilizeTopologyField(elevation, topology, vacatedSourceMask)
+  );
 
   let ownershipChangedCells = 0;
   let vacatedSourceCells = 0;
@@ -2879,7 +2899,17 @@ export function applyDeepTimeFoundation(
   const prePlacementVolcanism = options.terrainDiagnosticBypasses?.fragmentPlacement
     ? new Float32Array(mutable.primaryWorld.topologyLayers.volcanism)
     : undefined;
-  const fragmentPlacement = applyAuthoritativeFragmentTransforms(mutable, fragmentLineageSeeds, topology, plateLookup);
+  const fragmentPlacement = traceGenerationPerformance(
+    'authoritative-fragment-transforms',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: fragmentLineageSeeds.reduce((total, seed) => total + seed.cellCount, 0),
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0,
+      parent: true
+    },
+    () => applyAuthoritativeFragmentTransforms(mutable, fragmentLineageSeeds, topology, plateLookup)
+  );
   if (prePlacementElevation && prePlacementPlates && prePlacementVolcanism) {
     mutable.primaryWorld.topologyLayers.elevation.set(prePlacementElevation);
     mutable.primaryWorld.topologyLayers.plates.set(prePlacementPlates);
@@ -2933,14 +2963,24 @@ export function applyDeepTimeFoundation(
   );
   onProgress?.({ phase: 'reconciling', progress: 0.77, message: 'Applying fragment-history terrain response' });
   const applyFragmentHistoryTerrainResponse = !options.terrainDiagnosticBypasses?.fragmentHistoryTerrainResponse;
-  const fragmentHistory = buildFragmentHistoryDiagnostics(mutable, topology, plateLookup, fragmentLineageSeeds, {
-    applyTerrainResponse: applyFragmentHistoryTerrainResponse,
-    terrainResponseScale: 0.95,
-    applyVolcanismResponse: true,
-    volcanismResponseScale: 0.35,
-    surfaceAgingSampleCount,
-    directTransformDiagnostics: fragmentPlacement
-  });
+  const fragmentHistory = traceGenerationPerformance(
+    'fragment-history-deformation',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: fragmentLineageSeeds.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0,
+      parent: true
+    },
+    () => buildFragmentHistoryDiagnostics(mutable, topology, plateLookup, fragmentLineageSeeds, {
+      applyTerrainResponse: applyFragmentHistoryTerrainResponse,
+      terrainResponseScale: 0.95,
+      applyVolcanismResponse: true,
+      volcanismResponseScale: 0.35,
+      surfaceAgingSampleCount,
+      directTransformDiagnostics: fragmentPlacement
+    })
+  );
   emitTerrainDiagnosticSnapshot(
     options.onTerrainDiagnosticSnapshot,
     'post-fragment-history',
@@ -2964,7 +3004,16 @@ export function applyDeepTimeFoundation(
 
   onProgress?.({ phase: 'reconciling', progress: 0.93, message: 'Reclassifying final biomes and projecting aged topology' });
   const topologyBiomeCorrections = classifyTopologyBiomes(mutable);
-  const projectedCellsRefreshed = projectFinalTopology(mutable, topology);
+  const projectedCellsRefreshed = traceGenerationPerformance(
+    'topology-to-raster-final-projection',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: mutable.primaryWorld.layers.elevation.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => projectFinalTopology(mutable, topology)
+  );
   applyBasinAwareCirculation(mutable);
   mutable.primaryWorld.rivers = projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers);
   const consistency = refreshMetrics(mutable);

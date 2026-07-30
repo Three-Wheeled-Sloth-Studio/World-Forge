@@ -84,6 +84,9 @@ not the narrow resolution-dependent streak class corrected here. Replacing
 those large forms requires a directional stress and rift-shape model rather
 than a wider cleanup filter.
 
+The High-path performance profile and bounded repair optimization are recorded
+in [High-Resolution Performance Recovery](high-resolution-performance-recovery-v0.3.26.md).
+
 Run the exact reproduction with:
 
 ```text

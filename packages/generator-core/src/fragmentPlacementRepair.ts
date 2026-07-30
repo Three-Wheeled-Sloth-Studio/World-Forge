@@ -1,5 +1,6 @@
 import type { CubedSphereTopology } from '@world-forge/shared';
 import { buildTangentSphericalRotation, type RigidSphericalRotation } from './fragmentSphericalTransform';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 export type FragmentPlacementRepairInput = {
   sourceCells: Uint8Array;
@@ -79,27 +80,38 @@ export function repairVacatedFragmentCorridors(input: FragmentPlacementRepairInp
 
   const maxPasses = Math.max(1, Math.ceil(topology.resolution / 64));
   let repaired = 0;
-  for (let pass = 0; pass < maxPasses; pass += 1) {
-    const sourceElevation = new Float32Array(elevation);
-    const restore: number[] = [];
-    for (let cell = 0; cell < topology.cellCount; cell += 1) {
-      if (!eligible[cell]) continue;
-      const left = topology.neighbors[cell * 4];
-      const right = topology.neighbors[cell * 4 + 1];
-      const up = topology.neighbors[cell * 4 + 2];
-      const down = topology.neighbors[cell * 4 + 3];
-      const horizontalLand = isLand(sourceElevation, left, seaLevel) && isLand(sourceElevation, right, seaLevel);
-      const verticalLand = isLand(sourceElevation, up, seaLevel) && isLand(sourceElevation, down, seaLevel);
-      if (horizontalLand || verticalLand) restore.push(cell);
+  const eligibleCellIndices = markedCellIndices(eligible);
+  traceGenerationPerformance(
+    'vacated-fragment-corridor-repair',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: eligibleCellIndices.length,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: eligibleCellIndices.length * Uint32Array.BYTES_PER_ELEMENT
+    },
+    () => {
+      for (let pass = 0; pass < maxPasses; pass += 1) {
+        const restore: number[] = [];
+        for (const cell of eligibleCellIndices) {
+          if (!eligible[cell]) continue;
+          const left = topology.neighbors[cell * 4];
+          const right = topology.neighbors[cell * 4 + 1];
+          const up = topology.neighbors[cell * 4 + 2];
+          const down = topology.neighbors[cell * 4 + 3];
+          const horizontalLand = isLand(elevation, left, seaLevel) && isLand(elevation, right, seaLevel);
+          const verticalLand = isLand(elevation, up, seaLevel) && isLand(elevation, down, seaLevel);
+          if (horizontalLand || verticalLand) restore.push(cell);
+        }
+        if (restore.length === 0) break;
+        for (const cell of restore) {
+          elevation[cell] = originalElevation[cell];
+          volcanism[cell] = originalVolcanism[cell];
+          eligible[cell] = 0;
+          repaired += 1;
+        }
+      }
     }
-    if (restore.length === 0) break;
-    for (const cell of restore) {
-      elevation[cell] = originalElevation[cell];
-      volcanism[cell] = originalVolcanism[cell];
-      eligible[cell] = 0;
-      repaired += 1;
-    }
-  }
+  );
   return repaired;
 }
 
@@ -109,4 +121,12 @@ function isLand(elevation: Float32Array, cell: number, seaLevel: number): boolea
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function markedCellIndices(source: Uint8Array): number[] {
+  const result: number[] = [];
+  for (let cell = 0; cell < source.length; cell += 1) {
+    if (source[cell]) result.push(cell);
+  }
+  return result;
 }

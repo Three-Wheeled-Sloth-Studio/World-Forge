@@ -1,4 +1,5 @@
 import { clamp, type CubedSphereTopology } from '@world-forge/shared';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 export type PermanentIceClassificationInput = {
   ice: Uint8Array;
@@ -19,6 +20,19 @@ export type PermanentIceClassification = {
 };
 
 export function classifyPermanentIce(input: PermanentIceClassificationInput): PermanentIceClassification {
+  return traceGenerationPerformance(
+    'permanent-ice-classification',
+    {
+      topologyCells: input.topology.cellCount,
+      activeCells: input.ice.length,
+      fullTopologyPasses: 4,
+      allocatedBufferBytes: input.ice.length * (Float32Array.BYTES_PER_ELEMENT + Uint8Array.BYTES_PER_ELEMENT * 2)
+    },
+    () => classifyPermanentIceUnprofiled(input)
+  );
+}
+
+function classifyPermanentIceUnprofiled(input: PermanentIceClassificationInput): PermanentIceClassification {
   const {
     ice,
     elevation,

@@ -12,6 +12,7 @@ import {
 import type { DeepTimeProject, PlanetaryDynamicsModel, StellarActivityClass, StellarModel } from './deepTimePipeline';
 import { sampleNumericDistribution, type NumericDistribution, type RandomSource } from './numericDistribution';
 import { classifyPermanentIce } from './permanentIce';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 type StarPresetId = 'sol-like' | 'habitable' | 'exotic';
 type ExtendedGenerationConfig = GenerationConfig & {
@@ -242,7 +243,16 @@ function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarM
   }
 
   project.primaryWorld.deepTime.persistentIceCells = iceClassification.iceCells;
-  projectSystemOrbitLayers(project, topology);
+  traceGenerationPerformance(
+    'topology-to-raster-system-orbit-reprojection',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: world.layers.elevation.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => projectSystemOrbitLayers(project, topology)
+  );
 
   let iceCount = 0;
   const biomeCounts = Object.fromEntries(biomeNames.map((biome) => [biome, 0])) as Record<string, number>;
