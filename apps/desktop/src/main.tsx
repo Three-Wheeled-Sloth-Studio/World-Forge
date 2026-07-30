@@ -42,6 +42,7 @@ import { MyWorldsPanel } from './worlds/MyWorldsPanel';
 import { useWorldLibraryCommands } from './worlds/useWorldLibraryCommands';
 import { GeneratorPanel } from './generator/GeneratorPanel';
 import { WorldWorkspace } from './workspace/WorldWorkspace';
+import { workspaceModeForProject, type WorkspaceMode } from './workspace/workspaceModes';
 import { RightPanel } from './panels/RightPanel';
 import { DiagnosticsPanel, Metric, PointInspectorPanel } from './diagnostics/DiagnosticsPanels';
 import { ContentConfigModal, type ConfigTab } from './config/ContentConfigModal';
@@ -316,6 +317,7 @@ function App() {
   const storedUi = useMemo(() => normalizeWorkspaceUiSettings(storedWorkspace.ui), [storedWorkspace.ui]);
   const [config, setConfig] = useState<GenerationConfig>(() => normalizeGenerationConfig(storedWorkspace.config ?? defaultHighConfig()));
   const [project, setProject] = useState<WorldProject | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => workspaceModeForProject(Boolean(project)));
   const [contentLibrary, setContentLibrary] = useState<ContentLibraryConfig>(() => normalizeContentLibrary(storedWorkspace.contentLibrary ?? structuredClone(defaultContentLibrary)));
   const [savedMaps, setSavedMaps] = useState<SavedMapRecord[]>(() => storedWorkspace.savedMaps ?? []);
   const [identity, setIdentity] = useState<LocalUserIdentity>(() => loadIdentity());
@@ -359,6 +361,14 @@ function App() {
   const mapFrameRef = useRef<HTMLDivElement>(null);
   const mapPanRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number; moved: boolean } | null>(null);
   const suppressNextMapClickRef = useRef(false);
+  const acceptProject = useCallback((nextProject: WorldProject) => {
+    setProject(nextProject);
+    setWorkspaceMode(workspaceModeForProject(true));
+  }, []);
+  const clearProject = useCallback(() => {
+    setProject(null);
+    setWorkspaceMode(workspaceModeForProject(false));
+  }, []);
   const devGraph = useDevGraphWorkspace();
   const mapTheme = useMemo(() => contentLibraryTheme(contentLibrary), [contentLibrary]);
   const {
@@ -397,7 +407,7 @@ function App() {
   const generation = useGenerationWorkflow({
     canvasRef,
     previousProject: project,
-    onProjectGenerated: setProject
+    onProjectGenerated: acceptProject
   });
   const { isGenerating, generationProgress, generationStage, generationNodeProgress } = generation;
 
@@ -561,7 +571,7 @@ function App() {
     setCloudSync,
     workspace: workspaceSettings,
     applyPulledWorkspace,
-    clearProject: () => setProject(null)
+    clearProject
   });
   const {
     worldLibraryStatus,
@@ -574,7 +584,7 @@ function App() {
     setProject,
     setSavedMaps,
     onWorldLoaded: (loaded) => {
-      setProject(loaded);
+      acceptProject(loaded);
       setConfig(normalizeGenerationConfig(loaded.config));
       setInspectionRecord(null);
       setHexInspectionTarget(null);
@@ -597,7 +607,7 @@ function App() {
   const openPackage = async (file?: File) => {
     if (!file) return;
     const parsed = await importWforge(file);
-    setProject(parsed);
+    acceptProject(parsed);
     setConfig(normalizeGenerationConfig(parsed.config));
     setInspectionRecord(null);
     setHexInspectionTarget(null);
@@ -833,6 +843,7 @@ function App() {
         </div>
         {leftPanelTab === 'generator' ? (
           <GeneratorPanel
+            workspaceMode={workspaceMode}
             config={config}
             selectedPreset={selectedPreset}
             presetLabels={worldPresets.map((preset) => preset.label)}
@@ -880,6 +891,8 @@ function App() {
 
       <WorldWorkspace
         projectName={leftPanelTab === 'dev' ? 'Developer workspace' : project?.projectName}
+        workspaceMode={workspaceMode}
+        onWorkspaceModeChange={setWorkspaceMode}
         isGenerating={isGenerating}
         generationStage={generationStage}
         generationProgress={generationProgress}
@@ -959,6 +972,7 @@ function App() {
       />
 
       <RightPanel
+        workspaceMode={workspaceMode}
         collapsed={rightPanelCollapsed}
         activeTab={rightPanelTab}
         feedbackStatus={feedbackStatus}

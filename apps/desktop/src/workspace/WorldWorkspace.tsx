@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useEffect, useState, type ReactNode } from 'react';
 import { Cloud, Globe2, Hexagon, Map, Search, Waves, Waypoints } from 'lucide-react';
 import type { CoastlineTreatment, MapMode, RenderMode } from '@world-forge/renderer';
 import {
@@ -13,6 +13,7 @@ export type WorkspaceGlobeDebugMode = 'final' | 'albedo' | 'lit' | 'water-mask' 
 
 export type WorldWorkspaceProps = {
   projectName?: string;
+  workspaceMode: WorkspaceMode;
   isGenerating: boolean;
   generationStage: string;
   generationProgress: number;
@@ -41,6 +42,7 @@ export type WorldWorkspaceProps = {
   developerMode?: boolean;
   mapContent: ReactNode;
   legend?: ReactNode;
+  onWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onViewModeChange: (mode: WorkspaceViewMode) => void;
   onShowRiversChange: (visible: boolean) => void;
   onShowPlatesChange: (visible: boolean) => void;
@@ -55,6 +57,7 @@ export type WorldWorkspaceProps = {
 
 export function WorldWorkspace({
   projectName,
+  workspaceMode,
   isGenerating,
   generationStage,
   generationProgress,
@@ -76,6 +79,7 @@ export function WorldWorkspace({
   developerMode = false,
   mapContent,
   legend,
+  onWorkspaceModeChange,
   onViewModeChange,
   onShowRiversChange,
   onShowPlatesChange,
@@ -87,9 +91,6 @@ export function WorldWorkspace({
   onCoastlineTreatmentChange
 }: WorldWorkspaceProps) {
   const isDeveloperMode = developerMode || projectName === 'Developer workspace';
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(projectName ? 'explore' : 'build');
-  const previousProjectNameRef = useRef(projectName);
-  const wasGeneratingRef = useRef(isGenerating);
   const [zoomMenu, setZoomMenu] = useState<{ x: number; y: number } | null>(null);
   const zoomStops = [0.75, 1, 1.5, 2.25, 4, 5.5, 8];
   const visibleMapMode = normalizeUserFacingMapMode(mapMode);
@@ -99,13 +100,6 @@ export function WorldWorkspace({
     if (!isDeveloperMode && visibleMapMode !== mapMode) onMapModeChange(visibleMapMode);
   }, [isDeveloperMode, mapMode, onMapModeChange, visibleMapMode]);
 
-  useEffect(() => {
-    const projectAppeared = !previousProjectNameRef.current && Boolean(projectName);
-    const generationCompleted = wasGeneratingRef.current && !isGenerating && Boolean(projectName);
-    if (projectAppeared || generationCompleted) setWorkspaceMode('explore');
-    previousProjectNameRef.current = projectName;
-    wasGeneratingRef.current = isGenerating;
-  }, [isGenerating, projectName]);
 
   const openZoomMenu = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -125,7 +119,7 @@ export function WorldWorkspace({
                   role="tab"
                   aria-selected={workspaceMode === option.id}
                   className={workspaceMode === option.id ? 'active' : ''}
-                  onClick={() => setWorkspaceMode(option.id)}
+                  onClick={() => onWorkspaceModeChange(option.id)}
                 >
                   {option.label}
                 </button>

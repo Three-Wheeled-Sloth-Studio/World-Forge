@@ -6,6 +6,7 @@ import {
   type GenerationWorkflowId
 } from '@world-forge/generator-core/workflows';
 import type { GenerationConfig } from '@world-forge/shared';
+import type { WorkspaceMode } from '../workspace/workspaceModes';
 import './generatorPanel.css';
 
 export type StarPresetId = 'sol-like' | 'habitable';
@@ -21,6 +22,7 @@ export type ResolutionOption = { label: string; width: number; height: number };
 export type GeneratorProfileStatus = { className: string; label: string; title: string };
 
 export type GeneratorPanelProps = {
+  workspaceMode: WorkspaceMode;
   config: GenerationConfig;
   selectedPreset: string;
   presetLabels: string[];
@@ -60,7 +62,7 @@ function selectedValuesForNewSeed(config: GenerationConfig): GenerationConfig['s
 
 export function GeneratorPanel(props: GeneratorPanelProps) {
   const {
-    config, selectedPreset, presetLabels, previewResolution, previewResolutionOptions, exportResolution,
+    workspaceMode, config, selectedPreset, presetLabels, previewResolution, previewResolutionOptions, exportResolution,
     resolutionOptions, sourceTopologyResolution, invalidRanges, isGenerating, profileStatus,
     onConfigChange, onRandomizeSeed, onGenerate, onOpenSyncSettings, onGenerationResolutionChange,
     onPresetChange, onPreviewResolutionChange, onExportResolutionChange, onOceanToleranceChange
@@ -113,7 +115,7 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
   };
 
   return (
-    <div className="generator-panel simplified-generator" role="tabpanel" aria-label="World generator">
+    <div className="generator-panel simplified-generator" role="tabpanel" aria-label="World generator" data-workspace-mode={workspaceMode}>
       <section className="generator-section" aria-labelledby="workflow-settings-heading">
         <h3 id="workflow-settings-heading">Workflow</h3>
         <div className="generator-field-row">

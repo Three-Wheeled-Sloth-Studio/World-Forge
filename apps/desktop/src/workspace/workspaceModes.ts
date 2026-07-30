@@ -2,6 +2,10 @@ import type { MapMode } from '@world-forge/renderer';
 
 export type WorkspaceMode = 'build' | 'explore' | 'export';
 
+export function workspaceModeForProject(hasProject: boolean): WorkspaceMode {
+  return hasProject ? 'explore' : 'build';
+}
+
 export const workspaceModeOptions: ReadonlyArray<{
   id: WorkspaceMode;
   label: string;

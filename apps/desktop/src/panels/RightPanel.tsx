@@ -5,6 +5,7 @@ import { ShellStatusControls } from '../shell/ShellStatusControls';
 import { WorldNameEditor } from '../worlds/WorldNameEditor';
 import { requestWorldRename } from '../worlds/worldIdentityBridge';
 import { GeographicHierarchyPanel } from '../regions/GeographicHierarchyPanel';
+import type { WorkspaceMode } from '../workspace/workspaceModes';
 
 type RightPanelTab = 'world' | 'hex' | 'diagnostics';
 
@@ -12,6 +13,7 @@ type ResolutionOption = { label: string; width: number; height: number };
 type ExportTaskState = { status: 'idle' | 'running' | 'complete' | 'error'; progress: number; message: string };
 
 type RightPanelProps = {
+  workspaceMode: WorkspaceMode;
   collapsed: boolean;
   activeTab: RightPanelTab;
   feedbackStatus: string;
@@ -63,7 +65,7 @@ function formatElapsedMinutesSeconds(ms: number): string {
 
 export function RightPanel(props: RightPanelProps) {
   const {
-    collapsed, activeTab, feedbackStatus, inspectorContent, diagnosticsContent, project, exportResolution,
+    workspaceMode, collapsed, activeTab, feedbackStatus, inspectorContent, diagnosticsContent, project, exportResolution,
     tilePresetId, tileWidth, tileHeight, tileFeatures, tileFeatureLabels, tileHexScaleMiles, vttResolution,
     resolutionOptions, vttGridEnabled, vttHexSizeMilesInput, vttHexMetrics, hexSvgTask, tileJsonTask, vttTask,
     onCollapsedChange, onTabChange, onFeedback, onTilePresetChange, onTileWidthChange, onTileHeightChange,
@@ -74,7 +76,7 @@ export function RightPanel(props: RightPanelProps) {
   return (
     <>
       <ShellStatusControls onFeedback={onFeedback} />
-      <aside className={`summary ${collapsed ? 'panel-collapsed' : ''}`} aria-label="World details and exports">
+      <aside className={`summary ${collapsed ? 'panel-collapsed' : ''}`} aria-label="World details and exports" data-workspace-mode={workspaceMode}>
         <button type="button" title={collapsed ? 'Expand details panel' : 'Collapse details panel'} aria-label={collapsed ? 'Expand details panel' : 'Collapse details panel'} className="icon-button panel-toggle right-panel-boundary-toggle" onClick={() => onCollapsedChange(!collapsed)}>
           {collapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
         </button>

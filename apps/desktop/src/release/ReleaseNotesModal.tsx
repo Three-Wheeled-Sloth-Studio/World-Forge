@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.29</p>
+            <h3>One workspace mode owner</h3>
+            <ul>
+              <li>Build, Explore, and Export mode now belongs to the application shell instead of the map component.</li>
+              <li>Generated and opened worlds move into Explore through explicit project-loading paths.</li>
+              <li>The generator and details panels now receive the same mode state for the next contextual-panel increment.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.28</p>
             <h3>World-building workspace modes</h3>
             <ul>
