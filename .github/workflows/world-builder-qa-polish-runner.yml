@@ -1,0 +1,184 @@
+name: World Builder QA Polish Runner
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Load automation script
+        shell: bash
+        run: |
+          git fetch origin automation/world-builder-qa-polish-20260730
+          git show FETCH_HEAD:scripts/automation-world-builder-qa-polish.py > /tmp/automation-world-builder-qa-polish.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply combined-test QA polish
+        run: python /tmp/automation-world-builder-qa-polish.py apply
+
+      - name: Verify repository
+        run: npm run verify 2>&1 | tee /tmp/world-forge-verify.log
+
+      - name: Install Chromium for browser QA
+        run: npx playwright install --with-deps chromium
+
+      - name: Run focused browser QA
+        shell: bash
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/world-forge-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({ headless: true });
+          try {
+            for (const viewport of [{ width: 1920, height: 1080 }, { width: 1440, height: 900 }]) {
+              const context = await browser.newContext({ viewport });
+              const page = await context.newPage();
+              await page.addInitScript(() => {
+                localStorage.setItem('world_forge_identity_v1', JSON.stringify({
+                  schemaVersion: 1,
+                  userId: 'qa-google-user',
+                  profileId: 'qa-google-user',
+                  authToken: '',
+                  displayName: 'QA Google User',
+                  email: 'qa@example.com',
+                  avatarUrl: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2232%22 fill=%22%232b6f73%22/%3E%3Ctext x=%2232%22 y=%2241%22 text-anchor=%22middle%22 font-size=%2228%22 fill=%22white%22%3EQ%3C/text%3E%3C/svg%3E',
+                  externalIds: { googleId: 'qa-google', steamId: '' },
+                  linkedIdentities: [{
+                    provider: 'google',
+                    providerUserId: 'qa-google',
+                    email: 'qa@example.com',
+                    displayName: 'QA Google User',
+                    avatarUrl: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2232%22 fill=%22%232b6f73%22/%3E%3Ctext x=%2232%22 y=%2241%22 text-anchor=%22middle%22 font-size=%2228%22 fill=%22white%22%3EQ%3C/text%3E%3C/svg%3E',
+                    linkedAt: '2026-07-30T00:00:00.000Z'
+                  }],
+                  createdAt: '2026-07-30T00:00:00.000Z',
+                  updatedAt: '2026-07-30T00:00:00.000Z'
+                }));
+              });
+              await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+
+              const account = page.locator('.shell-account-button');
+              const avatar = page.locator('.shell-account-avatar');
+              if (await avatar.count() !== 1 || !(await avatar.isVisible())) throw new Error('Stored Google avatar was not restored in the standalone shell');
+              if (!((await account.getAttribute('title')) ?? '').includes('QA Google User')) throw new Error('Account control lost signed-in identity label');
+
+              const build = page.getByRole('tab', { name: 'Build', exact: true });
+              const explore = page.getByRole('tab', { name: 'Explore', exact: true });
+              const exportMode = page.getByRole('tab', { name: 'Export', exact: true });
+              if (await build.getAttribute('aria-selected') !== 'true') throw new Error('Build was not selected for an empty workspace');
+
+              const toggleBox = await page.locator('.right-panel-boundary-toggle').boundingBox();
+              const titleBox = await page.locator('.build-context .panel-context-header').boundingBox();
+              if (!toggleBox || !titleBox) throw new Error('Could not measure right-panel title clearance');
+              const overlaps = toggleBox.x < titleBox.x + titleBox.width
+                && toggleBox.x + toggleBox.width > titleBox.x
+                && toggleBox.y < titleBox.y + titleBox.height
+                && toggleBox.y + toggleBox.height > titleBox.y;
+              if (overlaps) throw new Error(`Right-panel boundary control overlaps the context title at ${viewport.width}x${viewport.height}`);
+
+              await page.locator('.canvas-wrap').evaluate((element) => { element.dataset.qaMarker = 'preserved'; });
+              await explore.click();
+
+              const layersTrigger = page.getByRole('button', { name: 'Layers and display options' });
+              const layersDialog = page.getByRole('dialog', { name: 'Layers and display options' });
+              await layersTrigger.click();
+              if (await layersDialog.count() !== 1) throw new Error('Layers popover did not open');
+              await page.locator('.workspace-mode-bar > span').click();
+              if (await layersDialog.count() !== 0) throw new Error('Layers popover did not close on outside interaction');
+
+              await layersTrigger.click();
+              await page.keyboard.press('Escape');
+              if (await layersDialog.count() !== 0) throw new Error('Layers popover did not close on Escape');
+              if (await page.evaluate(() => document.activeElement?.getAttribute('aria-label')) !== 'Layers and display options') throw new Error('Escape did not restore focus to the Layers trigger');
+
+              await layersTrigger.click();
+              const zoomTrigger = page.getByRole('button', { name: /Zoom 100 percent/ });
+              await zoomTrigger.click();
+              if (await layersDialog.count() !== 0) throw new Error('Opening zoom did not close the competing Layers popover');
+              if (await page.getByRole('menu').count() !== 1) throw new Error('Zoom menu did not open');
+              await page.locator('.canvas-wrap').click({ position: { x: 20, y: 20 } });
+              if (await page.getByRole('menu').count() !== 0) throw new Error('Zoom menu did not close on outside interaction');
+
+              await zoomTrigger.click();
+              await page.keyboard.press('Escape');
+              if (await page.getByRole('menu').count() !== 0) throw new Error('Zoom menu did not close on Escape');
+              if (!((await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) ?? '').startsWith('Zoom 100 percent')) throw new Error('Escape did not restore focus to the zoom trigger');
+
+              await layersTrigger.click();
+              await exportMode.click();
+              if (await layersDialog.count() !== 0) throw new Error('Layers popover survived loss of Explore context');
+              await explore.click();
+              if (await page.locator('.canvas-wrap').getAttribute('data-qa-marker') !== 'preserved') throw new Error('Canvas workspace remounted during QA mode switches');
+
+              const layout = await page.evaluate(() => ({
+                scrollHeight: document.documentElement.scrollHeight,
+                bodyScrollHeight: document.body.scrollHeight,
+                innerHeight: window.innerHeight
+              }));
+              if (layout.scrollHeight > layout.innerHeight + 1 || layout.bodyScrollHeight > layout.innerHeight + 1) {
+                throw new Error(`Page-level vertical scroll at ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`);
+              }
+              await context.close();
+            }
+          } finally {
+            await browser.close();
+          }
+          JS
+
+      - name: Commit functional increment
+        shell: bash
+        run: |
+          git config user.name 'World Forge Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add apps/desktop/src/shared/useDismissiblePopover.ts \
+            apps/desktop/src/workspace/WorldWorkspace.tsx \
+            apps/desktop/src/workspace/workspaceToolbar.css \
+            apps/desktop/src/panels/RightPanel.tsx \
+            apps/desktop/src/main.tsx \
+            apps/desktop/src/shell/ShellStatusControls.tsx \
+            apps/desktop/src/shell/shellStatus.css \
+            apps/desktop/src/appVersion.ts \
+            apps/desktop/src/release/ReleaseNotesModal.tsx
+          git commit -m 'Polish transient controls and shell identity'
+          git rev-parse HEAD > /tmp/world-forge-functional-sha
+
+      - name: Update cleanup handoff
+        shell: bash
+        run: |
+          python /tmp/automation-world-builder-qa-polish.py handoff
+          git add refs/handoffs/world-builder-cleanup.md
+          git commit -m 'Update world builder cleanup handoff'
+
+      - name: Push dev and remove runner branch
+        shell: bash
+        run: |
+          git push origin HEAD:dev
+          git push origin --delete automation/world-builder-qa-polish-20260730 || true
