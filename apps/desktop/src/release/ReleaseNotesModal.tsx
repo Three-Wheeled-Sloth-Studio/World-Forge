@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.28</p>
+            <h3>World-building workspace modes</h3>
+            <ul>
+              <li>Build, Explore, and Export are now explicit workspace modes while the current map remains mounted.</li>
+              <li>Presentation and inspection controls appear in Explore, while common download actions appear in Export.</li>
+              <li>Internal Debug map subjects and globe composites are no longer exposed in the ordinary Explore controls.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.27</p>
             <h3>Detailed generation promoted</h3>
             <ul>
