@@ -1,0 +1,145 @@
+name: Contextual Right Panel Runner
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.head_ref == 'automation/contextual-right-panel-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Load automation script
+        shell: bash
+        run: |
+          git fetch origin automation/contextual-right-panel-20260730
+          git show FETCH_HEAD:scripts/automation-contextual-right-panel.py > /tmp/automation-contextual-right-panel.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply contextual right panel changes
+        run: python /tmp/automation-contextual-right-panel.py apply
+
+      - name: Verify repository
+        run: npm run verify 2>&1 | tee /tmp/world-forge-verify.log
+
+      - name: Install Chromium for browser QA
+        run: npx playwright install --with-deps chromium
+
+      - name: Run focused browser QA
+        shell: bash
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/world-forge-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({ headless: true });
+          try {
+            for (const viewport of [{ width: 1920, height: 1080 }, { width: 1440, height: 900 }]) {
+              const context = await browser.newContext({ viewport });
+              const page = await context.newPage();
+              await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+
+              const build = page.getByRole('tab', { name: 'Build', exact: true });
+              const explore = page.getByRole('tab', { name: 'Explore', exact: true });
+              const exportMode = page.getByRole('tab', { name: 'Export', exact: true });
+              const summary = page.locator('.summary');
+
+              if (await build.getAttribute('aria-selected') !== 'true') throw new Error('Build was not selected for an empty workspace');
+              if (await summary.getAttribute('data-context') !== 'build') throw new Error('Build did not route the context panel');
+              await page.getByText('Build guidance', { exact: true }).waitFor();
+              if (await page.locator('.summary-tabs').count()) throw new Error('Legacy right-panel tabs are still present');
+
+              await page.locator('.canvas-wrap').evaluate((element) => { element.dataset.qaMarker = 'preserved'; });
+
+              await explore.click();
+              if (await summary.getAttribute('data-context') !== 'world') throw new Error('Explore without a selection did not route to world summary');
+              await page.getByText('No generated world is loaded.', { exact: true }).waitFor();
+              if (await page.locator('.canvas-wrap').getAttribute('data-qa-marker') !== 'preserved') throw new Error('Canvas remounted while entering Explore');
+
+              await exportMode.click();
+              if (await summary.getAttribute('data-context') !== 'export') throw new Error('Export did not route the context panel');
+              await page.getByLabel('PNG export resolution').waitFor();
+              for (const label of ['PNG', 'SVG', 'JSON', '.wforge', 'Hex SVG', 'Tile JSON', 'VTT ZIP']) {
+                await page.getByRole('button', { name: label, exact: true }).waitFor();
+              }
+              if (await page.locator('.canvas-wrap').getAttribute('data-qa-marker') !== 'preserved') throw new Error('Canvas remounted while entering Export');
+
+              await page.getByRole('tab', { name: 'My Worlds', exact: true }).click();
+              await page.getByText('Open .wforge', { exact: true }).waitFor();
+
+              await page.getByRole('tab', { name: 'Dev', exact: true }).click();
+              if (await summary.getAttribute('data-context') !== 'diagnostics') throw new Error('Dev did not route to diagnostics');
+              if (await page.locator('.summary-tabs').count()) throw new Error('Diagnostics is still exposed as a normal right-panel tab');
+
+              const layout = await page.evaluate(() => ({
+                scrollHeight: document.documentElement.scrollHeight,
+                clientHeight: document.documentElement.clientHeight,
+                bodyScrollHeight: document.body.scrollHeight,
+                innerHeight: window.innerHeight
+              }));
+              if (layout.scrollHeight > layout.innerHeight + 1 || layout.bodyScrollHeight > layout.innerHeight + 1) {
+                throw new Error(`Page-level vertical scroll at ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`);
+              }
+              await context.close();
+            }
+          } finally {
+            await browser.close();
+          }
+          JS
+
+      - name: Commit functional increment
+        shell: bash
+        run: |
+          git config user.name 'World Forge Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add apps/desktop/src/main.tsx \
+            apps/desktop/src/panels/RightPanel.tsx \
+            apps/desktop/src/panels/rightPanelRouting.ts \
+            apps/desktop/src/panels/rightPanelRouting.test.ts \
+            apps/desktop/src/regions/GeographicHierarchyPanel.tsx \
+            apps/desktop/src/regions/useGeographicAtlasController.ts \
+            apps/desktop/src/workspace/WorldWorkspace.tsx \
+            apps/desktop/src/worlds/MyWorldsPanel.tsx \
+            apps/desktop/src/styles.css \
+            apps/desktop/src/appVersion.ts \
+            apps/desktop/src/release/ReleaseNotesModal.tsx
+          git commit -m 'Route right panel by workspace context'
+          git rev-parse HEAD > /tmp/world-forge-functional-sha
+
+      - name: Update cleanup handoff
+        shell: bash
+        run: |
+          python /tmp/automation-contextual-right-panel.py handoff
+          git add refs/handoffs/world-builder-cleanup.md
+          git commit -m 'Update world builder cleanup handoff'
+
+      - name: Push dev and remove runner branch
+        shell: bash
+        run: |
+          git push origin HEAD:dev
+          git push origin --delete automation/contextual-right-panel-20260730 || true
