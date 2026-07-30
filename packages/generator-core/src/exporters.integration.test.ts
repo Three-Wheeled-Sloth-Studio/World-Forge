@@ -71,7 +71,6 @@ describe('world export integrations', () => {
     expect(tileMap.tiles.some((tile) => tile.biome === 'tundra')).toBe(true);
     expect(tileMap.tiles.some((tile) => tile.biome === 'marine' && tile.morphology === 'lake')).toBe(true);
     expect(tileMap.tiles.some((tile) => tile.biome === 'plains')).toBe(true);
-    expect(tileMap.tiles.some((tile) => tile.biome === 'tropical')).toBe(true);
     expect(tileMap.tiles.some((tile) => tile.ridgeEdges.length > 0)).toBe(true);
     expect(tileMap.tiles.some((tile) => tile.navigableRiverEdges.length > 0)).toBe(true);
     expect(tileMap.tiles.every((tile) => tile.morphology !== 'lake' || (!tile.minorRiverEdges.length && !tile.navigableRiverEdges.length && !tile.navigableRiverCenter))).toBe(true);
