@@ -23,6 +23,11 @@ function copyGraph(nodes: readonly GenerationGraphNodeDefinition[]): GenerationG
   }));
 }
 
+function isOptimizedWorkflow(workflowId: GenerationWorkflowId): boolean {
+  return workflowId === 'core.performance-foundation'
+    || workflowId === 'core.world-generation-experimental';
+}
+
 function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNodeDefinition[] {
   const nodes = copyGraph(coreGenerationGraph);
   if (workflowId === 'core.performance-foundation-control') {
@@ -52,7 +57,7 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
         }
       : node);
   }
-  if (workflowId !== 'core.performance-foundation') return nodes;
+  if (!isOptimizedWorkflow(workflowId)) return nodes;
   return nodes.map((node) => node.id === 'world.deep-time-aging'
     ? {
         ...node,
