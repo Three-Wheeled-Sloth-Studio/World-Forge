@@ -10,14 +10,14 @@ Parent PI: issue `#13` — **Clean up world builder workflow and controls**
 
 Completed work package: issue `#24` — **World builder workspace mode shell**
 
-Status: **Contextual right panel accepted; continue with Explore-toolbar disclosure**
+Status: **Explore toolbar accepted; proceed to combined user testing and PI-close provenance**
 
 ## Accepted baseline
 
 Functional code baseline before this documentation-only handoff:
 
-- commit `bacd1060076770e6d305d9f6a86ea4943c33f9bd`
-- visible World Forge version `0.3.31`
+- commit `3d3800c681a7682559a7de1963d315b19d7b1e31`
+- visible World Forge version `0.3.32`
 - `npm run verify` passed in GitHub Actions
 - 243 tests passed
 - TypeScript build passed
@@ -87,6 +87,16 @@ Implemented in `0.3.31`:
 - diagnostics are only shown when the Dev workspace is active.
 - `.wforge` opening moved to My Worlds as a global project/library action.
 - no generator algorithm, persistence, replay, or saved-world schema changes were made.
+
+### Explore toolbar disclosure
+
+Implemented in `0.3.32`:
+
+- map/globe, presentation, map subject, point inspector, zoom, Fit, and geographic drilldown remain immediately available.
+- rivers, plate boundaries, hex overlays, coastline treatment, globe ocean/atmosphere shells, and preview detail are grouped under Layers.
+- the zoom percentage opens common levels on normal click and still supports right-click placement.
+- Fit resets the active map or globe zoom to the existing fitted 100% state.
+- no map state, generator behavior, persistence, replay, or saved-world schema changes were made.
 
 ### WP1: control inventory
 
@@ -234,29 +244,24 @@ Completed in `0.3.31`.
 - My Worlds owns `.wforge` opening as a global project/library action.
 - geographic drilldown state remains mounted while changing workspace modes.
 
-### Step 4: finish Explore-toolbar disclosure
+### Step 4: finish Explore-toolbar disclosure - completed
 
-WP2 removed debug subjects and exports, but the toolbar is not fully simplified yet.
+Completed in `0.3.32`.
 
-Keep immediately visible:
+- primary view, presentation, subject, inspection, zoom, Fit, and drilldown controls stay visible.
+- secondary layers and display treatments route through one Layers disclosure.
+- the zoom readout is discoverable by normal click instead of requiring right-click knowledge.
+- developer-only diagnostics remain outside normal Explore.
 
-- map/globe
-- presentation
-- primary map subject
-- zoom/fit
-- inspector
-- drilldown when available
+### Step 5: close PI provenance and hosted QA
 
-Move secondary controls behind **Layers** or **More**:
+Use the combined user test to confirm the complete Build / Explore / Export workflow, then close WP6 by recording:
 
-- rivers
-- plate boundaries
-- hex overlays
-- coastline treatment
-- globe shells
-- less common user-facing overlays
-
-Do not reintroduce developer diagnostics into this menu wearing a fake mustache.
+- exact accepted World Forge `dev` commit
+- visible standalone and embedded World Forge version
+- host Parchment Worlds version and source commit when embedded
+- hosted and standalone layout at 1920 x 1080 and 1440 x 900
+- no deterministic generation change from the UI-only cleanup
 
 ## Guardrails
 
@@ -288,19 +293,15 @@ Complete for this PI.
 
 ### WP4: Explore controls
 
-Partially complete.
-
-Completed:
+Complete for this PI.
 
 - ordinary debug map subjects removed
 - globe debug composites removed
 - exports removed from Explore
-
-Remaining:
-
-- Layers/More disclosure
-- explicit Fit action instead of right-click-only zoom discovery
-- final user-facing versus developer layer disposition
+- secondary layers and display treatments grouped under Layers
+- explicit Fit action added
+- zoom levels discoverable by normal click
+- developer diagnostics kept out of normal Explore
 
 ### WP5: contextual right panel and Export mode
 
