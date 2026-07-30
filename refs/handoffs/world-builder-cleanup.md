@@ -1,255 +1,362 @@
 # World Builder Cleanup Handoff
 
-Updated: 2026-07-28
+Updated: 2026-07-30
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-Status: **active next increment**
+Parent PI: issue `#13` — **Clean up world builder workflow and controls**
+
+Completed work package: issue `#24` — **World builder workspace mode shell**
+
+Status: **WP2 accepted; continue with mode ownership and Build/right-panel recomposition**
+
+## Accepted baseline
+
+Functional code baseline before this documentation-only handoff:
+
+- commit `7a6c23bc8eec132816887b5e26ceccf84e17ae20`
+- visible World Forge version `0.3.28`
+- `npm run verify` passed locally
+- 231 tests passed
+- TypeScript build passed
+- production build passed
+- focused browser QA passed
+
+Do not branch away from stale work. Start from current `dev` and work directly on `dev` in small, reviewable commits, per root `AGENTS.md`.
 
 ## Product outcome
 
-A user can create, regenerate, inspect, and export a world without having to understand the application’s internal component layout or sort through developer diagnostics mixed into ordinary controls.
+A user can build, explore, and export a world through a coherent workflow without sorting through component-owned panels, duplicated controls, or developer diagnostics mixed into normal use.
 
-The cleanup should make the existing World Forge capabilities feel like one coherent world-building workflow. It is not a visual reskin and it must not change generator behavior.
+This is an information-architecture and interaction cleanup. It is not a generator rewrite or visual reskin.
 
-## Why this is next
+## Work completed
 
-The current application has accumulated functional controls faster than its information architecture has matured.
+### Generation workflow promotion
 
-Observed problems include:
+The generation choices are now:
 
-- The map toolbar combines view selection, layer toggles, diagnostics, globe shells, render mode, map mode, coastline styling, globe debug modes, zoom, drilldown, and exports.
-- Debug map modes are exposed beside ordinary user-facing map views.
-- Generator controls, world-library controls, map controls, diagnostics, and export controls are divided according to component ownership rather than user tasks.
-- The left and right panels consume significant horizontal space while several controls duplicate information already visible elsewhere.
-- Generated-world inspection and generation settings compete for attention.
-- Advanced settings are partly hidden but the underlying configuration vocabulary is not consistently user-facing.
-- Terminology has drifted. In `apps/desktop/src/main.tsx`, `continentCount` is labeled `Regions` while `continentScale` is labeled `Continents`, which obscures what the controls actually mean.
-- Runtime/source version provenance is inconsistent during QA. The browser reported `0.3.32` while the World Forge source constant on `dev` reported `0.3.23`.
+- `core.performance-foundation` — **World Generation (Detailed)**, production default
+- `core.live-world` — **World Generation (Legacy)**, selectable rollback/comparison path
+- `core.world-generation-experimental` — **World Generation (Experimental)**, behavior-identical copy of Detailed reserved for further optimization
 
-## Principles
+The runtime graph was corrected so Experimental uses the same optimized deep-time implementation as Detailed. Unknown workflow IDs resolve to Detailed.
 
-1. Organize controls around user intent, not source-code ownership.
-2. Keep the map as the dominant workspace.
-3. Show common controls immediately and move diagnostics or specialist controls behind deliberate disclosure.
-4. Make generation easy to perform and easy to repeat without silently losing the current world.
-5. Preserve advanced control for users who need it without making every user confront it.
-6. Do not introduce empty navigation modes for features that do not yet exist.
-7. Do not change generation algorithms, schemas, seeds, or deterministic behavior as part of UI cleanup.
-8. Prefer a small number of stable interaction patterns over more icon buttons.
-9. Preserve hosted and standalone operation.
-10. Keep the single-developer direct-to-`dev` workflow in root `AGENTS.md`.
+Several old tests had silently depended on Legacy being the default. Those fixtures were corrected to test their actual contracts rather than requiring one fixed seed to preserve Legacy-specific biome or landmass outcomes.
 
-## Proposed information architecture
+### WP1: control inventory
 
-Use three real user tasks for the first increment:
+Completed artifact:
 
-### Build
+- `refs/testing/world-builder-control-inventory.md`
 
-Owns inputs that affect world generation:
+It maps existing controls to Build, Explore, Export, Developer, global project/library actions, or removal as duplicates.
 
-- star preset and seed;
-- world preset and seed;
-- map/source quality;
-- core world-shape controls;
-- Generate and Regenerate actions;
-- advanced physical and climate controls;
-- generation progress and failure state.
+### WP2: workspace mode shell
 
-### Explore
+Implemented in `0.3.28`:
 
-Owns ways to look at and inspect the generated world:
+- explicit **Build / Explore / Export** selector
+- map remains mounted across mode changes
+- zoom, pan, map/globe view, overlays, and inspection state survive mode changes
+- no-world initial state opens in Build
+- completed generation or newly loaded world moves to Explore
+- Explore contains presentation and inspection controls
+- Export contains common PNG, SVG, JSON, `.wforge`, and Open actions
+- ordinary Explore no longer exposes `Debug:` map subjects
+- ordinary Explore no longer exposes globe debug composites
+- export actions are no longer mixed into the Explore toolbar
+- no generator algorithm, replay, persistence, or saved-world schema changes
 
-- map versus globe;
-- normal presentation selection;
-- user-facing layers;
-- zoom and fit;
-- geographic drilldown;
-- point and hex inspection;
-- contextual legend.
+Primary implementation files:
 
-### Export
+- `apps/desktop/src/workspace/WorldWorkspace.tsx`
+- `apps/desktop/src/workspace/workspaceModes.ts`
+- `apps/desktop/src/workspace/workspaceModes.test.ts`
+- `apps/desktop/src/workspace/workspaceToolbar.css`
+- `apps/desktop/src/main.tsx`
 
-Owns output rather than map presentation:
+### Accepted manual QA
 
-- PNG and package save;
-- JSON and VTT exports;
-- SVG or layered export when useful;
-- output resolution and export-specific options;
-- export progress and completed-file feedback.
+The following passed:
 
-Developer diagnostics should remain available only when developer mode is active. They should not be a fourth ordinary user task.
+- Build is initially selected with no world loaded.
+- Generation completes and transitions to Explore.
+- Build, Explore, and Export switches do not reset the current map.
+- Zoom, pan, selection, view, and overlays survive mode changes.
+- Explore contains no export buttons, `Debug:` map options, or globe debug selector.
+- Export exposes common output actions and keeps the map visible.
+- PNG and `.wforge` paths remain usable.
+- Generation controls and workflow selection remain usable in Build.
+- Detailed is the normal generation default; Legacy and Experimental remain selectable.
+- Left and right collapse controls continue to work.
+- Layout passed at 1920 × 1080 and 1440 × 900 without page-level scrolling or material map loss.
+- Developer graph workspace still opens.
 
-`Edit` should not be introduced as a primary mode until actual editing and undo/versioning behavior exists.
+Hosted/embedded QA remains part of WP6 unless separately confirmed against the deployed shell.
 
-## First implementation slice
+## Important current limitation: workspace mode ownership
 
-### 1. Establish an explicit workspace mode
+`WorkspaceMode` currently lives inside `WorldWorkspace`.
 
-Add a compact Build / Explore / Export mode selector in the application workspace.
+That was sufficient for the first center-workspace slice, but it means `App`, `GeneratorPanel`, and `RightPanel` do not know whether the user is in Build, Explore, or Export.
 
-Requirements:
+Do not build additional parallel mode state in the side panels.
 
-- The current mode is obvious.
-- Switching mode does not regenerate or discard the current world.
-- The map remains mounted and retains zoom, pan, view, and selected inspection state.
-- Existing left and right collapse behavior remains available.
-- Hosted shell controls are not duplicated.
+The first task for the next worker is to lift workspace mode ownership into `App` in `apps/desktop/src/main.tsx`, then pass the controlled mode and change handler into `WorldWorkspace` and the side-panel composition.
 
-### 2. Clean the Build panel
+Preserve the current behavior:
 
-Create a compact quick-build section:
+- initial mode is Build when no project is loaded
+- initial mode is Explore when a project is already available
+- successful generation or world load moves to Explore
+- switching modes does not regenerate, clear, or remount the map
+- do not add a persistence-schema field for workspace mode during this PI
 
-- World type.
-- World seed.
-- Star type.
-- Star seed.
-- Generation quality or map size.
-- Randomize.
-- Generate or Regenerate.
+## Dev graph workflow-selector observation
 
-Move specialist settings into clearly named groups:
+Manual QA noted that changing the workflow selector at the top of the Dev tab does not visibly change the graph.
 
-- World shape: ocean target and tolerance, continent count, continent scale, islands.
-- Climate: temperature, aridity, axial tilt, eccentricity.
-- Geology and history: plates, impacts, age.
-- Hydrology: rivers.
-- System: size and moons.
-- Output and preview quality.
+The selector is wired:
 
-Correct terminology before moving controls. `continentCount` must describe the requested continent count. `continentScale` must describe continent size/cohesion rather than being labeled as the count.
+- `useDevGraphWorkspace` derives `workflow` from `toolbar.workflowId`
+- changing the selector recomputes the workflow node definitions
+- running the graph sends the selected `workflowId`
 
-Do not rely on validation popups. Invalid or impossible combinations should be indicated inline, and any automatic normalization should be visible.
+The graph *shape* is intentionally the same for all current workflows. The meaningful differences are implementation IDs and runtime feature behavior, primarily at `world.deep-time-aging`.
 
-### 3. Simplify the Explore toolbar
+The UI makes this hard to see:
+
+- graph cards display `stageId`, not `implementationId`
+- `implementationId` is visible only after selecting a node and reading the inspector
+- most nodes are identical across workflows
+- `defaultGraphToolbar` still defaults to `core.live-world`, even though the application default is Detailed
+
+Treat this as a developer-UX follow-up, not proof that selection is broken.
+
+Recommended bounded correction:
+
+1. Change `defaultGraphToolbar.workflowId` to `core.performance-foundation` so the Dev tab opens on Detailed.
+2. Show the active workflow label/version prominently in the graph summary.
+3. Mark nodes whose implementation differs between the selected workflow and Detailed or Legacy.
+4. At minimum, show the implementation ID on the node card or add a visible “implementation changed” badge.
+5. Add a focused test proving the selector changes the `world.deep-time-aging` implementation ID for Legacy versus Detailed and that Experimental matches Detailed.
+
+Do not invent different graph topology merely to make the selector look active.
+
+Relevant files:
+
+- `apps/desktop/src/dev/useDevGraphWorkspace.ts`
+- `apps/desktop/src/dev/GraphWorkspace.tsx`
+- `packages/generation-runtime/src/graph/generationWorkflows.ts`
+- `packages/generation-runtime/src/graph/generationWorkflows.test.ts`
+
+## Next implementation slice
+
+### Step 1: lift and control workspace mode
+
+Move the mode state from `WorldWorkspace` into `App`.
+
+`WorldWorkspace` should receive:
+
+- current `workspaceMode`
+- `onWorkspaceModeChange`
+
+Keep its presentation toolbar mode-specific, but make the surrounding application able to route left and right content from the same source of truth.
+
+Add focused tests around transition rules where practical. Avoid a new persistence field.
+
+### Step 2: recompose the Build panel
+
+Current component:
+
+- `apps/desktop/src/generator/GeneratorPanel.tsx`
+
+Create a compact quick-build area containing:
+
+- World type
+- World seed
+- Star type
+- Star seed
+- generation quality/source size
+- Randomize All
+- Generate when no current world exists
+- Regenerate when replacing the active world
+
+Keep the current world visible until replacement generation succeeds.
+
+Move advanced controls into clear groups using existing configuration state:
+
+- **World shape**: ocean target, tolerance, continent count, continent size/cohesion, islands
+- **Climate**: temperature, aridity, axial tilt, eccentricity
+- **Geology and history**: plate count, impacts, age
+- **Hydrology**: river density
+- **System**: planet size and moons
+- **Display/output**: only controls that truly belong there
+
+Correct terminology before moving controls:
+
+- `continentCount` → **Continent count**
+- `continentScale` → **Continent size**, **Continent cohesion**, or similarly accurate wording based on actual generator effect
+- never label `continentCount` as `Regions`
+- never label `continentScale` as `Continents`
+
+Current incorrect labels still exist in `apps/desktop/src/main.tsx` in `rangeLabels`.
+
+Move these out of Build:
+
+- profile/account pill → shell/account settings
+- PNG export resolution → Export
+- preview-only resolution → Explore/display preferences unless investigation proves it changes authoritative generation
+
+Open questions from WP1 that must be answered from code behavior, not guessed:
+
+- Does generation `Map Size` change authoritative projected output, topology fidelity, or both?
+- Does Preview resolution affect only canvas rendering?
+- Which advanced values are true generation inputs versus display/export preferences?
+
+### Step 3: make the right panel contextual
+
+Current component:
+
+- `apps/desktop/src/panels/RightPanel.tsx`
+
+Current problem:
+
+- geographic hierarchy
+- point inspector
+- world summary
+- hex/VTT export
+- diagnostics
+
+can stack or compete in one panel.
+
+Target routing from the single App-owned workspace mode:
+
+**Build**
+
+- selected preset implications
+- generation status/progress
+- concise current-world replacement warning or summary
+
+**Explore**
+
+- world summary when nothing is selected
+- point, hex, region, or drilldown inspector when selected
+- one clear-selection path
+- do not stack unrelated inspectors above the world summary
+
+**Export**
+
+- common formats and output resolution
+- hex/VTT options
+- export progress and completed-file feedback
+
+Developer diagnostics remain developer-only. My Worlds and file-open behavior remain global project/library actions, not a fourth workspace mode.
+
+### Step 4: finish Explore-toolbar disclosure
+
+WP2 removed debug subjects and exports, but the toolbar is not fully simplified yet.
 
 Keep immediately visible:
 
-- map/globe;
-- primary presentation;
-- primary layer or map subject;
-- zoom or fit;
-- inspector;
-- drilldown when available.
+- map/globe
+- presentation
+- primary map subject
+- zoom/fit
+- inspector
+- drilldown when available
 
-Move to a Layers or More menu:
+Move secondary controls behind **Layers** or **More**:
 
-- rivers;
-- plates;
-- hex overlays;
-- coastline treatment;
-- globe shells;
-- less common user-facing overlays.
+- rivers
+- plate boundaries
+- hex overlays
+- coastline treatment
+- globe shells
+- less common user-facing overlays
 
-Move all modes labeled `Debug:` and all globe debug composites into developer diagnostics.
+Do not reintroduce developer diagnostics into this menu wearing a fake mustache.
 
-Exports do not belong in the Explore toolbar.
+## Guardrails
 
-### 4. Make the right panel contextual
+- No generator algorithm changes.
+- No replay or saved-format schema changes.
+- No persistence schema change merely to remember workspace mode.
+- No continent-decomposition tuning.
+- No drilldown rendering or scale work.
+- No new export formats in this PI.
+- No empty Edit mode before editing plus undo/versioning exist.
+- Preserve standalone and hosted operation.
+- Preserve current map state across mode changes.
+- Work directly on `dev` in small functional commits.
+- Run `npm run verify` on every accepted increment.
+- Require browser QA for UI-routing commits.
 
-In Build mode:
-
-- show generation summary, selected preset implications, and generation status.
-
-In Explore mode:
-
-- show world summary when nothing is selected;
-- show point, hex, region, or drilldown details when selected;
-- do not stack unrelated inspectors above the world summary.
-
-In Export mode:
-
-- show export formats, options, progress, and recent completion state.
-
-The panel must remain collapsible and should not introduce page-level scrolling when the map can instead own the available height.
-
-### 5. Fix version provenance
-
-The visible World Forge version must identify the embedded World Forge build, not merely the host shell release.
-
-Development diagnostics should expose:
-
-- visible World Forge version;
-- exact World Forge commit;
-- host Parchment Worlds version and commit when embedded;
-- build timestamp or deployment identifier when available.
-
-The displayed value must match the code actually running in the iframe or embedded module.
-
-## Explicitly out of scope
-
-- Generator algorithm changes.
-- Continent decomposition fixes.
-- Raster sharpness or deep drilldown scale fixes.
-- Map editing, undo, or version history.
-- New export formats beyond relocating existing controls.
-- 3D material or terrain work.
-- Persistence schema changes.
-- Activation of `world-regions-v2`.
-
-## Suggested work packages
-
-### WP1: Control inventory and terminology
-
-- Map every current control to Build, Explore, Export, Developer, or Remove/Duplicate.
-- Identify duplicated state and controls.
-- Correct misleading labels and help text.
-- Record hosted versus standalone differences.
-
-### WP2: Workspace mode shell
-
-- Add the mode selector.
-- Preserve map state across mode changes.
-- Route panel content by mode.
-- Retain keyboard and collapse behavior.
+## Remaining work packages
 
 ### WP3: Build panel
 
-- Recompose quick-build controls.
-- Add grouped advanced controls using existing configuration state.
-- Clarify Generate versus Regenerate.
-- Keep progress and error feedback close to the action.
+Not complete.
+
+- lift mode ownership
+- quick-build controls
+- grouped advanced settings
+- accurate terminology
+- Generate versus Regenerate behavior
+- progress/error feedback near the action
 
 ### WP4: Explore controls
 
-- Reduce the primary toolbar.
-- Add Layers or More disclosure.
-- Gate debug options behind developer mode.
-- Remove exports from the map toolbar.
+Partially complete.
 
-### WP5: Contextual right panel and Export mode
+Completed:
 
-- Route inspectors contextually.
-- Move export controls and status into Export mode.
-- Keep world summary as the default Explore context.
+- ordinary debug map subjects removed
+- globe debug composites removed
+- exports removed from Explore
 
-### WP6: Provenance and QA
+Remaining:
 
-- Fix embedded World Forge build reporting.
-- Add desktop viewport QA at 1920 x 1080 and 1440 x 900.
-- Verify hosted and standalone behavior.
-- Confirm no generation or deterministic-output changes.
+- Layers/More disclosure
+- explicit Fit action instead of right-click-only zoom discovery
+- final user-facing versus developer layer disposition
 
-## Definition of done for the cleanup increment
+### WP5: contextual right panel and Export mode
 
-- Build, Explore, and Export are clear and backed by real functionality.
+Not complete.
+
+- mode-aware panel routing
+- one relevant Explore context at a time
+- complete export formats/options/progress surface
+- move hex/VTT configuration fully into Export
+
+### WP6: provenance and QA
+
+Partially complete from earlier work.
+
+Still confirm at PI close:
+
+- visible embedded World Forge version
+- exact World Forge commit
+- host Parchment Worlds version/commit when embedded
+- hosted and standalone browser QA
+- 1920 × 1080 and 1440 × 900 layout
+- no deterministic-output change caused by UI cleanup
+- exact accepted `dev` commit passes `npm run verify`
+
+## PI definition of done
+
+- Build, Explore, and Export are obvious and backed by real functionality.
 - The map remains visible and stable while switching modes.
-- The default Explore toolbar no longer exposes developer debug views.
-- Export actions are no longer mixed into map presentation controls.
+- Developer debug controls are absent from normal Explore.
+- Export actions and options are not mixed with presentation controls.
 - Generation controls use accurate terminology and coherent grouping.
-- The right panel shows one relevant context rather than several stacked contexts.
-- The current world, selection, view, and zoom survive mode changes.
-- Hosted and standalone modes both work.
-- The visible World Forge version and exact source commit are trustworthy.
+- The right panel presents one relevant context at a time.
+- Current world, selection, view, overlays, zoom, and pan survive mode changes.
+- Hosted and standalone modes both pass browser QA.
+- Visible World Forge version and source commit identify the code actually running.
 - `npm run verify` passes on the exact accepted `dev` commit.
-- Browser QA confirms no new page-level scroll or major loss of map area.
-
-## First decision checkpoint
-
-Before implementation gets deep, capture screenshots of the current Build, Explore, and Export-related controls and produce a one-page control disposition table:
-
-`Current control | User job | Destination | Keep/change/remove | Notes`
-
-Use that table to prevent useful capabilities from disappearing during cleanup and to keep developer diagnostics from sneaking back into the main toolbar wearing a fake mustache.
+- No page-level vertical scrolling or material map-workspace loss is introduced.
