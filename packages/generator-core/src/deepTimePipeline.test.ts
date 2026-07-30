@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCubedSphereTopology, type CubedSphereTopology } from '@world-forge/shared';
+import { buildCubedSphereTopology, cubedSphereCellForLonLat, type CubedSphereTopology } from '@world-forge/shared';
 import { createDefaultConfig, generateProject } from './index';
 import { generateProjectWithDeepTime } from './deepTimePipeline';
 
@@ -50,7 +50,6 @@ describe('deep-time generator-core pipeline', () => {
 
     for (let index = 0; index < world.layers.water.length; index += 1) {
       if (world.layers.water[index]) {
-        expect(world.layers.ice[index]).toBe(0);
         expect(world.layers.river[index]).toBe(0);
       }
     }
@@ -77,11 +76,54 @@ describe('deep-time generator-core pipeline', () => {
       axialTiltDeg: 20
     }));
     const iceCells = Array.from(project.primaryWorld.layers.ice).filter(Boolean).length;
+    const seaIceCells = Array.from(project.primaryWorld.layers.ice)
+      .filter((value, index) => value && project.primaryWorld.layers.water[index]).length;
 
     expect(project.primaryWorld.deepTime.persistentIceCells).toBeGreaterThan(0);
     expect(iceCells).toBeGreaterThan(0);
+    expect(seaIceCells).toBeGreaterThan(0);
+  });
+
+  it('keeps final Earthlike temperature and ice correlated with latitude through projection', () => {
+    const project = generateProjectWithDeepTime(testConfig('deep-time-latitude-ice'));
+    const world = project.primaryWorld;
+    const topology = buildCubedSphereTopology(world.topology.resolution);
+    const equatorialTemperatures: number[] = [];
+    const polarTemperatures: number[] = [];
+    let polarCells = 0;
+    let polarIce = 0;
+    let midLatitudeCells = 0;
+    let midLatitudeIce = 0;
+    for (let cell = 0; cell < topology.cellCount; cell += 1) {
+      const latitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
+      if (latitude <= 0.2) equatorialTemperatures.push(world.topologyLayers.temperature[cell]);
+      if (latitude >= 0.78) {
+        polarTemperatures.push(world.topologyLayers.temperature[cell]);
+        polarCells += 1;
+        polarIce += world.topologyLayers.ice[cell];
+      } else if (latitude >= 0.35 && latitude <= 0.55) {
+        midLatitudeCells += 1;
+        midLatitudeIce += world.topologyLayers.ice[cell];
+      }
+    }
+    expect(mean(polarTemperatures)).toBeLessThan(mean(equatorialTemperatures) - 15);
+    expect(polarIce / polarCells).toBeGreaterThan(midLatitudeIce / Math.max(1, midLatitudeCells) + 0.25);
+
+    const { width, height } = world.mapModel.resolution;
+    for (let y = 0; y < height; y += 1) {
+      const latitude = Math.PI / 2 - ((y + 0.5) / height) * Math.PI;
+      for (let x = 0; x < width; x += 1) {
+        const longitude = ((x + 0.5) / width) * Math.PI * 2 - Math.PI;
+        const cell = cubedSphereCellForLonLat(topology, longitude, latitude);
+        expect(world.layers.ice[y * width + x]).toBe(world.topologyLayers.ice[cell]);
+      }
+    }
   });
 });
+
+function mean(values: number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+}
 
 function plateComponentCount(topology: CubedSphereTopology, plates: Uint16Array): number {
   const visited = new Uint8Array(plates.length);

@@ -28,6 +28,26 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.26</p>
+            <h3>High-resolution terrain performance</h3>
+            <ul>
+              <li>High-resolution corridor repair now works from its affected-cell mask instead of repeatedly scanning the full topology.</li>
+              <li>Topology stabilization reuses reference-scale topology and limits reduction and expansion work to affected neighborhoods.</li>
+              <li>Diagnostic benchmarks now report deterministic output signatures and non-overlapping internal timing boundaries.</li>
+            </ul>
+          </section>
+
+          <section>
+            <p className="release-kicker">Release 0.3.25</p>
+            <h3>High-resolution terrain continuity</h3>
+            <ul>
+              <li>Tectonic and fragment-history deformation now retain a stable physical width as source topology resolution increases.</li>
+              <li>Continental fragments on the same plate now share one rigid spherical transform instead of drifting apart independently.</li>
+              <li>Narrow vacated fragment corridors are repaired without filling broad rifts or ocean basins.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.16</p>
             <h3>Structural terrain integrity</h3>
             <ul>

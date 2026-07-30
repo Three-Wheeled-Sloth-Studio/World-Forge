@@ -17,7 +17,6 @@ import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
 import { applyBasinAwareCirculation } from './basinCirculation';
 import {
   buildRotationBetweenUnitVectors,
-  buildTangentSphericalRotation,
   rotateUnitVector,
   unitVectorToLonLat
 } from './fragmentSphericalTransform';
@@ -25,6 +24,12 @@ import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTime
 import { stableDescendingFloat32Indices, traceCachedDownstreamPath } from './hydrologyTraversal';
 import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
 import { generationWorkflowDeepTimeFeatures } from './workflows';
+import { classifyPermanentIce } from './permanentIce';
+import { projectTopologyRiverPath } from './riverPathProjection';
+import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleField';
+import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
+import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -912,6 +917,21 @@ function applyAuthoritativeFragmentTransforms(
   let movingFragmentCount = 0;
   let displacementTotal = 0;
   let maxDisplacement = 0;
+  const plateRotations = traceGenerationPerformance(
+    'rigid-plate-rotation-construction',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: sortedSeeds.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => buildRigidPlateRotations(
+      sortedSeeds,
+      plateLookup.motionX,
+      plateLookup.motionY,
+      project.selectedValues.systemAgeGy
+    )
+  );
 
   for (const seed of sortedSeeds) {
     for (const sourceCell of seed.cells) {
@@ -923,18 +943,8 @@ function applyAuthoritativeFragmentTransforms(
   }
 
   for (const seed of sortedSeeds) {
-    const speed = Math.hypot(plateLookup.motionX[seed.plateId], plateLookup.motionY[seed.plateId]);
-    const displacement = speed > 0.0001
-      ? clamp(speed * Math.max(0.25, project.selectedValues.systemAgeGy) * 0.018, 0.012, 0.42)
-      : 0;
-    const motionX = speed > 0.0001 ? plateLookup.motionX[seed.plateId] / speed : 0;
-    const motionY = speed > 0.0001 ? plateLookup.motionY[seed.plateId] / speed : 0;
-    const rotation = buildTangentSphericalRotation(
-      { x: seed.x, y: seed.y, z: seed.z },
-      motionX,
-      motionY,
-      displacement
-    );
+    const rotation = plateRotations.get(seed.plateId) ?? { axisX: 0, axisY: 1, axisZ: 0, angleRadians: 0 };
+    const displacement = rotation.angleRadians;
     const inverseRotation = { ...rotation, angleRadians: -rotation.angleRadians };
     const candidateMarks = new Uint8Array(topology.cellCount);
     const candidateCells: number[] = [];
@@ -991,6 +1001,34 @@ function applyAuthoritativeFragmentTransforms(
     }
   }
 
+  const repairedVacatedCorridors = repairVacatedFragmentCorridors({
+    sourceCells,
+    targetCells,
+    elevation,
+    volcanism,
+    originalElevation,
+    originalVolcanism,
+    seaLevel: world.seaLevel,
+    topology
+  });
+  const vacatedSourceMask = new Uint8Array(topology.cellCount);
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (sourceCells[cell] && !targetCells[cell] && elevation[cell] <= world.seaLevel) {
+      vacatedSourceMask[cell] = 1;
+    }
+  }
+  traceGenerationPerformance(
+    'topology-field-stabilization',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: countMarkedCells(vacatedSourceMask),
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0,
+      parent: true
+    },
+    () => stabilizeTopologyField(elevation, topology, vacatedSourceMask)
+  );
+
   let ownershipChangedCells = 0;
   let vacatedSourceCells = 0;
   let youngOceanCrustCells = 0;
@@ -1008,7 +1046,8 @@ function applyAuthoritativeFragmentTransforms(
     'Fragment placement carries elevation and volcanism, but plate ownership remains the coherent authoritative topology field to avoid raster-fragment plate ribbons.',
     'Inverse sampling reconstructs each rigidly rotated fragment over a bounded target neighborhood, avoiding forward-splat holes and directional spill ribbons.',
     'Overlapping transformed fragments merge relief at the collision target without reassigning coherent plate ownership.',
-    'Vacated source cells receive young-oceanic-crust elevation and volcanism treatment before erosion, impacts, glaciation, climate, and hydrology run.'
+    'Vacated source cells receive young-oceanic-crust elevation and volcanism treatment before erosion, impacts, glaciation, climate, and hydrology run.',
+    `Resolution-scaled corridor repair restored ${repairedVacatedCorridors} narrow vacated cells bounded by retained land while preserving open basins.`
   ];
   if (retainedCellRatio < 0.97) notes.push('Fragment placement retained less than 97 percent of source cells; inspect merged collision pressure.');
 
@@ -1497,31 +1536,28 @@ function estimateFragmentTerrainResponse(
   let maxAbsDelta = 0;
   const response = new Float32Array(topology.cellCount);
 
-  const addResponse = (cell: number, amount: number, firstRing = 0.42, secondRing = 0.14) => {
+  const addResponse = (cell: number, amount: number) => {
     response[cell] += amount;
-    for (let direction = 0; direction < 4; direction += 1) {
-      const neighbor = topology.neighbors[cell * 4 + direction];
-      if (neighbor < 0) continue;
-      response[neighbor] += amount * firstRing;
-      for (let nextDirection = 0; nextDirection < 4; nextDirection += 1) {
-        const next = topology.neighbors[neighbor * 4 + nextDirection];
-        if (next < 0 || next === cell) continue;
-        response[next] += amount * secondRing;
-      }
-    }
   };
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
-    if (collisionCells[cell]) addResponse(cell, 0.18, 0.22, 0.035);
-    if (subductionCells[cell]) addResponse(cell, 0.15, 0.2, 0.035);
-    if (transformCells[cell]) addResponse(cell, elevation[cell] > seaLevel ? 0.011 : -0.0065, 0.26, 0.055);
-    if (riftCells[cell]) addResponse(cell, -0.046, 0.32, 0.075);
-    if (trenchCells[cell]) addResponse(cell, -0.068, 0.28, 0.055);
+    const localization = fragmentDeformationLocalization(topology, cell);
+    if (localization <= 0) continue;
+    if (collisionCells[cell]) addResponse(cell, 0.18 * localization);
+    if (subductionCells[cell]) addResponse(cell, 0.15 * localization);
+    if (transformCells[cell]) addResponse(cell, (elevation[cell] > seaLevel ? 0.011 : -0.0065) * localization);
+    if (riftCells[cell]) addResponse(cell, -0.046 * localization);
+    if (trenchCells[cell]) addResponse(cell, -0.068 * localization);
     if (conjugateMarginCells[cell]) {
       marginToneCells[cell] = 1;
-      addResponse(cell, water[cell] || elevation[cell] <= seaLevel + 0.04 ? -0.016 : 0.01, 0.28, 0.06);
+      addResponse(cell, (water[cell] || elevation[cell] <= seaLevel + 0.04 ? -0.016 : 0.01) * localization);
     }
   }
+
+  // Event masks are one-cell topology traces. Convert them to deformation
+  // zones before mutating elevation so plate allocation edges cannot survive
+  // as global trenches or ridges in the final map.
+  response.set(broadenTopologySignal(response, topology));
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const rawDelta = response[cell];
@@ -1550,6 +1586,18 @@ function estimateFragmentTerrainResponse(
     meanAbsDelta: absoluteDeltaTotal / Math.max(1, topology.cellCount),
     maxAbsDelta
   };
+}
+
+function fragmentDeformationLocalization(topology: CubedSphereTopology, cell: number): number {
+  const x = topology.positions[cell * 3];
+  const y = topology.positions[cell * 3 + 1];
+  const z = topology.positions[cell * 3 + 2];
+  const province = coherentSphericalNoise(
+    x * 2.8 + 1.73,
+    y * 2.8 - 0.91,
+    z * 2.8 + 2.37
+  );
+  return clamp((province + 0.18) / 0.62, 0, 1);
 }
 
 function estimateFragmentVolcanismResponse(
@@ -2180,8 +2228,7 @@ function refreshTopologyClimate(
     const latitudeCooling = Math.pow(latitude, 1.3) * 38;
     const altitudeCooling = altitude * 20;
     const oceanModeration = ocean ? 2.5 * (1 - latitude * 0.4) : 0;
-    const iceCooling = layers.ice[cell] ? 5 : 0;
-    layers.temperature[cell] = world.averageTemperatureC + 10 - latitudeCooling - altitudeCooling + oceanModeration - iceCooling;
+    layers.temperature[cell] = world.averageTemperatureC + 10 - latitudeCooling - altitudeCooling + oceanModeration;
 
     const wind = presentDayWindVector(topology, layers.elevation, layers.temperature, cell, world.averageTemperatureC);
     const fetch = presentDayMoistureFetch(layers.elevation, layers.water, topology, cell, wind.x, wind.y, oceanInfluence[cell]);
@@ -2203,8 +2250,6 @@ function refreshTopologyClimate(
     layers.climatePrecipitation[cell] = precipitation[cell];
     layers.climateWetnessDelta[cell] = 0;
 
-    if (layers.ice[cell] && layers.temperature[cell] > 3) layers.ice[cell] = 0;
-    if (layers.water[cell]) layers.ice[cell] = 0;
   }
 
   smoothTopologyLayer(moisture, topology, 1, 0.18);
@@ -2217,6 +2262,18 @@ function refreshTopologyClimate(
     layers.wetness[cell] = layers.water[cell] ? 1 : clamp(precipitation[cell] * 0.78 + moisture[cell] * 0.22, 0, 1);
     layers.climateWetnessDelta[cell] = layers.wetness[cell] - previous;
   }
+
+  classifyPermanentIce({
+    ice: layers.ice,
+    elevation: layers.elevation,
+    water: layers.water,
+    temperature: layers.temperature,
+    wetness: layers.wetness,
+    topology,
+    seaLevel: world.seaLevel,
+    axialTiltDeg: world.axialTiltDeg,
+    orbitalEccentricity: world.orbitalEccentricity
+  });
 
   if (world.climate) {
     world.climate.notes = [
@@ -2725,15 +2782,7 @@ function projectFinalTopology(project: DeepTimeProject, topology: CubedSphereTop
 function projectRiverPaths(project: DeepTimeProject, topology: CubedSphereTopology, rivers: River[]): River[] {
   const { width, height } = project.primaryWorld.mapModel.resolution;
   return rivers.map((river) => {
-    const path: number[] = [];
-    for (const cell of river.topologyPath ?? []) {
-      const longitude = topology.longitudes[cell];
-      const latitude = topology.latitudes[cell];
-      const x = Math.max(0, Math.min(width - 1, Math.floor(((longitude + Math.PI) / (Math.PI * 2)) * width)));
-      const y = Math.max(0, Math.min(height - 1, Math.floor((0.5 - latitude / Math.PI) * height)));
-      const index = y * width + x;
-      if (path[path.length - 1] !== index) path.push(index);
-    }
+    const path = projectTopologyRiverPath(river.topologyPath ?? [], topology, width, height);
     return {
       ...river,
       path,
@@ -2850,7 +2899,17 @@ export function applyDeepTimeFoundation(
   const prePlacementVolcanism = options.terrainDiagnosticBypasses?.fragmentPlacement
     ? new Float32Array(mutable.primaryWorld.topologyLayers.volcanism)
     : undefined;
-  const fragmentPlacement = applyAuthoritativeFragmentTransforms(mutable, fragmentLineageSeeds, topology, plateLookup);
+  const fragmentPlacement = traceGenerationPerformance(
+    'authoritative-fragment-transforms',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: fragmentLineageSeeds.reduce((total, seed) => total + seed.cellCount, 0),
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0,
+      parent: true
+    },
+    () => applyAuthoritativeFragmentTransforms(mutable, fragmentLineageSeeds, topology, plateLookup)
+  );
   if (prePlacementElevation && prePlacementPlates && prePlacementVolcanism) {
     mutable.primaryWorld.topologyLayers.elevation.set(prePlacementElevation);
     mutable.primaryWorld.topologyLayers.plates.set(prePlacementPlates);
@@ -2904,14 +2963,24 @@ export function applyDeepTimeFoundation(
   );
   onProgress?.({ phase: 'reconciling', progress: 0.77, message: 'Applying fragment-history terrain response' });
   const applyFragmentHistoryTerrainResponse = !options.terrainDiagnosticBypasses?.fragmentHistoryTerrainResponse;
-  const fragmentHistory = buildFragmentHistoryDiagnostics(mutable, topology, plateLookup, fragmentLineageSeeds, {
-    applyTerrainResponse: applyFragmentHistoryTerrainResponse,
-    terrainResponseScale: 0.95,
-    applyVolcanismResponse: true,
-    volcanismResponseScale: 0.35,
-    surfaceAgingSampleCount,
-    directTransformDiagnostics: fragmentPlacement
-  });
+  const fragmentHistory = traceGenerationPerformance(
+    'fragment-history-deformation',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: fragmentLineageSeeds.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0,
+      parent: true
+    },
+    () => buildFragmentHistoryDiagnostics(mutable, topology, plateLookup, fragmentLineageSeeds, {
+      applyTerrainResponse: applyFragmentHistoryTerrainResponse,
+      terrainResponseScale: 0.95,
+      applyVolcanismResponse: true,
+      volcanismResponseScale: 0.35,
+      surfaceAgingSampleCount,
+      directTransformDiagnostics: fragmentPlacement
+    })
+  );
   emitTerrainDiagnosticSnapshot(
     options.onTerrainDiagnosticSnapshot,
     'post-fragment-history',
@@ -2935,7 +3004,16 @@ export function applyDeepTimeFoundation(
 
   onProgress?.({ phase: 'reconciling', progress: 0.93, message: 'Reclassifying final biomes and projecting aged topology' });
   const topologyBiomeCorrections = classifyTopologyBiomes(mutable);
-  const projectedCellsRefreshed = projectFinalTopology(mutable, topology);
+  const projectedCellsRefreshed = traceGenerationPerformance(
+    'topology-to-raster-final-projection',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: mutable.primaryWorld.layers.elevation.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => projectFinalTopology(mutable, topology)
+  );
   applyBasinAwareCirculation(mutable);
   mutable.primaryWorld.rivers = projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers);
   const consistency = refreshMetrics(mutable);

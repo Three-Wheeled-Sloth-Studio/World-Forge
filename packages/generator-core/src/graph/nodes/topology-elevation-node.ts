@@ -4,6 +4,7 @@ import { CrustFieldsOutput, TerrainPhases, crustFieldsNodeId, coherentSphericalN
 import { PlateConstructionOutput, TopologyPlate, plateConstructionNodeId } from './plate-construction-node';
 import { PrimordialTerrainOutput, primordialTerrainNodeId } from './primordial-terrain-node';
 import { TopologyConstructionOutput, topologyConstructionNodeId } from './topology-construction-node';
+import { broadenTopologySignal } from '../../topologyScaleField';
 
 export const topologyElevationNodeId = 'terrain.topology-elevation';
 
@@ -17,7 +18,7 @@ export type TopologyElevationOutput = {
 
 export const topologyElevationNode: GenerationNode<TopologyElevationInput, TopologyElevationOutput> = {
   id: topologyElevationNodeId,
-  version: '1',
+  version: '2',
   dependencies: [topologyConstructionNodeId, primordialTerrainNodeId, plateConstructionNodeId, crustFieldsNodeId],
   execute(_context, input, dependencies) {
     const topologyOutput = dependencies.get(topologyConstructionNodeId) as TopologyConstructionOutput | undefined;
@@ -71,11 +72,11 @@ export function generateTopologyElevation(
     const craton = Math.max(0, coherentSphericalNoise(x * 1.25 + phaseB, y * 1.25 - continentPhase, z * 1.25 + phaseA) - 0.15) * continental;
     const plateauField = Math.max(
       0,
-      coherentSphericalNoise(x * 2.1 + plate.id * 0.31, y * 2.1 - phaseB, z * 2.1 + phaseA) - 0.2
+      coherentSphericalNoise(x * 2.1 + continentPhase, y * 2.1 - phaseB, z * 2.1 + phaseA) - 0.2
     ) * 0.22 * continental;
     const basinField = Math.min(
       0,
-      coherentSphericalNoise(x * 2.3 - plate.id * 0.27, y * 2.3 + phaseA, z * 2.3 - phaseB) + 0.08
+      coherentSphericalNoise(x * 2.3 - continentPhase, y * 2.3 + phaseA, z * 2.3 - phaseB) + 0.08
     ) * 0.12;
     const broad =
       coherentSphericalNoise(x * 1.4 + phaseA, y * 1.4, z * 1.4 + phaseB) * 0.08 +
@@ -92,27 +93,29 @@ export function generateTopologyElevation(
     elevation[cell] = lerp(oceanicBase, continentalBase, crustBlend) + plateBias + broad + detail + polarShelf;
   }
 
-  const uplift = new Float32Array(elevation.length);
+  const boundaryResponse = new Float32Array(elevation.length);
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     const currentPlate = plateLayer[cell];
-    const neighbors = topology.neighbors.subarray(cell * 4, cell * 4 + 4);
-    for (const neighbor of neighbors) {
+    for (let direction = 0; direction < 4; direction += 1) {
+      const neighbor = topology.neighbors[cell * 4 + direction];
       if (neighbor < 0 || neighbor <= cell || plateLayer[neighbor] === currentPlate) continue;
-      const current = plates[currentPlate];
-      const next = plates[plateLayer[neighbor]];
-      const effect = topologyPlateBoundaryEffect(current, next, topology, cell, neighbor);
-      uplift[cell] += effect;
-      uplift[neighbor] += effect;
-      for (let i = 0; i < 4; i += 1) {
-        const aroundCurrent = topology.neighbors[cell * 4 + i];
-        const aroundNext = topology.neighbors[neighbor * 4 + i];
-        if (aroundCurrent >= 0) uplift[aroundCurrent] += effect * 0.26;
-        if (aroundNext >= 0) uplift[aroundNext] += effect * 0.26;
-      }
+      const effect = topologyPlateBoundaryEffect(
+        plates[currentPlate],
+        plates[plateLayer[neighbor]],
+        topology,
+        cell,
+        neighbor
+      );
+      boundaryResponse[cell] += effect;
+      boundaryResponse[neighbor] += effect;
     }
   }
 
-  for (let cell = 0; cell < elevation.length; cell += 1) elevation[cell] += uplift[cell];
+  // Plate allocation edges are one-cell graph traces. Only physically
+  // meaningful relative motion contributes, and that response is broadened
+  // into a deformation zone before it reaches authoritative elevation.
+  const broadBoundaryResponse = broadenTopologySignal(boundaryResponse, topology);
+  for (let cell = 0; cell < elevation.length; cell += 1) elevation[cell] += broadBoundaryResponse[cell];
   smoothTopologyLayer(elevation, topology, 3, 0.22);
   return elevation;
 }
@@ -130,7 +133,7 @@ function topologyPlateBoundaryEffect(
   const latB = topology.latitudes[neighbor];
   const boundaryX = Math.atan2(Math.sin(lonB - lonA), Math.cos(lonB - lonA));
   const boundaryY = latB - latA;
-  const length = Math.max(0.000001, Math.sqrt(boundaryX * boundaryX + boundaryY * boundaryY));
+  const length = Math.max(0.000001, Math.hypot(boundaryX, boundaryY));
   const nx = boundaryX / length;
   const ny = boundaryY / length;
   const relativeX = b.motionX - a.motionX;
@@ -144,7 +147,8 @@ function topologyPlateBoundaryEffect(
     return 0.018 + convergence * 0.03;
   }
   if (convergence < -0.16) return -0.035 + convergence * 0.055;
-  return shear > 0.45 ? 0.012 - shear * 0.018 : -0.012;
+  if (shear > 0.45) return 0.012 - shear * 0.018;
+  return 0;
 }
 
 function smoothTopologyLayer(layer: Float32Array, topology: CubedSphereTopology, passes: number, blend: number): void {

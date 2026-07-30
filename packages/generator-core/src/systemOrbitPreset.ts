@@ -1,14 +1,18 @@
 import {
   biomeNames,
   biomeToCode,
+  buildCubedSphereTopology,
   clamp,
   codeToBiome,
+  cubedSphereCellForLonLat,
   type GenerationConfig,
   type ParameterRanges,
   type WorldProject
 } from '@world-forge/shared';
 import type { DeepTimeProject, PlanetaryDynamicsModel, StellarActivityClass, StellarModel } from './deepTimePipeline';
 import { sampleNumericDistribution, type NumericDistribution, type RandomSource } from './numericDistribution';
+import { classifyPermanentIce } from './permanentIce';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 type StarPresetId = 'sol-like' | 'habitable' | 'exotic';
 type ExtendedGenerationConfig = GenerationConfig & {
@@ -194,42 +198,68 @@ export function prepareSystemOrbitConfig(input: GenerationConfig): GenerationCon
 
 function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarModel, dynamics: PlanetaryDynamicsModel): void {
   const world = project.primaryWorld;
+  const topology = buildCubedSphereTopology(world.topology.resolution);
+  const layers = world.topologyLayers;
   const flux = stellar.luminositySolar / Math.max(0.05, dynamics.semiMajorAxisAu ** 2);
   const fluxTemperatureDelta = clamp(72 * (Math.pow(flux, 0.25) - 1), -14, 14);
   const eccentricitySeasonality = clamp(dynamics.eccentricityMean * 16, 0, 5);
   const tiltSeasonality = clamp(Math.abs(dynamics.obliquityMeanDeg - 23.4) / 18, 0, 2.5);
   const rotationMoisture = clamp((24 / Math.max(8, dynamics.rotationPeriodHours) - 1) * 0.035, -0.045, 0.06);
-  let iceCount = 0;
-  const biomeCounts = Object.fromEntries(biomeNames.map((biome) => [biome, 0])) as Record<string, number>;
 
-  for (let index = 0; index < world.layers.temperature.length; index += 1) {
-    const latitude = Math.abs((index / world.mapModel.resolution.width) / world.mapModel.resolution.height - 0.5) * 2;
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    const latitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
     const seasonalDelta = (eccentricitySeasonality + tiltSeasonality) * Math.max(0, latitude - 0.45) * -0.55;
-    world.layers.temperature[index] += fluxTemperatureDelta + seasonalDelta;
-    world.layers.wetness[index] = clamp(world.layers.wetness[index] + rotationMoisture + fluxTemperatureDelta * 0.002, 0, 1);
-    world.layers.climateMoisture[index] = clamp(world.layers.climateMoisture[index] + rotationMoisture, 0, 1);
-    world.layers.climatePrecipitation[index] = clamp(world.layers.climatePrecipitation[index] + rotationMoisture * 0.8, 0, 1);
-    if (!world.layers.water[index]) {
-      if (world.layers.temperature[index] < -2) world.layers.ice[index] = 1;
-      else if (world.layers.temperature[index] > 4) world.layers.ice[index] = 0;
-    }
-    if (world.layers.ice[index]) iceCount += 1;
-
-    let biome = codeToBiome(world.layers.biomes[index]);
-    if (!world.layers.water[index] && !world.layers.ice[index]) {
-      if (world.layers.temperature[index] <= 1.5) biome = 'tundra';
-      else if (world.layers.wetness[index] < 0.2) biome = 'desert';
-      else if (world.layers.temperature[index] > 20 && world.layers.wetness[index] > 0.72) biome = 'rainforest';
-      else if (world.layers.wetness[index] > 0.5) biome = 'forest';
-      else if (biome === 'ice_cap' || biome === 'tundra' || biome === 'desert' || biome === 'forest' || biome === 'rainforest') biome = 'grassland';
-      world.layers.biomes[index] = biomeToCode(biome);
-    } else if (world.layers.ice[index] && !world.layers.water[index]) {
-      biome = 'ice_cap';
-      world.layers.biomes[index] = biomeToCode(biome);
-    }
-    biomeCounts[codeToBiome(world.layers.biomes[index])] += 1;
+    layers.temperature[cell] += fluxTemperatureDelta + seasonalDelta;
+    layers.wetness[cell] = clamp(layers.wetness[cell] + rotationMoisture + fluxTemperatureDelta * 0.002, 0, 1);
+    layers.climateMoisture[cell] = clamp(layers.climateMoisture[cell] + rotationMoisture, 0, 1);
+    layers.climatePrecipitation[cell] = clamp(layers.climatePrecipitation[cell] + rotationMoisture * 0.8, 0, 1);
   }
 
+  const iceClassification = classifyPermanentIce({
+    ice: layers.ice,
+    elevation: layers.elevation,
+    water: layers.water,
+    temperature: layers.temperature,
+    wetness: layers.wetness,
+    topology,
+    seaLevel: project.selectedValues.seaLevel ?? 0,
+    axialTiltDeg: dynamics.obliquityMeanDeg,
+    orbitalEccentricity: dynamics.eccentricityMean
+  });
+
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    let biome = codeToBiome(layers.biomes[cell]);
+    if (!layers.water[cell] && !layers.ice[cell]) {
+      if (layers.temperature[cell] <= 1.5) biome = 'tundra';
+      else if (layers.wetness[cell] < 0.2) biome = 'desert';
+      else if (layers.temperature[cell] > 20 && layers.wetness[cell] > 0.72) biome = 'rainforest';
+      else if (layers.wetness[cell] > 0.5) biome = 'forest';
+      else if (biome === 'ice_cap' || biome === 'tundra' || biome === 'desert' || biome === 'forest' || biome === 'rainforest') biome = 'grassland';
+      layers.biomes[cell] = biomeToCode(biome);
+    } else if (layers.ice[cell] && !layers.water[cell]) {
+      biome = 'ice_cap';
+      layers.biomes[cell] = biomeToCode(biome);
+    }
+  }
+
+  project.primaryWorld.deepTime.persistentIceCells = iceClassification.iceCells;
+  traceGenerationPerformance(
+    'topology-to-raster-system-orbit-reprojection',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: world.layers.elevation.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => projectSystemOrbitLayers(project, topology)
+  );
+
+  let iceCount = 0;
+  const biomeCounts = Object.fromEntries(biomeNames.map((biome) => [biome, 0])) as Record<string, number>;
+  for (let index = 0; index < world.layers.ice.length; index += 1) {
+    iceCount += world.layers.ice[index];
+    biomeCounts[codeToBiome(world.layers.biomes[index])] += 1;
+  }
   project.metrics.icePercentage = round((iceCount / Math.max(1, world.layers.ice.length)) * 100, 2);
   project.metrics.biomeCounts = biomeCounts as typeof project.metrics.biomeCounts;
   if (world.climate) {
@@ -237,6 +267,30 @@ function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarM
       ...world.climate.notes.filter((note) => !note.startsWith('Stellar forcing integrated')),
       `Stellar forcing integrated from ${stellar.spectralClass}${stellar.luminosityClass}: relative flux ${round(flux, 3)}, temperature adjustment ${round(fluxTemperatureDelta, 2)} C.`
     ];
+  }
+}
+
+function projectSystemOrbitLayers(
+  project: DeepTimeProject,
+  topology: ReturnType<typeof buildCubedSphereTopology>
+): void {
+  const world = project.primaryWorld;
+  const source = world.topologyLayers;
+  const target = world.layers;
+  const { width, height } = world.mapModel.resolution;
+  for (let y = 0; y < height; y += 1) {
+    const latitude = Math.PI / 2 - ((y + 0.5) / height) * Math.PI;
+    for (let x = 0; x < width; x += 1) {
+      const longitude = ((x + 0.5) / width) * Math.PI * 2 - Math.PI;
+      const cell = cubedSphereCellForLonLat(topology, longitude, latitude);
+      const index = y * width + x;
+      target.temperature[index] = source.temperature[cell];
+      target.wetness[index] = source.wetness[cell];
+      target.climateMoisture[index] = source.climateMoisture[cell];
+      target.climatePrecipitation[index] = source.climatePrecipitation[cell];
+      target.biomes[index] = source.biomes[cell];
+      target.ice[index] = source.ice[cell];
+    }
   }
 }
 

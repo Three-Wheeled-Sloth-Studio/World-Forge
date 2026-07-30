@@ -784,7 +784,7 @@ function isPlausibleRiverSource(tile: HexTile): boolean {
 function removeRiverEdge(tile: HexTile, edge: HexTileEdge): void {
   tile.minorRiverEdges = tile.minorRiverEdges.filter((candidate) => candidate !== edge);
   tile.navigableRiverEdges = tile.navigableRiverEdges.filter((candidate) => candidate !== edge);
-  if (tile.navigableRiverEdges.length === 0 && tile.minorRiverEdges.length === 0) tile.navigableRiverCenter = false;
+  if (tile.navigableRiverEdges.length === 0) tile.navigableRiverCenter = false;
 }
 
 function neighborTile(tile: HexTile, edge: HexTileEdge, tiles: Map<string, HexTile>, width: number, height: number): HexTile | undefined {
