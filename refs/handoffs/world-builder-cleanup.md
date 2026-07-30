@@ -10,16 +10,16 @@ Parent PI: issue `#13` — **Clean up world builder workflow and controls**
 
 Completed work package: issue `#24` — **World builder workspace mode shell**
 
-Status: **Build panel accepted; continue with contextual right-panel routing**
+Status: **Contextual right panel accepted; continue with Explore-toolbar disclosure**
 
 ## Accepted baseline
 
 Functional code baseline before this documentation-only handoff:
 
-- commit `45e99811fa71a7e7f59fa0e906603f94bbd4bd48`
-- visible World Forge version `0.3.30`
+- commit `bacd1060076770e6d305d9f6a86ea4943c33f9bd`
+- visible World Forge version `0.3.31`
 - `npm run verify` passed in GitHub Actions
-- Vitest suite passed
+- 243 tests passed
 - TypeScript build passed
 - production build passed
 - focused headless browser QA passed at 1920 x 1080 and 1440 x 900
@@ -75,6 +75,19 @@ Implemented in `0.3.30`:
 - PNG resolution moved to Export.
 - no generator algorithm, replay, persistence, or saved-world schema changes were made.
 
+### Contextual right panel
+
+Implemented in `0.3.31`:
+
+- Build shows preset implications, generation quality, progress, and current-world replacement guidance.
+- Explore resolves one context at a time: point inspector, geographic drilldown, hex selection, or world summary.
+- point inspection takes priority over drilldown, and active drilldown takes priority over stale hex selection.
+- geographic drilldown remains mounted across workspace-mode changes while its toolbar, overlay, and inspector are only active in Explore.
+- Export contains PNG resolution, PNG/SVG/JSON/`.wforge`, hex tile, and VTT controls with visible task feedback.
+- diagnostics are only shown when the Dev workspace is active.
+- `.wforge` opening moved to My Worlds as a global project/library action.
+- no generator algorithm, persistence, replay, or saved-world schema changes were made.
+
 ### WP1: control inventory
 
 Completed artifact:
@@ -123,6 +136,10 @@ The following passed:
 - Left and right collapse controls continue to work.
 - Layout passed at 1920 × 1080 and 1440 × 900 without page-level scrolling or material map loss.
 - Developer graph workspace still opens.
+- Build, Explore, Export, and Dev select distinct right-panel contexts.
+- normal workspace modes expose no diagnostics tab or stacked inspector tabs.
+- Export exposes common files, PNG resolution, tile controls, and VTT controls in one surface.
+- My Worlds exposes `.wforge` opening as a library action.
 
 Hosted/embedded QA remains part of WP6 unless separately confirmed against the deployed shell.
 
@@ -205,44 +222,17 @@ Completed in `0.3.30`.
 - account access remains in the shell.
 - terminology is corrected and backed by focused tests.
 
-### Step 3: make the right panel contextual
+### Step 3: make the right panel contextual - completed
 
-Current component:
+Completed in `0.3.31`.
 
-- `apps/desktop/src/panels/RightPanel.tsx`
-
-Current problem:
-
-- geographic hierarchy
-- point inspector
-- world summary
-- hex/VTT export
-- diagnostics
-
-can stack or compete in one panel.
-
-Target routing from the single App-owned workspace mode:
-
-**Build**
-
-- selected preset implications
-- generation status/progress
-- concise current-world replacement warning or summary
-
-**Explore**
-
-- world summary when nothing is selected
-- point, hex, region, or drilldown inspector when selected
-- one clear-selection path
-- do not stack unrelated inspectors above the world summary
-
-**Export**
-
-- common formats and output resolution
-- hex/VTT options
-- export progress and completed-file feedback
-
-Developer diagnostics remain developer-only. My Worlds and file-open behavior remain global project/library actions, not a fourth workspace mode.
+- Build routes to preset implications, quality, progress, and replacement guidance.
+- Explore routes to one active selection context or the world summary.
+- point, geographic drilldown, and hex selections have clear dismissal paths.
+- Export contains common files, PNG resolution, hex/VTT configuration, and task feedback.
+- diagnostics route only from the Dev workspace.
+- My Worlds owns `.wforge` opening as a global project/library action.
+- geographic drilldown state remains mounted while changing workspace modes.
 
 ### Step 4: finish Explore-toolbar disclosure
 
@@ -314,12 +304,14 @@ Remaining:
 
 ### WP5: contextual right panel and Export mode
 
-Not complete.
+Complete for this PI.
 
-- mode-aware panel routing
+- mode-aware Build, Explore, Export, and Dev routing
 - one relevant Explore context at a time
-- complete export formats/options/progress surface
-- move hex/VTT configuration fully into Export
+- complete common-file, hex-tile, and VTT export surface
+- visible export progress and completion/error feedback
+- diagnostics restricted to Dev
+- `.wforge` opening located with My Worlds
 
 ### WP6: provenance and QA
 
