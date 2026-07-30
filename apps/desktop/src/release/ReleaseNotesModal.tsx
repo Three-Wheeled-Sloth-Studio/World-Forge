@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.27</p>
+            <h3>Detailed generation promoted</h3>
+            <ul>
+              <li>The faster, science-informed generation workflow is now the primary World Generation (Detailed) path.</li>
+              <li>The previous shared-stream workflow remains available as World Generation (Legacy) for rollback and comparison.</li>
+              <li>A behavior-identical World Generation (Experimental) copy now provides a clean track for further optimization.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.26</p>
             <h3>High-resolution terrain performance</h3>
             <ul>

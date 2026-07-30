@@ -3,7 +3,8 @@ export const generationWorkflowIds = [
   'core.performance-foundation-control',
   'core.performance-foundation-aging-control',
   'core.performance-foundation-derived-control',
-  'core.performance-foundation'
+  'core.performance-foundation',
+  'core.world-generation-experimental'
 ] as const;
 
 export type GenerationWorkflowId = typeof generationWorkflowIds[number];
@@ -25,16 +26,34 @@ export type GenerationWorkflowDeepTimeFeatures = {
   optimizeHydrologyTraversal: boolean;
 };
 
-export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.live-world';
+export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.performance-foundation';
 
 export const generationWorkflowDescriptors: readonly GenerationWorkflowDescriptor[] = [
   {
+    id: 'core.performance-foundation',
+    version: '1.0.0',
+    label: 'World Generation (Detailed)',
+    description: 'Primary production workflow with bounded aging, climate-field reuse, optimized hydrology, and High-resolution terrain continuity.',
+    status: 'production',
+    seedStrategy: 'semantic-node',
+    selectableInGenerator: true
+  },
+  {
     id: 'core.live-world',
     version: '1.0.0',
-    label: 'Live world generation',
-    description: 'Current production workflow retained as the stable comparison and rollback path.',
-    status: 'production',
+    label: 'World Generation (Legacy)',
+    description: 'Legacy shared-stream workflow retained for rollback, comparison, and older-generation reproducibility.',
+    status: 'experimental',
     seedStrategy: 'legacy-shared',
+    selectableInGenerator: true
+  },
+  {
+    id: 'core.world-generation-experimental',
+    version: '0.1.0',
+    label: 'World Generation (Experimental)',
+    description: 'Development copy of the Detailed workflow reserved for further optimization and science-model experiments.',
+    status: 'experimental',
+    seedStrategy: 'semantic-node',
     selectableInGenerator: true
   },
   {
@@ -63,15 +82,6 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: false
-  },
-  {
-    id: 'core.performance-foundation',
-    version: '0.4.0',
-    label: 'Performance foundation (experimental)',
-    description: 'Experimental workflow with bounded aging, climate-field reuse, and exact hydrology ordering and route reuse.',
-    status: 'experimental',
-    seedStrategy: 'semantic-node',
-    selectableInGenerator: true
   }
 ];
 
@@ -88,10 +98,12 @@ export function generationWorkflowDeepTimeFeatures(
   id: string | undefined
 ): GenerationWorkflowDeepTimeFeatures {
   const workflowId = generationWorkflowDescriptor(id).id;
+  const optimizedWorkflow = workflowId === 'core.performance-foundation'
+    || workflowId === 'core.world-generation-experimental';
   const reusePresentClimateDerivedFields = workflowId === 'core.performance-foundation-derived-control'
-    || workflowId === 'core.performance-foundation';
+    || optimizedWorkflow;
   return {
     reusePresentClimateDerivedFields,
-    optimizeHydrologyTraversal: workflowId === 'core.performance-foundation'
+    optimizeHydrologyTraversal: optimizedWorkflow
   };
 }

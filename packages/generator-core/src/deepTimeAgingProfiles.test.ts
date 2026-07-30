@@ -8,7 +8,7 @@ import {
 } from './deepTimeAgingProfiles';
 
 describe('deep-time aging profiles', () => {
-  it('preserves the production six-epoch schedule', () => {
+  it('preserves the legacy six-epoch schedule', () => {
     const epochs = buildDeepTimeEpochs(4.6, legacyDeepTimeAgingProfile);
     expect(epochs).toHaveLength(6);
     expect(epochs.map((epoch) => epoch.climateSamples)).toEqual([1, 1, 3, 3, 3, 3]);
@@ -18,11 +18,12 @@ describe('deep-time aging profiles', () => {
     expect(scheduledDeepTimeIterations(epochs)).toBe(103);
   });
 
-  it('uses three bounded eras for the candidate and reuse control workflows', () => {
+  it('uses three bounded eras for Detailed, Experimental, and reuse control workflows', () => {
     for (const workflowId of [
       'core.performance-foundation-aging-control',
       'core.performance-foundation-derived-control',
-      'core.performance-foundation'
+      'core.performance-foundation',
+      'core.world-generation-experimental'
     ]) {
       const profile = deepTimeAgingProfileForWorkflow(workflowId);
       const epochs = buildDeepTimeEpochs(9.5, profile);
@@ -34,16 +35,18 @@ describe('deep-time aging profiles', () => {
     }
   });
 
-  it('keeps the semantic-seed aging control on legacy six-epoch aging', () => {
-    const profile = deepTimeAgingProfileForWorkflow('core.performance-foundation-control');
-    const epochs = buildDeepTimeEpochs(4.6, profile);
-    expect(profile.id).toBe(legacyDeepTimeAgingProfile.id);
-    expect(epochs).toHaveLength(6);
-    expect(scheduledDeepTimeIterations(epochs)).toBe(103);
+  it('keeps Legacy and the semantic-seed control on six-epoch aging', () => {
+    for (const workflowId of ['core.live-world', 'core.performance-foundation-control']) {
+      const profile = deepTimeAgingProfileForWorkflow(workflowId);
+      const epochs = buildDeepTimeEpochs(4.6, profile);
+      expect(profile.id).toBe(legacyDeepTimeAgingProfile.id);
+      expect(epochs).toHaveLength(6);
+      expect(scheduledDeepTimeIterations(epochs)).toBe(103);
+    }
   });
 
-  it('defaults unknown workflows to the production schedule', () => {
-    expect(deepTimeAgingProfileForWorkflow(undefined).id).toBe('legacy-six-epoch');
-    expect(deepTimeAgingProfileForWorkflow('unknown').id).toBe('legacy-six-epoch');
+  it('defaults missing and unknown workflows to the primary bounded schedule', () => {
+    expect(deepTimeAgingProfileForWorkflow(undefined).id).toBe('bounded-three-era-v1');
+    expect(deepTimeAgingProfileForWorkflow('unknown').id).toBe('bounded-three-era-v1');
   });
 });

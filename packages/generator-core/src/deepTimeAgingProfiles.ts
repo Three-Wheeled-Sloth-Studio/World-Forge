@@ -1,3 +1,5 @@
+import { normalizeGenerationWorkflowId } from './workflows';
+
 export type DeepTimeAgingProfileId = 'legacy-six-epoch' | 'bounded-three-era-v1';
 
 export type DeepTimeAgingProfile = {
@@ -22,21 +24,21 @@ export type DeepTimeEpochSchedule = {
 export const legacyDeepTimeAgingProfile: DeepTimeAgingProfile = {
   id: 'legacy-six-epoch',
   label: 'Legacy six-epoch aging',
-  description: 'Production-compatible six-epoch schedule with fourteen forcing samples.'
+  description: 'Legacy rollback schedule with fourteen forcing samples.'
 };
 
 export const boundedThreeEraAgingProfile: DeepTimeAgingProfile = {
   id: 'bounded-three-era-v1',
   label: 'Bounded three-era aging',
-  description: 'Experimental ancient, mature, and recent eras with five forcing samples and bounded process iteration budgets.'
+  description: 'Primary ancient, mature, and recent eras with five forcing samples and bounded process iteration budgets.'
 };
 
 export function deepTimeAgingProfileForWorkflow(workflowId: string | undefined): DeepTimeAgingProfile {
-  return workflowId === 'core.performance-foundation'
-    || workflowId === 'core.performance-foundation-aging-control'
-    || workflowId === 'core.performance-foundation-derived-control'
-    ? boundedThreeEraAgingProfile
-    : legacyDeepTimeAgingProfile;
+  const normalizedWorkflowId = normalizeGenerationWorkflowId(workflowId);
+  return normalizedWorkflowId === 'core.live-world'
+    || normalizedWorkflowId === 'core.performance-foundation-control'
+    ? legacyDeepTimeAgingProfile
+    : boundedThreeEraAgingProfile;
 }
 
 export function buildDeepTimeEpochs(ageGy: number, profile: DeepTimeAgingProfile): DeepTimeEpochSchedule[] {
