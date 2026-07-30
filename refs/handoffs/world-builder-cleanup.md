@@ -10,19 +10,19 @@ Parent PI: issue `#13` — **Clean up world builder workflow and controls**
 
 Completed work package: issue `#24` — **World builder workspace mode shell**
 
-Status: **WP2 accepted; continue with mode ownership and Build/right-panel recomposition**
+Status: **App-owned workspace mode accepted; continue with Build/right-panel recomposition**
 
 ## Accepted baseline
 
 Functional code baseline before this documentation-only handoff:
 
-- commit `7a6c23bc8eec132816887b5e26ceccf84e17ae20`
-- visible World Forge version `0.3.28`
-- `npm run verify` passed locally
-- 231 tests passed
+- commit `bb5b671e7c181affb13366dba8146e4d55acecdc`
+- visible World Forge version `0.3.29`
+- `npm run verify` passed in GitHub Actions
+- Vitest suite passed
 - TypeScript build passed
 - production build passed
-- focused browser QA passed
+- focused headless browser QA passed at 1920 x 1080 and 1440 x 900
 
 Do not branch away from stale work. Start from current `dev` and work directly on `dev` in small, reviewable commits, per root `AGENTS.md`.
 
@@ -45,6 +45,17 @@ The generation choices are now:
 The runtime graph was corrected so Experimental uses the same optimized deep-time implementation as Detailed. Unknown workflow IDs resolve to Detailed.
 
 Several old tests had silently depended on Legacy being the default. Those fixtures were corrected to test their actual contracts rather than requiring one fixed seed to preserve Legacy-specific biome or landmass outcomes.
+
+### App-owned workspace mode
+
+Implemented in `0.3.29`:
+
+- `App` owns the single Build / Explore / Export state.
+- `WorldWorkspace` is controlled through `workspaceMode` and `onWorkspaceModeChange` props.
+- successful generation, saved-world load, and `.wforge` open explicitly move to Explore.
+- clearing the current project returns to Build.
+- `GeneratorPanel` and `RightPanel` receive the same mode state, ready for contextual recomposition.
+- workspace mode remains session-only and is not added to persistence or saved-world schemas.
 
 ### WP1: control inventory
 
@@ -97,23 +108,20 @@ The following passed:
 
 Hosted/embedded QA remains part of WP6 unless separately confirmed against the deployed shell.
 
-## Important current limitation: workspace mode ownership
+## Workspace mode ownership
 
-`WorkspaceMode` currently lives inside `WorldWorkspace`.
+`WorkspaceMode` now lives in `App` in `apps/desktop/src/main.tsx`.
 
-That was sufficient for the first center-workspace slice, but it means `App`, `GeneratorPanel`, and `RightPanel` do not know whether the user is in Build, Explore, or Export.
+`WorldWorkspace`, `GeneratorPanel`, and `RightPanel` receive the same controlled mode. Do not add parallel side-panel state as Build and Export composition proceeds.
 
-Do not build additional parallel mode state in the side panels.
-
-The first task for the next worker is to lift workspace mode ownership into `App` in `apps/desktop/src/main.tsx`, then pass the controlled mode and change handler into `WorldWorkspace` and the side-panel composition.
-
-Preserve the current behavior:
+Preserved behavior:
 
 - initial mode is Build when no project is loaded
-- initial mode is Explore when a project is already available
-- successful generation or world load moves to Explore
+- an available or newly loaded project moves to Explore
+- successful generation moves to Explore
+- clearing the project returns to Build
 - switching modes does not regenerate, clear, or remount the map
-- do not add a persistence-schema field for workspace mode during this PI
+- workspace mode is not stored in persistence or saved-world schemas
 
 ## Dev graph workflow-selector observation
 
@@ -155,18 +163,15 @@ Relevant files:
 
 ## Next implementation slice
 
-### Step 1: lift and control workspace mode
+### Step 1: lift and control workspace mode - completed
 
-Move the mode state from `WorldWorkspace` into `App`.
+Completed in `0.3.29`.
 
-`WorldWorkspace` should receive:
-
-- current `workspaceMode`
-- `onWorkspaceModeChange`
-
-Keep its presentation toolbar mode-specific, but make the surrounding application able to route left and right content from the same source of truth.
-
-Add focused tests around transition rules where practical. Avoid a new persistence field.
+- `App` owns `workspaceMode`.
+- `WorldWorkspace` receives the current mode and change handler.
+- the generator and right panel receive the same mode state.
+- focused transition tests cover Build without a project and Explore with an available project.
+- no persistence field was added.
 
 ### Step 2: recompose the Build panel
 
@@ -301,7 +306,6 @@ Do not reintroduce developer diagnostics into this menu wearing a fake mustache.
 
 Not complete.
 
-- lift mode ownership
 - quick-build controls
 - grouped advanced settings
 - accurate terminology
