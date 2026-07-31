@@ -1,0 +1,71 @@
+name: Temporary enrichment foundation runner
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/enrichment-foundation-20260731'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve temporary runner scripts
+        run: |
+          cp .github/scripts/apply-enrichment-foundation.mjs /tmp/apply-enrichment-foundation.mjs
+          cp .github/scripts/qa-enrichment-foundation.mjs /tmp/qa-enrichment-foundation.mjs
+
+      - name: Switch to current dev
+        run: |
+          git fetch origin dev
+          git checkout -B dev origin/dev
+          echo "Implementing against $(git rev-parse HEAD)"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply first enrichment increment
+        run: node /tmp/apply-enrichment-foundation.mjs
+
+      - name: Focused enrichment contracts
+        run: npx vitest run packages/generation-runtime/src/enrichment/systemOrbitalContext.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Focused browser QA
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node /tmp/qa-enrichment-foundation.mjs
+
+      - name: Commit validated increment to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add AGENTS.md apps packages refs
+          git diff --cached --check
+          git commit -m "Add inspectable orbital enrichment workflow"
+          git push origin HEAD:dev
