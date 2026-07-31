@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createDefaultConfig } from '../packages/generator-core/src/index';
 import {
   generateProjectWithNativeStages,
@@ -5,6 +6,17 @@ import {
 } from '../packages/generator-core/src/nativeStagePipeline';
 
 type ExtendedConfig = ReturnType<typeof createDefaultConfig> & { workflowId?: string };
+
+function correctRunnerPatchMarker(): void {
+  const patchPath = '/tmp/automation-stage-attribution-biome-0.3.35.py';
+  const staleMarker = 'function projectTopologyRiver(';
+  const correctMarker = 'function findTopologySeaLevelForOceanTarget(';
+  const patch = readFileSync(patchPath, 'utf8');
+  const occurrences = patch.split(staleMarker).length - 1;
+  if (occurrences === 0) return;
+  if (occurrences !== 2) throw new Error(`Expected two stale patch markers, found ${occurrences}`);
+  writeFileSync(patchPath, patch.replaceAll(staleMarker, correctMarker));
+}
 
 function hashBytes(values: ArrayLike<number>): string {
   let hash = 2166136261;
@@ -14,6 +26,8 @@ function hashBytes(values: ArrayLike<number>): string {
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
+
+correctRunnerPatchMarker();
 
 const config = createDefaultConfig('stage-attribution-biome-035', { width: 2048, height: 1024 }) as ExtendedConfig;
 config.topologyResolution = 128;
