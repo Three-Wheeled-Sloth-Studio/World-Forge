@@ -708,3 +708,22 @@ See also:
 - `refs/research/procedural-generation/research-framework-and-technique-catalog.md`
 - `refs/research/procedural-generation/technique-catalog-additions-2026-07-29.md`
 - `refs/research/procedural-generation/high-fidelity-desktop-world-track.md`
+
+## Experimental present-climate traversal optimization
+
+Implemented on `dev` for `core.world-generation-experimental` only. Detailed remains the production comparison baseline.
+
+- marine cells bypass wind, moisture-fetch, and orographic traversal that cannot affect authoritative ocean precipitation or moisture;
+- land cells reuse one exact topology-direction geometry cache;
+- wind deflection and orographic lift reuse the same exact terrain gradient;
+- all nine Detailed/Experimental pairs retained identical coarse signatures, authoritative signatures, and metric objects;
+- mean climate-rebuild reduction: **66.81%**;
+- mean deep-time reduction: **32.53%**;
+- mean total-generation reduction: **22.85%**;
+- sequential post-run RSS remained within the PI guardrail, but does not establish peak-memory equivalence.
+
+Evidence:
+
+- `refs/testing/present-climate-topology-traversal-benchmark.json`
+- `refs/testing/present-climate-topology-traversal-benchmark.md`
+- `refs/testing/present-climate-topology-traversal-summary.json`
