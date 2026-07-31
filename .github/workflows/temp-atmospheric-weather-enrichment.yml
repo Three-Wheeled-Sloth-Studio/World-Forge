@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/atmospheric-weather-enrichment-20260731'
+    if: github.head_ref == 'automation/atmospheric-weather-enrichment-20260731-r2'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout runner branch
@@ -48,7 +48,6 @@ jobs:
           grep -q "data-weather-presentation" apps/desktop/src/globe/GlobeViewer.tsx
 
       - name: Focused weather contract tests
-        working-directory: apps/desktop
         run: npx vitest run ../../packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.test.ts
 
       - name: Full repository verification
@@ -82,4 +81,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/atmospheric-weather-enrichment-20260731 || true
+        run: git push origin --delete automation/atmospheric-weather-enrichment-20260731-r2 || true
