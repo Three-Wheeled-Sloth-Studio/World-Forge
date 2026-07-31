@@ -59,7 +59,9 @@ await page.waitForFunction(() => document.querySelector('.globe-viewer')?.getAtt
 await openLayers();
 await page.getByRole('button', { name: /^Clouds/ }).click();
 await page.waitForFunction(() => document.querySelector('.globe-viewer')?.getAttribute('data-cloud-layer') === 'hidden');
-if (await globe.getAttribute('data-weather-layer') !== 'visible') throw new Error('Weather systems did not remain independently visible after clouds were disabled.');
+const finalCloudLayer = await globe.getAttribute('data-cloud-layer');
+const finalWeatherLayer = await globe.getAttribute('data-weather-layer');
+if (finalWeatherLayer !== 'visible') throw new Error('Weather systems did not remain independently visible after clouds were disabled.');
 
 const workflowOptionExists = await page.evaluate(() => Array.from(document.querySelectorAll('option')).some((option) => option.value === 'project.atmospheric-weather-presentation'));
 if (!workflowOptionExists) {
@@ -77,5 +79,5 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1920, height: 108
 }
 if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
-console.log(JSON.stringify({ authority, bandCount, systemCount, weatherDayBefore, weatherDayAfter, cloudLayer: await globe.getAttribute('data-cloud-layer'), weatherLayer: await globe.getAttribute('data-weather-layer') }, null, 2));
+console.log(JSON.stringify({ authority, bandCount, systemCount, weatherDayBefore, weatherDayAfter, cloudLayer: finalCloudLayer, weatherLayer: finalWeatherLayer }, null, 2));
 await browser.close();
