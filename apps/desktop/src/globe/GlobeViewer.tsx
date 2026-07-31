@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MapMode, MapTheme, PointInspectionRecord, RenderMode, renderWorldToCanvas } from '@world-forge/renderer';
-import type { OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import type { AtmosphericWeatherPresentationArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import { SystemSimulationControls } from './SystemSimulationControls';
 import {
@@ -49,6 +49,7 @@ const defaultGlobeScale: GlobeScaleConfig = {
 export function GlobeViewer({
   project,
   orbitalContext,
+  weatherPresentation,
   simulationClock,
   mapMode,
   renderMode,
@@ -56,6 +57,8 @@ export function GlobeViewer({
   showRivers,
   showPlates,
   showGlobeShells,
+  showClouds,
+  showWeather,
   globeDebugMode,
   diagnosticMode,
   inspectionRecord,
@@ -66,6 +69,7 @@ export function GlobeViewer({
 }: {
   project: WorldProject;
   orbitalContext: SystemOrbitalContextArtifact | null;
+  weatherPresentation: AtmosphericWeatherPresentationArtifact | null;
   simulationClock: SystemSimulationClock;
   mapMode: MapMode;
   renderMode: RenderMode;
@@ -73,6 +77,8 @@ export function GlobeViewer({
   showRivers: boolean;
   showPlates: boolean;
   showGlobeShells: boolean;
+  showClouds: boolean;
+  showWeather: boolean;
   globeDebugMode: GlobeDebugMode;
   diagnosticMode: boolean;
   inspectionRecord: PointInspectionRecord | null;
@@ -208,23 +214,51 @@ export function GlobeViewer({
     ocean.visible = showGlobeShells && (globeDebugMode === 'final' || globeDebugMode === 'ocean-shell');
     planetSpinGroup.add(ocean);
 
-    const cloudAlpha = new THREE.CanvasTexture(createCloudAlphaTexture(project));
+    const initialWeatherDay = simulationClock.currentDays(performance.now());
+    const cloudCanvas = createWeatherPresentationTexture(weatherPresentation, 'clouds', initialWeatherDay);
+    const cloudAlpha = new THREE.CanvasTexture(cloudCanvas);
     cloudAlpha.wrapS = THREE.RepeatWrapping;
     cloudAlpha.wrapT = THREE.ClampToEdgeWrapping;
+    cloudAlpha.minFilter = THREE.LinearFilter;
+    cloudAlpha.magFilter = THREE.LinearFilter;
     const clouds = new THREE.Mesh(
       new THREE.SphereGeometry(scale.cloudShellRadius, 128, 64),
       new THREE.MeshLambertMaterial({
         color: 0xf6f3e8,
         alphaMap: cloudAlpha,
         transparent: true,
-        opacity: 0.68,
-        alphaTest: 0.035,
+        opacity: 0.72,
+        alphaTest: 0.025,
         depthWrite: false,
         depthTest: true
       })
     );
-    clouds.visible = false;
+    clouds.castShadow = true;
+    clouds.receiveShadow = true;
+    clouds.visible = Boolean(weatherPresentation && showClouds);
     planetSpinGroup.add(clouds);
+
+    const weatherCanvas = createWeatherPresentationTexture(weatherPresentation, 'weather', initialWeatherDay);
+    const weatherAlpha = new THREE.CanvasTexture(weatherCanvas);
+    weatherAlpha.wrapS = THREE.RepeatWrapping;
+    weatherAlpha.wrapT = THREE.ClampToEdgeWrapping;
+    weatherAlpha.minFilter = THREE.LinearFilter;
+    weatherAlpha.magFilter = THREE.LinearFilter;
+    const weatherSystems = new THREE.Mesh(
+      new THREE.SphereGeometry(scale.cloudShellRadius + 0.008, 128, 64),
+      new THREE.MeshLambertMaterial({
+        color: 0xe8f1f5,
+        alphaMap: weatherAlpha,
+        transparent: true,
+        opacity: 0.84,
+        alphaTest: 0.03,
+        depthWrite: false,
+        depthTest: true
+      })
+    );
+    weatherSystems.castShadow = true;
+    weatherSystems.visible = Boolean(weatherPresentation && showWeather);
+    planetSpinGroup.add(weatherSystems);
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(scale.atmosphereShellRadius, 96, 48),
@@ -308,13 +342,12 @@ export function GlobeViewer({
 
     let frame = 0;
     let disposed = false;
-    let previousSimulationDays = simulationClock.currentDays(performance.now());
+    let lastWeatherTextureDay = Number.NaN;
     const animate = () => {
       if (disposed) return;
       frame = requestAnimationFrame(animate);
       const simulationDays = simulationClock.currentDays(performance.now());
-      const simulationDeltaDays = simulationDays - previousSimulationDays;
-      previousSimulationDays = simulationDays;
+
       if (primaryPresentation) {
         const rotationPeriodDays = Math.max(0.08, Math.abs(primaryPresentation.rotationPeriodHours) / 24);
         planetSpinGroup.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays;
@@ -329,7 +362,14 @@ export function GlobeViewer({
       host.dataset.cameraOrbitYaw = cameraOrbitRef.current.yaw.toFixed(6);
       host.dataset.cameraOrbitPitch = cameraOrbitRef.current.pitch.toFixed(6);
       host.dataset.observerControl = 'camera-orbit';
-      clouds.rotation.y += simulationDeltaDays * 0.04;
+      if (weatherPresentation && (!Number.isFinite(lastWeatherTextureDay) || Math.abs(simulationDays - lastWeatherTextureDay) >= 0.04)) {
+        renderWeatherPresentationTexture(cloudCanvas, weatherPresentation, 'clouds', simulationDays);
+        renderWeatherPresentationTexture(weatherCanvas, weatherPresentation, 'weather', simulationDays);
+        cloudAlpha.needsUpdate = true;
+        weatherAlpha.needsUpdate = true;
+        lastWeatherTextureDay = simulationDays;
+        host.dataset.weatherTextureDay = simulationDays.toFixed(6);
+      }
       if (orbitalPresentation && orbitalContext) updateOrbitalPresentationScene(orbitalPresentation, orbitalContext, simulationDays);
       renderer.render(scene, camera);
     };
@@ -360,17 +400,20 @@ export function GlobeViewer({
       material.dispose();
       texture.dispose();
       cloudAlpha.dispose();
+      weatherAlpha.dispose();
       ocean.geometry.dispose();
       (ocean.material as THREE.Material).dispose();
       clouds.geometry.dispose();
       (clouds.material as THREE.Material).dispose();
+      weatherSystems.geometry.dispose();
+      (weatherSystems.material as THREE.Material).dispose();
       atmosphere.geometry.dispose();
       (atmosphere.material as THREE.Material).dispose();
       if (orbitalPresentation) disposeOrbitalPresentationScene(orbitalPresentation);
       renderer.dispose();
       host.replaceChildren();
     };
-  }, [focusTarget, globeDebugMode, inspectionRecord, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showGlobeShells, showPlates, showRivers, simulationClock]);
+  }, [focusTarget, globeDebugMode, inspectionRecord, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showClouds, showGlobeShells, showPlates, showRivers, showWeather, simulationClock, weatherPresentation]);
 
   const moonCount = orbitalContext?.payload.bodies.filter((body) => body.kind === 'moon' && body.parentBodyId === orbitalContext.payload.primaryBodyId).length ?? 0;
   const visibleBodyCount = orbitalContext?.payload.bodies.filter((body) => body.kind !== 'moon' && body.id !== orbitalContext.payload.primaryBodyId && (body.visibleFromPrimary || orbitalContext.payload.visibleBodyIds.includes(body.id))).length ?? 0;
@@ -388,6 +431,12 @@ export function GlobeViewer({
       data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
       data-frame-reference={orbitalContext ? 'fixed-world-camera-orbit' : 'camera-orbit'}
       data-moon-shadow-mode={orbitalContext ? 'pcf-soft-proof' : 'disabled'}
+      data-weather-presentation={weatherPresentation ? 'ready' : 'pending'}
+      data-weather-authority={weatherPresentation?.weatherAuthority ?? 'none'}
+      data-weather-band-count={weatherPresentation?.payload.cloudBands.length ?? 0}
+      data-weather-system-count={weatherPresentation?.payload.systems.length ?? 0}
+      data-cloud-layer={weatherPresentation && showClouds ? 'visible' : 'hidden'}
+      data-weather-layer={weatherPresentation && showWeather ? 'visible' : 'hidden'}
     >
       <div ref={hostRef} className="globe-render-surface" />
       {orbitalContext && <SystemSimulationControls clock={simulationClock} artifact={orbitalContext} />}
@@ -682,47 +731,105 @@ function createGyreDebugTexture(project: WorldProject): HTMLCanvasElement {
   return canvas;
 }
 
-function createCloudAlphaTexture(project: WorldProject): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  const width = 1024;
-  const height = 512;
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  if (!context) return canvas;
-  const image = context.createImageData(width, height);
-  const world = project.primaryWorld;
-  const worldWidth = world.mapModel.resolution.width;
-  const worldHeight = world.mapModel.resolution.height;
+type WeatherTextureMode = 'clouds' | 'weather';
 
-  for (let y = 0; y < height; y += 1) {
-    const v = y / Math.max(1, height - 1);
-    const latitude01 = Math.abs(v - 0.5) * 2;
-    for (let x = 0; x < width; x += 1) {
-      const u = x / Math.max(1, width - 1);
-      const sourceX = Math.max(0, Math.min(worldWidth - 1, Math.floor(u * worldWidth)));
-      const sourceY = Math.max(0, Math.min(worldHeight - 1, Math.floor(v * worldHeight)));
-      const index = sourceY * worldWidth + sourceX;
-      const water = world.layers.water[index] === 1 ? 1 : 0;
-      const wetness = world.layers.wetness[index] ?? 0.45;
-      const temperature = world.layers.temperature[index] ?? 12;
-      const polarDry = smoothStep(0.72, 1, latitude01);
-      const temperateBand = 1 - Math.abs(latitude01 - 0.45) / 0.55;
-      const climateProbability = clamp01(0.34 + water * 0.24 + wetness * 0.28 + clamp01(temperateBand) * 0.14 - polarDry * 0.18 - (temperature > 28 ? 0.08 : 0));
-      const noise = fractalCloudNoise(u, v, project.seed);
-      const weighted = noise * (0.88 + climateProbability * 0.46);
-      const alpha = smoothStep(0.47, 0.68, weighted) * (0.54 + climateProbability * 0.58);
-      const value = Math.round(clamp01(alpha) * 255);
-      const target = (y * width + x) * 4;
-      image.data[target] = value;
-      image.data[target + 1] = value;
-      image.data[target + 2] = value;
-      image.data[target + 3] = value;
+function createWeatherPresentationTexture(artifact: AtmosphericWeatherPresentationArtifact | null, mode: WeatherTextureMode, simulationDays: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = artifact?.payload.textureResolution.width ?? 512;
+  canvas.height = artifact?.payload.textureResolution.height ?? 256;
+  renderWeatherPresentationTexture(canvas, artifact, mode, simulationDays);
+  return canvas;
+}
+
+function renderWeatherPresentationTexture(
+  canvas: HTMLCanvasElement,
+  artifact: AtmosphericWeatherPresentationArtifact | null,
+  mode: WeatherTextureMode,
+  simulationDays: number
+): void {
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  context.save();
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000000';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  if (!artifact) { context.restore(); return; }
+  context.globalCompositeOperation = 'lighter';
+
+  if (mode === 'clouds') {
+    for (const band of artifact.payload.cloudBands) {
+      const intensity = Math.round(82 + band.density * 145);
+      context.strokeStyle = `rgb(${intensity}, ${intensity}, ${intensity})`;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      context.lineWidth = Math.max(3, band.widthDeg / 180 * canvas.height);
+      context.beginPath();
+      for (let x = 0; x <= canvas.width; x += 3) {
+        const longitudeDeg = x / canvas.width * 360 - 180;
+        const phase = band.phaseRad + THREE.MathUtils.degToRad(longitudeDeg * band.waveNumber + band.driftDegPerDay * simulationDays);
+        const textureNoise = fractalCloudNoise(wrapUnit(x / canvas.width), clamp01((90 - band.centerLatitudeDeg) / 180), `${artifact.seed}:${band.id}`);
+        const latitudeDeg = band.centerLatitudeDeg + Math.sin(phase) * band.waveAmplitudeDeg + (textureNoise - 0.5) * band.widthDeg * 0.45;
+        const y = (90 - latitudeDeg) / 180 * canvas.height;
+        if (x === 0) context.moveTo(x, y); else context.lineTo(x, y);
+      }
+      context.stroke();
     }
   }
-  context.putImageData(image, 0, 0);
-  normalizeHorizontalTextureSeam(canvas, 1);
-  return canvas;
+
+  for (const system of artifact.payload.systems) drawWeatherPresentationSystem(context, canvas, artifact.seed, system, mode, simulationDays);
+  context.restore();
+  normalizeHorizontalTextureSeam(canvas, 2);
+}
+
+function drawWeatherPresentationSystem(
+  context: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  seed: string,
+  system: WeatherPresentationSystem,
+  mode: WeatherTextureMode,
+  simulationDays: number
+): void {
+  const longitudeDeg = wrapSignedDegrees(system.longitudeDeg + system.driftEastDegPerDay * simulationDays);
+  const latitudeDeg = Math.max(-88, Math.min(88, system.latitudeDeg + Math.sin(system.phaseRad + simulationDays * 0.08) * system.driftNorthDegPerDay));
+  const x = (longitudeDeg + 180) / 360 * canvas.width;
+  const y = (90 - latitudeDeg) / 180 * canvas.height;
+  const radius = Math.max(3, system.radiusDeg / 360 * canvas.width);
+  for (const offset of [-canvas.width, 0, canvas.width]) {
+    const cx = x + offset;
+    const density = clamp01(system.density);
+    const gradient = context.createRadialGradient(cx, y, radius * 0.12, cx, y, radius);
+    const core = Math.round((mode === 'weather' ? 185 : 100) + density * (mode === 'weather' ? 70 : 115));
+    gradient.addColorStop(0, `rgb(${core}, ${core}, ${core})`);
+    gradient.addColorStop(0.5, `rgb(${Math.round(core * 0.72)}, ${Math.round(core * 0.72)}, ${Math.round(core * 0.72)})`);
+    gradient.addColorStop(1, '#000000');
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(cx, y, radius, 0, Math.PI * 2);
+    context.fill();
+
+    if (mode === 'weather') {
+      context.strokeStyle = `rgb(${core}, ${core}, ${core})`;
+      context.lineWidth = Math.max(1.5, radius * 0.11);
+      context.lineCap = 'round';
+      const turns = system.kind === 'cyclone' ? 2.4 : system.kind === 'convective' ? 1.2 : 0.7;
+      const rotation = system.phaseRad + system.spinRadiansPerDay * simulationDays;
+      context.beginPath();
+      for (let step = 0; step <= 28; step += 1) {
+        const t = step / 28;
+        const angle = rotation + t * Math.PI * 2 * turns;
+        const distance = system.kind === 'front' ? radius * (0.25 + t * 0.72) : radius * (0.08 + t * 0.82);
+        const wobble = (seededUnit(`${seed}:${system.id}`, step, Math.floor(simulationDays * 4)) - 0.5) * radius * 0.08;
+        const px = cx + Math.cos(angle) * distance;
+        const py = y + Math.sin(angle) * distance * 0.62 + wobble;
+        if (step === 0) context.moveTo(px, py); else context.lineTo(px, py);
+      }
+      context.stroke();
+    }
+  }
+}
+
+function wrapSignedDegrees(value: number): number {
+  return ((value + 180) % 360 + 360) % 360 - 180;
 }
 
 function normalizeHorizontalTextureSeam(canvas: HTMLCanvasElement, columns = 2) {

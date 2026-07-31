@@ -816,7 +816,77 @@ export type SystemOrbitalContextArtifact = {
   };
 };
 
-export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact;
+export type WeatherCloudBand = {
+  id: string;
+  centerLatitudeDeg: number;
+  widthDeg: number;
+  density: number;
+  waveAmplitudeDeg: number;
+  waveNumber: number;
+  phaseRad: number;
+  driftDegPerDay: number;
+};
+
+export type WeatherPresentationSystemKind = 'cyclone' | 'front' | 'convective';
+
+export type WeatherPresentationSystem = {
+  id: string;
+  kind: WeatherPresentationSystemKind;
+  latitudeDeg: number;
+  longitudeDeg: number;
+  radiusDeg: number;
+  density: number;
+  driftEastDegPerDay: number;
+  driftNorthDegPerDay: number;
+  spinRadiansPerDay: number;
+  phaseRad: number;
+};
+
+export type AtmosphericWeatherPresentationArtifact = {
+  artifactKey: 'project.atmospheric-weather-presentation';
+  artifactVersion: 1;
+  artifactRole: 'presentation';
+  weatherAuthority: 'illustrative';
+  status: 'complete';
+  workflow: {
+    id: 'project.atmospheric-weather-presentation';
+    version: '1.0.0';
+    graphSignature: string;
+    nodes: EnrichmentNodeRunRecord[];
+  };
+  source: {
+    projectId: string;
+    worldId: string;
+    sourceSignature: string;
+    generatorVersion: string;
+    appVersion: string;
+    sourceCommit?: string;
+    orbitalArtifactSignature: string;
+  };
+  seed: string;
+  epochIso: string;
+  startedAt: string;
+  completedAt: string;
+  totalMs: number;
+  artifactSignature: string;
+  validation: {
+    valid: boolean;
+    issues: Array<{ severity: 'error' | 'warning'; message: string }>;
+  };
+  payload: {
+    modelVersion: 'atmospheric-weather-presentation-v1';
+    textureResolution: Resolution;
+    meanCloudCover: number;
+    cloudBands: WeatherCloudBand[];
+    systems: WeatherPresentationSystem[];
+    advection: {
+      zonalMeanDegPerDay: number;
+      meridionalMeanDegPerDay: number;
+    };
+  };
+};
+
+export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact;
 export type ProjectEnrichmentArtifacts = Record<string, ProjectEnrichmentArtifact>;
 
 export type WorldProject = {

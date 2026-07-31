@@ -53,6 +53,8 @@ import { useDevGraphWorkspace } from './dev/useDevGraphWorkspace';
 import { useGenerationWorkflow } from './generation/useGenerationWorkflow';
 import { useProjectEnrichment } from './enrichment/useProjectEnrichment';
 import { OrbitalContextStatus } from './enrichment/OrbitalContextStatus';
+import { useAtmosphericWeatherEnrichment } from './enrichment/useAtmosphericWeatherEnrichment';
+import { WeatherPresentationStatus } from './enrichment/WeatherPresentationStatus';
 import { GlobeViewer, type GlobeDebugMode } from './globe/GlobeViewer';
 import { createSystemSimulationClock } from './simulation/systemSimulationClock';
 import { useCloudWorkspaceSync } from './workspace/useCloudWorkspaceSync';
@@ -324,6 +326,8 @@ function App() {
   const [showRivers, setShowRivers] = useState(storedUi.showRivers);
   const [showHexes, setShowHexes] = useState(storedUi.showHexes);
   const [showGlobeShells, setShowGlobeShells] = useState(true);
+  const [showClouds, setShowClouds] = useState(false);
+  const [showWeather, setShowWeather] = useState(false);
   const [globeDebugMode, setGlobeDebugMode] = useState<GlobeDebugMode>('final');
   const [mapMode, setMapMode] = useState<MapMode>(() => storedMapMode(storedUi.mapMode));
   const [renderMode, setRenderMode] = useState<RenderMode>(() => storedRenderMode(storedUi.renderMode));
@@ -398,6 +402,7 @@ function App() {
     generationElapsedMs, generationStageElapsedMs, lastGenerationRun
   } = generation;
   const enrichment = useProjectEnrichment({ project, onProjectEnriched: setProject });
+  const weatherEnrichment = useAtmosphericWeatherEnrichment({ project, onProjectEnriched: setProject });
   const simulationClock = useMemo(() => {
     const artifact = enrichment.artifact;
     const primary = artifact?.payload.bodies.find((body) => body.id === artifact.payload.primaryBodyId);
@@ -413,6 +418,11 @@ function App() {
     if (!project || isGenerating || viewMode !== 'globe') return;
     enrichment.ensureOrbitalContext();
   }, [enrichment.ensureOrbitalContext, isGenerating, project?.projectId, project?.enrichmentArtifacts?.['project.system-orbital-context'], viewMode]);
+
+  useEffect(() => {
+    if (!project || isGenerating || viewMode !== 'globe' || (!showClouds && !showWeather) || !enrichment.artifact) return;
+    weatherEnrichment.ensureWeatherPresentation();
+  }, [enrichment.artifact?.artifactSignature, isGenerating, project?.projectId, project?.enrichmentArtifacts?.['project.atmospheric-weather-presentation'], showClouds, showWeather, viewMode, weatherEnrichment.ensureWeatherPresentation]);
 
   useEffect(() => {
     if (!configOpen) return;
@@ -901,6 +911,8 @@ function App() {
         hexOverlayLabel={activeHexOverlayLabel}
         diagnosticMode={diagnosticMode}
         showGlobeShells={showGlobeShells}
+        showClouds={showClouds}
+        showWeather={showWeather}
         renderMode={renderMode}
         mapMode={mapMode}
         coastlineTreatment={coastlineTreatment}
@@ -913,6 +925,8 @@ function App() {
         onShowHexesChange={setShowHexes}
         onToggleDiagnostics={toggleDiagnosticMode}
         onToggleGlobeShells={() => setShowGlobeShells((visible) => !visible)}
+        onShowCloudsChange={setShowClouds}
+        onShowWeatherChange={setShowWeather}
         onRenderModeChange={setRenderMode}
         onMapModeChange={setMapMode}
         onCoastlineTreatmentChange={setCoastlineTreatment}
@@ -956,6 +970,7 @@ function App() {
             <GlobeViewer
               project={project}
               orbitalContext={enrichment.artifact}
+              weatherPresentation={weatherEnrichment.artifact}
               simulationClock={simulationClock}
               mapMode={mapMode}
               renderMode={renderMode}
@@ -963,6 +978,8 @@ function App() {
               showRivers={showRivers}
               showPlates={showPlates}
               showGlobeShells={showGlobeShells}
+              showClouds={showClouds}
+              showWeather={showWeather}
               globeDebugMode={globeDebugMode}
               diagnosticMode={diagnosticMode}
               inspectionRecord={diagnosticMode ? inspectionRecord : null}
@@ -980,6 +997,15 @@ function App() {
               onRetry={enrichment.ensureOrbitalContext}
               onCancel={enrichment.cancelOrbitalContext}
             />
+            {(showClouds || showWeather) && <WeatherPresentationStatus
+              status={weatherEnrichment.status}
+              activeNodeLabel={weatherEnrichment.activeNodeLabel}
+              error={weatherEnrichment.error}
+              elapsedMs={weatherEnrichment.elapsedMs}
+              artifact={weatherEnrichment.artifact}
+              onRetry={weatherEnrichment.ensureWeatherPresentation}
+              onCancel={weatherEnrichment.cancelWeatherPresentation}
+            />}
           </div>
         ) : null}
         legend={project && mapMode === 'biomes' && renderMode === 'data' && viewMode === 'map' ? <BiomeLegend theme={mapTheme} /> : null}

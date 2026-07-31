@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.40</p>
+            <h3>Weather, without pretending we own a supercomputer</h3>
+            <ul>
+              <li>Clouds and weather now run as a lazy, versioned, inspectable enrichment workflow after first layer use.</li>
+              <li>Generated climate and wind fields seed deterministic cloud bands, fronts, cyclones, convective systems, and bounded atmospheric motion.</li>
+              <li>Separate Clouds and Weather systems toggles drive illuminated moving Globe layers on the shared simulation clock.</li>
+              <li>The saved artifact is explicitly illustrative presentation data, not authoritative hour-by-hour meteorology.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.39</p>
             <h3>The camera moves. The planet keeps its job.</h3>
             <ul>

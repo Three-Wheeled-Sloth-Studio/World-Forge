@@ -1,5 +1,5 @@
 import React, { useEffect, useState, type ReactNode } from 'react';
-import { Cloud, Globe2, Hexagon, Layers, Map, Maximize2, Search, Waves, Waypoints } from 'lucide-react';
+import { Cloud, CloudRain, Globe2, Hexagon, Layers, Map, Maximize2, Search, Waves, Waypoints } from 'lucide-react';
 import type { CoastlineTreatment, MapMode, RenderMode } from '@world-forge/renderer';
 import {
   normalizeUserFacingMapMode,
@@ -35,6 +35,8 @@ export type WorldWorkspaceProps = {
   hexOverlayLabel?: string;
   diagnosticMode: boolean;
   showGlobeShells: boolean;
+  showClouds: boolean;
+  showWeather: boolean;
   renderMode: RenderMode;
   mapMode: MapMode;
   coastlineTreatment: CoastlineTreatment;
@@ -53,6 +55,8 @@ export type WorldWorkspaceProps = {
   onShowHexesChange: (visible: boolean) => void;
   onToggleDiagnostics: () => void;
   onToggleGlobeShells: () => void;
+  onShowCloudsChange: (visible: boolean) => void;
+  onShowWeatherChange: (visible: boolean) => void;
   onRenderModeChange: (mode: RenderMode) => void;
   onMapModeChange: (mode: MapMode) => void;
   onCoastlineTreatmentChange: (treatment: CoastlineTreatment) => void;
@@ -75,6 +79,8 @@ export function WorldWorkspace({
   hexOverlayLabel,
   diagnosticMode,
   showGlobeShells,
+  showClouds,
+  showWeather,
   renderMode,
   mapMode,
   coastlineTreatment,
@@ -92,6 +98,8 @@ export function WorldWorkspace({
   onShowHexesChange,
   onToggleDiagnostics,
   onToggleGlobeShells,
+  onShowCloudsChange,
+  onShowWeatherChange,
   onRenderModeChange,
   onMapModeChange,
   onCoastlineTreatmentChange
@@ -214,7 +222,11 @@ export function WorldWorkspace({
                         <button type="button" className={`explore-layer-toggle ${showRivers ? 'active' : ''}`} aria-pressed={showRivers} onClick={() => onShowRiversChange(!showRivers)}><span><Waves size={15} />Rivers</span><small>{showRivers ? 'On' : 'Off'}</small></button>
                         <button type="button" className={`explore-layer-toggle plates-toggle ${showPlates ? 'active' : ''}`} aria-pressed={showPlates} onClick={() => onShowPlatesChange(!showPlates)}><span><Waypoints size={15} />Plate boundaries</span><small>{showPlates ? 'On' : 'Off'}</small></button>
                         <button type="button" className={`explore-layer-toggle hex-toggle ${showHexes ? 'active' : ''}`} aria-pressed={showHexes} onClick={() => onShowHexesChange(!showHexes)}><span><Hexagon size={15} />Hex overlay</span><small>{showHexes ? (hexOverlayLabel || 'On') : 'Off'}</small></button>
-                        {viewMode === 'globe' && <button type="button" className={`explore-layer-toggle shell-toggle ${showGlobeShells ? 'active' : ''}`} aria-pressed={showGlobeShells} onClick={onToggleGlobeShells}><span><Cloud size={15} />Ocean and atmosphere</span><small>{showGlobeShells ? 'On' : 'Off'}</small></button>}
+                        {viewMode === 'globe' && <>
+                          <button type="button" className={`explore-layer-toggle shell-toggle ${showGlobeShells ? 'active' : ''}`} aria-pressed={showGlobeShells} onClick={onToggleGlobeShells}><span><Cloud size={15} />Ocean and atmosphere</span><small>{showGlobeShells ? 'On' : 'Off'}</small></button>
+                          <button type="button" className={`explore-layer-toggle cloud-toggle ${showClouds ? 'active' : ''}`} aria-pressed={showClouds} onClick={() => onShowCloudsChange(!showClouds)}><span><Cloud size={15} />Clouds</span><small>{showClouds ? 'On' : 'Off'}</small></button>
+                          <button type="button" className={`explore-layer-toggle weather-toggle ${showWeather ? 'active' : ''}`} aria-pressed={showWeather} onClick={() => onShowWeatherChange(!showWeather)}><span><CloudRain size={15} />Weather systems</span><small>{showWeather ? 'On' : 'Off'}</small></button>
+                        </>}
                       </div>
                       <div className="explore-layers-section explore-display-options">
                         <strong>Display</strong>

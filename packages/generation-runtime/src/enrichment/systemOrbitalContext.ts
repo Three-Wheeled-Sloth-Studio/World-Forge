@@ -7,19 +7,23 @@ import type {
   WorldProject
 } from '@world-forge/shared';
 import type { GenerationGraphNodeDefinition } from '../graph/generationGraph';
+import {
+  ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID,
+  atmosphericWeatherPresentationWorkflowDescriptor
+} from './atmosphericWeatherPresentation';
 
 export const SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID = 'project.system-orbital-context' as const;
 export const SYSTEM_ORBITAL_CONTEXT_WORKFLOW_VERSION = '1.0.0' as const;
-export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID;
+export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID;
 
 export type ProjectEnrichmentWorkflowDescriptor = {
   kind: 'enrichment';
   id: ProjectEnrichmentWorkflowId;
-  version: typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_VERSION;
+  version: string;
   label: string;
   description: string;
   status: 'production' | 'experimental';
-  artifactKey: typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID;
+  artifactKey: ProjectEnrichmentWorkflowId;
   nodes: readonly GenerationGraphNodeDefinition[];
 };
 
@@ -113,7 +117,7 @@ const nodes: readonly GenerationGraphNodeDefinition[] = [
   }
 ];
 
-export const projectEnrichmentWorkflowDescriptors: readonly ProjectEnrichmentWorkflowDescriptor[] = [{
+const systemOrbitalContextWorkflowDescriptor: ProjectEnrichmentWorkflowDescriptor = {
   kind: 'enrichment',
   id: SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID,
   version: SYSTEM_ORBITAL_CONTEXT_WORKFLOW_VERSION,
@@ -122,10 +126,15 @@ export const projectEnrichmentWorkflowDescriptors: readonly ProjectEnrichmentWor
   status: 'production',
   artifactKey: SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID,
   nodes
-}];
+};
+
+export const projectEnrichmentWorkflowDescriptors: readonly ProjectEnrichmentWorkflowDescriptor[] = [
+  systemOrbitalContextWorkflowDescriptor,
+  atmosphericWeatherPresentationWorkflowDescriptor
+];
 
 export function isProjectEnrichmentWorkflowId(value: string | undefined): value is ProjectEnrichmentWorkflowId {
-  return value === SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID;
+  return value === SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID || value === ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID;
 }
 
 export function projectEnrichmentWorkflowDescriptor(value: string | undefined): ProjectEnrichmentWorkflowDescriptor {

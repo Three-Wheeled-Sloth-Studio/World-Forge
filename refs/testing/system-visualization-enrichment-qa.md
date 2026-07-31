@@ -4,44 +4,40 @@ Updated: 2026-07-31
 
 ## Automated contract coverage
 
-- Simulation clock advances deterministically from a fixed epoch.
-- Pause preserves simulation time.
-- Speed changes commit elapsed time before applying the new rate.
-- Day-of-year and time-of-day can be changed independently.
-- Reset returns to day 1 at 00:00.
-- Orbital positions are deterministic for fixed elements and time.
-- Relative visible-body vectors use the same shared simulation day.
-- Procedural star directions are deterministic and normalized.
-- Display compression remains within accepted moon and background-body bounds.
+- Simulation clock advances deterministically from a fixed epoch and preserves time while paused.
+- Orbital positions, visible-body vectors, star directions, and display compression remain deterministic.
+- Atmospheric-weather payload and artifact signatures are deterministic for fixed climate inputs.
+- Weather source signatures change when sampled climate or wind inputs change.
+- Weather workflow emits six ordered, timed graph-node records.
+- Cloud bands, systems, density, placement, and motion remain finite and within presentation bounds.
+- The enrichment registry exposes both orbital-context and atmospheric-weather graphs to the Dev workspace.
 
 ## Focused browser acceptance
 
 1. Generate a Fast world.
-2. Confirm no orbital enrichment exists before Globe entry.
+2. Confirm ordinary generation creates neither orbital nor weather enrichment.
 3. Enter Globe and wait for the saved orbital artifact to complete.
-4. Confirm the scene reports one coupled star light, the generated axial tilt, and artifact-derived moon/body counts.
-5. Confirm play, pause, speed, reset, day-of-year, and time-of-day controls are visible.
-6. Increase speed and confirm simulation day advances.
-7. Pause and confirm the displayed day stops advancing.
-8. Set day 120 and 06:00, then reset and confirm day 1 at 00:00.
-9. Confirm no browser console errors or page-level overflow at 1440x900 and 1920x1080.
+4. Open Layers and enable Clouds.
+5. Confirm the weather workflow visibly transitions through running to complete and persists an illustrative artifact.
+6. Confirm Clouds is visible while Weather systems remains hidden.
+7. Increase simulation speed and confirm the weather texture advances with shared simulation time.
+8. Enable Weather systems and confirm the second moving shell is visible.
+9. Disable Clouds and confirm Weather systems can remain visible independently.
+10. Confirm the Globe reports non-zero band/system counts and `weatherAuthority=illustrative`.
+11. Confirm no browser console errors or page-level overflow at 1440x900 and 1920x1080.
 
 ## Frame-of-reference acceptance
 
-- Grabbing the globe pauses the shared clock and all orbital motion.
-- Holding the pointer keeps simulation time stable.
-- Horizontal drag changes camera yaw while physical spin and stellar light remain fixed.
-- Vertical drag changes camera pitch while generated axial tilt remains fixed.
-- The rendered view changes during drag even though the planet's physical rotation value does not.
-- Camera orbit can inspect the full daylight side, nightside, poles, and terminator.
+- Grabbing the globe pauses the shared clock and all orbital/weather motion.
+- Horizontal and vertical drag change camera yaw/pitch while physical spin, stellar light, generated axial tilt, geography, and weather state remain fixed.
+- Camera orbit can inspect daylight, night, poles, terminator, clouds, and weather systems without changing local planetary time.
 - Releasing restores the previous play/pause state.
-- Moon meshes cast and the primary globe receives bounded soft shadows when alignment permits.
 
 ## Manual visual review
 
-- Starfield is stable for the same artifact and does not shimmer between renders.
-- Star location and terminator direction agree.
-- Axial tilt is visible without corrupting manual globe inspection.
-- Moons and nearby bodies move smoothly when time advances.
-- Placeholder bodies are visually distinct from the primary generated globe.
-- Display scale reads as an illustrative context view, not an astronomical-scale claim.
+- Cloud bands read as broad coherent atmospheric structures rather than white noise.
+- Weather systems appear as distinct fronts, cyclones, or convective concentrations without overwhelming the surface.
+- Cloud and weather layers receive the same stellar lighting as the planet.
+- Motion is smooth across the equirectangular seam and remains deterministic for the same artifact and clock time.
+- Clouds and Weather systems can be toggled independently.
+- The presentation reads as plausible and illustrative, not as a claim of forecast-grade simulation.
