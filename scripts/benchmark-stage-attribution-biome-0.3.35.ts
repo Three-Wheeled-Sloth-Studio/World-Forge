@@ -28,6 +28,34 @@ function correctRunnerPatchMarkers(): void {
     );
   }
 
+  const originalHelper = `def replace_once(path: str, old: str, new: str) -> None:
+    file_path = Path(path)
+    text = file_path.read_text()
+    count = text.count(old)
+    if count != 1:
+        raise RuntimeError(f"Expected one match in {path}, found {count}: {old[:120]!r}")
+    file_path.write_text(text.replace(old, new, 1))
+`;
+  const fallbackHelper = `def replace_once(path: str, old: str, new: str) -> None:
+    file_path = Path(path)
+    text = file_path.read_text()
+    count = text.count(old)
+    if count == 1:
+        file_path.write_text(text.replace(old, new, 1))
+        return
+    if path == "packages/generator-core/src/biomeCohesion.ts" and old.startswith("function projectBiomeLayer"):
+        import re
+        pattern = r"function projectBiomeLayer\\(project: WorldProject\\): void \\{.*?\\n\\}\\n\\n(?=function summarizeCollapsed)"
+        updated, replacements = re.subn(pattern, new.rstrip() + "\\n\\n", text, count=1, flags=re.S)
+        if replacements == 1:
+            file_path.write_text(updated)
+            return
+    raise RuntimeError(f"Expected one match in {path}, found {count}: {old[:120]!r}")
+`;
+  const helperOccurrences = patch.split(originalHelper).length - 1;
+  if (helperOccurrences !== 1) throw new Error(`Expected one patch helper, found ${helperOccurrences}`);
+  patch = patch.replace(originalHelper, fallbackHelper);
+
   writeFileSync(patchPath, patch);
 }
 
