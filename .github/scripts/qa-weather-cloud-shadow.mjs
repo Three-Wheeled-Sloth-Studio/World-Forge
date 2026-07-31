@@ -21,7 +21,7 @@ const openLayers = async () => {
 };
 
 await openLayers();
-await page.locator('.cloud-toggle').evaluate((element) => element.click());
+await page.getByRole('button', { name: /^Clouds/ }).click();
 await page.waitForFunction(() => document.querySelector('[data-enrichment-workflow="project.atmospheric-weather-presentation"]')?.getAttribute('data-enrichment-status') === 'complete', undefined, { timeout: 30000 });
 await page.waitForFunction(() => document.querySelector('.globe-viewer')?.getAttribute('data-cloud-layer') === 'visible', undefined, { timeout: 10000 });
 
