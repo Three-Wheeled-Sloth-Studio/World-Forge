@@ -53,8 +53,11 @@ function correctRunnerPatchMarkers(): void {
     raise RuntimeError(f"Expected one match in {path}, found {count}: {old[:120]!r}")
 `;
   const helperOccurrences = patch.split(originalHelper).length - 1;
-  if (helperOccurrences !== 1) throw new Error(`Expected one patch helper, found ${helperOccurrences}`);
-  patch = patch.replace(originalHelper, fallbackHelper);
+  const fallbackOccurrences = patch.split(fallbackHelper).length - 1;
+  if (helperOccurrences === 1) patch = patch.replace(originalHelper, fallbackHelper);
+  else if (helperOccurrences !== 0 || fallbackOccurrences !== 1) {
+    throw new Error(`Unexpected patch helper state: original=${helperOccurrences} fallback=${fallbackOccurrences}`);
+  }
 
   writeFileSync(patchPath, patch);
 }
