@@ -1,0 +1,85 @@
+name: Temporary atmospheric weather enrichment runner
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/atmospheric-weather-enrichment-20260731'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve temporary scripts
+        run: |
+          cp .github/scripts/apply-atmospheric-weather-enrichment.py /tmp/apply-atmospheric-weather-enrichment.py
+          cp .github/scripts/qa-atmospheric-weather-enrichment.mjs /tmp/qa-atmospheric-weather-enrichment.mjs
+
+      - name: Switch to exact accepted dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "bfc971e760d93c2699173a5fe08ef3eec8b35305"
+          git checkout -B dev origin/dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply atmospheric weather slice
+        run: |
+          python /tmp/apply-atmospheric-weather-enrichment.py
+          git diff --check
+          grep -q "APP_VERSION = '0.3.40'" apps/desktop/src/appVersion.ts
+          grep -q "ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID" packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.ts
+          grep -q "weatherAuthority: 'illustrative'" packages/shared/src/index.ts
+          grep -q "data-weather-presentation" apps/desktop/src/globe/GlobeViewer.tsx
+
+      - name: Focused weather contract tests
+        working-directory: apps/desktop
+        run: npx vitest run ../../packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Focused browser QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-atmospheric-weather-enrichment.mjs .github/scripts/qa-atmospheric-weather-enrichment.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-atmospheric-weather-enrichment.runtime.mjs
+
+      - name: Commit validated weather slice to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/src packages/generation-runtime/src/enrichment packages/shared/src refs/handoffs refs/testing
+          git diff --cached --check
+          git commit -m "Add inspectable atmospheric weather enrichment"
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/atmospheric-weather-enrichment-20260731 || true
