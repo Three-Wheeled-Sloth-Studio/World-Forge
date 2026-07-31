@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/camera-orbit-correction-20260731-r2'
+    if: github.head_ref == 'automation/camera-orbit-correction-20260731-r3'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout runner branch
@@ -78,4 +78,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/camera-orbit-correction-20260731-r2 || true
+        run: git push origin --delete automation/camera-orbit-correction-20260731-r3 || true
