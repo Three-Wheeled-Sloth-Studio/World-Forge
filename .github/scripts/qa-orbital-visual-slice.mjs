@@ -78,7 +78,9 @@ await browser.close();
 async function setRangeValue(locator, value) {
   await locator.evaluate((element, nextValue) => {
     const input = element;
-    input.value = String(nextValue);
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    if (!nativeSetter) throw new Error('Native input value setter is unavailable.');
+    nativeSetter.call(input, String(nextValue));
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, value);
