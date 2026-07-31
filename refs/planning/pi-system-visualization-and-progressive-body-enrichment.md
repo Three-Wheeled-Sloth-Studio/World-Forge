@@ -93,6 +93,8 @@ The first workflow derives deterministic orbital presentation data from the exis
 
 ### Visualizer Cycle 1: orbital context and living globe
 
+Implementation status (2026-07-31): the first living-globe slice is implemented for validation, including the shared clock, starfield, star/light coupling, axial tilt, moon and visible-body motion, illuminated phases, compact time controls, and explicit placeholder styling. Full System view remains a later cycle.
+
 Upgrade Globe view to consume the orbital-context artifact and show:
 
 - procedural star background;

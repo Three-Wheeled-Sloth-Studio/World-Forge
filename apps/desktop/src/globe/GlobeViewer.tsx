@@ -1,7 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MapMode, MapTheme, PointInspectionRecord, RenderMode, renderWorldToCanvas } from '@world-forge/renderer';
-import { WorldProject } from '@world-forge/shared';
+import type { OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
+import { SystemSimulationControls } from './SystemSimulationControls';
+import {
+  deterministicStarDirections,
+  displayRadiusForMoon,
+  displayRadiusForVisibleBody,
+  displaySizeForBody,
+  orbitalPositionAtDays,
+  relativeOrbitalPositionAtDays
+} from './orbitalPresentation';
+import './globeSimulation.css';
 
 export type GlobeDebugMode = 'final' | 'albedo' | 'lit' | 'water-mask' | 'sea-level' | 'coast-mask' | 'ocean-shell' | 'neutral-mesh' | 'topology-face' | 'uv-grid' | 'shade' | 'gyres';
 export type GlobeFocusTarget = { x: number; y: number; width: number; height: number; latitude: number; longitude: number };
@@ -37,6 +48,8 @@ const defaultGlobeScale: GlobeScaleConfig = {
 };
 export function GlobeViewer({
   project,
+  orbitalContext,
+  simulationClock,
   mapMode,
   renderMode,
   mapTheme,
@@ -52,6 +65,8 @@ export function GlobeViewer({
   onInspect
 }: {
   project: WorldProject;
+  orbitalContext: SystemOrbitalContextArtifact | null;
+  simulationClock: SystemSimulationClock;
   mapMode: MapMode;
   renderMode: RenderMode;
   mapTheme: MapTheme;
@@ -67,6 +82,7 @@ export function GlobeViewer({
   onInspect: (x: number, y: number, screen: { x: number; y: number }) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const interactionGroupRef = useRef<THREE.Group | null>(null);
   const globeMeshRef = useRef<THREE.Mesh | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const markerRef = useRef<THREE.Group | null>(null);
@@ -86,7 +102,8 @@ export function GlobeViewer({
     diagnosticModeRef.current = diagnosticMode;
     freezeSpinRef.current = (diagnosticMode && Boolean(inspectionRecord)) || Boolean(focusTarget);
     const globe = globeMeshRef.current;
-    if (!globe) return;
+    const interactionGroup = interactionGroupRef.current;
+    if (!globe || !interactionGroup) return;
     if (markerRef.current) {
       globe.remove(markerRef.current);
       disposeGlobeMarker(markerRef.current);
@@ -96,13 +113,14 @@ export function GlobeViewer({
       const marker = createGlobeInspectionMarker(inspectionRecord);
       globe.add(marker);
       markerRef.current = marker;
-      orientGlobeToDirection(globe, directionFromInspection(inspectionRecord));
+      orientGlobeToDirection(interactionGroup, directionFromInspection(inspectionRecord));
     }
   }, [diagnosticMode, focusTarget, inspectionRecord]);
 
   useEffect(() => {
     const globe = globeMeshRef.current;
-    if (!globe) return;
+    const interactionGroup = interactionGroupRef.current;
+    if (!globe || !interactionGroup) return;
     if (focusMarkerRef.current) {
       globe.remove(focusMarkerRef.current);
       disposeGlobeMarker(focusMarkerRef.current);
@@ -115,7 +133,7 @@ export function GlobeViewer({
     const marker = createGlobeTargetMarker(direction);
     globe.add(marker);
     focusMarkerRef.current = marker;
-    orientGlobeToDirection(globe, direction);
+    orientGlobeToDirection(interactionGroup, direction);
   }, [focusTarget]);
 
   useEffect(() => {
@@ -124,14 +142,22 @@ export function GlobeViewer({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(orbitalContext ? 0x02050a : 0x000000, orbitalContext ? 1 : 0);
     host.replaceChildren(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40);
     camera.position.set(0, 0, globeCameraDistance(zoom));
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
+
+    const interactionGroup = new THREE.Group();
+    const axialTiltGroup = new THREE.Group();
+    const planetSpinGroup = new THREE.Group();
+    scene.add(interactionGroup);
+    interactionGroup.add(axialTiltGroup);
+    axialTiltGroup.add(planetSpinGroup);
+    interactionGroupRef.current = interactionGroup;
 
     const texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -145,16 +171,18 @@ export function GlobeViewer({
     const scale = defaultGlobeScale;
     const geometry = createGlobeGeometry(project, scale);
     const material = createGlobeMaterial(texture, globeDebugMode);
+    const primaryPresentation = orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId) ?? null;
+    axialTiltGroup.rotation.z = THREE.MathUtils.degToRad(primaryPresentation?.axialTiltDeg ?? project.selectedValues.axialTiltDeg ?? 0);
     const globe = new THREE.Mesh(geometry, material);
-    globe.rotation.y = -0.55;
-    scene.add(globe);
+    interactionGroup.rotation.y = -0.55;
+    planetSpinGroup.add(globe);
     globeMeshRef.current = globe;
 
     if (diagnosticModeRef.current && inspectionRecord) {
       const marker = createGlobeInspectionMarker(inspectionRecord);
       globe.add(marker);
       markerRef.current = marker;
-      orientGlobeToDirection(globe, directionFromInspection(inspectionRecord));
+      orientGlobeToDirection(interactionGroup, directionFromInspection(inspectionRecord));
     }
     if (focusTarget) {
       const u = (focusTarget.x + 0.5) / Math.max(1, focusTarget.width);
@@ -163,7 +191,7 @@ export function GlobeViewer({
       const marker = createGlobeTargetMarker(direction);
       globe.add(marker);
       focusMarkerRef.current = marker;
-      orientGlobeToDirection(globe, direction);
+      orientGlobeToDirection(interactionGroup, direction);
     }
 
     const ocean = new THREE.Mesh(
@@ -180,7 +208,7 @@ export function GlobeViewer({
       })
     );
     ocean.visible = showGlobeShells && (globeDebugMode === 'final' || globeDebugMode === 'ocean-shell');
-    scene.add(ocean);
+    planetSpinGroup.add(ocean);
 
     const cloudAlpha = new THREE.CanvasTexture(createCloudAlphaTexture(project));
     cloudAlpha.wrapS = THREE.RepeatWrapping;
@@ -198,19 +226,22 @@ export function GlobeViewer({
       })
     );
     clouds.visible = false;
-    scene.add(clouds);
+    planetSpinGroup.add(clouds);
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(scale.atmosphereShellRadius, 96, 48),
       createAtmosphereMaterial()
     );
     atmosphere.visible = showGlobeShells && globeDebugMode === 'final';
-    scene.add(atmosphere);
+    planetSpinGroup.add(atmosphere);
 
-    scene.add(new THREE.AmbientLight(0x9fb5bd, 0.46));
-    const sun = new THREE.DirectionalLight(0xfff1d0, 3.05);
-    sun.position.set(-4.2, 1.35, 0.55);
-    scene.add(sun);
+    scene.add(new THREE.AmbientLight(0x9fb5bd, orbitalContext ? 0.28 : 0.46));
+    const fallbackSun = orbitalContext ? null : new THREE.DirectionalLight(0xfff1d0, 3.05);
+    if (fallbackSun) {
+      fallbackSun.position.set(-4.2, 1.35, 0.55);
+      scene.add(fallbackSun);
+    }
+    const orbitalPresentation = orbitalContext ? createOrbitalPresentationScene(scene, orbitalContext) : null;
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -231,8 +262,8 @@ export function GlobeViewer({
       drag.y = event.clientY;
       drag.vx = dx * 0.006;
       drag.vy = dy * 0.004;
-      globe.rotation.y += drag.vx;
-      globe.rotation.x = clampGlobeTilt(globe.rotation.x + drag.vy);
+      interactionGroup.rotation.y += drag.vx;
+      interactionGroup.rotation.x = clampGlobeTilt(interactionGroup.rotation.x + drag.vy);
     };
     const onPointerUp = (event: PointerEvent) => {
       const movement = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
@@ -275,19 +306,27 @@ export function GlobeViewer({
 
     let frame = 0;
     let disposed = false;
+    let previousSimulationDays = simulationClock.currentDays(performance.now());
     const animate = () => {
       if (disposed) return;
       frame = requestAnimationFrame(animate);
+      const simulationDays = simulationClock.currentDays(performance.now());
+      const simulationDeltaDays = simulationDays - previousSimulationDays;
+      previousSimulationDays = simulationDays;
       if (!drag.active && !freezeSpinRef.current) {
-        globe.rotation.y += 0.0017 + drag.vx * 0.02;
-        globe.rotation.x = clampGlobeTilt(globe.rotation.x + drag.vy * 0.018);
+        interactionGroup.rotation.y += drag.vx * 0.02;
+        interactionGroup.rotation.x = clampGlobeTilt(interactionGroup.rotation.x + drag.vy * 0.018);
+        if (primaryPresentation) {
+          const rotationPeriodDays = Math.max(0.08, Math.abs(primaryPresentation.rotationPeriodHours) / 24);
+          planetSpinGroup.rotation.y += simulationDeltaDays * Math.PI * 2 / rotationPeriodDays;
+        } else {
+          planetSpinGroup.rotation.y += 0.0017;
+        }
         drag.vx *= 0.94;
         drag.vy *= 0.9;
       }
-      ocean.rotation.copy(globe.rotation);
-      clouds.rotation.copy(globe.rotation);
-      clouds.rotateY(performance.now() * 0.00000018);
-      atmosphere.rotation.copy(globe.rotation);
+      clouds.rotation.y += simulationDeltaDays * 0.04;
+      if (orbitalPresentation && orbitalContext) updateOrbitalPresentationScene(orbitalPresentation, orbitalContext, simulationDays);
       renderer.render(scene, camera);
     };
     animate();
@@ -312,6 +351,7 @@ export function GlobeViewer({
         focusMarkerRef.current = null;
       }
       globeMeshRef.current = null;
+      interactionGroupRef.current = null;
       cameraRef.current = null;
       geometry.dispose();
       material.dispose();
@@ -323,12 +363,31 @@ export function GlobeViewer({
       (clouds.material as THREE.Material).dispose();
       atmosphere.geometry.dispose();
       (atmosphere.material as THREE.Material).dispose();
+      if (orbitalPresentation) disposeOrbitalPresentationScene(orbitalPresentation);
       renderer.dispose();
       host.replaceChildren();
     };
-  }, [focusTarget, globeDebugMode, inspectionRecord, mapMode, mapTheme, onInspect, onZoom, project, renderMode, showGlobeShells, showPlates, showRivers]);
+  }, [focusTarget, globeDebugMode, inspectionRecord, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showGlobeShells, showPlates, showRivers, simulationClock]);
 
-  return <div ref={hostRef} className={`globe-viewer ${diagnosticMode ? 'diagnostic-active' : ''}`} aria-label={`Generated globe for ${project.projectName}`} />;
+  const moonCount = orbitalContext?.payload.bodies.filter((body) => body.kind === 'moon' && body.parentBodyId === orbitalContext.payload.primaryBodyId).length ?? 0;
+  const visibleBodyCount = orbitalContext?.payload.bodies.filter((body) => body.kind !== 'moon' && body.id !== orbitalContext.payload.primaryBodyId && (body.visibleFromPrimary || orbitalContext.payload.visibleBodyIds.includes(body.id))).length ?? 0;
+  const axialTilt = orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId)?.axialTiltDeg ?? project.selectedValues.axialTiltDeg;
+
+  return (
+    <div
+      className={`globe-viewer ${diagnosticMode ? 'diagnostic-active' : ''}`}
+      aria-label={`Generated globe for ${project.projectName}`}
+      data-orbital-context={orbitalContext ? 'ready' : 'pending'}
+      data-orbital-star-count={orbitalContext ? '1' : '0'}
+      data-orbital-moon-count={moonCount}
+      data-orbital-visible-body-count={visibleBodyCount}
+      data-orbital-axial-tilt={Number.isFinite(axialTilt) ? axialTilt.toFixed(3) : '0.000'}
+      data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
+    >
+      <div ref={hostRef} className="globe-render-surface" />
+      {orbitalContext && <SystemSimulationControls clock={simulationClock} artifact={orbitalContext} />}
+    </div>
+  );
 }
 
 function createGlobeTargetMarker(direction: THREE.Vector3): THREE.Group {
@@ -381,7 +440,7 @@ function directionFromInspection(record: PointInspectionRecord): THREE.Vector3 {
   return directionFromGlobeUv(u, v);
 }
 
-function orientGlobeToDirection(globe: THREE.Mesh, direction: THREE.Vector3) {
+function orientGlobeToDirection(globe: THREE.Object3D, direction: THREE.Vector3) {
   globe.quaternion.setFromUnitVectors(direction.clone().normalize(), new THREE.Vector3(0, 0, 1));
 }
 
@@ -865,3 +924,214 @@ function wrapUnit(value: number): number {
   return ((value % 1) + 1) % 1;
 }
 
+type OrbitalBodyVisual = {
+  body: OrbitalPresentationBody;
+  group: THREE.Group;
+  mesh: THREE.Mesh;
+  displayRadius: number;
+};
+
+type OrbitalPresentationScene = {
+  starfield: THREE.Points;
+  starMesh: THREE.Mesh;
+  starHalo: THREE.Sprite;
+  haloTexture: THREE.CanvasTexture;
+  sun: THREE.DirectionalLight;
+  primary: OrbitalPresentationBody;
+  moons: OrbitalBodyVisual[];
+  visibleBodies: OrbitalBodyVisual[];
+};
+
+function createOrbitalPresentationScene(
+  scene: THREE.Scene,
+  artifact: SystemOrbitalContextArtifact
+): OrbitalPresentationScene | null {
+  const primary = artifact.payload.bodies.find((body) => body.id === artifact.payload.primaryBodyId);
+  if (!primary) return null;
+
+  const starfield = createStarfield(`${artifact.seed}:${artifact.artifactSignature}`);
+  scene.add(starfield);
+
+  const starColor = new THREE.Color(artifact.payload.star.colorHex);
+  const starMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 40, 20),
+    new THREE.MeshBasicMaterial({ color: starColor })
+  );
+  scene.add(starMesh);
+
+  const haloTexture = createStarHaloTexture(artifact.payload.star.colorHex);
+  const starHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: haloTexture,
+    color: starColor,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false
+  }));
+  starHalo.scale.set(1.25, 1.25, 1.25);
+  scene.add(starHalo);
+
+  const sun = new THREE.DirectionalLight(starColor, 3.25);
+  scene.add(sun);
+
+  const moons = artifact.payload.bodies
+    .filter((body) => body.kind === 'moon' && body.parentBodyId === artifact.payload.primaryBodyId)
+    .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForMoon(body)));
+  const visibleIds = new Set(artifact.payload.visibleBodyIds);
+  const visibleBodies = artifact.payload.bodies
+    .filter((body) => body.kind !== 'moon' && body.id !== artifact.payload.primaryBodyId && (body.visibleFromPrimary || visibleIds.has(body.id)))
+    .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body)));
+
+  const presentation = { starfield, starMesh, starHalo, haloTexture, sun, primary, moons, visibleBodies };
+  updateOrbitalPresentationScene(presentation, artifact, 0);
+  return presentation;
+}
+
+function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number): OrbitalBodyVisual {
+  const group = new THREE.Group();
+  const radius = displaySizeForBody(body);
+  const color = new THREE.Color(orbitalBodyColor(body.kind));
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: body.kind === 'gas-giant' || body.kind === 'ice-giant' ? 0.72 : 0.9,
+    metalness: 0.01,
+    transparent: body.placeholder,
+    opacity: body.placeholder ? 0.78 : 1
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 30, 16), material);
+  group.add(mesh);
+
+  if (body.placeholder) {
+    const wireframe = new THREE.Mesh(
+      new THREE.SphereGeometry(radius * 1.15, 14, 8),
+      new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.32, depthWrite: false })
+    );
+    group.add(wireframe);
+  }
+  if (body.kind === 'gas-giant' || body.kind === 'ice-giant') {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 1.55, Math.max(0.006, radius * 0.08), 8, 48),
+      new THREE.MeshBasicMaterial({ color: 0xcabf9c, transparent: true, opacity: 0.45, depthWrite: false })
+    );
+    ring.rotation.x = Math.PI * 0.62;
+    group.add(ring);
+  }
+  scene.add(group);
+  return { body, group, mesh, displayRadius };
+}
+
+function updateOrbitalPresentationScene(
+  presentation: OrbitalPresentationScene,
+  artifact: SystemOrbitalContextArtifact,
+  simulationDays: number
+): void {
+  const primaryPosition = orbitalPositionAtDays(presentation.primary, simulationDays);
+  const starDirection = new THREE.Vector3(-primaryPosition.x, -primaryPosition.y, -primaryPosition.z);
+  if (starDirection.lengthSq() < 0.000001) starDirection.set(-1, 0.25, -0.2);
+  starDirection.normalize();
+  presentation.starMesh.position.copy(starDirection).multiplyScalar(8.2);
+  presentation.starHalo.position.copy(presentation.starMesh.position);
+  presentation.sun.position.copy(starDirection).multiplyScalar(6.5);
+
+  for (const visual of presentation.moons) {
+    const point = orbitalPositionAtDays(visual.body, simulationDays);
+    setDisplayPosition(visual.group, point, visual.displayRadius);
+    rotateOrbitalVisual(visual, simulationDays);
+  }
+  for (const visual of presentation.visibleBodies) {
+    const point = relativeOrbitalPositionAtDays(visual.body, presentation.primary, simulationDays);
+    setDisplayPosition(visual.group, point, visual.displayRadius);
+    rotateOrbitalVisual(visual, simulationDays);
+  }
+
+  const luminosityPulse = 1 + Math.sin(simulationDays * 0.025) * 0.025;
+  presentation.starHalo.scale.setScalar(1.25 * luminosityPulse);
+  presentation.sun.intensity = 3.25 * Math.max(0.72, Math.min(1.35, artifact.payload.star.luminositySolar));
+}
+
+function setDisplayPosition(group: THREE.Group, point: { x: number; y: number; z: number }, displayRadius: number): void {
+  const direction = new THREE.Vector3(point.x, point.y, point.z);
+  if (direction.lengthSq() < 0.000001) direction.set(1, 0, 0);
+  group.position.copy(direction.normalize().multiplyScalar(displayRadius));
+}
+
+function rotateOrbitalVisual(visual: OrbitalBodyVisual, simulationDays: number): void {
+  const rotationPeriodDays = Math.max(0.04, Math.abs(visual.body.rotationPeriodHours) / 24);
+  visual.mesh.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays;
+  visual.mesh.rotation.z = THREE.MathUtils.degToRad(visual.body.axialTiltDeg);
+}
+
+function createStarfield(seed: string): THREE.Points {
+  const stars = deterministicStarDirections(seed, 1100);
+  const positions = new Float32Array(stars.length * 3);
+  const colors = new Float32Array(stars.length * 3);
+  stars.forEach((star, index) => {
+    const radius = 13.5 + (index % 9) * 0.22;
+    positions[index * 3] = star.x * radius;
+    positions[index * 3 + 1] = star.y * radius;
+    positions[index * 3 + 2] = star.z * radius;
+    const tint = index % 7 === 0 ? new THREE.Color(0xbfd8ff) : index % 5 === 0 ? new THREE.Color(0xffdfb0) : new THREE.Color(0xf4f7ff);
+    colors[index * 3] = tint.r * star.brightness;
+    colors[index * 3 + 1] = tint.g * star.brightness;
+    colors[index * 3 + 2] = tint.b * star.brightness;
+  });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return new THREE.Points(geometry, new THREE.PointsMaterial({
+    size: 0.035,
+    sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false
+  }));
+}
+
+function createStarHaloTexture(colorHex: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const gradient = context.createRadialGradient(64, 64, 3, 64, 64, 64);
+    gradient.addColorStop(0, colorHex);
+    gradient.addColorStop(0.18, `${colorHex}cc`);
+    gradient.addColorStop(0.5, `${colorHex}55`);
+    gradient.addColorStop(1, `${colorHex}00`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 128, 128);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function orbitalBodyColor(kind: OrbitalPresentationBody['kind']): number {
+  if (kind === 'moon') return 0xb7b1a7;
+  if (kind === 'gas-giant') return 0xc89867;
+  if (kind === 'ice-giant') return 0x75afc7;
+  if (kind === 'dwarf') return 0x968b82;
+  if (kind === 'belt') return 0x8a8179;
+  return 0xa66e4d;
+}
+
+function disposeOrbitalPresentationScene(presentation: OrbitalPresentationScene): void {
+  const roots: THREE.Object3D[] = [
+    presentation.starfield,
+    presentation.starMesh,
+    presentation.starHalo,
+    ...presentation.moons.map((visual) => visual.group),
+    ...presentation.visibleBodies.map((visual) => visual.group)
+  ];
+  for (const root of roots) {
+    root.parent?.remove(root);
+    root.traverse((object) => {
+      const candidate = object as THREE.Mesh & { geometry?: THREE.BufferGeometry; material?: THREE.Material | THREE.Material[] };
+      candidate.geometry?.dispose();
+      if (Array.isArray(candidate.material)) candidate.material.forEach((material) => material.dispose());
+      else candidate.material?.dispose();
+    });
+  }
+  presentation.sun.parent?.remove(presentation.sun);
+  presentation.haloTexture.dispose();
+}

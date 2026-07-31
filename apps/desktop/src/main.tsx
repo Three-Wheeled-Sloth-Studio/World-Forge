@@ -54,6 +54,7 @@ import { useGenerationWorkflow } from './generation/useGenerationWorkflow';
 import { useProjectEnrichment } from './enrichment/useProjectEnrichment';
 import { OrbitalContextStatus } from './enrichment/OrbitalContextStatus';
 import { GlobeViewer, type GlobeDebugMode } from './globe/GlobeViewer';
+import { createSystemSimulationClock } from './simulation/systemSimulationClock';
 import { useCloudWorkspaceSync } from './workspace/useCloudWorkspaceSync';
 import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
 import { APP_SOURCE_COMMIT, APP_VERSION, APP_VISIBLE_VERSION } from './appVersion';
@@ -397,6 +398,16 @@ function App() {
     generationElapsedMs, generationStageElapsedMs, lastGenerationRun
   } = generation;
   const enrichment = useProjectEnrichment({ project, onProjectEnriched: setProject });
+  const simulationClock = useMemo(() => {
+    const artifact = enrichment.artifact;
+    const primary = artifact?.payload.bodies.find((body) => body.id === artifact.payload.primaryBodyId);
+    return createSystemSimulationClock({
+      epochIso: artifact?.epochIso ?? '2000-01-01T12:00:00.000Z',
+      yearLengthDays: primary?.orbitalPeriodDays ?? 365.256
+    });
+  }, [enrichment.artifact?.artifactSignature, project?.projectId]);
+
+  useEffect(() => () => simulationClock.dispose(), [simulationClock]);
 
   useEffect(() => {
     if (!project || isGenerating || viewMode !== 'globe') return;
@@ -944,6 +955,8 @@ function App() {
           <div className="globe-enrichment-frame">
             <GlobeViewer
               project={project}
+              orbitalContext={enrichment.artifact}
+              simulationClock={simulationClock}
               mapMode={mapMode}
               renderMode={renderMode}
               mapTheme={mapTheme}
