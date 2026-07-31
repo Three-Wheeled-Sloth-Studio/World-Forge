@@ -1,0 +1,56 @@
+name: Issue 14 Experimental Profile Runner
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - '.github/workflows/issue-14-experimental-profile-runner.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  profile-current-dev:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout current dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Profile Detailed and Experimental
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.base.sha }}
+        run: >-
+          npm run benchmark:workflows --
+          --workflows=core.performance-foundation,core.world-generation-experimental
+          --seeds=1001001
+          --scenarios=earthlike-standard,geology-glacial-stress
+          --resolution=512x256
+          --runs=1
+      - name: Print current substage ranking
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const files = fs.readdirSync('refs/testing')
+            .filter((name) => /^generation-workflow-comparison-.*\.json$/.test(name))
+            .sort();
+          const path = `refs/testing/${files.at(-1)}`;
+          const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+          for (const result of report.results.filter((entry) => entry.workflowId === 'core.world-generation-experimental')) {
+            console.log(`PROFILE ${result.pairId}`);
+            console.log(`TOTAL ${result.reportedTotalMs.toFixed(3)} ms`);
+            console.log(`DEEP_TIME ${result.deepTime.reportedDeepTimeMs.toFixed(3)} ms`);
+            for (const stage of [...result.deepTime.substages].sort((a, b) => b.elapsedMs - a.elapsedMs)) {
+              console.log(`STAGE ${stage.id} ${stage.elapsedMs.toFixed(3)} ms ${JSON.stringify(stage.work)}`);
+            }
+          }
+          JS
