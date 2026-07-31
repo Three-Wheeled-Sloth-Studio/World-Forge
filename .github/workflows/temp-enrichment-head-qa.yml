@@ -1,0 +1,53 @@
+name: Temporary enrichment head QA
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  verify-current-dev:
+    if: github.head_ref == 'automation/enrichment-head-qa-20260731'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve browser QA
+        run: cp .github/scripts/qa-enrichment-head.mjs /tmp/qa-enrichment-head.mjs
+
+      - name: Checkout exact current dev
+        run: |
+          git fetch origin dev
+          git checkout --detach origin/dev
+          echo "Validating $(git rev-parse HEAD)"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Focused browser QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-enrichment-head.mjs .github/scripts/qa-enrichment-head.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-enrichment-head.runtime.mjs
