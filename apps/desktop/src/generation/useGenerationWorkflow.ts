@@ -2,8 +2,10 @@ import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import type { GenerationPreviewFrame } from '@world-forge/generator-core';
 import {
   generateProjectWithNativeStages,
+  nativeGenerationStageIds,
   type NativeGenerationStageEvent
 } from '@world-forge/generator-core/nativeStagePipeline';
+import { generationWorkflowDescriptor } from '@world-forge/generator-core/workflows';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '@world-forge/generator-core/systemOrbitPreset';
 import type { GenerationGraphNodeRunEvent } from '@world-forge/generator-core/graph/types';
 import { coreGenerationGraph, generationGraphNodeForStageId } from '@world-forge/generation-runtime/graph/generationGraph';
@@ -25,6 +27,11 @@ import {
   type GenerationStageTelemetryDetail,
   type GenerationTelemetryDetail
 } from './generationEvents';
+import {
+  buildGenerationRunSummary,
+  type GenerationRunSummary,
+  type GenerationStageTiming
+} from './generationTiming';
 
 export { generationStageTelemetryEvent, generationTelemetryEvent } from './generationEvents';
 export type { GenerationStageTelemetryDetail, GenerationTelemetryDetail } from './generationEvents';
@@ -47,6 +54,7 @@ type UseGenerationWorkflowOptions = {
 };
 
 type GenerateOptions = { startNodeId?: string | null; source?: GenerationLaunchSource };
+type WorkflowGenerationConfig = GenerationConfig & { workflowId?: string };
 export type GenerationNodeProgress = {
   nodeId: string;
   label: string;
@@ -78,6 +86,7 @@ function desktopStageEvent(taskId: string, event: NativeGenerationStageEvent): G
     timestamp: event.timestamp,
     elapsedMs: event.elapsedMs,
     measured: true,
+    nativeStage: true,
     graphNode,
     message: event.message,
     metrics: event.metrics
@@ -100,6 +109,7 @@ function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEven
     timestamp: event.timestamp,
     elapsedMs: event.durationMs,
     measured: true,
+    nativeStage: false,
     graphNode: true,
     dependencies: [...event.dependencies],
     version: event.version,
@@ -116,6 +126,9 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStage, setGenerationStage] = useState('');
   const [generationNodeProgress, setGenerationNodeProgress] = useState<GenerationNodeProgress[]>(() => initialNodeProgress());
+  const [generationElapsedMs, setGenerationElapsedMs] = useState(0);
+  const [generationStageElapsedMs, setGenerationStageElapsedMs] = useState(0);
+  const [lastGenerationRun, setLastGenerationRun] = useState<GenerationRunSummary | null>(null);
   const [launchSource, setLaunchSource] = useState<GenerationLaunchSource | null>(null);
   const generationEstimateRef = useRef(24000);
   const generationStartedAtRef = useRef(0);
@@ -123,6 +136,10 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
   const generationSeedRef = useRef('');
   const generationStartNodeIdRef = useRef<string | null>(null);
   const generationLaunchSourceRef = useRef<GenerationLaunchSource>('generator');
+  const generationStageStartedAtRef = useRef(0);
+  const generationActiveStageIdRef = useRef('');
+  const generationStageTimingsRef = useRef(new Map<string, GenerationStageTiming>());
+  const generationWorkflowRef = useRef(generationWorkflowDescriptor(undefined));
   const workerRef = useRef<Worker | null>(null);
   const generationPreviewRef = useRef<GenerationPreviewFrame | null>(null);
   const generationPreviewFrameRef = useRef(0);
@@ -132,6 +149,44 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
 
   useEffect(() => { previousProjectRef.current = previousProject; }, [previousProject]);
   useEffect(() => { onProjectGeneratedRef.current = onProjectGenerated; }, [onProjectGenerated]);
+
+  const observeNativeStage = useCallback((stage: GenerationStageTelemetryDetail) => {
+    if (!stage.nativeStage) return;
+    if (stage.phase === 'started' || generationActiveStageIdRef.current !== stage.stageId) {
+      const observedElapsedMs = Math.max(0, stage.timestamp - stage.startedAt);
+      generationActiveStageIdRef.current = stage.stageId;
+      generationStageStartedAtRef.current = performance.now() - observedElapsedMs;
+      setGenerationStageElapsedMs(observedElapsedMs);
+    }
+    if (stage.phase === 'completed' && stage.elapsedMs !== undefined) {
+      generationStageTimingsRef.current.set(stage.stageId, {
+        stageId: stage.stageId,
+        label: stage.label,
+        elapsedMs: stage.elapsedMs
+      });
+      setGenerationStageElapsedMs(stage.elapsedMs);
+    }
+  }, []);
+
+  const completeGenerationRun = useCallback((completedProject: WorldProject) => {
+    const completedAt = new Date().toISOString();
+    const totalElapsedMs = Math.max(0, performance.now() - generationStartedAtRef.current);
+    const configuredWorkflowId = (completedProject.config as WorkflowGenerationConfig).workflowId;
+    const workflow = generationWorkflowDescriptor(configuredWorkflowId ?? generationWorkflowRef.current.id);
+    const stages = nativeGenerationStageIds.flatMap((stageId) => {
+      const timing = generationStageTimingsRef.current.get(stageId);
+      return timing ? [timing] : [];
+    });
+    setGenerationElapsedMs(totalElapsedMs);
+    setLastGenerationRun(buildGenerationRunSummary({
+      completedAt,
+      workflowId: workflow.id,
+      workflowLabel: workflow.label,
+      workflowVersion: workflow.version,
+      totalElapsedMs,
+      stages
+    }));
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -228,6 +283,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       if (event.data.type === 'stage' && event.data.stage) {
         const stage = event.data.stage;
         emitGenerationStageTelemetry(stage);
+        observeNativeStage(stage);
         if (stage.graphNode) {
           setGenerationNodeProgress((current) => updateNodeProgress(current, stage));
         }
@@ -250,6 +306,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       if (event.data.type === 'complete' && event.data.project) {
         generationPreviewRef.current = null;
         const completedProject = acceptGeneratedProject(event.data.project);
+        completeGenerationRun(completedProject);
         generationEstimateRef.current = Math.max(3000, completedProject.diagnostics?.totalMs ?? generationEstimateRef.current);
         emitGenerationTelemetry({
           phase: 'completed', taskId: event.data.id, progress: 1, label: 'World project complete',
@@ -285,13 +342,20 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       worker.terminate();
       if (workerRef.current === worker) workerRef.current = null;
     };
-  }, [acceptGeneratedProject, failPendingReplay, finishGeneration, scheduleGenerationPreviewPaint]);
+  }, [acceptGeneratedProject, completeGenerationRun, failPendingReplay, finishGeneration, observeNativeStage, scheduleGenerationPreviewPaint]);
 
   useEffect(() => {
     if (!isGenerating) { setGenerationProgress(0); return; }
+    const refreshElapsed = () => {
+      const now = performance.now();
+      setGenerationElapsedMs(Math.max(0, now - generationStartedAtRef.current));
+      setGenerationStageElapsedMs(Math.max(0, now - generationStageStartedAtRef.current));
+    };
+    refreshElapsed();
     const timer = window.setInterval(() => {
       setGenerationProgress((current) => Math.min(current, 0.98));
-    }, 150);
+      refreshElapsed();
+    }, 100);
     return () => window.clearInterval(timer);
   }, [isGenerating]);
 
@@ -303,6 +367,12 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     generationStartNodeIdRef.current = options.startNodeId ?? null;
     generationLaunchSourceRef.current = source;
     generationStartedAtRef.current = performance.now();
+    generationStageStartedAtRef.current = generationStartedAtRef.current;
+    generationActiveStageIdRef.current = 'starting';
+    generationStageTimingsRef.current.clear();
+    generationWorkflowRef.current = generationWorkflowDescriptor((effectiveConfig as WorkflowGenerationConfig).workflowId);
+    setGenerationElapsedMs(0);
+    setGenerationStageElapsedMs(0);
     generationEstimateRef.current = Math.max(3000, previousProjectRef.current?.diagnostics?.totalMs ?? generationEstimateRef.current);
     generationPreviewRef.current = null;
     setGenerationStage(source === 'replay' ? 'Starting exact replay...' : 'Starting generation...');
@@ -330,6 +400,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
           onStageEvent: (event) => {
             const stage = desktopStageEvent(taskId, event);
             emitGenerationStageTelemetry(stage);
+            observeNativeStage(stage);
             if (stage.phase === 'started' || stage.phase === 'progress') {
               setGenerationStage(stage.message || stage.label);
               setGenerationProgress(localStageProgress(stage));
@@ -346,6 +417,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
         const nextProject = reconcileSystemOrbitPresets(generatedProject);
         if (generationTaskIdRef.current !== taskId) return;
         const completedProject = acceptGeneratedProject(nextProject);
+        completeGenerationRun(completedProject);
         generationEstimateRef.current = Math.max(3000, completedProject.diagnostics?.totalMs ?? generationEstimateRef.current);
         emitGenerationTelemetry({
           phase: 'completed', taskId, progress: 1, label: 'World project complete', seed: effectiveConfig.seed,
@@ -366,7 +438,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
         setLaunchSource(null);
       }
     }, 20);
-  }, [acceptGeneratedProject, failPendingReplay, finishGeneration]);
+  }, [acceptGeneratedProject, completeGenerationRun, failPendingReplay, finishGeneration, observeNativeStage]);
 
   useEffect(() => {
     const handleReplayRequest = (event: Event) => {
@@ -405,7 +477,17 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     return () => window.removeEventListener(developerGenerationRunEvent, handleDeveloperRun);
   }, [generate, isGenerating]);
 
-  return { isGenerating, launchSource, generationProgress, generationStage, generationNodeProgress, generate };
+  return {
+    isGenerating,
+    launchSource,
+    generationProgress,
+    generationStage,
+    generationNodeProgress,
+    generationElapsedMs,
+    generationStageElapsedMs,
+    lastGenerationRun,
+    generate
+  };
 }
 
 function initialNodeProgress(): GenerationNodeProgress[] {

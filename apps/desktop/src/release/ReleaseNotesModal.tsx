@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.34</p>
+            <h3>Generation timing you can actually see</h3>
+            <ul>
+              <li>Live generation now shows total wall time and active-stage elapsed time beside progress.</li>
+              <li>Build retains the last completed run with workflow provenance, completion time, total duration, slowest stage, and the native-stage breakdown.</li>
+              <li>The timing surface exposes existing telemetry without changing generator output or workflow behavior.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.33</p>
             <h3>Dropdowns that know when to leave</h3>
             <ul>

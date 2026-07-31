@@ -35,6 +35,7 @@ function desktopStageEvent(taskId: string, event: NativeGenerationStageEvent): G
     timestamp: event.timestamp,
     elapsedMs: event.elapsedMs,
     measured: true,
+    nativeStage: true,
     graphNode,
     message: event.message,
     metrics: event.metrics
@@ -57,6 +58,7 @@ function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEven
     timestamp: event.timestamp,
     elapsedMs: event.durationMs,
     measured: true,
+    nativeStage: false,
     graphNode: true,
     dependencies: [...event.dependencies],
     version: event.version,

@@ -7,6 +7,7 @@ import {
 } from '@world-forge/generator-core/workflows';
 import { parameterControlBounds, type GenerationConfig, type NumericRange } from '@world-forge/shared';
 import type { WorkspaceMode } from '../workspace/workspaceModes';
+import { formatGenerationDuration, type GenerationRunSummary } from '../generation/generationTiming';
 import {
   generationActionLabel,
   generationParameterGroups,
@@ -39,6 +40,9 @@ export type GeneratorPanelProps = {
   isGenerating: boolean;
   generationStage: string;
   generationProgress: number;
+  generationElapsedMs: number;
+  generationStageElapsedMs: number;
+  lastGenerationRun: GenerationRunSummary | null;
   onConfigChange: (config: GenerationConfig) => void;
   onRandomizeSeed: () => void;
   onGenerate: () => void;
@@ -51,6 +55,12 @@ const starPresetOptions: Array<{ id: StarPresetId; label: string; description: s
   { id: 'sol-like', label: 'Sol-Like', description: 'Strongly favors a quiet, Sun-like main-sequence star and a near-Earth orbital baseline.' },
   { id: 'habitable', label: 'Earthlike-Friendly', description: 'Selects from stable F, G, and K stars with a practical habitable zone, then places the world within that star-specific zone.' }
 ];
+
+function completedAtLabel(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
 
 function randomSeed(): string {
   return String(Math.floor(1000000 + Math.random() * 9000000));
@@ -115,6 +125,7 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
   const {
     workspaceMode, hasCurrentProject, config, selectedPreset, presetLabels, resolutionOptions,
     sourceTopologyResolution, invalidRanges, isGenerating, generationStage, generationProgress,
+    generationElapsedMs, generationStageElapsedMs, lastGenerationRun,
     onConfigChange, onRandomizeSeed, onGenerate, onGenerationQualityChange, onPresetChange,
     onOceanToleranceChange
   } = props;
@@ -251,10 +262,42 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
 
         {isGenerating && (
           <div className="build-generation-progress" role="status" aria-live="polite">
-            <span>{generationStage || generationAction}</span>
+            <span className="build-generation-progress-copy">
+              <strong>{generationStage || generationAction}</strong>
+              <small>Total {formatGenerationDuration(generationElapsedMs)} · Stage {formatGenerationDuration(generationStageElapsedMs)}</small>
+            </span>
             <progress value={generationProgress} max={1} />
             <output>{Math.round(generationProgress * 100)}%</output>
           </div>
+        )}
+        {!isGenerating && lastGenerationRun && (
+          <section className="last-generation-summary" aria-labelledby="last-generation-summary-heading">
+            <header>
+              <div>
+                <span className="generator-kicker">Last generation</span>
+                <strong id="last-generation-summary-heading" title={lastGenerationRun.workflowId}>
+                  {lastGenerationRun.workflowLabel} v{lastGenerationRun.workflowVersion}
+                </strong>
+              </div>
+              <time dateTime={lastGenerationRun.completedAt}>{completedAtLabel(lastGenerationRun.completedAt)}</time>
+            </header>
+            <div className="last-generation-headline">
+              <span><small>Total wall time</small><strong>{formatGenerationDuration(lastGenerationRun.totalElapsedMs)}</strong></span>
+              <span>
+                <small>Slowest stage</small>
+                <strong>{lastGenerationRun.slowestStage?.label ?? 'No measured stage'}</strong>
+                {lastGenerationRun.slowestStage && <output>{formatGenerationDuration(lastGenerationRun.slowestStage.elapsedMs)}</output>}
+              </span>
+            </div>
+            <div className="last-generation-stage-grid" aria-label="Last generation native stage durations">
+              {lastGenerationRun.stages.map((stage) => (
+                <span key={stage.stageId} title={`${stage.label}: ${formatGenerationDuration(stage.elapsedMs)}`}>
+                  <small>{stage.label}</small>
+                  <output>{formatGenerationDuration(stage.elapsedMs)}</output>
+                </span>
+              ))}
+            </div>
+          </section>
         )}
         {hasCurrentProject && <p className="replacement-note">The current world stays visible until its replacement finishes successfully.</p>}
         {invalidRanges.length > 0 && <div className="validation">Invalid advanced ranges: {invalidRanges.join(', ')}</div>}

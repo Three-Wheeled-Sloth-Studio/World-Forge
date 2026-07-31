@@ -390,7 +390,10 @@ function App() {
     previousProject: project,
     onProjectGenerated: acceptProject
   });
-  const { isGenerating, generationProgress, generationStage, generationNodeProgress } = generation;
+  const {
+    isGenerating, generationProgress, generationStage, generationNodeProgress,
+    generationElapsedMs, generationStageElapsedMs, lastGenerationRun
+  } = generation;
 
   useEffect(() => {
     if (!configOpen) return;
@@ -833,6 +836,9 @@ function App() {
             isGenerating={isGenerating}
             generationStage={generationStage}
             generationProgress={generationProgress}
+            generationElapsedMs={generationElapsedMs}
+            generationStageElapsedMs={generationStageElapsedMs}
+            lastGenerationRun={lastGenerationRun}
             onConfigChange={setConfig}
             onRandomizeSeed={randomizeSeed}
             onGenerate={() => generate()}
@@ -866,6 +872,8 @@ function App() {
         isGenerating={isGenerating}
         generationStage={generationStage}
         generationProgress={generationProgress}
+        generationElapsedMs={generationElapsedMs}
+        generationStageElapsedMs={generationStageElapsedMs}
         generationNodeProgress={generationNodeProgress}
         viewMode={viewMode}
         showRivers={showRivers}

@@ -121,6 +121,123 @@
   text-align: right;
 }
 
+.build-generation-progress-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.build-generation-progress-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.build-generation-progress-copy small {
+  color: var(--pm-muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.last-generation-summary {
+  background: rgba(231, 240, 234, 0.66);
+  border: 1px solid rgba(94, 128, 103, 0.5);
+  border-radius: 7px;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+
+.last-generation-summary header {
+  align-items: start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.last-generation-summary header > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.last-generation-summary header strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-generation-summary time {
+  color: var(--pm-muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.last-generation-headline {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 0.75fr 1.25fr;
+}
+
+.last-generation-headline > span {
+  background: rgba(255, 252, 244, 0.58);
+  border: 1px solid rgba(112, 136, 117, 0.34);
+  border-radius: 6px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px;
+}
+
+.last-generation-headline small,
+.last-generation-stage-grid small {
+  color: var(--pm-muted);
+  font-size: 9px;
+}
+
+.last-generation-headline strong {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-generation-headline output {
+  color: #31513a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.last-generation-stage-grid {
+  display: grid;
+  gap: 4px 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.last-generation-stage-grid > span {
+  align-items: center;
+  border-top: 1px solid rgba(112, 136, 117, 0.25);
+  display: grid;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.last-generation-stage-grid small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-generation-stage-grid output {
+  color: #31513a;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .replacement-note {
   background: rgba(198, 152, 80, 0.1);
   border-left: 3px solid rgba(155, 110, 50, 0.6);

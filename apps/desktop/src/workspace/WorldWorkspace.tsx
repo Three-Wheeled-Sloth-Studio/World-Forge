@@ -7,6 +7,7 @@ import {
   type WorkspaceMode
 } from './workspaceModes';
 import { useDismissiblePopover } from '../shared/useDismissiblePopover';
+import { formatGenerationDuration } from '../generation/generationTiming';
 import './workspaceToolbar.css';
 
 export type WorkspaceViewMode = 'map' | 'globe';
@@ -18,6 +19,8 @@ export type WorldWorkspaceProps = {
   isGenerating: boolean;
   generationStage: string;
   generationProgress: number;
+  generationElapsedMs: number;
+  generationStageElapsedMs: number;
   generationNodeProgress: Array<{
     nodeId: string;
     label: string;
@@ -62,6 +65,8 @@ export function WorldWorkspace({
   isGenerating,
   generationStage,
   generationProgress,
+  generationElapsedMs,
+  generationStageElapsedMs,
   generationNodeProgress,
   viewMode,
   showRivers,
@@ -287,7 +292,12 @@ export function WorldWorkspace({
         {isGenerating && (
           <div className="generation-progress" role="status" aria-live="polite">
             <div className="generation-progress-total">
-              <span>{generationStage || 'Generating world'}</span><progress value={generationProgress} max={1} /><output>{Math.round(generationProgress * 100)}%</output>
+              <span className="generation-progress-copy">
+                <strong>{generationStage || 'Generating world'}</strong>
+                <small>Total {formatGenerationDuration(generationElapsedMs)} · Stage {formatGenerationDuration(generationStageElapsedMs)}</small>
+              </span>
+              <progress value={generationProgress} max={1} />
+              <output>{Math.round(generationProgress * 100)}%</output>
             </div>
             <div className="generation-node-progress" aria-label="Generation node progress">
               {generationNodeProgress.map((node) => (

@@ -30,6 +30,7 @@ export type GenerationStageTelemetryDetail = {
   timestamp: number;
   elapsedMs?: number;
   measured: boolean;
+  nativeStage?: boolean;
   graphNode?: boolean;
   dependencies?: string[];
   version?: string;
