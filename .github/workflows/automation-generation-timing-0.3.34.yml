@@ -91,17 +91,26 @@ jobs:
           (async () => {
             await waitForServer('http://127.0.0.1:5173');
             const browser = await chromium.launch({ headless: true });
-            const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+            const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
             const errors = [];
             page.on('pageerror', (error) => errors.push(error.message));
             await page.goto('http://127.0.0.1:5173', { waitUntil: 'networkidle' });
 
             const version = page.locator('.brand-version');
-            await version.waitFor({ state: 'visible' });
+            await version.waitFor({ state: 'attached' });
             const versionText = (await version.textContent()) || '';
-            if (!versionText.includes('0.3.34')) throw new Error(`Expected visible 0.3.34, got ${versionText}`);
+            const versionTitle = (await version.getAttribute('title')) || '';
+            if (!versionText.includes('0.3.34') || !versionTitle.includes('0.3.34')) {
+              throw new Error(`Expected build 0.3.34, got text=${versionText} title=${versionTitle}`);
+            }
 
-            await page.locator('#generation-quality').selectOption('256x128');
+            const quality = page.locator('#generation-quality');
+            if (!(await quality.isVisible())) {
+              const expandLeft = page.locator('.toolbar.panel-collapsed .panel-toggle').first();
+              if (await expandLeft.isVisible()) await expandLeft.click();
+            }
+            await quality.waitFor({ state: 'visible', timeout: 10000 });
+            await quality.selectOption('256x128');
             await page.locator('.advanced-generator-settings summary').click();
             await page.locator('#generation-workflow').selectOption('core.world-generation-experimental');
             await page.getByRole('button', { name: /^Generate$/ }).click();
