@@ -25,8 +25,8 @@ if (await globe.getAttribute('data-moon-shadow-mode') !== 'pcf-soft-proof') thro
 const axialTiltBefore = await globe.getAttribute('data-orbital-axial-tilt');
 const box = await surface.boundingBox();
 if (!box) throw new Error('Globe surface has no bounding box.');
-const start = { x: box.x + box.width * 0.72, y: box.y + box.height * 0.52 };
-const horizontalTarget = { x: box.x + box.width * 0.28, y: start.y };
+const start = { x: box.x + box.width * 0.85, y: box.y + box.height * 0.52 };
+const horizontalTarget = { x: box.x + box.width * 0.10, y: start.y };
 const verticalTarget = { x: horizontalTarget.x, y: box.y + box.height * 0.27 };
 
 await page.mouse.move(start.x, start.y);
@@ -44,13 +44,13 @@ const yawBefore = Number(await surface.getAttribute('data-camera-orbit-yaw'));
 const pitchBefore = Number(await surface.getAttribute('data-camera-orbit-pitch'));
 const imageBefore = await canvas.evaluate((node) => node.toDataURL());
 
-await page.mouse.move(horizontalTarget.x, horizontalTarget.y, { steps: 18 });
+await page.mouse.move(horizontalTarget.x, horizontalTarget.y, { steps: 24 });
 await page.waitForTimeout(200);
 const spinAfterHorizontal = Number(await surface.getAttribute('data-planet-spin-radians'));
 const yawAfter = Number(await surface.getAttribute('data-camera-orbit-yaw'));
 const imageAfterHorizontal = await canvas.evaluate((node) => node.toDataURL());
 if (!Number.isFinite(spinBefore) || !Number.isFinite(spinAfterHorizontal) || Math.abs(spinAfterHorizontal - spinBefore) > 0.00001) throw new Error(`Horizontal camera orbit changed physical spin: ${spinBefore} -> ${spinAfterHorizontal}`);
-if (!Number.isFinite(yawBefore) || !Number.isFinite(yawAfter) || Math.abs(yawAfter - yawBefore) < 2) throw new Error(`Horizontal drag did not orbit camera far enough for day/night inspection: ${yawBefore} -> ${yawAfter}`);
+if (!Number.isFinite(yawBefore) || !Number.isFinite(yawAfter) || Math.abs(yawAfter - yawBefore) < 3) throw new Error(`Horizontal drag did not cross enough of the globe for day/night inspection: ${yawBefore} -> ${yawAfter}`);
 if (imageAfterHorizontal === imageBefore) throw new Error('Horizontal camera orbit did not change the rendered view.');
 
 await page.mouse.move(verticalTarget.x, verticalTarget.y, { steps: 12 });
