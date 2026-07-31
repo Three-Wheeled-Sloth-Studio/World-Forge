@@ -142,6 +142,8 @@ export function GlobeViewer({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = Boolean(orbitalContext);
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(orbitalContext ? 0x02050a : 0x000000, orbitalContext ? 1 : 0);
     host.replaceChildren(renderer.domElement);
 
@@ -174,6 +176,8 @@ export function GlobeViewer({
     const primaryPresentation = orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId) ?? null;
     axialTiltGroup.rotation.z = THREE.MathUtils.degToRad(primaryPresentation?.axialTiltDeg ?? project.selectedValues.axialTiltDeg ?? 0);
     const globe = new THREE.Mesh(geometry, material);
+    globe.castShadow = true;
+    globe.receiveShadow = true;
     interactionGroup.rotation.y = -0.55;
     planetSpinGroup.add(globe);
     globeMeshRef.current = globe;
@@ -245,8 +249,12 @@ export function GlobeViewer({
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-    const drag = { active: false, x: 0, y: 0, startX: 0, startY: 0, vx: 0, vy: 0 };
+    const drag = { active: false, x: 0, y: 0, startX: 0, startY: 0, vx: 0, vy: 0, resumePlaying: false };
+    let manualSpinOffset = 0;
     const onPointerDown = (event: PointerEvent) => {
+      drag.resumePlaying = simulationClock.getSnapshot().playing;
+      simulationClock.setPlaying(false);
+      host.dataset.clockGrabState = 'held';
       drag.active = true;
       drag.x = event.clientX;
       drag.y = event.clientY;
@@ -262,13 +270,15 @@ export function GlobeViewer({
       drag.y = event.clientY;
       drag.vx = dx * 0.006;
       drag.vy = dy * 0.004;
-      interactionGroup.rotation.y += drag.vx;
+      manualSpinOffset += drag.vx;
       interactionGroup.rotation.x = clampGlobeTilt(interactionGroup.rotation.x + drag.vy);
     };
     const onPointerUp = (event: PointerEvent) => {
       const movement = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
       drag.active = false;
       renderer.domElement.releasePointerCapture(event.pointerId);
+      host.dataset.clockGrabState = 'released';
+      if (drag.resumePlaying) simulationClock.setPlaying(true);
       if (diagnosticModeRef.current && movement <= 4) {
         const rect = renderer.domElement.getBoundingClientRect();
         pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -313,15 +323,19 @@ export function GlobeViewer({
       const simulationDays = simulationClock.currentDays(performance.now());
       const simulationDeltaDays = simulationDays - previousSimulationDays;
       previousSimulationDays = simulationDays;
+      if (primaryPresentation) {
+        const rotationPeriodDays = Math.max(0.08, Math.abs(primaryPresentation.rotationPeriodHours) / 24);
+        planetSpinGroup.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays + manualSpinOffset;
+      } else if (!drag.active && !freezeSpinRef.current) {
+        manualSpinOffset += 0.0017;
+        planetSpinGroup.rotation.y = manualSpinOffset;
+      } else {
+        planetSpinGroup.rotation.y = manualSpinOffset;
+      }
+      host.dataset.simulationDays = simulationDays.toFixed(6);
+      host.dataset.planetSpinRadians = planetSpinGroup.rotation.y.toFixed(6);
       if (!drag.active && !freezeSpinRef.current) {
-        interactionGroup.rotation.y += drag.vx * 0.02;
         interactionGroup.rotation.x = clampGlobeTilt(interactionGroup.rotation.x + drag.vy * 0.018);
-        if (primaryPresentation) {
-          const rotationPeriodDays = Math.max(0.08, Math.abs(primaryPresentation.rotationPeriodHours) / 24);
-          planetSpinGroup.rotation.y += simulationDeltaDays * Math.PI * 2 / rotationPeriodDays;
-        } else {
-          planetSpinGroup.rotation.y += 0.0017;
-        }
         drag.vx *= 0.94;
         drag.vy *= 0.9;
       }
@@ -383,6 +397,8 @@ export function GlobeViewer({
       data-orbital-visible-body-count={visibleBodyCount}
       data-orbital-axial-tilt={Number.isFinite(axialTilt) ? axialTilt.toFixed(3) : '0.000'}
       data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
+      data-frame-reference={orbitalContext ? 'clock-spin-observer-separated' : 'legacy'}
+      data-moon-shadow-mode={orbitalContext ? 'pcf-soft-proof' : 'disabled'}
     >
       <div ref={hostRef} className="globe-render-surface" />
       {orbitalContext && <SystemSimulationControls clock={simulationClock} artifact={orbitalContext} />}
@@ -971,6 +987,16 @@ function createOrbitalPresentationScene(
   scene.add(starHalo);
 
   const sun = new THREE.DirectionalLight(starColor, 3.25);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 0.1;
+  sun.shadow.camera.far = 16;
+  sun.shadow.camera.left = -4;
+  sun.shadow.camera.right = 4;
+  sun.shadow.camera.top = 4;
+  sun.shadow.camera.bottom = -4;
+  sun.shadow.bias = -0.00015;
+  sun.shadow.normalBias = 0.015;
   scene.add(sun);
 
   const moons = artifact.payload.bodies
@@ -998,6 +1024,8 @@ function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBo
     opacity: body.placeholder ? 0.78 : 1
   });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 30, 16), material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   group.add(mesh);
 
   if (body.placeholder) {

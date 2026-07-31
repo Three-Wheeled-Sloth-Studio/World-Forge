@@ -26,6 +26,15 @@ Updated: 2026-07-31
 8. Set day 120 and 06:00, then reset and confirm day 1 at 00:00.
 9. Confirm no browser console errors or page-level overflow at 1440x900 and 1920x1080.
 
+## Frame-of-reference acceptance
+
+- Grabbing the globe pauses the shared clock and all orbital motion.
+- Holding the pointer keeps simulation time stable.
+- Horizontal drag changes physical spin while the stellar light direction remains external, visibly moving geography through the terminator.
+- Releasing restores the previous play/pause state.
+- Generated axial tilt remains unchanged by manual inspection.
+- Moon meshes cast and the primary globe receives bounded soft shadows when alignment permits.
+
 ## Manual visual review
 
 - Starfield is stable for the same artifact and does not shimmer between renders.

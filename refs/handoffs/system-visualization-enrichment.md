@@ -34,6 +34,16 @@ Globe view now consumes the saved orbital-context artifact and adds:
 - wireframe placeholder treatment for unresolved moons and system bodies;
 - deliberately compressed display distances and sizes, labeled as illustrative rather than literal scale.
 
+## Frame-of-reference correction
+
+- Physical spin is now an absolute function of shared simulation time plus a user scrub offset.
+- Horizontal globe drag scrubs the physical rotational phase through the fixed stellar light direction.
+- Vertical drag remains observer inspection tilt and does not rewrite generated axial tilt.
+- Pointer hold temporarily pauses the shared simulation clock and therefore pauses the planet, star/orbit phase, moons, and visible bodies together.
+- Pointer release restores the clock's prior play state.
+- The primary globe receives shadows and moon placeholders cast bounded PCF-soft shadows as a visual proof.
+- Clock-panel mobility/collapse and wider local-system framing remain backlog items.
+
 ## Current boundaries
 
 - No cloud or weather presentation yet.

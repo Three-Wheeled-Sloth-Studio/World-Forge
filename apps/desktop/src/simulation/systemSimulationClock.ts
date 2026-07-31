@@ -16,6 +16,7 @@ export type SystemSimulationClock = {
   setPlaying: (playing: boolean) => void;
   togglePlaying: () => void;
   setSpeedDaysPerSecond: (speed: number) => void;
+  setSimulationDays: (days: number) => void;
   setDayOfYear: (day: number) => void;
   setTimeOfDayHours: (hours: number) => void;
   reset: () => void;
@@ -116,6 +117,11 @@ export function createSystemSimulationClock(options: ClockOptions): SystemSimula
       if (nextSpeed === speedDaysPerSecond) return;
       commit();
       speedDaysPerSecond = nextSpeed;
+      publish();
+    },
+    setSimulationDays: (days) => {
+      baseDays = Number.isFinite(days) ? days : baseDays;
+      baseRealMs = now();
       publish();
     },
     setDayOfYear: (day) => {
