@@ -19,6 +19,11 @@ def decode_template(value: str) -> str:
 
 
 def rewrite_replace_block(block: str) -> str:
+    # This no-op replacement was left in the bootstrap while drafting the
+    # graph notice. Drop it rather than parsing its nested escaped template.
+    if 'runDisabledReason || (selected ?' in block:
+        return ''
+
     first = block.find('`')
     if first < 0:
         raise RuntimeError(f'Could not identify first replace template: {block[:160]}')
