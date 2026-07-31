@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.36</p>
+            <h3>Optional enrichment becomes a real workflow</h3>
+            <ul>
+              <li>Orbital presentation context is prepared only after first Globe use, never during ordinary world generation.</li>
+              <li>The new System Orbital Context workflow is versioned, inspectable in Dev, instrumented by node, deterministic, validated, cancellable, and saved with the project.</li>
+              <li>Globe view shows visible preparation, completion, stale, and failure state instead of hiding first-use work.</li>
+              <li>The artifact establishes stable star, planet, and moon motion inputs for the next living-globe visual cycle.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.35</p>
             <h3>The stopwatch was blaming the telescope</h3>
             <ul>

@@ -5,6 +5,12 @@ import {
   generationWorkflowDescriptors,
   type GenerationWorkflowId
 } from '@world-forge/generator-core/workflows';
+import {
+  isProjectEnrichmentWorkflowId,
+  projectEnrichmentWorkflowDescriptor,
+  projectEnrichmentWorkflowDescriptors,
+  type ProjectEnrichmentWorkflowId
+} from '@world-forge/generation-runtime/enrichment/systemOrbitalContext';
 import { developerGenerationRunEvent, type DeveloperGenerationRunDetail } from '../generation/generationEvents';
 
 export type GraphNodeStatus = 'waiting' | 'running' | 'complete' | 'retained' | 'warning' | 'failed' | 'skipped';
@@ -25,8 +31,10 @@ export type GraphNode = {
   findings: string[];
 };
 
+export type InspectableWorkflowId = GenerationWorkflowId | ProjectEnrichmentWorkflowId;
+
 export type GraphToolbarState = {
-  workflowId: GenerationWorkflowId;
+  workflowId: InspectableWorkflowId;
   fidelity: string;
   seed: string;
   validationStatus: '' | 'valid';
@@ -37,7 +45,7 @@ export type GraphWorkspaceProps = {
   selectedNodeId: string | null;
   toolbar: GraphToolbarState;
   onSelectNode: (id: string) => void;
-  onWorkflowChange: (id: GenerationWorkflowId) => void;
+  onWorkflowChange: (id: InspectableWorkflowId) => void;
   onFidelityChange: (fidelity: string) => void;
   onSeedChange: (seed: string) => void;
   onValidate: () => void;
@@ -93,10 +101,13 @@ export function GraphWorkspace({
   const selected = nodes.find((candidate) => candidate.id === selectedNodeId) ?? null;
   const running = nodes.find((candidate) => candidate.status === 'running');
   const completedCount = nodes.filter((candidate) => candidate.status === 'complete' || candidate.status === 'retained').length;
-  const activeWorkflow = generationWorkflowDescriptor(toolbar.workflowId);
+  const enrichmentWorkflow = isProjectEnrichmentWorkflowId(toolbar.workflowId) ? projectEnrichmentWorkflowDescriptor(toolbar.workflowId) : null;
+  const activeWorkflow = enrichmentWorkflow ?? generationWorkflowDescriptor(toolbar.workflowId);
   const runDisabledReason = running
-    ? 'A generation run is already active.'
-    : '';
+    ? 'A workflow run is already active.'
+    : enrichmentWorkflow
+      ? 'Enrichment workflows run from the generated project view in this increment.'
+      : '';
   const canRun = !runDisabledReason;
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT);
   const [inspectorOpen, setInspectorOpen] = useState(true);
@@ -107,7 +118,7 @@ export function GraphWorkspace({
   const lastManualNavigationRef = useRef(0);
 
   const runGraph = () => {
-    if (!canRun) return;
+    if (!canRun || isProjectEnrichmentWorkflowId(toolbar.workflowId)) return;
     const detail: DeveloperGenerationRunDetail = {
       seed: toolbar.seed,
       workflowId: toolbar.workflowId,
@@ -227,7 +238,7 @@ export function GraphWorkspace({
   };
 
   return (
-    <section className="graph-workspace" aria-label="Generation workflow graph">
+    <section className="graph-workspace" aria-label={enrichmentWorkflow ? 'Project enrichment workflow graph' : 'Generation workflow graph'} data-workflow-kind={enrichmentWorkflow ? 'enrichment' : 'generation'}>
       <div className="graph-toolbar">
         <div className="graph-toolbar-primary">
           <button type="button" title="New workflow" disabled><CircleDot size={16} />New</button>
@@ -241,10 +252,17 @@ export function GraphWorkspace({
         <div className="graph-toolbar-fields">
           <label>
             Workflow
-            <select value={toolbar.workflowId} onChange={(event) => onWorkflowChange(event.target.value as GenerationWorkflowId)} disabled={Boolean(running)}>
-              {generationWorkflowDescriptors.map((workflow) => (
-                <option key={workflow.id} value={workflow.id}>{workflow.label}</option>
-              ))}
+            <select value={toolbar.workflowId} onChange={(event) => onWorkflowChange(event.target.value as InspectableWorkflowId)} disabled={Boolean(running)}>
+              <optgroup label="World generation">
+                {generationWorkflowDescriptors.map((workflow) => (
+                  <option key={workflow.id} value={workflow.id}>{workflow.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Project enrichment">
+                {projectEnrichmentWorkflowDescriptors.map((workflow) => (
+                  <option key={workflow.id} value={workflow.id}>{workflow.label}</option>
+                ))}
+              </optgroup>
             </select>
           </label>
           <label>

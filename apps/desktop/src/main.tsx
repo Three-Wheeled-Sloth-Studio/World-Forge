@@ -51,6 +51,8 @@ import { DevPanel } from './dev/DevPanel';
 import { GraphWorkspace } from './dev/GraphWorkspace';
 import { useDevGraphWorkspace } from './dev/useDevGraphWorkspace';
 import { useGenerationWorkflow } from './generation/useGenerationWorkflow';
+import { useProjectEnrichment } from './enrichment/useProjectEnrichment';
+import { OrbitalContextStatus } from './enrichment/OrbitalContextStatus';
 import { GlobeViewer, type GlobeDebugMode } from './globe/GlobeViewer';
 import { useCloudWorkspaceSync } from './workspace/useCloudWorkspaceSync';
 import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
@@ -350,7 +352,7 @@ function App() {
     setProject(null);
     setWorkspaceMode(workspaceModeForProject(false));
   }, []);
-  const devGraph = useDevGraphWorkspace();
+  const devGraph = useDevGraphWorkspace(project);
   const mapTheme = useMemo(() => contentLibraryTheme(contentLibrary), [contentLibrary]);
   const {
     exportTasks,
@@ -394,6 +396,12 @@ function App() {
     isGenerating, generationProgress, generationStage, generationNodeProgress,
     generationElapsedMs, generationStageElapsedMs, lastGenerationRun
   } = generation;
+  const enrichment = useProjectEnrichment({ project, onProjectEnriched: setProject });
+
+  useEffect(() => {
+    if (!project || isGenerating || viewMode !== 'globe') return;
+    enrichment.ensureOrbitalContext();
+  }, [enrichment.ensureOrbitalContext, isGenerating, project?.projectId, project?.enrichmentArtifacts?.['project.system-orbital-context'], viewMode]);
 
   useEffect(() => {
     if (!configOpen) return;
@@ -933,22 +941,33 @@ function App() {
             {highestPointTarget && <HighestPointMapMarker target={highestPointTarget} />}
           </div>
         ) : project ? (
-          <GlobeViewer
-            project={project}
-            mapMode={mapMode}
-            renderMode={renderMode}
-            mapTheme={mapTheme}
-            showRivers={showRivers}
-            showPlates={showPlates}
-            showGlobeShells={showGlobeShells}
-            globeDebugMode={globeDebugMode}
-            diagnosticMode={diagnosticMode}
-            inspectionRecord={diagnosticMode ? inspectionRecord : null}
-            focusTarget={highestPointTarget}
-            zoom={globeZoom}
-            onZoom={handleGlobeWheelZoom}
-            onInspect={inspectGlobePoint}
-          />
+          <div className="globe-enrichment-frame">
+            <GlobeViewer
+              project={project}
+              mapMode={mapMode}
+              renderMode={renderMode}
+              mapTheme={mapTheme}
+              showRivers={showRivers}
+              showPlates={showPlates}
+              showGlobeShells={showGlobeShells}
+              globeDebugMode={globeDebugMode}
+              diagnosticMode={diagnosticMode}
+              inspectionRecord={diagnosticMode ? inspectionRecord : null}
+              focusTarget={highestPointTarget}
+              zoom={globeZoom}
+              onZoom={handleGlobeWheelZoom}
+              onInspect={inspectGlobePoint}
+            />
+            <OrbitalContextStatus
+              status={enrichment.status}
+              activeNodeLabel={enrichment.activeNodeLabel}
+              error={enrichment.error}
+              elapsedMs={enrichment.elapsedMs}
+              artifact={enrichment.artifact}
+              onRetry={enrichment.ensureOrbitalContext}
+              onCancel={enrichment.cancelOrbitalContext}
+            />
+          </div>
         ) : null}
         legend={project && mapMode === 'biomes' && renderMode === 'data' && viewMode === 'map' ? <BiomeLegend theme={mapTheme} /> : null}
       />

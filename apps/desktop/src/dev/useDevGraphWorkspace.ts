@@ -2,6 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DeepTimeProject } from '@world-forge/generator-core/deepTimePipeline';
 import type { GenerationWorkflowId } from '@world-forge/generator-core/workflows';
 import { generationGraphWorkflow } from '@world-forge/generation-runtime/graph/generationWorkflows';
+import {
+  isProjectEnrichmentWorkflowId,
+  projectEnrichmentWorkflowDescriptor,
+  projectEnrichmentWorkflowForNode,
+  SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID,
+  type ProjectEnrichmentWorkflowId
+} from '@world-forge/generation-runtime/enrichment/systemOrbitalContext';
 import type { GenerationConfig, WorldProject } from '@world-forge/shared';
 import {
   generationStageTelemetryEvent,
@@ -9,7 +16,7 @@ import {
   type GenerationStageTelemetryDetail,
   type GenerationTelemetryDetail
 } from '../generation/generationEvents';
-import type { GraphNode, GraphToolbarState } from './GraphWorkspace';
+import type { GraphNode, GraphToolbarState, InspectableWorkflowId } from './GraphWorkspace';
 
 export const defaultGraphToolbar: GraphToolbarState = {
   workflowId: 'core.live-world',
@@ -160,13 +167,15 @@ function projectArtifactSummary(project: WorldProject | undefined): Record<strin
   };
 }
 
-export function useDevGraphWorkspace() {
+export function useDevGraphWorkspace(currentProject: WorldProject | null = null) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [toolbar, setToolbar] = useState<GraphToolbarState>(defaultGraphToolbar);
   const [telemetry, setTelemetry] = useState<GenerationTelemetryDetail | null>(null);
   const [stageStates, setStageStates] = useState<Record<string, StageState>>({});
   const [lastProject, setLastProject] = useState<WorldProject | undefined>();
-  const workflow = useMemo(() => generationGraphWorkflow(toolbar.workflowId), [toolbar.workflowId]);
+  const workflow = useMemo(() => isProjectEnrichmentWorkflowId(toolbar.workflowId)
+    ? projectEnrichmentWorkflowDescriptor(toolbar.workflowId)
+    : generationGraphWorkflow(toolbar.workflowId), [toolbar.workflowId]);
 
   useEffect(() => {
     const handleTelemetry = (event: Event) => {
@@ -178,6 +187,8 @@ export function useDevGraphWorkspace() {
     };
     const handleStageTelemetry = (event: Event) => {
       const detail = (event as CustomEvent<GenerationStageTelemetryDetail>).detail;
+      const enrichment = projectEnrichmentWorkflowForNode(detail.nodeId);
+      if (enrichment) setToolbar((current) => ({ ...current, workflowId: enrichment.id }));
       setStageStates((current) => ({ ...current, [detail.nodeId]: detail }));
     };
     window.addEventListener(generationTelemetryEvent, handleTelemetry);
@@ -192,18 +203,27 @@ export function useDevGraphWorkspace() {
     setToolbar((current) => ({ ...current, ...patch, validationStatus: '' }));
   }, []);
 
-  const artifactSummary = useMemo(() => projectArtifactSummary(lastProject), [lastProject]);
+  const effectiveProject = lastProject ?? currentProject ?? undefined;
+  const artifactSummary = useMemo(() => projectArtifactSummary(effectiveProject), [effectiveProject]);
   const requestedStartIndex = telemetry?.startNodeId ? workflow.nodes.findIndex((node) => node.id === telemetry.startNodeId) : 0;
   const graphDiagnosticsByNode = useMemo(() => {
-    const entries = lastProject?.diagnostics?.graph?.nodes ?? [];
+    if (isProjectEnrichmentWorkflowId(toolbar.workflowId)) {
+      const artifact = effectiveProject?.enrichmentArtifacts?.[toolbar.workflowId];
+      const entries = artifact?.workflow.nodes ?? [];
+      return new Map(entries.map((entry) => [entry.nodeId, {
+        nodeId: entry.nodeId, version: entry.version, dependencies: entry.dependencies, durationMs: entry.durationMs,
+        validation: entry.validation, outputs: entry.outputs
+      }]));
+    }
+    const entries = effectiveProject?.diagnostics?.graph?.nodes ?? [];
     return new Map(entries.map((entry) => [entry.nodeId, entry]));
-  }, [lastProject]);
+  }, [effectiveProject, toolbar.workflowId]);
 
   const nodes = useMemo<GraphNode[]>(() => workflow.nodes.map((definition, index) => {
     const graphDiagnostic = graphDiagnosticsByNode.get(definition.id);
-    const retained = Boolean(telemetry?.startNodeId) && index < Math.max(0, requestedStartIndex) && Boolean(lastProject);
+    const retained = !isProjectEnrichmentWorkflowId(toolbar.workflowId) && Boolean(telemetry?.startNodeId) && index < Math.max(0, requestedStartIndex) && Boolean(effectiveProject);
     const stage = stageStates[definition.id];
-    let status: GraphNode['status'] = retained ? 'retained' : graphDiagnostic || (lastProject && !telemetry) ? 'complete' : 'waiting';
+    let status: GraphNode['status'] = retained ? 'retained' : graphDiagnostic || (effectiveProject && !telemetry && !isProjectEnrichmentWorkflowId(toolbar.workflowId)) ? 'complete' : 'waiting';
     if (!retained && stage) {
       if (stage.phase === 'started' || stage.phase === 'progress') status = 'running';
       else if (stage.phase === 'completed') status = 'complete';
@@ -226,11 +246,11 @@ export function useDevGraphWorkspace() {
       artifactSummary: graphDiagnostic?.outputs ?? artifactSummary[definition.id] ?? [],
       findings
     };
-  }), [artifactSummary, graphDiagnosticsByNode, lastProject, requestedStartIndex, stageStates, telemetry, workflow.nodes]);
+  }), [artifactSummary, effectiveProject, graphDiagnosticsByNode, requestedStartIndex, stageStates, telemetry, toolbar.workflowId, workflow.nodes]);
 
   const actions = useMemo(() => ({
     selectNode: (id: string) => setSelectedNodeId((current) => current === id ? null : id),
-    setWorkflow: (workflowId: GenerationWorkflowId) => markDirty({ workflowId }),
+    setWorkflow: (workflowId: InspectableWorkflowId) => markDirty({ workflowId }),
     setFidelity: (fidelity: string) => markDirty({ fidelity }),
     setSeed: (seed: string) => markDirty({ seed }),
     validate: () => setToolbar((current) => ({ ...current, validationStatus: 'valid' })),

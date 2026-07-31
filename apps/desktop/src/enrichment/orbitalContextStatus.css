@@ -1,0 +1,38 @@
+.globe-enrichment-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.globe-enrichment-frame > .globe-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+.orbital-context-status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(410px, calc(100% - 24px));
+  padding: 9px 10px;
+  border: 1px solid rgba(190, 206, 215, 0.28);
+  border-radius: 10px;
+  background: rgba(14, 23, 29, 0.9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.orbital-context-status.status-failed { border-color: rgba(224, 105, 92, 0.7); }
+.orbital-context-status.status-stale { border-color: rgba(220, 175, 82, 0.65); }
+.orbital-context-icon { display: grid; place-items: center; flex: 0 0 auto; }
+.orbital-context-copy { min-width: 0; display: grid; gap: 2px; }
+.orbital-context-copy strong { font-size: 0.76rem; }
+.orbital-context-copy small { color: var(--text-muted, #aebcc4); font-size: 0.68rem; line-height: 1.3; }
+.orbital-context-status button { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 5px 7px; border-radius: 7px; }
+.orbital-context-spinner { animation: orbital-context-spin 0.9s linear infinite; }
+@keyframes orbital-context-spin { to { transform: rotate(360deg); } }

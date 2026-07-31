@@ -732,6 +732,93 @@ export type GenerationDiagnostics = {
   };
 };
 
+export type EnrichmentArtifactAuthority = 'authoritative' | 'derived' | 'presentation';
+
+export type EnrichmentNodeRunRecord = {
+  nodeId: string;
+  stageId: string;
+  implementationId: string;
+  version: string;
+  dependencies: string[];
+  outputs: string[];
+  startedAt: string;
+  completedAt: string;
+  durationMs: number;
+  validation?: {
+    valid: boolean;
+    issues: Array<{ severity: 'error' | 'warning'; message: string }>;
+  };
+};
+
+export type OrbitalPresentationBody = {
+  id: string;
+  parentBodyId: string | null;
+  kind: SystemBody['bodyType'] | 'moon';
+  orbitalOrder: number;
+  semiMajorAxisAu: number | null;
+  semiMajorAxisParentRadii: number | null;
+  eccentricity: number;
+  inclinationDeg: number;
+  longitudeAscendingNodeDeg: number;
+  argumentOfPeriapsisDeg: number;
+  orbitalPeriodDays: number;
+  phaseAtEpochRad: number;
+  rotationPeriodHours: number;
+  axialTiltDeg: number;
+  sizeClass: number;
+  massClass: number;
+  visibleFromPrimary: boolean;
+  placeholder: boolean;
+};
+
+export type SystemOrbitalContextArtifact = {
+  artifactKey: 'project.system-orbital-context';
+  artifactVersion: 1;
+  artifactRole: 'presentation';
+  status: 'complete';
+  workflow: {
+    id: 'project.system-orbital-context';
+    version: '1.0.0';
+    graphSignature: string;
+    nodes: EnrichmentNodeRunRecord[];
+  };
+  source: {
+    projectId: string;
+    worldId: string;
+    sourceSignature: string;
+    generatorVersion: string;
+    appVersion: string;
+    sourceCommit?: string;
+  };
+  seed: string;
+  epochIso: string;
+  startedAt: string;
+  completedAt: string;
+  totalMs: number;
+  artifactSignature: string;
+  validation: {
+    valid: boolean;
+    issues: Array<{ severity: 'error' | 'warning'; message: string }>;
+  };
+  payload: {
+    modelVersion: 'system-orbital-context-v1';
+    star: {
+      id: string;
+      massSolar: number;
+      radiusSolar: number;
+      luminositySolar: number;
+      effectiveTemperatureK: number;
+      colorHex: string;
+    };
+    primaryBodyId: string;
+    visibleBodyIds: string[];
+    bodies: OrbitalPresentationBody[];
+  };
+};
+
+export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact;
+export type ProjectEnrichmentArtifacts = Record<string, ProjectEnrichmentArtifact>;
+
 export type WorldProject = {
   projectId: string;
   projectName: string;
@@ -747,6 +834,7 @@ export type WorldProject = {
   primaryWorld: PrimaryWorld;
   metrics: WorldMetrics;
   diagnostics?: GenerationDiagnostics;
+  enrichmentArtifacts?: ProjectEnrichmentArtifacts;
   exports: {
     packageExtension: '.wforge';
     supportedFormats: Array<'png' | 'svg' | 'json' | 'wforge'>;

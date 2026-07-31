@@ -29,3 +29,7 @@ Before changing geographic drilldown behavior, read and update as appropriate:
 - `refs/handoffs/geographic-region-drilldown.md`
 - `refs/testing/geographic-region-drilldown-qa.md`
 - `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
+
+Before changing system, globe, weather, seasonal, or secondary-body enrichment behavior, read and update as appropriate:
+
+- `refs/planning/pi-system-visualization-and-progressive-body-enrichment.md`
