@@ -21,6 +21,7 @@ jobs:
       - name: Preserve temporary runner scripts
         run: |
           cp .github/scripts/apply-enrichment-foundation.mjs /tmp/apply-enrichment-foundation.mjs
+          cp .github/scripts/repair-template-patch.py /tmp/repair-template-patch.py
           cp .github/scripts/qa-enrichment-foundation.mjs /tmp/qa-enrichment-foundation.mjs
 
       - name: Switch to current dev
@@ -39,7 +40,9 @@ jobs:
         run: npm ci
 
       - name: Apply first enrichment increment
-        run: node /tmp/apply-enrichment-foundation.mjs
+        run: |
+          python /tmp/repair-template-patch.py
+          node /tmp/apply-enrichment-foundation.fixed.mjs
 
       - name: Focused enrichment contracts
         run: npx vitest run packages/generation-runtime/src/enrichment/systemOrbitalContext.test.ts
