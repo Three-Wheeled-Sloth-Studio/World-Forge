@@ -22,9 +22,9 @@ export function OrbitalContextStatus({ status, activeNodeLabel, error, elapsedMs
       <span className="orbital-context-copy">
         <strong>Orbital context</strong>
         <small>
-          {status === 'running' ? `${activeNodeLabel || 'Preparing'} Â· ${seconds}`
+          {status === 'running' ? `${activeNodeLabel || 'Preparing'} · ${seconds}`
             : status === 'failed' ? error || 'Preparation failed'
-            : artifact ? `${artifact.payload.bodies.length} bodies Â· ${Math.round(artifact.totalMs)} ms Â· saved presentation artifact`
+            : artifact ? `${artifact.payload.bodies.length} bodies · ${Math.round(artifact.totalMs)} ms · saved presentation artifact`
             : status === 'stale' ? 'Saved context is stale and will be rebuilt'
             : 'Preparing on first Globe use'}
         </small>
