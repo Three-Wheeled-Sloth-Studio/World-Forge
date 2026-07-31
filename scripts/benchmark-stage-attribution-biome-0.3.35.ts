@@ -21,8 +21,8 @@ function correctRunnerPatchMarkers(): void {
   const staleDeepTimeMarker = '    "  const { width, height } = world.mapModel.resolution;\\n"\n    "  for (let y = 0; y < height; y += 1) {\\n"';
   const deepTimeMarkerOccurrences = patch.split(staleDeepTimeMarker).length - 1;
   if (deepTimeMarkerOccurrences !== 0) {
-    if (deepTimeMarkerOccurrences !== 1) throw new Error(`Expected one deep-time marker, found ${deepTimeMarkerOccurrences}`);
-    patch = patch.replace(
+    if (deepTimeMarkerOccurrences !== 2) throw new Error(`Expected two deep-time markers, found ${deepTimeMarkerOccurrences}`);
+    patch = patch.replaceAll(
       staleDeepTimeMarker,
       '    "  const { width, height } = world.mapModel.resolution;\\n"\n    "\\n"\n    "  for (let y = 0; y < height; y += 1) {\\n"'
     );
