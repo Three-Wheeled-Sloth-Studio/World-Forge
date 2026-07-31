@@ -1,0 +1,101 @@
+name: Temporary weather cloud and shadow QA runner r4
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/weather-cloud-shadow-qa-20260731-r4'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve temporary scripts
+        run: |
+          cp .github/scripts/apply-weather-cloud-shadow-qa.py /tmp/apply-weather-cloud-shadow-qa.py
+          cp .github/scripts/qa-weather-cloud-shadow.mjs /tmp/qa-weather-cloud-shadow.mjs
+
+      - name: Switch to exact accepted dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "2741b81205ee562f0a4197a5e0d126c17b094e88"
+          git checkout -B dev origin/dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply weather QA correction
+        run: |
+          python /tmp/apply-weather-cloud-shadow-qa.py
+          python - <<'PY'
+          from pathlib import Path
+          viewer = Path('apps/desktop/src/globe/GlobeViewer.tsx')
+          text = viewer.read_text(encoding='utf-8')
+          old = "import { createWeatherPresentationTexture, renderWeatherPresentationTexture } from './weatherPresentationTexture';"
+          new = "import { createWeatherPresentationTexture, normalizeHorizontalTextureSeam, renderWeatherPresentationTexture } from './weatherPresentationTexture';"
+          if old not in text:
+              raise RuntimeError('Weather texture import not found')
+          viewer.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          module = Path('apps/desktop/src/globe/weatherPresentationTexture.ts')
+          text = module.read_text(encoding='utf-8')
+          old = 'function normalizeHorizontalTextureSeam(canvas: HTMLCanvasElement, columns = 2): void {'
+          new = 'export function normalizeHorizontalTextureSeam(canvas: HTMLCanvasElement, columns = 2): void {'
+          if old not in text:
+              raise RuntimeError('Texture seam helper not found')
+          module.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          git diff --check
+          grep -q "APP_VERSION = '0.3.41'" apps/desktop/src/appVersion.ts
+          grep -q "layered-noise-v2" apps/desktop/src/globe/GlobeViewer.tsx
+          grep -q "export function normalizeHorizontalTextureSeam" apps/desktop/src/globe/weatherPresentationTexture.ts
+
+      - name: Focused cloud texture tests
+        run: npx vitest run src/globe/weatherPresentationTexture.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Focused browser QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-weather-cloud-shadow.mjs .github/scripts/qa-weather-cloud-shadow.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-weather-cloud-shadow.runtime.mjs
+
+      - name: Commit validated correction to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/src refs/handoffs refs/testing
+          git diff --cached --check
+          git commit -m "Refine cloud rendering and moon shadow diagnostics"
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/weather-cloud-shadow-qa-20260731-r4 || true
