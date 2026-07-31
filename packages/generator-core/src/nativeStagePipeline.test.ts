@@ -66,6 +66,27 @@ describe('native generator-core stage telemetry', () => {
     expect(Math.abs(project.primaryWorld.deepTime.finalWater.oceanErrorPercentagePoints)).toBeLessThan(3);
   });
 
+  it('moves foundation stages at graph start rather than after post-hoc previews', () => {
+    const trace: string[] = [];
+    generateProjectWithNativeStages(testConfig('native-stage-graph-boundaries'), {
+      onStageEvent: (event) => {
+        if (event.phase === 'started' || event.phase === 'completed') trace.push(`stage:${event.phase}:${event.stageId}`);
+      },
+      onGraphNodeEvent: (event) => {
+        if (event.phase === 'started') trace.push(`node:${event.nodeId}`);
+      }
+    });
+
+    const expectStageBeforeNode = (stageId: string, nodeId: string) => {
+      expect(trace.indexOf(`stage:started:${stageId}`)).toBeGreaterThanOrEqual(0);
+      expect(trace.indexOf(`stage:started:${stageId}`)).toBeLessThan(trace.indexOf(`node:${nodeId}`));
+    };
+    expect(trace.indexOf('stage:completed:world.system-orbit')).toBeLessThan(trace.indexOf('node:topology.construct'));
+    expectStageBeforeNode('world.primordial-crust', 'topology.construct');
+    expectStageBeforeNode('world.tectonics-cratons', 'plates.construct');
+    expectStageBeforeNode('world.initial-terrain', 'terrain.topology-elevation');
+  });
+
   it('keeps world output deterministic when telemetry is enabled', () => {
     const first = generateProjectWithNativeStages(testConfig('native-stage-determinism'));
     const second = generateProjectWithNativeStages(testConfig('native-stage-determinism'), {

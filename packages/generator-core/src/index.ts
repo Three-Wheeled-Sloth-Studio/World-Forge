@@ -25,7 +25,6 @@ import {
   clamp,
   codeToBiome,
   createDefaultConfig,
-  cubedSphereCellForLonLat,
   defaultParameterRanges,
   layerIndex,
   lerp,
@@ -37,6 +36,7 @@ import { SeededRandom } from './random';
 import { runGenerationFoundation } from './graph/run-generation-foundation';
 import type { GenerationGraphNodeRunEvent } from './graph/types';
 import { orchestratePrimaryWorld } from './primary-world-orchestrator';
+import { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
 import type { TerrainDiagnosticBypasses, TerrainDiagnosticSnapshotCallback } from './terrainDiagnostics';
 
 export { SeededRandom, createDefaultConfig, defaultParameterRanges };
@@ -1361,13 +1361,12 @@ function renderTopologyPreview(
 ): Uint8ClampedArray<ArrayBuffer> {
   const rgba = new Uint8ClampedArray(width * height * 4);
   const [lowElevation, highElevation] = previewPercentileRange(elevation, 0.02, 0.98);
+  const lookup = equirectangularTopologyLookup(topology, width, height);
   for (let y = 0; y < height; y += 1) {
-    const latitude = Math.PI / 2 - ((y + 0.5) / Math.max(1, height)) * Math.PI;
     for (let x = 0; x < width; x += 1) {
-      const longitude = ((x + 0.5) / Math.max(1, width)) * Math.PI * 2 - Math.PI;
-      const cell = cubedSphereCellForLonLat(topology, longitude, latitude);
-      const color = previewColorForCell(stage, cell, elevation, lowElevation, highElevation, water, seaLevel, plates, wetness, river, biomes, ice);
       const offset = (y * width + x) * 4;
+      const cell = lookup[y * width + x];
+      const color = previewColorForCell(stage, cell, elevation, lowElevation, highElevation, water, seaLevel, plates, wetness, river, biomes, ice);
       rgba[offset] = color[0];
       rgba[offset + 1] = color[1];
       rgba[offset + 2] = color[2];
@@ -1489,12 +1488,9 @@ function projectTopologyToEquirectangular(
   width: number,
   height: number
 ): void {
-  for (let y = 0; y < height; y += 1) {
-    const latitude = Math.PI / 2 - ((y + 0.5) / Math.max(1, height)) * Math.PI;
-    for (let x = 0; x < width; x += 1) {
-      const longitude = ((x + 0.5) / Math.max(1, width)) * Math.PI * 2 - Math.PI;
-      const topologyCell = cubedSphereCellForLonLat(topology, longitude, latitude);
-      const index = layerIndex(x, y, width);
+  const lookup = equirectangularTopologyLookup(topology, width, height);
+  for (let index = 0; index < lookup.length; index += 1) {
+      const topologyCell = lookup[index];
       elevation[index] = topologyElevation[topologyCell];
       plates[index] = topologyPlates[topologyCell];
       water[index] = topologyWater[topologyCell];
@@ -1507,7 +1503,6 @@ function projectTopologyToEquirectangular(
       ice[index] = topologyIce[topologyCell];
       river[index] = topologyRiver[topologyCell];
       lakes[index] = topologyLakes[topologyCell];
-    }
   }
 }
 
@@ -1524,17 +1519,13 @@ function projectTopologyFlowToEquirectangular(
   width: number,
   height: number
 ): void {
-  for (let y = 0; y < height; y += 1) {
-    const latitude = Math.PI / 2 - ((y + 0.5) / Math.max(1, height)) * Math.PI;
-    for (let x = 0; x < width; x += 1) {
-      const longitude = ((x + 0.5) / Math.max(1, width)) * Math.PI * 2 - Math.PI;
-      const topologyCell = cubedSphereCellForLonLat(topology, longitude, latitude);
-      const index = layerIndex(x, y, width);
+  const lookup = equirectangularTopologyLookup(topology, width, height);
+  for (let index = 0; index < lookup.length; index += 1) {
+      const topologyCell = lookup[index];
       windX[index] = topologyWindX[topologyCell];
       windY[index] = topologyWindY[topologyCell];
       currentX[index] = topologyCurrentX[topologyCell];
       currentY[index] = topologyCurrentY[topologyCell];
-    }
   }
 }
 

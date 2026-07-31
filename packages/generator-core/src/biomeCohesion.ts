@@ -2,10 +2,11 @@ import {
   biomeToCode,
   buildCubedSphereTopology,
   codeToBiome,
-  cubedSphereCellForLonLat,
   type Biome,
+  type CubedSphereTopology,
   type WorldProject
 } from '@world-forge/shared';
+import { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
 
 type BiomeInputs = {
   temperature: number;
@@ -73,17 +74,15 @@ function minimumComponentSize(biome: Biome): number {
   return 5;
 }
 
-function projectBiomeLayer(project: WorldProject): void {
+export function projectBiomeLayer(
+  project: WorldProject,
+  topology: CubedSphereTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution)
+): void {
   const world = project.primaryWorld;
-  const topology = buildCubedSphereTopology(world.topology.resolution);
   const { width, height } = world.mapModel.resolution;
-  for (let y = 0; y < height; y += 1) {
-    const latitude = Math.PI / 2 - ((y + 0.5) / height) * Math.PI;
-    for (let x = 0; x < width; x += 1) {
-      const longitude = ((x + 0.5) / width) * Math.PI * 2 - Math.PI;
-      const cell = cubedSphereCellForLonLat(topology, longitude, latitude);
-      world.layers.biomes[y * width + x] = world.topologyLayers.biomes[cell];
-    }
+  const lookup = equirectangularTopologyLookup(topology, width, height);
+  for (let index = 0; index < lookup.length; index += 1) {
+    world.layers.biomes[index] = world.topologyLayers.biomes[lookup[index]];
   }
 }
 
@@ -121,8 +120,10 @@ function summarizeCollapsed(project: WorldProject, cells: number[], originalBiom
   };
 }
 
-export function applyBiomeCohesion(project: WorldProject): number {
-  const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
+export function applyBiomeCohesion(
+  project: WorldProject,
+  topology: CubedSphereTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution)
+): number {
   const layers = project.primaryWorld.topologyLayers;
   const next = new Uint8Array(layers.biomes);
   let reassigned = 0;
@@ -202,6 +203,6 @@ export function applyBiomeCohesion(project: WorldProject): number {
     collapsedCellCount: collapsed.reduce((sum, item) => sum + item.areaCells, 0)
   };
 
-  if (reassigned > 0) projectBiomeLayer(project);
+  if (reassigned > 0) projectBiomeLayer(project, topology);
   return reassigned;
 }

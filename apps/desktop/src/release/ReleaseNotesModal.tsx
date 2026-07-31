@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.35</p>
+            <h3>The stopwatch was blaming the telescope</h3>
+            <ul>
+              <li>Native stage timing now follows the actual foundation graph instead of waiting for preview frames emitted after the work.</li>
+              <li>Initial topology, crust, climate, hydrology, and projection work is reported as Initial world foundation rather than System and orbit.</li>
+              <li>Equirectangular projection reuses one deterministic topology lookup across initial projection, previews, final projection, and biome cleanup.</li>
+              <li>Biome diagnostics sort their variance sample once instead of rebuilding the same ordered data three times.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.34</p>
             <h3>Generation timing you can actually see</h3>
             <ul>

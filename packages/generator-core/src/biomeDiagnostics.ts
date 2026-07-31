@@ -3,6 +3,7 @@ import {
   clamp,
   codeToBiome,
   type Biome,
+  type CubedSphereTopology,
   type WorldProject
 } from '@world-forge/shared';
 
@@ -49,9 +50,8 @@ function round(value: number, digits = 6): number {
   return Math.round(value * scale) / scale;
 }
 
-function percentile(values: number[], fraction: number): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
+function percentileFromSorted(sorted: readonly number[], fraction: number): number {
+  if (!sorted.length) return 0;
   const index = Math.max(0, Math.min(sorted.length - 1, Math.round((sorted.length - 1) * fraction)));
   return sorted[index];
 }
@@ -118,9 +118,11 @@ function climateRegimeForCell(
   return 'continental';
 }
 
-export function attachBiomeDiagnostics(project: WorldProject): BiomeDiagnostics {
+export function attachBiomeDiagnostics(
+  project: WorldProject,
+  topology: CubedSphereTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution)
+): BiomeDiagnostics {
   const world = project.primaryWorld;
-  const topology = buildCubedSphereTopology(world.topology.resolution);
   const layers = world.topologyLayers;
   const climateDiagnostics = world.climate?.diagnostics;
   const annualSwingC = climateDiagnostics?.seasonalTemperatureSwingC ?? 0;
@@ -213,8 +215,9 @@ export function attachBiomeDiagnostics(project: WorldProject): BiomeDiagnostics 
     }
   }
 
-  const lowVarianceCutoff = percentile(varianceValues, 0.25);
-  const highVarianceCutoff = percentile(varianceValues, 0.75);
+  const sortedVarianceValues = [...varianceValues].sort((left, right) => left - right);
+  const lowVarianceCutoff = percentileFromSorted(sortedVarianceValues, 0.25);
+  const highVarianceCutoff = percentileFromSorted(sortedVarianceValues, 0.75);
   const climateRegimeByCell = Array<ClimateRegime>(topology.cellCount).fill('maritime');
   const regimeCounts: Record<ClimateRegime, number> = { maritime: 0, continental: 0, monsoonal: 0, arid_seasonal: 0, stable_tropical: 0 };
   const regimeVarianceTotals: Record<ClimateRegime, number> = { maritime: 0, continental: 0, monsoonal: 0, arid_seasonal: 0, stable_tropical: 0 };
@@ -278,7 +281,7 @@ export function attachBiomeDiagnostics(project: WorldProject): BiomeDiagnostics 
     annualSeasonalTemperatureSwingC: round(annualSwingC, 3),
     landSeasonalTemperatureSwingC: round(landSwingC, 3),
     meanTemperatureVarianceProxyC: round(varianceValues.reduce((sum, value) => sum + value, 0) / Math.max(1, varianceValues.length), 3),
-    p90TemperatureVarianceProxyC: round(percentile(varianceValues, 0.9), 3),
+    p90TemperatureVarianceProxyC: round(percentileFromSorted(sortedVarianceValues, 0.9), 3),
     lowVarianceLandShare: round(lowVarianceCells / Math.max(1, landCells)),
     highVarianceLandShare: round(highVarianceCells / Math.max(1, landCells)),
     biomeMeanTemperatureVarianceProxyC,

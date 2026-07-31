@@ -36,6 +36,7 @@ import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleFi
 import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
 import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
+import { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
 
 export type StellarActivityClass = 'quiet' | 'moderate' | 'active' | 'flare-active';
 
@@ -2806,13 +2807,9 @@ function projectFinalTopology(project: DeepTimeProject, topology: CubedSphereTop
   const source = world.topologyLayers;
   const target = world.layers;
   const { width, height } = world.mapModel.resolution;
-
-  for (let y = 0; y < height; y += 1) {
-    const latitude = Math.PI / 2 - ((y + 0.5) / height) * Math.PI;
-    for (let x = 0; x < width; x += 1) {
-      const longitude = ((x + 0.5) / width) * Math.PI * 2 - Math.PI;
-      const cell = cubedSphereCellForLonLat(topology, longitude, latitude);
-      const index = y * width + x;
+  const lookup = equirectangularTopologyLookup(topology, width, height);
+  for (let index = 0; index < lookup.length; index += 1) {
+      const cell = lookup[index];
       target.elevation[index] = source.elevation[cell];
       target.plates[index] = source.plates[cell];
       target.water[index] = source.water[cell];
@@ -2830,9 +2827,8 @@ function projectFinalTopology(project: DeepTimeProject, topology: CubedSphereTop
       target.windY[index] = 0;
       target.currentX[index] = 0;
       target.currentY[index] = 0;
-    }
   }
-  return width * height;
+  return lookup.length;
 }
 
 function projectRiverPaths(project: DeepTimeProject, topology: CubedSphereTopology, rivers: River[]): River[] {

@@ -1,5 +1,16 @@
-import type { GenerationConfig, WorldProject } from '@world-forge/shared';
+import { buildCubedSphereTopology, type GenerationConfig, type WorldProject } from '@world-forge/shared';
 import type { GenerationPreviewFrame, GenerateProjectOptions } from './index';
+import type { GenerationGraphNodeRunEvent } from './graph/types';
+import { topologyConstructionNodeId } from './graph/nodes/topology-construction-node';
+import { primordialTerrainNodeId } from './graph/nodes/primordial-terrain-node';
+import { plateConstructionNodeId } from './graph/nodes/plate-construction-node';
+import { crustFieldsNodeId } from './graph/nodes/crust-fields-node';
+import { topologyElevationNodeId } from './graph/nodes/topology-elevation-node';
+import { terrainFinalizationNodeId } from './graph/nodes/terrain-finalization-node';
+import { waterGeologyNodeId } from './graph/nodes/water-geology-node';
+import { climateGlaciationNodeId } from './graph/nodes/climate-glaciation-node';
+import { hydrologyBiomesNodeId } from './graph/nodes/hydrology-biomes-node';
+import { projectionAssemblyNodeId } from './graph/nodes/projection-assembly-node';
 import { applyBiomeCohesion } from './biomeCohesion';
 import { attachBiomeDiagnostics, type BiomeDiagnostics } from './biomeDiagnostics';
 import {
@@ -45,7 +56,7 @@ const stageLabels: Record<NativeGenerationStageId, string> = {
   'world.system-orbit': 'System and orbit',
   'world.primordial-crust': 'Primordial crust',
   'world.tectonics-cratons': 'Plate and craton structure',
-  'world.initial-terrain': 'Initial terrain',
+  'world.initial-terrain': 'Initial world foundation',
   'world.deep-time-aging': 'Deep-time aging',
   'world.final-water': 'Final sea level and water',
   'world.present-climate': 'Present-day climate',
@@ -66,6 +77,26 @@ const stageOverallStart: Record<NativeGenerationStageId, number> = {
   'world.biomes-features': 0.93,
   'world.outputs-validation': 0.98
 };
+
+type FoundationStageBoundary = {
+  stageId: NativeGenerationStageId;
+  stageProgress: number;
+  overallProgress: number;
+  message: string;
+};
+
+const foundationStageBoundaryByNodeId = new Map<string, FoundationStageBoundary>([
+  [topologyConstructionNodeId, { stageId: 'world.primordial-crust', stageProgress: 0.08, overallProgress: 0.02, message: 'Building spherical topology' }],
+  [primordialTerrainNodeId, { stageId: 'world.primordial-crust', stageProgress: 0.72, overallProgress: 0.08, message: 'Building primordial crust' }],
+  [plateConstructionNodeId, { stageId: 'world.tectonics-cratons', stageProgress: 0.18, overallProgress: 0.12, message: 'Constructing plates' }],
+  [crustFieldsNodeId, { stageId: 'world.tectonics-cratons', stageProgress: 0.72, overallProgress: 0.19, message: 'Resolving crust fields' }],
+  [topologyElevationNodeId, { stageId: 'world.initial-terrain', stageProgress: 0.1, overallProgress: 0.22, message: 'Building initial elevation' }],
+  [terrainFinalizationNodeId, { stageId: 'world.initial-terrain', stageProgress: 0.28, overallProgress: 0.3, message: 'Finalizing the initial terrain surface' }],
+  [waterGeologyNodeId, { stageId: 'world.initial-terrain', stageProgress: 0.42, overallProgress: 0.35, message: 'Building initial water and geology' }],
+  [climateGlaciationNodeId, { stageId: 'world.initial-terrain', stageProgress: 0.58, overallProgress: 0.39, message: 'Building initial climate and ice' }],
+  [hydrologyBiomesNodeId, { stageId: 'world.initial-terrain', stageProgress: 0.76, overallProgress: 0.43, message: 'Building initial hydrology and biomes' }],
+  [projectionAssemblyNodeId, { stageId: 'world.initial-terrain', stageProgress: 0.92, overallProgress: 0.47, message: 'Projecting the initial world foundation' }]
+]);
 
 function nowMs(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -207,7 +238,7 @@ export function generateProjectWithNativeStages(
   input: Partial<GenerationConfig> = {},
   options: GenerateProjectWithNativeStagesOptions = {}
 ): WorldProject {
-  const { onStageEvent, onProgress: originalProgress, ...coreOptions } = options;
+  const { onStageEvent, onProgress: originalProgress, onGraphNodeEvent: originalGraphNodeEvent, ...coreOptions } = options;
   let activeIndex = 0;
   let activeStageId: NativeGenerationStageId = nativeGenerationStageIds[0];
   let stageStartedAt = nowMs();
@@ -238,10 +269,7 @@ export function generateProjectWithNativeStages(
 
   const transitionTo = (stageId: NativeGenerationStageId, overallProgress: number, message?: string) => {
     const targetIndex = nativeGenerationStageIds.indexOf(stageId);
-    if (targetIndex < activeIndex) {
-      emit(activeStageId, 'progress', 0.5, overallProgress, message);
-      return;
-    }
+    if (targetIndex < activeIndex) return;
     while (activeIndex < targetIndex) {
       emit(activeStageId, 'completed', 1, overallProgress, undefined, completedProject ? completionMetrics(activeStageId, completedProject) : undefined);
       activeIndex += 1;
@@ -251,18 +279,33 @@ export function generateProjectWithNativeStages(
     }
   };
 
+  const observeFoundationNode = (event: GenerationGraphNodeRunEvent) => {
+    const boundary = foundationStageBoundaryByNodeId.get(event.nodeId);
+    if (boundary && event.phase === 'started') {
+      transitionTo(boundary.stageId, boundary.overallProgress, boundary.message);
+      emit(activeStageId, 'progress', boundary.stageProgress, boundary.overallProgress, boundary.message);
+    } else if (boundary && event.phase === 'completed' && activeStageId === boundary.stageId) {
+      emit(activeStageId, 'progress', Math.min(0.98, boundary.stageProgress + 0.08), boundary.overallProgress, boundary.message);
+    }
+    originalGraphNodeEvent?.(event);
+  };
+
   emit(activeStageId, 'started', 0, 0, 'Resolving generation configuration, stellar system, orbit, and selected values');
 
   try {
     const project = generateProjectWithMotionAwareDeepTime(input, {
       ...coreOptions,
+      onGraphNodeEvent: observeFoundationNode,
       onProgress: (preview) => {
         const stageId = previewStageId(preview);
-        transitionTo(stageId, Math.min(0.47, stageOverallStart[stageId]), preview.label);
-        const stageProgress = stageId === 'world.initial-terrain'
-          ? Math.max(0.02, Math.min(0.98, preview.progress / 0.94))
-          : preview.stage === 'primordial' ? 0.7 : 0.75;
-        emit(activeStageId, 'progress', stageProgress, Math.min(0.47, preview.progress * 0.5), preview.label);
+        const targetIndex = nativeGenerationStageIds.indexOf(stageId);
+        if (targetIndex >= activeIndex) {
+          transitionTo(stageId, Math.min(0.47, stageOverallStart[stageId]), preview.label);
+          const stageProgress = stageId === 'world.initial-terrain'
+            ? Math.max(0.02, Math.min(0.98, preview.progress / 0.94))
+            : preview.stage === 'primordial' ? 0.7 : 0.75;
+          emit(activeStageId, 'progress', stageProgress, Math.min(0.47, preview.progress * 0.5), preview.label);
+        }
         originalProgress?.(preview);
       }
     }, (progress) => {
@@ -279,8 +322,19 @@ export function generateProjectWithNativeStages(
       });
     });
 
-    applyBiomeCohesion(project);
-    attachBiomeDiagnostics(project);
+    const biomeTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
+    const cohesionStartedAt = nowMs();
+    applyBiomeCohesion(project, biomeTopology);
+    const cohesionCompletedAt = nowMs();
+    attachBiomeDiagnostics(project, biomeTopology);
+    const diagnosticsCompletedAt = nowMs();
+    if (project.diagnostics) {
+      const cohesionMs = Math.max(0, cohesionCompletedAt - cohesionStartedAt);
+      const diagnosticsMs = Math.max(0, diagnosticsCompletedAt - cohesionCompletedAt);
+      project.diagnostics.phases.push({ name: 'biomes.cohesion', ms: Number(cohesionMs.toFixed(3)) });
+      project.diagnostics.phases.push({ name: 'biomes.diagnostics', ms: Number(diagnosticsMs.toFixed(3)) });
+      project.diagnostics.totalMs = Number((project.diagnostics.totalMs + cohesionMs + diagnosticsMs).toFixed(3));
+    }
     completedProject = project;
     transitionTo('world.outputs-validation', 0.99, 'Assembling final project and validation results');
     emit(activeStageId, 'completed', 1, 1, 'World project complete', completionMetrics(activeStageId, project));
