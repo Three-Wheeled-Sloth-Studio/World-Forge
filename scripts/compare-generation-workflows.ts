@@ -152,7 +152,7 @@ const benchmarkScenarios: readonly BenchmarkScenario[] = [
 ];
 
 const args = parseArgs(process.argv.slice(2));
-const sourceCommit = process.env.GITHUB_SHA || process.env.SOURCE_COMMIT || args.sourceCommit || 'unknown';
+const sourceCommit = args.sourceCommit || process.env.SOURCE_COMMIT || process.env.GITHUB_SHA || 'unknown';
 const selectedScenarios = args.scenarios.map(resolveScenario);
 const results: WorkflowResult[] = [];
 

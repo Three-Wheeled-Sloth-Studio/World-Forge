@@ -1,6 +1,6 @@
 # Present-climate topology traversal benchmark
 
-- Source commit: `5051d4bf3913bea3ca50ca0db39dfcd880469846`
+- Source commit: `fc26114f9f18fa74fb735688ea92cebb311b25a2`
 - Baseline: `core.performance-foundation`
 - Candidate: `core.world-generation-experimental`
 - Matched pairs: 9
