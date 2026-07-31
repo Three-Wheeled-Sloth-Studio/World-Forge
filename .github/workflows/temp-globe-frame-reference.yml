@@ -1,0 +1,78 @@
+name: Temporary globe frame-reference runner
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/globe-frame-reference-20260731'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve temporary scripts
+        run: |
+          cp .github/scripts/apply-globe-frame-reference.py /tmp/apply-globe-frame-reference.py
+          cp .github/scripts/qa-globe-frame-reference.mjs /tmp/qa-globe-frame-reference.mjs
+
+      - name: Switch to exact current dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "9b8b3f75ef23739c7e000b8778d0b950f2bd591d"
+          git checkout -B dev origin/dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply correction slice
+        run: python /tmp/apply-globe-frame-reference.py
+
+      - name: Focused clock contracts
+        run: npx vitest run apps/desktop/src/simulation/systemSimulationClock.test.ts apps/desktop/src/globe/orbitalPresentation.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Focused browser QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-globe-frame-reference.mjs .github/scripts/qa-globe-frame-reference.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-globe-frame-reference.runtime.mjs
+
+      - name: Commit validated increment to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/src refs/handoffs refs/testing
+          git diff --cached --check
+          git commit -m "Correct globe frame of reference"
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/globe-frame-reference-20260731 || true
