@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/globe-frame-reference-20260731-r2'
+    if: github.head_ref == 'automation/globe-frame-reference-20260731-r3'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout runner branch
@@ -21,6 +21,7 @@ jobs:
       - name: Preserve temporary scripts
         run: |
           cp .github/scripts/apply-globe-frame-reference.py /tmp/apply-globe-frame-reference.py
+          cp .github/scripts/fix-globe-frame-drag.py /tmp/fix-globe-frame-drag.py
           cp .github/scripts/qa-globe-frame-reference.mjs /tmp/qa-globe-frame-reference.mjs
 
       - name: Switch to exact current dev
@@ -39,7 +40,9 @@ jobs:
         run: npm ci
 
       - name: Apply correction slice
-        run: python /tmp/apply-globe-frame-reference.py
+        run: |
+          python /tmp/apply-globe-frame-reference.py
+          python /tmp/fix-globe-frame-drag.py
 
       - name: Focused clock contracts
         run: npx vitest run apps/desktop/src/simulation/systemSimulationClock.test.ts apps/desktop/src/globe/orbitalPresentation.test.ts
@@ -75,4 +78,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/globe-frame-reference-20260731-r2 || true
+        run: git push origin --delete automation/globe-frame-reference-20260731-r3 || true
