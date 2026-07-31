@@ -8,7 +8,7 @@ page.on('pageerror', (error) => consoleErrors.push(error.message));
 
 await page.goto('http://127.0.0.1:5173', { waitUntil: 'networkidle' });
 await page.locator('#generation-quality').selectOption('256x128');
-await page.getByRole('button', { name: /Generate World|Generate Replacement World|Replace World/i }).click();
+await page.getByRole('button', { name: 'Generate', exact: true }).click();
 await page.locator('.generating-overlay').waitFor({ state: 'visible', timeout: 15000 });
 await page.locator('.generating-overlay').waitFor({ state: 'hidden', timeout: 180000 });
 
