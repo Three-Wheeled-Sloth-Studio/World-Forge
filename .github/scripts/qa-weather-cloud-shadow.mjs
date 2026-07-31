@@ -15,11 +15,21 @@ await page.getByRole('button', { name: 'Globe view' }).click();
 await page.waitForFunction(() => document.querySelector('[data-enrichment-workflow="project.system-orbital-context"]')?.getAttribute('data-enrichment-status') === 'complete', undefined, { timeout: 30000 });
 
 const layers = page.getByRole('button', { name: 'Layers and display options' });
-if ((await layers.getAttribute('aria-expanded')) !== 'true') await layers.click();
-await page.getByRole('button', { name: /^Clouds/ }).click();
+const openLayers = async () => {
+  if ((await layers.getAttribute('aria-expanded')) !== 'true') await layers.click({ force: true });
+  await page.locator('.explore-layers-popover').waitFor({ state: 'visible', timeout: 10000 });
+};
+
+await openLayers();
+await page.locator('.cloud-toggle').evaluate((element) => element.click());
 await page.waitForFunction(() => document.querySelector('[data-enrichment-workflow="project.atmospheric-weather-presentation"]')?.getAttribute('data-enrichment-status') === 'complete', undefined, { timeout: 30000 });
-if ((await layers.getAttribute('aria-expanded')) !== 'true') await layers.click();
-await page.getByRole('button', { name: /^Weather systems/ }).click();
+await page.waitForFunction(() => document.querySelector('.globe-viewer')?.getAttribute('data-cloud-layer') === 'visible', undefined, { timeout: 10000 });
+
+await page.keyboard.press('Escape');
+await openLayers();
+await page.locator('.weather-toggle').evaluate((element) => element.click());
+await page.waitForFunction(() => document.querySelector('.globe-viewer')?.getAttribute('data-weather-layer') === 'visible', undefined, { timeout: 10000 });
+await page.keyboard.press('Escape');
 
 const globe = page.locator('.globe-viewer');
 await globe.waitFor({ state: 'visible' });
@@ -33,8 +43,8 @@ const surface = page.locator('.globe-render-surface');
 await page.waitForFunction(() => document.querySelector('.globe-render-surface')?.getAttribute('data-camera-distance'), undefined, { timeout: 10000 });
 const distanceBefore = Number(await surface.getAttribute('data-camera-distance'));
 const zoomButton = page.getByRole('button', { name: /^Zoom \d+ percent$/ });
-await zoomButton.click();
-await page.getByRole('menuitem', { name: '35%' }).click();
+await zoomButton.click({ force: true });
+await page.getByRole('menuitem', { name: '35%' }).click({ force: true });
 await page.waitForFunction((before) => Number(document.querySelector('.globe-render-surface')?.getAttribute('data-camera-distance')) > Number(before) + 0.5, distanceBefore, { timeout: 10000 });
 const distanceAfter = Number(await surface.getAttribute('data-camera-distance'));
 if (!(distanceAfter > distanceBefore + 0.5)) throw new Error(`Wide zoom did not increase camera distance: ${distanceBefore} -> ${distanceAfter}`);
