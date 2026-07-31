@@ -10,7 +10,6 @@ def replace_once(path: str, old: str, new: str) -> None:
     target.write_text(text.replace(old, new, 1), encoding='utf-8')
 
 
-# Clock: expose an absolute simulation-day setter so interaction can stay deterministic.
 replace_once(
     'apps/desktop/src/simulation/systemSimulationClock.ts',
     "  setSpeedDaysPerSecond: (speed: number) => void;\n  setDayOfYear: (day: number) => void;",
@@ -21,22 +20,7 @@ replace_once(
     "    setDayOfYear: (day) => {\n      commit();",
     "    setSimulationDays: (days) => {\n      baseDays = Number.isFinite(days) ? days : baseDays;\n      baseRealMs = now();\n      publish();\n    },\n    setDayOfYear: (day) => {\n      commit();"
 )
-
-# Clock contract test.
-replace_once(
-    'apps/desktop/src/simulation/systemSimulationClock.test.ts',
-    "  it('resets to the epoch baseline', () => {",
-    "  it('sets an absolute simulation day without changing play state', () => {\n    let now = 1000;\n    const clock = createSystemSimulationClock({ epochIso: '2000-01-01T12:00:00.000Z', yearLengthDays: 365, now: () => now });\n    clock.setPlaying(false);\n    clock.setSimulationDays(42.25);\n    expect(clock.getSnapshot().simulationDays).toBeCloseTo(42.25, 8);\n    expect(clock.getSnapshot().dayOfYear).toBeCloseTo(43.25, 8);\n    expect(clock.getSnapshot().timeOfDayHours).toBeCloseTo(6, 8);\n    expect(clock.getSnapshot().playing).toBe(false);\n  });\n\n  it('resets to the epoch baseline', () => {"
-)
-
-# Version.
-replace_once(
-    'apps/desktop/src/appVersion.ts',
-    "export const APP_VERSION = '0.3.37';",
-    "export const APP_VERSION = '0.3.38';"
-)
-
-# Globe renderer and physical frame separation.
+replace_once('apps/desktop/src/appVersion.ts', "export const APP_VERSION = '0.3.37';", "export const APP_VERSION = '0.3.38';")
 replace_once(
     'apps/desktop/src/globe/GlobeViewer.tsx',
     "    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));\n    renderer.setClearColor(orbitalContext ? 0x02050a : 0x000000, orbitalContext ? 1 : 0);",
@@ -92,8 +76,6 @@ replace_once(
     "      data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}",
     "      data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}\n      data-frame-reference={orbitalContext ? 'clock-spin-observer-separated' : 'legacy'}\n      data-moon-shadow-mode={orbitalContext ? 'pcf-soft-proof' : 'disabled'}"
 )
-
-# Handoff and QA evidence.
 replace_once(
     'refs/handoffs/system-visualization-enrichment.md',
     "## Current boundaries\n",
@@ -104,5 +86,4 @@ replace_once(
     "## Manual visual review\n",
     "## Frame-of-reference acceptance\n\n- Grabbing the globe pauses the shared clock and all orbital motion.\n- Holding the pointer keeps simulation time stable.\n- Horizontal drag changes physical spin while the stellar light direction remains external, visibly moving geography through the terminator.\n- Releasing restores the previous play/pause state.\n- Generated axial tilt remains unchanged by manual inspection.\n- Moon meshes cast and the primary globe receives bounded soft shadows when alignment permits.\n\n## Manual visual review\n"
 )
-
 print('Applied globe frame-reference correction slice.')
