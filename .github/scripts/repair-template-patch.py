@@ -13,9 +13,12 @@ index = 0
 
 def decode_template(value: str) -> str:
     # The bootstrap file intentionally stores new-file bodies with JavaScript
-    # escape sequences. Decode the common escapes, then emit a normal JSON
-    # string so TypeScript backticks and ${...} remain literal source text.
-    return bytes(value, 'utf-8').decode('unicode_escape')
+    # escape sequences. Decode the common escapes, then normalize escaped
+    # template markers before emitting a normal JSON string. This preserves
+    # TypeScript and Markdown backticks without letting the bootstrap evaluate
+    # `${...}` expressions.
+    decoded = bytes(value, 'utf-8').decode('unicode_escape')
+    return decoded.replace('\\`', '`').replace('\\${', '${')
 
 
 def rewrite_replace_block(block: str) -> str:
