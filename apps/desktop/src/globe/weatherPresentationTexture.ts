@@ -47,8 +47,8 @@ function drawLayeredCloudField(
   simulationDays: number
 ): void {
   const field = document.createElement('canvas');
-  field.width = Math.max(128, Math.floor(canvas.width / 2));
-  field.height = Math.max(64, Math.floor(canvas.height / 2));
+  field.width = canvas.width;
+  field.height = canvas.height;
   const fieldContext = field.getContext('2d');
   if (!fieldContext) return;
   const image = fieldContext.createImageData(field.width, field.height);
@@ -58,7 +58,7 @@ function drawLayeredCloudField(
     for (let x = 0; x < field.width; x += 1) {
       const u = (x + 0.5) / field.width;
       const coverage = cloudCoverageSample(artifact, u, v, simulationDays);
-      const value = Math.round(Math.pow(coverage, 0.88) * 255);
+      const value = Math.round(Math.pow(coverage, 1.12) * 255);
       const index = (y * field.width + x) * 4;
       image.data[index] = value;
       image.data[index + 1] = value;
@@ -70,8 +70,8 @@ function drawLayeredCloudField(
 
   context.save();
   context.imageSmoothingEnabled = true;
-  context.filter = 'blur(1.15px)';
-  context.globalAlpha = 0.92;
+  context.filter = 'blur(0.55px)';
+  context.globalAlpha = 1;
   context.drawImage(field, 0, 0, canvas.width, canvas.height);
   context.restore();
 }
@@ -89,7 +89,7 @@ export function cloudCoverageSample(
   for (const band of artifact.payload.cloudBands) {
     const phase = band.phaseRad + degreesToRadians(longitudeDeg * band.waveNumber + band.driftDegPerDay * simulationDays);
     const centerLatitude = band.centerLatitudeDeg + Math.sin(phase) * band.waveAmplitudeDeg;
-    const halfWidth = Math.max(2, band.widthDeg * 0.72);
+    const halfWidth = Math.max(2, band.widthDeg * 0.60);
     const normalizedDistance = (latitudeDeg - centerLatitude) / halfWidth;
     const envelope = Math.exp(-0.5 * normalizedDistance * normalizedDistance) * band.density;
     bandEnvelope = Math.max(bandEnvelope, envelope);
@@ -101,11 +101,12 @@ export function cloudCoverageSample(
   const macro = fractalCloudNoise(wrapUnit(u + eastwardAdvection), v * 0.94 + simulationDays * 0.00012, `${artifact.seed}:macro`);
   const filament = fractalCloudNoise(wrapUnit(u * 1.85 + eastwardAdvection * 1.7), v * 1.65 - simulationDays * 0.00018, `${artifact.seed}:filament`);
   const cells = fractalCloudNoise(wrapUnit(u * 4.4 - eastwardAdvection * 0.55), v * 3.9 + simulationDays * 0.00031, `${artifact.seed}:cells`);
-  const texture = macro * 0.48 + filament * 0.34 + cells * 0.18;
-  const threshold = 0.59 - bandEnvelope * 0.29;
-  const formed = smoothStep(threshold, 0.87, texture + bandEnvelope * 0.31);
-  const breakup = smoothStep(0.34, 0.73, filament * 0.66 + cells * 0.34);
-  return clamp01(formed * (0.48 + breakup * 0.72) * (0.52 + bandEnvelope * 0.88));
+  const texture = macro * 0.36 + filament * 0.40 + cells * 0.24;
+  const threshold = 0.60 - bandEnvelope * 0.17;
+  const formed = smoothStep(threshold, 0.83, texture + bandEnvelope * 0.14);
+  const breakup = smoothStep(0.40, 0.72, filament * 0.56 + cells * 0.44);
+  const rawCoverage = clamp01(formed * (0.20 + breakup * 0.98) * (0.36 + bandEnvelope * 0.90));
+  return smoothStep(0.08, 0.70, rawCoverage);
 }
 
 function drawWeatherPresentationSystem(

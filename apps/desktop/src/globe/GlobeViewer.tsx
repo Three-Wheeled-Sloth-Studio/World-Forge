@@ -225,11 +225,11 @@ export function GlobeViewer({
     const clouds = new THREE.Mesh(
       new THREE.SphereGeometry(scale.cloudShellRadius, 128, 64),
       new THREE.MeshLambertMaterial({
-        color: 0xf6f3e8,
+        color: 0xffffff,
         alphaMap: cloudAlpha,
         transparent: true,
-        opacity: 0.62,
-        alphaTest: 0.012,
+        opacity: 0.82,
+        alphaTest: 0.045,
         depthWrite: false,
         depthTest: true
       })
@@ -246,7 +246,7 @@ export function GlobeViewer({
     weatherAlpha.minFilter = THREE.LinearFilter;
     weatherAlpha.magFilter = THREE.LinearFilter;
     const weatherSystems = new THREE.Mesh(
-      new THREE.SphereGeometry(scale.cloudShellRadius + 0.008, 128, 64),
+      new THREE.SphereGeometry(scale.cloudShellRadius + 0.002, 128, 64),
       new THREE.MeshLambertMaterial({
         color: 0xe8f1f5,
         alphaMap: weatherAlpha,
@@ -443,7 +443,9 @@ export function GlobeViewer({
       data-moon-shadow-mode={orbitalContext ? 'pcf-soft-tracked' : 'disabled'}
       data-moon-shadow-caster-count={moonCount}
       data-cloud-shadow-mode="disabled-until-soft-shadow"
-      data-cloud-renderer="layered-noise-v2"
+      data-cloud-renderer="sparse-layered-noise-v3"
+      data-cloud-coverage-profile="clear-sky-gaps"
+      data-weather-shell-offset="0.002"
       data-minimum-globe-zoom="35"
       data-weather-presentation={weatherPresentation ? 'ready' : 'pending'}
       data-weather-authority={weatherPresentation?.weatherAuthority ?? 'none'}

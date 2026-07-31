@@ -26,6 +26,20 @@ describe('layered cloud presentation', () => {
     expect(variance).toBeGreaterThan(0.004);
   });
 
+  it('preserves clear-sky gaps instead of producing a continuous haze', () => {
+    const samples = Array.from({ length: 512 }, (_, index) => {
+      const x = index % 32;
+      const y = Math.floor(index / 32);
+      return cloudCoverageSample(artifact, (x + 0.5) / 32, (y + 0.5) / 16, 4);
+    });
+    const clearSkyShare = samples.filter((value) => value < 0.02).length / samples.length;
+    const denseCloudShare = samples.filter((value) => value > 0.35).length / samples.length;
+    const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    expect(clearSkyShare).toBeGreaterThan(0.55);
+    expect(denseCloudShare).toBeGreaterThan(0.03);
+    expect(mean).toBeLessThan(0.18);
+  });
+
   it('advects rather than remaining fixed over simulation time', () => {
     const before = Array.from({ length: 48 }, (_, index) => cloudCoverageSample(artifact, index / 48, 0.36, 0));
     const after = Array.from({ length: 48 }, (_, index) => cloudCoverageSample(artifact, index / 48, 0.36, 18));
