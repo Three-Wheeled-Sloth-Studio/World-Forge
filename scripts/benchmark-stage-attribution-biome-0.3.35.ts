@@ -7,15 +7,28 @@ import {
 
 type ExtendedConfig = ReturnType<typeof createDefaultConfig> & { workflowId?: string };
 
-function correctRunnerPatchMarker(): void {
+function correctRunnerPatchMarkers(): void {
   const patchPath = '/tmp/automation-stage-attribution-biome-0.3.35.py';
-  const staleMarker = 'function projectTopologyRiver(';
-  const correctMarker = 'function findTopologySeaLevelForOceanTarget(';
-  const patch = readFileSync(patchPath, 'utf8');
-  const occurrences = patch.split(staleMarker).length - 1;
-  if (occurrences === 0) return;
-  if (occurrences !== 2) throw new Error(`Expected two stale patch markers, found ${occurrences}`);
-  writeFileSync(patchPath, patch.replaceAll(staleMarker, correctMarker));
+  let patch = readFileSync(patchPath, 'utf8');
+
+  const staleFunctionMarker = 'function projectTopologyRiver(';
+  const functionMarkerOccurrences = patch.split(staleFunctionMarker).length - 1;
+  if (functionMarkerOccurrences !== 0) {
+    if (functionMarkerOccurrences !== 2) throw new Error(`Expected two stale function markers, found ${functionMarkerOccurrences}`);
+    patch = patch.replaceAll(staleFunctionMarker, 'function findTopologySeaLevelForOceanTarget(');
+  }
+
+  const staleDeepTimeMarker = '    "  const { width, height } = world.mapModel.resolution;\\n"\n    "  for (let y = 0; y < height; y += 1) {\\n"';
+  const deepTimeMarkerOccurrences = patch.split(staleDeepTimeMarker).length - 1;
+  if (deepTimeMarkerOccurrences !== 0) {
+    if (deepTimeMarkerOccurrences !== 1) throw new Error(`Expected one deep-time marker, found ${deepTimeMarkerOccurrences}`);
+    patch = patch.replace(
+      staleDeepTimeMarker,
+      '    "  const { width, height } = world.mapModel.resolution;\\n"\n    "\\n"\n    "  for (let y = 0; y < height; y += 1) {\\n"'
+    );
+  }
+
+  writeFileSync(patchPath, patch);
 }
 
 function hashBytes(values: ArrayLike<number>): string {
@@ -27,7 +40,7 @@ function hashBytes(values: ArrayLike<number>): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-correctRunnerPatchMarker();
+correctRunnerPatchMarkers();
 
 const config = createDefaultConfig('stage-attribution-biome-035', { width: 2048, height: 1024 }) as ExtendedConfig;
 config.topologyResolution = 128;
