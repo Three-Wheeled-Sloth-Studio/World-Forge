@@ -35,7 +35,7 @@ jobs:
         run: npm ci
 
       - name: Benchmark current dev
-        run: npx tsx scripts/.benchmark-stage-attribution-biome-0.3.35.ts > /tmp/stage-benchmark-before.json
+        run: npx tsx --tsconfig tsconfig.scripts.json scripts/.benchmark-stage-attribution-biome-0.3.35.ts > /tmp/stage-benchmark-before.json
 
       - name: Apply 0.3.35 slice
         run: python /tmp/automation-stage-attribution-biome-0.3.35.py
@@ -48,7 +48,7 @@ jobs:
             packages/generator-core/src/generator.test.ts
 
       - name: Benchmark patched code
-        run: npx tsx scripts/.benchmark-stage-attribution-biome-0.3.35.ts > /tmp/stage-benchmark-after.json
+        run: npx tsx --tsconfig tsconfig.scripts.json scripts/.benchmark-stage-attribution-biome-0.3.35.ts > /tmp/stage-benchmark-after.json
 
       - name: Compare benchmark output
         run: |
