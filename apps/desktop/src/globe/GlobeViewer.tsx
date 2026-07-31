@@ -12,6 +12,7 @@ import {
   orbitalPositionAtDays,
   relativeOrbitalPositionAtDays
 } from './orbitalPresentation';
+import { createWeatherPresentationTexture, normalizeHorizontalTextureSeam, renderWeatherPresentationTexture } from './weatherPresentationTexture';
 import './globeSimulation.css';
 
 export type GlobeDebugMode = 'final' | 'albedo' | 'lit' | 'water-mask' | 'sea-level' | 'coast-mask' | 'ocean-shell' | 'neutral-mesh' | 'topology-face' | 'uv-grid' | 'shade' | 'gyres';
@@ -153,7 +154,7 @@ export function GlobeViewer({
     host.replaceChildren(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
     applyCameraOrbit(camera, globeCameraDistance(zoom), cameraOrbitRef.current);
     cameraRef.current = camera;
 
@@ -227,13 +228,13 @@ export function GlobeViewer({
         color: 0xf6f3e8,
         alphaMap: cloudAlpha,
         transparent: true,
-        opacity: 0.72,
-        alphaTest: 0.025,
+        opacity: 0.62,
+        alphaTest: 0.012,
         depthWrite: false,
         depthTest: true
       })
     );
-    clouds.castShadow = true;
+    clouds.castShadow = false;
     clouds.receiveShadow = true;
     clouds.visible = Boolean(weatherPresentation && showClouds);
     planetSpinGroup.add(clouds);
@@ -250,13 +251,13 @@ export function GlobeViewer({
         color: 0xe8f1f5,
         alphaMap: weatherAlpha,
         transparent: true,
-        opacity: 0.84,
-        alphaTest: 0.03,
+        opacity: 0.76,
+        alphaTest: 0.016,
         depthWrite: false,
         depthTest: true
       })
     );
-    weatherSystems.castShadow = true;
+    weatherSystems.castShadow = false;
     weatherSystems.visible = Boolean(weatherPresentation && showWeather);
     planetSpinGroup.add(weatherSystems);
 
@@ -370,7 +371,16 @@ export function GlobeViewer({
         lastWeatherTextureDay = simulationDays;
         host.dataset.weatherTextureDay = simulationDays.toFixed(6);
       }
-      if (orbitalPresentation && orbitalContext) updateOrbitalPresentationScene(orbitalPresentation, orbitalContext, simulationDays);
+      if (orbitalPresentation && orbitalContext) {
+        updateOrbitalPresentationScene(orbitalPresentation, orbitalContext, simulationDays);
+        const firstMoon = orbitalPresentation.moons[0]?.group.position;
+        host.dataset.shadowLightVector = orbitalPresentation.sun.position.toArray().map((value) => value.toFixed(5)).join(',');
+        host.dataset.primaryMoonPosition = firstMoon ? firstMoon.toArray().map((value) => value.toFixed(5)).join(',') : 'none';
+        host.dataset.moonShadowAlignment = firstMoon
+          ? firstMoon.clone().normalize().dot(orbitalPresentation.sun.position.clone().normalize()).toFixed(6)
+          : 'none';
+      }
+      host.dataset.cameraDistance = camera.position.length().toFixed(6);
       renderer.render(scene, camera);
     };
     animate();
@@ -430,7 +440,11 @@ export function GlobeViewer({
       data-orbital-axial-tilt={Number.isFinite(axialTilt) ? axialTilt.toFixed(3) : '0.000'}
       data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
       data-frame-reference={orbitalContext ? 'fixed-world-camera-orbit' : 'camera-orbit'}
-      data-moon-shadow-mode={orbitalContext ? 'pcf-soft-proof' : 'disabled'}
+      data-moon-shadow-mode={orbitalContext ? 'pcf-soft-tracked' : 'disabled'}
+      data-moon-shadow-caster-count={moonCount}
+      data-cloud-shadow-mode="disabled-until-soft-shadow"
+      data-cloud-renderer="layered-noise-v2"
+      data-minimum-globe-zoom="35"
       data-weather-presentation={weatherPresentation ? 'ready' : 'pending'}
       data-weather-authority={weatherPresentation?.weatherAuthority ?? 'none'}
       data-weather-band-count={weatherPresentation?.payload.cloudBands.length ?? 0}
@@ -528,7 +542,7 @@ function orientCameraToGlobeDirection(
 }
 
 function globeCameraDistance(zoom: number): number {
-  const clamped = Math.max(0.75, Math.min(4, Number.isFinite(zoom) ? zoom : 1));
+  const clamped = Math.max(0.35, Math.min(4, Number.isFinite(zoom) ? zoom : 1));
   return 3.15 / Math.sqrt(clamped);
 }
 
@@ -729,165 +743,6 @@ function createGyreDebugTexture(project: WorldProject): HTMLCanvasElement {
   context.restore();
   normalizeHorizontalTextureSeam(canvas, 1);
   return canvas;
-}
-
-type WeatherTextureMode = 'clouds' | 'weather';
-
-function createWeatherPresentationTexture(artifact: AtmosphericWeatherPresentationArtifact | null, mode: WeatherTextureMode, simulationDays: number): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = artifact?.payload.textureResolution.width ?? 512;
-  canvas.height = artifact?.payload.textureResolution.height ?? 256;
-  renderWeatherPresentationTexture(canvas, artifact, mode, simulationDays);
-  return canvas;
-}
-
-function renderWeatherPresentationTexture(
-  canvas: HTMLCanvasElement,
-  artifact: AtmosphericWeatherPresentationArtifact | null,
-  mode: WeatherTextureMode,
-  simulationDays: number
-): void {
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.save();
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = '#000000';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  if (!artifact) { context.restore(); return; }
-  context.globalCompositeOperation = 'lighter';
-
-  if (mode === 'clouds') {
-    for (const band of artifact.payload.cloudBands) {
-      const intensity = Math.round(82 + band.density * 145);
-      context.strokeStyle = `rgb(${intensity}, ${intensity}, ${intensity})`;
-      context.lineCap = 'round';
-      context.lineJoin = 'round';
-      context.lineWidth = Math.max(3, band.widthDeg / 180 * canvas.height);
-      context.beginPath();
-      for (let x = 0; x <= canvas.width; x += 3) {
-        const longitudeDeg = x / canvas.width * 360 - 180;
-        const phase = band.phaseRad + THREE.MathUtils.degToRad(longitudeDeg * band.waveNumber + band.driftDegPerDay * simulationDays);
-        const textureNoise = fractalCloudNoise(wrapUnit(x / canvas.width), clamp01((90 - band.centerLatitudeDeg) / 180), `${artifact.seed}:${band.id}`);
-        const latitudeDeg = band.centerLatitudeDeg + Math.sin(phase) * band.waveAmplitudeDeg + (textureNoise - 0.5) * band.widthDeg * 0.45;
-        const y = (90 - latitudeDeg) / 180 * canvas.height;
-        if (x === 0) context.moveTo(x, y); else context.lineTo(x, y);
-      }
-      context.stroke();
-    }
-  }
-
-  for (const system of artifact.payload.systems) drawWeatherPresentationSystem(context, canvas, artifact.seed, system, mode, simulationDays);
-  context.restore();
-  normalizeHorizontalTextureSeam(canvas, 2);
-}
-
-function drawWeatherPresentationSystem(
-  context: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  seed: string,
-  system: WeatherPresentationSystem,
-  mode: WeatherTextureMode,
-  simulationDays: number
-): void {
-  const longitudeDeg = wrapSignedDegrees(system.longitudeDeg + system.driftEastDegPerDay * simulationDays);
-  const latitudeDeg = Math.max(-88, Math.min(88, system.latitudeDeg + Math.sin(system.phaseRad + simulationDays * 0.08) * system.driftNorthDegPerDay));
-  const x = (longitudeDeg + 180) / 360 * canvas.width;
-  const y = (90 - latitudeDeg) / 180 * canvas.height;
-  const radius = Math.max(3, system.radiusDeg / 360 * canvas.width);
-  for (const offset of [-canvas.width, 0, canvas.width]) {
-    const cx = x + offset;
-    const density = clamp01(system.density);
-    const gradient = context.createRadialGradient(cx, y, radius * 0.12, cx, y, radius);
-    const core = Math.round((mode === 'weather' ? 185 : 100) + density * (mode === 'weather' ? 70 : 115));
-    gradient.addColorStop(0, `rgb(${core}, ${core}, ${core})`);
-    gradient.addColorStop(0.5, `rgb(${Math.round(core * 0.72)}, ${Math.round(core * 0.72)}, ${Math.round(core * 0.72)})`);
-    gradient.addColorStop(1, '#000000');
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(cx, y, radius, 0, Math.PI * 2);
-    context.fill();
-
-    if (mode === 'weather') {
-      context.strokeStyle = `rgb(${core}, ${core}, ${core})`;
-      context.lineWidth = Math.max(1.5, radius * 0.11);
-      context.lineCap = 'round';
-      const turns = system.kind === 'cyclone' ? 2.4 : system.kind === 'convective' ? 1.2 : 0.7;
-      const rotation = system.phaseRad + system.spinRadiansPerDay * simulationDays;
-      context.beginPath();
-      for (let step = 0; step <= 28; step += 1) {
-        const t = step / 28;
-        const angle = rotation + t * Math.PI * 2 * turns;
-        const distance = system.kind === 'front' ? radius * (0.25 + t * 0.72) : radius * (0.08 + t * 0.82);
-        const wobble = (seededUnit(`${seed}:${system.id}`, step, Math.floor(simulationDays * 4)) - 0.5) * radius * 0.08;
-        const px = cx + Math.cos(angle) * distance;
-        const py = y + Math.sin(angle) * distance * 0.62 + wobble;
-        if (step === 0) context.moveTo(px, py); else context.lineTo(px, py);
-      }
-      context.stroke();
-    }
-  }
-}
-
-function wrapSignedDegrees(value: number): number {
-  return ((value + 180) % 360 + 360) % 360 - 180;
-}
-
-function normalizeHorizontalTextureSeam(canvas: HTMLCanvasElement, columns = 2) {
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context || canvas.width < 2 || canvas.height < 1) return;
-  const width = canvas.width;
-  const height = canvas.height;
-  const seamColumns = Math.max(1, Math.min(columns, Math.floor(width / 2)));
-  const image = context.getImageData(0, 0, width, height);
-
-  for (let y = 0; y < height; y += 1) {
-    for (let offset = 0; offset < seamColumns; offset += 1) {
-      const left = (y * width + offset) * 4;
-      const right = (y * width + (width - 1 - offset)) * 4;
-      for (let channel = 0; channel < 4; channel += 1) {
-        const value = Math.round((image.data[left + channel] + image.data[right + channel]) / 2);
-        image.data[left + channel] = value;
-        image.data[right + channel] = value;
-      }
-    }
-  }
-
-  context.putImageData(image, 0, 0);
-}
-
-function fractalCloudNoise(u: number, v: number, seed: string): number {
-  let amplitude = 0.58;
-  let frequency = 2.1;
-  let total = 0;
-  let weight = 0;
-  for (let octave = 0; octave < 5; octave += 1) {
-    total += smoothValueNoise(u * frequency, v * frequency, `${seed}:cloud:${octave}`) * amplitude;
-    weight += amplitude;
-    amplitude *= 0.52;
-    frequency *= 2.05;
-  }
-  return weight > 0 ? total / weight : 0;
-}
-
-function smoothValueNoise(x: number, y: number, seed: string): number {
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const fx = smoothStep(0, 1, x - x0);
-  const fy = smoothStep(0, 1, y - y0);
-  const a = seededUnit(seed, x0, y0);
-  const b = seededUnit(seed, x0 + 1, y0);
-  const c = seededUnit(seed, x0, y0 + 1);
-  const d = seededUnit(seed, x0 + 1, y0 + 1);
-  return linearInterpolate(linearInterpolate(a, b, fx), linearInterpolate(c, d, fx), fy);
-}
-
-function seededUnit(seed: string, x: number, y: number): number {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
-  h ^= Math.imul(x + 374761393, 668265263);
-  h ^= Math.imul(y + 2246822519, 3266489917);
-  h = Math.imul(h ^ (h >>> 15), 2246822507);
-  return ((h ^ (h >>> 13)) >>> 0) / 4294967295;
 }
 
 function createUvGridTexture(): HTMLCanvasElement {
@@ -1123,7 +978,9 @@ function createOrbitalPresentationScene(
   sun.shadow.camera.bottom = -4;
   sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.015;
+  sun.target.position.set(0, 0, 0);
   scene.add(sun);
+  scene.add(sun.target);
 
   const moons = artifact.payload.bodies
     .filter((body) => body.kind === 'moon' && body.parentBodyId === artifact.payload.primaryBodyId)
@@ -1185,6 +1042,9 @@ function updateOrbitalPresentationScene(
   presentation.starMesh.position.copy(starDirection).multiplyScalar(8.2);
   presentation.starHalo.position.copy(presentation.starMesh.position);
   presentation.sun.position.copy(starDirection).multiplyScalar(6.5);
+  presentation.sun.target.position.set(0, 0, 0);
+  presentation.sun.target.updateMatrixWorld();
+  presentation.sun.updateMatrixWorld();
 
   for (const visual of presentation.moons) {
     const point = orbitalPositionAtDays(visual.body, simulationDays);
@@ -1287,5 +1147,6 @@ function disposeOrbitalPresentationScene(presentation: OrbitalPresentationScene)
     });
   }
   presentation.sun.parent?.remove(presentation.sun);
+  presentation.sun.target.parent?.remove(presentation.sun.target);
   presentation.haloTexture.dispose();
 }

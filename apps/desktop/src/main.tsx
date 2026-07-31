@@ -150,7 +150,7 @@ function storedLeftPanelTab(value: string | undefined): LeftPanelTab {
 }
 
 function clampViewZoom(value: number): number {
-  return Math.max(0.75, Math.min(8, Number.isFinite(value) ? value : 1));
+  return Math.max(0.35, Math.min(8, Number.isFinite(value) ? value : 1));
 }
 
 const habitableWorldRanges: ParameterRanges = {

@@ -2,7 +2,7 @@
 
 Updated: 2026-07-31
 
-Status: Visualizer Cycle 2 atmospheric-weather slice implemented for validation
+Status: Visualizer Cycle 2.1 cloud and shadow correction implemented for validation
 
 Planning source: `refs/planning/pi-system-visualization-and-progressive-body-enrichment.md`
 
@@ -58,3 +58,12 @@ Tracking issue: #35
 ## Next increment
 
 Add the full `System` Explore mode with labels, body selection/focus, optional orbital paths, shared time controls, placeholder state, and compressed versus relative-distance presentation modes.
+
+## Visualizer Cycle 2.1 QA correction
+
+- Replaced continuous stroked cloud bands with a layered, multi-scale noise field constrained by the saved climatological bands.
+- Added differential time advection so cloud texture evolves instead of behaving like a painted stripe shell.
+- Rebuilt fronts, cyclones, and convective systems from overlapping soft puffs for less geometric edges.
+- Disabled the current alpha-map cloud shadow pass because it produced oversized hard bands; soft cloud shadows remain a later shader task.
+- Kept moons as the only local-system shadow casters and explicitly update the directional-light target and matrices with the shared clock.
+- Added 35% and 50% Globe zoom stops so moon/light geometry can be inspected in the local-system view.

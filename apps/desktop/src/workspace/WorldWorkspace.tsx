@@ -108,7 +108,7 @@ export function WorldWorkspace({
   const [zoomMenuPosition, setZoomMenuPosition] = useState({ x: 8, y: 8 });
   const layersPopover = useDismissiblePopover();
   const zoomPopover = useDismissiblePopover();
-  const zoomStops = [0.75, 1, 1.5, 2.25, 4, 5.5, 8];
+  const zoomStops = [0.35, 0.5, 0.75, 1, 1.5, 2.25, 4, 5.5, 8];
   const visibleMapMode = normalizeUserFacingMapMode(mapMode);
   const activeWorkspaceMode = workspaceModeOptions.find((option) => option.id === workspaceMode) ?? workspaceModeOptions[0];
 
