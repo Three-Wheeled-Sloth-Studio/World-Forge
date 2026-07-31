@@ -55,6 +55,8 @@ jobs:
 
       - name: Focused browser QA
         run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-enrichment-foundation.mjs .github/scripts/qa-enrichment-foundation.runtime.mjs
           npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
           VITE_PID=$!
           trap 'kill $VITE_PID || true' EXIT
@@ -62,7 +64,7 @@ jobs:
             if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
             sleep 1
           done
-          node /tmp/qa-enrichment-foundation.mjs
+          node .github/scripts/qa-enrichment-foundation.runtime.mjs
 
       - name: Commit validated increment to dev
         run: |
