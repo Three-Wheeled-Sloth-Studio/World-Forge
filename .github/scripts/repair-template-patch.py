@@ -90,5 +90,30 @@ fixed = fixed.replace(
     "function write(path, content) { fs.mkdirSync(path.split('/').slice(0, -1).join('/'), { recursive: true }); fs.writeFileSync(path, content); }",
     "function write(path, content) { const directory = path.split('/').slice(0, -1).join('/'); if (directory) fs.mkdirSync(directory, { recursive: true }); fs.writeFileSync(path, content); }"
 )
+run_graph_before = """  const runGraph = () => {
+    if (!canRun) return;
+    const detail: DeveloperGenerationRunDetail = {
+      seed: toolbar.seed,
+      workflowId: toolbar.workflowId,
+      startNodeId: null
+    };
+    window.dispatchEvent(new CustomEvent<DeveloperGenerationRunDetail>(developerGenerationRunEvent, { detail }));
+  };"""
+run_graph_after = """  const runGraph = () => {
+    if (!canRun || isProjectEnrichmentWorkflowId(toolbar.workflowId)) return;
+    const detail: DeveloperGenerationRunDetail = {
+      seed: toolbar.seed,
+      workflowId: toolbar.workflowId,
+      startNodeId: null
+    };
+    window.dispatchEvent(new CustomEvent<DeveloperGenerationRunDetail>(developerGenerationRunEvent, { detail }));
+  };"""
+fixed += (
+    "\nreplaceOnce('apps/desktop/src/dev/GraphWorkspace.tsx', "
+    + json.dumps(run_graph_before)
+    + ", "
+    + json.dumps(run_graph_after)
+    + ");\n"
+)
 target_path.write_text(fixed, encoding='utf-8')
 print(f'Repaired temporary patch script: {target_path}')
