@@ -30,9 +30,11 @@ Updated: 2026-07-31
 
 - Grabbing the globe pauses the shared clock and all orbital motion.
 - Holding the pointer keeps simulation time stable.
-- Horizontal drag changes physical spin while the stellar light direction remains external, visibly moving geography through the terminator.
+- Horizontal drag changes camera yaw while physical spin and stellar light remain fixed.
+- Vertical drag changes camera pitch while generated axial tilt remains fixed.
+- The rendered view changes during drag even though the planet's physical rotation value does not.
+- Camera orbit can inspect the full daylight side, nightside, poles, and terminator.
 - Releasing restores the previous play/pause state.
-- Generated axial tilt remains unchanged by manual inspection.
 - Moon meshes cast and the primary globe receives bounded soft shadows when alignment permits.
 
 ## Manual visual review

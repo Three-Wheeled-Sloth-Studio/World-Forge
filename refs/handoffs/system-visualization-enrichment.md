@@ -36,10 +36,10 @@ Globe view now consumes the saved orbital-context artifact and adds:
 
 ## Frame-of-reference correction
 
-- Physical spin is now an absolute function of shared simulation time plus a user scrub offset.
-- Horizontal globe drag scrubs the physical rotational phase through the fixed stellar light direction.
-- Vertical drag remains observer inspection tilt and does not rewrite generated axial tilt.
-- Pointer hold temporarily pauses the shared simulation clock and therefore pauses the planet, star/orbit phase, moons, and visible bodies together.
+- Physical spin is an absolute function of shared simulation time only; inspection does not add a rotational offset.
+- Horizontal and vertical drag orbit the observer camera around the fixed planet-and-light system.
+- While the pointer is held, the shared clock pauses, keeping geography, axial tilt, moons, visible bodies, and the day line fixed relative to one another.
+- Camera orbit exposes the full daylight side, nightside, poles, and terminator without changing local planetary time.
 - Pointer release restores the clock's prior play state.
 - The primary globe receives shadows and moon placeholders cast bounded PCF-soft shadows as a visual proof.
 - Clock-panel mobility/collapse and wider local-system framing remain backlog items.

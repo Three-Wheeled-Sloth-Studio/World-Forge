@@ -82,7 +82,7 @@ export function GlobeViewer({
   onInspect: (x: number, y: number, screen: { x: number; y: number }) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const interactionGroupRef = useRef<THREE.Group | null>(null);
+  const cameraOrbitRef = useRef<CameraOrbit>({ yaw: 0.55, pitch: 0 });
   const globeMeshRef = useRef<THREE.Mesh | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const markerRef = useRef<THREE.Group | null>(null);
@@ -93,8 +93,7 @@ export function GlobeViewer({
   useEffect(() => {
     const camera = cameraRef.current;
     if (!camera) return;
-    camera.position.set(0, 0, globeCameraDistance(zoom));
-    camera.lookAt(0, 0, 0);
+    applyCameraOrbit(camera, globeCameraDistance(zoom), cameraOrbitRef.current);
     camera.updateProjectionMatrix();
   }, [zoom]);
 
@@ -102,8 +101,8 @@ export function GlobeViewer({
     diagnosticModeRef.current = diagnosticMode;
     freezeSpinRef.current = (diagnosticMode && Boolean(inspectionRecord)) || Boolean(focusTarget);
     const globe = globeMeshRef.current;
-    const interactionGroup = interactionGroupRef.current;
-    if (!globe || !interactionGroup) return;
+    const camera = cameraRef.current;
+    if (!globe || !camera) return;
     if (markerRef.current) {
       globe.remove(markerRef.current);
       disposeGlobeMarker(markerRef.current);
@@ -113,14 +112,14 @@ export function GlobeViewer({
       const marker = createGlobeInspectionMarker(inspectionRecord);
       globe.add(marker);
       markerRef.current = marker;
-      orientGlobeToDirection(interactionGroup, directionFromInspection(inspectionRecord));
+      orientCameraToGlobeDirection(camera, globe, directionFromInspection(inspectionRecord), globeCameraDistance(zoom), cameraOrbitRef.current);
     }
-  }, [diagnosticMode, focusTarget, inspectionRecord]);
+  }, [diagnosticMode, focusTarget, inspectionRecord, zoom]);
 
   useEffect(() => {
     const globe = globeMeshRef.current;
-    const interactionGroup = interactionGroupRef.current;
-    if (!globe || !interactionGroup) return;
+    const camera = cameraRef.current;
+    if (!globe || !camera) return;
     if (focusMarkerRef.current) {
       globe.remove(focusMarkerRef.current);
       disposeGlobeMarker(focusMarkerRef.current);
@@ -133,8 +132,8 @@ export function GlobeViewer({
     const marker = createGlobeTargetMarker(direction);
     globe.add(marker);
     focusMarkerRef.current = marker;
-    orientGlobeToDirection(interactionGroup, direction);
-  }, [focusTarget]);
+    orientCameraToGlobeDirection(camera, globe, direction, globeCameraDistance(zoom), cameraOrbitRef.current);
+  }, [focusTarget, zoom]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -149,17 +148,13 @@ export function GlobeViewer({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40);
-    camera.position.set(0, 0, globeCameraDistance(zoom));
-    camera.lookAt(0, 0, 0);
+    applyCameraOrbit(camera, globeCameraDistance(zoom), cameraOrbitRef.current);
     cameraRef.current = camera;
 
-    const interactionGroup = new THREE.Group();
     const axialTiltGroup = new THREE.Group();
     const planetSpinGroup = new THREE.Group();
-    scene.add(interactionGroup);
-    interactionGroup.add(axialTiltGroup);
+    scene.add(axialTiltGroup);
     axialTiltGroup.add(planetSpinGroup);
-    interactionGroupRef.current = interactionGroup;
 
     const texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -178,7 +173,6 @@ export function GlobeViewer({
     const globe = new THREE.Mesh(geometry, material);
     globe.castShadow = true;
     globe.receiveShadow = true;
-    interactionGroup.rotation.y = -0.55;
     planetSpinGroup.add(globe);
     globeMeshRef.current = globe;
 
@@ -186,7 +180,7 @@ export function GlobeViewer({
       const marker = createGlobeInspectionMarker(inspectionRecord);
       globe.add(marker);
       markerRef.current = marker;
-      orientGlobeToDirection(interactionGroup, directionFromInspection(inspectionRecord));
+      orientCameraToGlobeDirection(camera, globe, directionFromInspection(inspectionRecord), globeCameraDistance(zoom), cameraOrbitRef.current);
     }
     if (focusTarget) {
       const u = (focusTarget.x + 0.5) / Math.max(1, focusTarget.width);
@@ -195,7 +189,7 @@ export function GlobeViewer({
       const marker = createGlobeTargetMarker(direction);
       globe.add(marker);
       focusMarkerRef.current = marker;
-      orientGlobeToDirection(interactionGroup, direction);
+      orientCameraToGlobeDirection(camera, globe, direction, globeCameraDistance(zoom), cameraOrbitRef.current);
     }
 
     const ocean = new THREE.Mesh(
@@ -249,8 +243,8 @@ export function GlobeViewer({
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-    const drag = { active: false, x: 0, y: 0, startX: 0, startY: 0, vx: 0, vy: 0, resumePlaying: false };
-    let manualSpinOffset = 0;
+    const drag = { active: false, x: 0, y: 0, startX: 0, startY: 0, resumePlaying: false };
+    let fallbackSpin = 0;
     const onPointerDown = (event: PointerEvent) => {
       drag.resumePlaying = simulationClock.getSnapshot().playing;
       simulationClock.setPlaying(false);
@@ -268,10 +262,8 @@ export function GlobeViewer({
       const dy = event.clientY - drag.y;
       drag.x = event.clientX;
       drag.y = event.clientY;
-      drag.vx = dx * 0.006;
-      drag.vy = dy * 0.004;
-      manualSpinOffset += drag.vx;
-      interactionGroup.rotation.x = clampGlobeTilt(interactionGroup.rotation.x + drag.vy);
+      updateCameraOrbitFromDrag(cameraOrbitRef.current, dx, dy);
+      applyCameraOrbit(camera, globeCameraDistance(zoom), cameraOrbitRef.current);
     };
     const onPointerUp = (event: PointerEvent) => {
       const movement = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
@@ -325,20 +317,18 @@ export function GlobeViewer({
       previousSimulationDays = simulationDays;
       if (primaryPresentation) {
         const rotationPeriodDays = Math.max(0.08, Math.abs(primaryPresentation.rotationPeriodHours) / 24);
-        planetSpinGroup.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays + manualSpinOffset;
+        planetSpinGroup.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays;
       } else if (!drag.active && !freezeSpinRef.current) {
-        manualSpinOffset += 0.0017;
-        planetSpinGroup.rotation.y = manualSpinOffset;
+        fallbackSpin += 0.0017;
+        planetSpinGroup.rotation.y = fallbackSpin;
       } else {
-        planetSpinGroup.rotation.y = manualSpinOffset;
+        planetSpinGroup.rotation.y = fallbackSpin;
       }
       host.dataset.simulationDays = simulationDays.toFixed(6);
       host.dataset.planetSpinRadians = planetSpinGroup.rotation.y.toFixed(6);
-      if (!drag.active && !freezeSpinRef.current) {
-        interactionGroup.rotation.x = clampGlobeTilt(interactionGroup.rotation.x + drag.vy * 0.018);
-        drag.vx *= 0.94;
-        drag.vy *= 0.9;
-      }
+      host.dataset.cameraOrbitYaw = cameraOrbitRef.current.yaw.toFixed(6);
+      host.dataset.cameraOrbitPitch = cameraOrbitRef.current.pitch.toFixed(6);
+      host.dataset.observerControl = 'camera-orbit';
       clouds.rotation.y += simulationDeltaDays * 0.04;
       if (orbitalPresentation && orbitalContext) updateOrbitalPresentationScene(orbitalPresentation, orbitalContext, simulationDays);
       renderer.render(scene, camera);
@@ -365,7 +355,6 @@ export function GlobeViewer({
         focusMarkerRef.current = null;
       }
       globeMeshRef.current = null;
-      interactionGroupRef.current = null;
       cameraRef.current = null;
       geometry.dispose();
       material.dispose();
@@ -397,7 +386,7 @@ export function GlobeViewer({
       data-orbital-visible-body-count={visibleBodyCount}
       data-orbital-axial-tilt={Number.isFinite(axialTilt) ? axialTilt.toFixed(3) : '0.000'}
       data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
-      data-frame-reference={orbitalContext ? 'clock-spin-observer-separated' : 'legacy'}
+      data-frame-reference={orbitalContext ? 'fixed-world-camera-orbit' : 'camera-orbit'}
       data-moon-shadow-mode={orbitalContext ? 'pcf-soft-proof' : 'disabled'}
     >
       <div ref={hostRef} className="globe-render-surface" />
@@ -456,8 +445,37 @@ function directionFromInspection(record: PointInspectionRecord): THREE.Vector3 {
   return directionFromGlobeUv(u, v);
 }
 
-function orientGlobeToDirection(globe: THREE.Object3D, direction: THREE.Vector3) {
-  globe.quaternion.setFromUnitVectors(direction.clone().normalize(), new THREE.Vector3(0, 0, 1));
+type CameraOrbit = { yaw: number; pitch: number };
+
+function applyCameraOrbit(camera: THREE.PerspectiveCamera, distance: number, orbit: CameraOrbit): void {
+  const cosPitch = Math.cos(orbit.pitch);
+  camera.position.set(
+    Math.sin(orbit.yaw) * cosPitch * distance,
+    Math.sin(orbit.pitch) * distance,
+    Math.cos(orbit.yaw) * cosPitch * distance
+  );
+  camera.up.set(0, 1, 0);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+}
+
+function updateCameraOrbitFromDrag(orbit: CameraOrbit, deltaX: number, deltaY: number): void {
+  orbit.yaw -= deltaX * 0.006;
+  orbit.pitch = clampCameraOrbitPitch(orbit.pitch + deltaY * 0.004);
+}
+
+function orientCameraToGlobeDirection(
+  camera: THREE.PerspectiveCamera,
+  globe: THREE.Object3D,
+  localDirection: THREE.Vector3,
+  distance: number,
+  orbit: CameraOrbit
+): void {
+  globe.updateWorldMatrix(true, false);
+  const worldDirection = localDirection.clone().transformDirection(globe.matrixWorld).normalize();
+  orbit.yaw = Math.atan2(worldDirection.x, worldDirection.z);
+  orbit.pitch = clampCameraOrbitPitch(Math.asin(Math.max(-1, Math.min(1, worldDirection.y))));
+  applyCameraOrbit(camera, distance, orbit);
 }
 
 function globeCameraDistance(zoom: number): number {
@@ -919,8 +937,9 @@ function rasterPercentileRange(values: Float32Array, lowPercentile: number, high
   return low === high ? [sorted[0] ?? 0, sorted[sorted.length - 1] ?? 1] : [low, high];
 }
 
-function clampGlobeTilt(value: number): number {
-  return Math.max(-1.1, Math.min(1.1, value));
+function clampCameraOrbitPitch(value: number): number {
+  const limit = Math.PI / 2 - 0.06;
+  return Math.max(-limit, Math.min(limit, value));
 }
 
 function clamp01(value: number): number {

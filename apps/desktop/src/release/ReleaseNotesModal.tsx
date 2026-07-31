@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.39</p>
+            <h3>The camera moves. The planet keeps its job.</h3>
+            <ul>
+              <li>Horizontal and vertical globe drag now orbit the observer camera around the fixed physical system.</li>
+              <li>Generated axial tilt, clock-derived planetary spin, and stellar light remain authoritative during inspection.</li>
+              <li>Holding the globe pauses the shared clock, keeping geography and the day line locked while the camera inspects daylight, night, poles, and terminator.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.36</p>
             <h3>Optional enrichment becomes a real workflow</h3>
             <ul>
