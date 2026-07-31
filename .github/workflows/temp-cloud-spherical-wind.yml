@@ -1,0 +1,85 @@
+name: Temporary Cycle 2.2 spherical cloud runner
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/cloud-spherical-wind-20260731'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve temporary scripts
+        run: |
+          cp .github/scripts/apply-cloud-spherical-wind.py /tmp/apply-cloud-spherical-wind.py
+          cp .github/scripts/qa-cloud-spherical-wind.mjs /tmp/qa-cloud-spherical-wind.mjs
+
+      - name: Switch to exact accepted dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "6bed9e7f373471c8ab9fc078f2ff4b8405c7cc56"
+          git checkout -B dev origin/dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply Cycle 2.2 cloud correction
+        run: |
+          python /tmp/apply-cloud-spherical-wind.py
+          git diff --check
+          grep -q "APP_VERSION = '0.3.43'" apps/desktop/src/appVersion.ts
+          grep -q "wind-oriented-spherical-v4" apps/desktop/src/globe/GlobeViewer.tsx
+          grep -q "spherical-continuous" apps/desktop/src/globe/GlobeViewer.tsx
+          grep -q "WORKFLOW_VERSION = '1.1.0'" packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.ts
+          grep -q "windField" packages/shared/src/index.ts
+          ! grep -A12 "renderWeatherPresentationTexture" apps/desktop/src/globe/weatherPresentationTexture.ts | grep -q "normalizeHorizontalTextureSeam"
+
+      - name: Focused weather and cloud tests
+        run: npx vitest run apps/desktop/src/globe/weatherPresentationTexture.test.ts packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Focused Chromium QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-cloud-spherical-wind.mjs .github/scripts/qa-cloud-spherical-wind.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-cloud-spherical-wind.runtime.mjs
+
+      - name: Commit validated Cycle 2.2 product changes to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/src packages/shared/src packages/generation-runtime/src refs/handoffs refs/testing
+          git diff --cached --check
+          git commit -m "Render wind-oriented spherical cloud streamers"
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/cloud-spherical-wind-20260731 || true
