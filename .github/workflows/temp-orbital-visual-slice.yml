@@ -1,0 +1,80 @@
+name: Temporary orbital living globe runner
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/orbital-living-globe-20260731'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve temporary runner scripts
+        run: |
+          cp .github/scripts/apply-orbital-visual-slice.py /tmp/apply-orbital-visual-slice.py
+          cp .github/scripts/qa-orbital-visual-slice.mjs /tmp/qa-orbital-visual-slice.mjs
+
+      - name: Switch to exact current dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "78db77ded466db26e8988826f695a9ccbc318068"
+          git checkout -B dev origin/dev
+          echo "Implementing against $(git rev-parse HEAD)"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply living globe slice
+        run: python /tmp/apply-orbital-visual-slice.py
+
+      - name: Focused simulation and orbital contracts
+        run: npx vitest run src/simulation/systemSimulationClock.test.ts src/globe/orbitalPresentation.test.ts
+        working-directory: apps/desktop
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Focused browser QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-orbital-visual-slice.mjs .github/scripts/qa-orbital-visual-slice.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-orbital-visual-slice.runtime.mjs
+
+      - name: Commit validated increment to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/src refs/handoffs refs/planning refs/testing
+          git diff --cached --check
+          git commit -m "Add living orbital globe presentation"
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/orbital-living-globe-20260731 || true
