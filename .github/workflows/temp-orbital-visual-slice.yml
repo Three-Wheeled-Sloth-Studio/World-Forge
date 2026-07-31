@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/orbital-living-globe-20260731'
+    if: github.head_ref == 'automation/orbital-living-globe-20260731-r2'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout runner branch
@@ -43,8 +43,7 @@ jobs:
         run: python /tmp/apply-orbital-visual-slice.py
 
       - name: Focused simulation and orbital contracts
-        run: npx vitest run src/simulation/systemSimulationClock.test.ts src/globe/orbitalPresentation.test.ts
-        working-directory: apps/desktop
+        run: npx vitest run apps/desktop/src/simulation/systemSimulationClock.test.ts apps/desktop/src/globe/orbitalPresentation.test.ts
 
       - name: Full repository verification
         run: npm run verify
@@ -68,7 +67,7 @@ jobs:
       - name: Commit validated increment to dev
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "4189828+github-actions[bot]@users.noreply.github.com"
           git add apps/desktop/src refs/handoffs refs/planning refs/testing
           git diff --cached --check
           git commit -m "Add living orbital globe presentation"
@@ -77,4 +76,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/orbital-living-globe-20260731 || true
+        run: git push origin --delete automation/orbital-living-globe-20260731-r2 || true
