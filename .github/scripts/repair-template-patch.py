@@ -85,5 +85,10 @@ while index < len(lines):
         result.append(line)
     index += 1
 
-target_path.write_text(''.join(result), encoding='utf-8')
+fixed = ''.join(result)
+fixed = fixed.replace(
+    "function write(path, content) { fs.mkdirSync(path.split('/').slice(0, -1).join('/'), { recursive: true }); fs.writeFileSync(path, content); }",
+    "function write(path, content) { const directory = path.split('/').slice(0, -1).join('/'); if (directory) fs.mkdirSync(directory, { recursive: true }); fs.writeFileSync(path, content); }"
+)
+target_path.write_text(fixed, encoding='utf-8')
 print(f'Repaired temporary patch script: {target_path}')
