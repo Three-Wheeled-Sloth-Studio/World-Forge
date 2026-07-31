@@ -1,0 +1,66 @@
+name: Issue 14 Benchmark Provenance Runner
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - '.github/workflows/issue-14-benchmark-provenance-runner.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-push:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Correct benchmark provenance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          wrong = '5051d4bf3913bea3ca50ca0db39dfcd880469846'
+          right = 'fc26114f9f18fa74fb735688ea92cebb311b25a2'
+          script = Path('scripts/compare-generation-workflows.ts')
+          text = script.read_text(encoding='utf-8')
+          old = "const sourceCommit = process.env.GITHUB_SHA || process.env.SOURCE_COMMIT || args.sourceCommit || 'unknown';"
+          new = "const sourceCommit = args.sourceCommit || process.env.SOURCE_COMMIT || process.env.GITHUB_SHA || 'unknown';"
+          if text.count(old) != 1:
+              raise SystemExit('Unexpected benchmark source-commit expression')
+          script.write_text(text.replace(old, new), encoding='utf-8')
+          for name in [
+              'refs/testing/present-climate-topology-traversal-benchmark.json',
+              'refs/testing/present-climate-topology-traversal-benchmark.md',
+              'refs/testing/present-climate-topology-traversal-summary.json'
+          ]:
+              path = Path(name)
+              body = path.read_text(encoding='utf-8')
+              if wrong not in body:
+                  raise SystemExit(f'Missing temporary merge SHA in {name}')
+              path.write_text(body.replace(wrong, right), encoding='utf-8')
+          PY
+      - name: Verify repository
+        run: npm run verify
+      - name: Commit and push provenance repair
+        run: |
+          git config user.name 'World Forge Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add \
+            scripts/compare-generation-workflows.ts \
+            refs/testing/present-climate-topology-traversal-benchmark.json \
+            refs/testing/present-climate-topology-traversal-benchmark.md \
+            refs/testing/present-climate-topology-traversal-summary.json
+          git commit -m 'Fix workflow benchmark source provenance'
+          git push origin HEAD:dev
+          git push origin --delete automation/issue-14-benchmark-provenance-20260731 || true
