@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/globe-frame-reference-20260731'
+    if: github.head_ref == 'automation/globe-frame-reference-20260731-r2'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout runner branch
@@ -75,4 +75,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/globe-frame-reference-20260731 || true
+        run: git push origin --delete automation/globe-frame-reference-20260731-r2 || true
