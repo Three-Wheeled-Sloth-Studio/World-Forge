@@ -63,11 +63,8 @@ if (await globe.getAttribute('data-weather-layer') !== 'visible') throw new Erro
 
 const workflowOptionExists = await page.evaluate(() => Array.from(document.querySelectorAll('option')).some((option) => option.value === 'project.atmospheric-weather-presentation'));
 if (!workflowOptionExists) {
-  const devButton = page.getByRole('button', { name: /^Dev$/ });
-  if (await devButton.count()) {
-    await devButton.click();
-    await page.waitForTimeout(250);
-  }
+  await page.getByRole('tab', { name: 'Dev', exact: true }).click();
+  await page.locator('.graph-workspace').waitFor({ state: 'visible', timeout: 10000 });
 }
 const workflowVisibleAfterDev = await page.evaluate(() => Array.from(document.querySelectorAll('option')).some((option) => option.value === 'project.atmospheric-weather-presentation'));
 if (!workflowVisibleAfterDev) throw new Error('Atmospheric weather workflow is not inspectable from the Dev workflow selector.');
