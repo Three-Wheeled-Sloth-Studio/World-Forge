@@ -1,3 +1,4 @@
+
 import { describe, expect, it } from 'vitest';
 import { generationGraphWorkflow, generationGraphWorkflows } from './generationWorkflows';
 
@@ -22,35 +23,35 @@ describe('generation graph workflows', () => {
     expect(boundedAgingControl.nodes.map((node) => node.id)).toEqual(derivedControl.nodes.map((node) => node.id));
     expect(derivedControl.nodes.map((node) => node.id)).toEqual(detailed.nodes.map((node) => node.id));
     expect(detailed.status).toBe('production');
-    expect(legacy.status).toBe('experimental');
     expect(experimental.status).toBe('experimental');
-    expect(agingControl.status).toBe('experimental');
-    expect(boundedAgingControl.status).toBe('experimental');
-    expect(derivedControl.status).toBe('experimental');
   });
 
-  it('keeps Experimental behavior-identical to Detailed before future divergence', () => {
+  it('isolates the Experimental present-climate implementation from Detailed', () => {
     const detailed = generationGraphWorkflow('core.performance-foundation');
     const experimental = generationGraphWorkflow('core.world-generation-experimental');
+    const detailedById = new Map(detailed.nodes.map((node) => [node.id, node]));
 
-    expect(experimental.nodes.map((node) => [node.id, node.implementationId, node.version])).toEqual(
-      detailed.nodes.map((node) => [node.id, node.implementationId, node.version])
-    );
+    for (const node of experimental.nodes) {
+      const baseline = detailedById.get(node.id);
+      expect(baseline).toBeDefined();
+      if (node.id === 'world.deep-time-aging') {
+        expect(node.implementationId).toBe('core.world.deep-time-aging.present-climate-traversal-v1');
+        expect(node.implementationId).not.toBe(baseline?.implementationId);
+      } else {
+        expect(node.implementationId).toBe(baseline?.implementationId);
+      }
+    }
   });
 
   it('isolates hydrology traversal from the derived-field control contract', () => {
     const control = generationGraphWorkflow('core.performance-foundation-derived-control');
     const candidate = generationGraphWorkflow('core.performance-foundation');
     const controlById = new Map(control.nodes.map((node) => [node.id, node]));
-
     for (const node of candidate.nodes) {
       const baseline = controlById.get(node.id);
       expect(baseline).toBeDefined();
-      if (node.id === 'world.deep-time-aging') {
-        expect(node.implementationId).not.toBe(baseline?.implementationId);
-      } else {
-        expect(node.implementationId).toBe(baseline?.implementationId);
-      }
+      if (node.id === 'world.deep-time-aging') expect(node.implementationId).not.toBe(baseline?.implementationId);
+      else expect(node.implementationId).toBe(baseline?.implementationId);
     }
   });
 

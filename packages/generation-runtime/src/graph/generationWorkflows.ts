@@ -1,3 +1,4 @@
+
 import {
   generationWorkflowDescriptor,
   generationWorkflowDescriptors,
@@ -23,54 +24,36 @@ function copyGraph(nodes: readonly GenerationGraphNodeDefinition[]): GenerationG
   }));
 }
 
-function isOptimizedWorkflow(workflowId: GenerationWorkflowId): boolean {
-  return workflowId === 'core.performance-foundation'
-    || workflowId === 'core.world-generation-experimental';
-}
-
 function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNodeDefinition[] {
   const nodes = copyGraph(coreGenerationGraph);
   if (workflowId === 'core.performance-foundation-control') {
     return nodes.map((node) => node.id === 'world.deep-time-aging'
-      ? {
-          ...node,
-          implementationId: 'core.world.deep-time-aging.semantic-seed-control',
-          version: '1-control'
-        }
+      ? { ...node, implementationId: 'core.world.deep-time-aging.semantic-seed-control', version: '1-control' }
       : node);
   }
   if (workflowId === 'core.performance-foundation-aging-control') {
     return nodes.map((node) => node.id === 'world.deep-time-aging'
-      ? {
-          ...node,
-          implementationId: 'core.world.deep-time-aging.bounded-three-era-control',
-          version: '2-control'
-        }
+      ? { ...node, implementationId: 'core.world.deep-time-aging.bounded-three-era-control', version: '2-control' }
       : node);
   }
   if (workflowId === 'core.performance-foundation-derived-control') {
     return nodes.map((node) => node.id === 'world.deep-time-aging'
-      ? {
-          ...node,
-          implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-control',
-          version: '3-control'
-        }
+      ? { ...node, implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-control', version: '3-control' }
       : node);
   }
-  if (!isOptimizedWorkflow(workflowId)) return nodes;
+  if (workflowId === 'core.world-generation-experimental') {
+    return nodes.map((node) => node.id === 'world.deep-time-aging'
+      ? { ...node, implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1', version: '4-experimental' }
+      : node);
+  }
+  if (workflowId !== 'core.performance-foundation') return nodes;
   return nodes.map((node) => node.id === 'world.deep-time-aging'
-    ? {
-        ...node,
-        implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-v1',
-        version: '3'
-      }
+    ? { ...node, implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-v1', version: '3' }
     : node);
 }
 
 export const generationGraphWorkflows: readonly GenerationGraphWorkflow[] = generationWorkflowDescriptors.map((workflow) => ({
   ...workflow,
-  // Keep independent workflow definitions so experimental implementations can
-  // diverge without mutating production or either attribution control baseline.
   nodes: nodesForWorkflow(workflow.id)
 }));
 

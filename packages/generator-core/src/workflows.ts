@@ -24,6 +24,7 @@ export type GenerationWorkflowDescriptor = {
 export type GenerationWorkflowDeepTimeFeatures = {
   reusePresentClimateDerivedFields: boolean;
   optimizeHydrologyTraversal: boolean;
+  optimizePresentClimateTraversal: boolean;
 };
 
 export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.performance-foundation';
@@ -49,9 +50,9 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
   },
   {
     id: 'core.world-generation-experimental',
-    version: '0.1.0',
+    version: '0.2.0',
     label: 'World Generation (Experimental)',
-    description: 'Development copy of the Detailed workflow reserved for further optimization and science-model experiments.',
+    description: 'Development workflow testing cached present-climate topology traversal while Detailed remains the comparison baseline.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true
@@ -104,6 +105,7 @@ export function generationWorkflowDeepTimeFeatures(
     || optimizedWorkflow;
   return {
     reusePresentClimateDerivedFields,
-    optimizeHydrologyTraversal: optimizedWorkflow
+    optimizeHydrologyTraversal: optimizedWorkflow,
+    optimizePresentClimateTraversal: workflowId === 'core.world-generation-experimental'
   };
 }

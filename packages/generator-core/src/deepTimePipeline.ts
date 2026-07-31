@@ -22,6 +22,12 @@ import {
 } from './fragmentSphericalTransform';
 import { buildDeepTimeEpochs, deepTimeAgingProfileForWorkflow } from './deepTimeAgingProfiles';
 import { stableDescendingFloat32Indices, traceCachedDownstreamPath } from './hydrologyTraversal';
+import {
+  buildTopologyDirectionGeometry,
+  stepTopologyByVectorWithGeometry,
+  topologyTerrainGradientWithGeometry,
+  type TopologyDirectionGeometry
+} from './presentClimateTraversal';
 import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
 import { generationWorkflowDeepTimeFeatures } from './workflows';
 import { classifyPermanentIce } from './permanentIce';
@@ -2005,7 +2011,14 @@ function stepTopologyByVector(topology: CubedSphereTopology, cell: number, vecto
   return best;
 }
 
-function presentDayWindVector(topology: CubedSphereTopology, elevation: Float32Array, temperature: Float32Array, cell: number, averageTemperatureC: number): { x: number; y: number } {
+function presentDayWindVector(
+  topology: CubedSphereTopology,
+  elevation: Float32Array,
+  temperature: Float32Array,
+  cell: number,
+  averageTemperatureC: number,
+  terrainGradient?: { x: number; y: number }
+): { x: number; y: number } {
   const latitude = topology.latitudes[cell];
   const lat01 = latitude / (Math.PI / 2);
   const absLat = Math.abs(lat01);
@@ -2013,7 +2026,7 @@ function presentDayWindVector(topology: CubedSphereTopology, elevation: Float32A
   const cellBand = absLat < 0.33 ? 0 : absLat < 0.66 ? 1 : 2;
   const zonalDirection = cellBand === 1 ? -hemisphere : hemisphere;
   const pressureGradient = cellBand === 0 ? -lat01 : cellBand === 1 ? hemisphere * 0.38 : -hemisphere * 0.25;
-  const gradient = topologyTerrainGradient(elevation, topology, cell);
+  const gradient = terrainGradient ?? topologyTerrainGradient(elevation, topology, cell);
   const highlandBlock = clamp((elevation[cell] - 0.22) * 2.2, 0, 1);
   const thermal = normalizeValue(temperature[cell], averageTemperatureC - 18, averageTemperatureC + 18) - 0.5;
   const windward = Math.max(0, gradient.x * zonalDirection + gradient.y * pressureGradient);
@@ -2031,13 +2044,16 @@ function presentDayMoistureFetch(
   cell: number,
   windX: number,
   windY: number,
-  oceanInfluence: number
+  oceanInfluence: number,
+  geometry?: TopologyDirectionGeometry
 ): number {
   if (water[cell] === 1) return 1;
   let cursor = cell;
   let fetch = oceanInfluence * 0.45;
   for (let step = 0; step < 18; step += 1) {
-    cursor = stepTopologyByVector(topology, cursor, -windX, -windY);
+    cursor = geometry
+      ? stepTopologyByVectorWithGeometry(topology, geometry, cursor, -windX, -windY)
+      : stepTopologyByVector(topology, cursor, -windX, -windY);
     const decay = 1 - step / 19;
     if (water[cursor] === 1) fetch += decay * 0.5;
     else fetch -= Math.max(0, elevation[cursor] - 0.32) * decay * 0.07;
@@ -2050,14 +2066,18 @@ function presentDayOrographicEffect(
   topology: CubedSphereTopology,
   cell: number,
   windX: number,
-  windY: number
+  windY: number,
+  terrainGradient?: { x: number; y: number },
+  geometry?: TopologyDirectionGeometry
 ): { lift: number; shadow: number } {
-  const gradient = topologyTerrainGradient(elevation, topology, cell);
+  const gradient = terrainGradient ?? topologyTerrainGradient(elevation, topology, cell);
   const upslope = Math.max(0, gradient.x * windX + gradient.y * windY);
   let cursor = cell;
   let shadow = 0;
   for (let step = 0; step < 12; step += 1) {
-    cursor = stepTopologyByVector(topology, cursor, -windX, -windY);
+    cursor = geometry
+      ? stepTopologyByVectorWithGeometry(topology, geometry, cursor, -windX, -windY)
+      : stepTopologyByVector(topology, cursor, -windX, -windY);
     const barrier = Math.max(0, elevation[cursor] - elevation[cell] + 0.06) + Math.max(0, elevation[cursor] - 0.36) * 0.48;
     shadow = Math.max(shadow, barrier * (1 - step / 13));
   }
@@ -2205,11 +2225,13 @@ type PresentClimateRefresh = {
 function refreshTopologyClimate(
   project: DeepTimeProject,
   topology: CubedSphereTopology,
-  captureDerivedFields = false
+  captureDerivedFields = false,
+  optimizeTraversal = false
 ): PresentClimateRefresh {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
   const count = topology.cellCount;
+  const topologyGeometry = optimizeTraversal ? buildTopologyDirectionGeometry(topology) : undefined;
   const oceanInfluenceSet = captureDerivedFields
     ? computeTopologyInfluenceSet(layers.water, topology, [28, 16], 1)
     : undefined;
@@ -2230,9 +2252,43 @@ function refreshTopologyClimate(
     const oceanModeration = ocean ? 2.5 * (1 - latitude * 0.4) : 0;
     layers.temperature[cell] = world.averageTemperatureC + 10 - latitudeCooling - altitudeCooling + oceanModeration;
 
-    const wind = presentDayWindVector(topology, layers.elevation, layers.temperature, cell, world.averageTemperatureC);
-    const fetch = presentDayMoistureFetch(layers.elevation, layers.water, topology, cell, wind.x, wind.y, oceanInfluence[cell]);
-    const orographic = presentDayOrographicEffect(layers.elevation, topology, cell, wind.x, wind.y);
+    let fetch: number;
+    let orographic: { lift: number; shadow: number };
+    if (topologyGeometry && ocean) {
+      fetch = 1;
+      orographic = { lift: 0, shadow: 0 };
+    } else {
+      const terrainGradient = topologyGeometry
+        ? topologyTerrainGradientWithGeometry(layers.elevation, topology, topologyGeometry, cell)
+        : undefined;
+      const wind = presentDayWindVector(
+        topology,
+        layers.elevation,
+        layers.temperature,
+        cell,
+        world.averageTemperatureC,
+        terrainGradient
+      );
+      fetch = presentDayMoistureFetch(
+        layers.elevation,
+        layers.water,
+        topology,
+        cell,
+        wind.x,
+        wind.y,
+        oceanInfluence[cell],
+        topologyGeometry
+      );
+      orographic = presentDayOrographicEffect(
+        layers.elevation,
+        topology,
+        cell,
+        wind.x,
+        wind.y,
+        terrainGradient,
+        topologyGeometry
+      );
+    }
     if (orographicLift) orographicLift[cell] = orographic.lift;
     if (orographicShadow) orographicShadow[cell] = orographic.shadow;
     const absLatitude = Math.abs(topology.latitudes[cell]);
@@ -2994,7 +3050,12 @@ export function applyDeepTimeFoundation(
   const marineDepthAdjustedCells = shapeFinalMarineDepths(mutable.primaryWorld, topology);
 
   onProgress?.({ phase: 'reconciling', progress: 0.84, message: 'Rebuilding present-day climate and moisture' });
-  const climateRefresh = refreshTopologyClimate(mutable, topology, workflowFeatures.reusePresentClimateDerivedFields);
+  const climateRefresh = refreshTopologyClimate(
+    mutable,
+    topology,
+    workflowFeatures.reusePresentClimateDerivedFields,
+    workflowFeatures.optimizePresentClimateTraversal
+  );
 
   onProgress?.({ phase: 'reconciling', progress: 0.89, message: 'Rebuilding drainage, rivers, lakes, and wetlands' });
   const hydrology = rebuildTopologyHydrology(mutable, topology, workflowFeatures.optimizeHydrologyTraversal);
