@@ -8,8 +8,6 @@ page.on('pageerror', (error) => consoleErrors.push(error.message));
 
 await page.goto('http://127.0.0.1:5173', { waitUntil: 'networkidle' });
 await page.locator('#generation-quality').selectOption('256x128');
-const workflowSelect = page.locator('select').filter({ has: page.locator('option[value="core.world-generation-experimental"]') }).first();
-if (await workflowSelect.count()) await workflowSelect.selectOption('core.world-generation-experimental');
 await page.getByRole('button', { name: /Generate World|Generate Replacement World|Replace World/i }).click();
 await page.locator('.generating-overlay').waitFor({ state: 'visible', timeout: 15000 });
 await page.locator('.generating-overlay').waitFor({ state: 'hidden', timeout: 180000 });
