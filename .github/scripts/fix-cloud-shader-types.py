@@ -19,5 +19,11 @@ new = """  const data = new Uint8Array(width * height * 4);
 count = text.count(old)
 if count != 1:
     raise RuntimeError(f'Expected one wind fallback block, found {count}')
-path.write_text(text.replace(old, new), encoding='utf-8')
-print('Corrected local-flow shader wind fallback types.')
+text = text.replace(old, new)
+cast_old = "material.userData.weatherShader = shader as WindCloudShaderState;"
+cast_new = "material.userData.weatherShader = shader as unknown as WindCloudShaderState;"
+cast_count = text.count(cast_old)
+if cast_count != 1:
+    raise RuntimeError(f'Expected one shader state cast, found {cast_count}')
+path.write_text(text.replace(cast_old, cast_new), encoding='utf-8')
+print('Corrected local-flow shader TypeScript boundaries.')
