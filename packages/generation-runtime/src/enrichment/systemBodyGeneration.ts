@@ -12,7 +12,7 @@ import type { GenerationGraphNodeDefinition } from '../graph/generationGraph';
 import type { ProjectEnrichmentNodeEvent } from './systemOrbitalContext';
 
 export const SYSTEM_BODY_GENERATION_WORKFLOW_ID = 'project.generate-system-body' as const;
-export const SYSTEM_BODY_GENERATION_WORKFLOW_VERSION = '1.0.0' as const;
+export const SYSTEM_BODY_GENERATION_WORKFLOW_VERSION = '1.1.0' as const;
 
 export type SystemBodyGenerationSource = {
   projectId: string;
@@ -425,12 +425,16 @@ export async function runSystemBodyGenerationWorkflow(source: SystemBodyGenerati
     }
   }
 
+  heightField = blendHorizontalFieldSeam(heightField, resolution, 4);
+  albedoField = blendHorizontalFieldSeam(albedoField, resolution, 4);
+  thermalField = blendHorizontalFieldSeam(thermalField, resolution, 4);
+  bandField = blendHorizontalFieldSeam(bandField, resolution, 4);
   const roundedHeight = heightField.map((value) => round(clamp(value, -1, 1), 6));
   const roundedAlbedo = albedoField.map((value) => round(clamp(value, 0, 1), 6));
   const roundedThermal = thermalField.map((value) => round(clamp(value, 0, 1), 6));
   const roundedBands = bandField.map((value) => round(clamp(value, -1, 1), 6));
   const payload: GeneratedSystemBodyArtifact['payload'] = {
-    modelVersion: 'system-body-presentation-v1',
+    modelVersion: 'system-body-presentation-v2',
     presentationKind: presentationKind(source.profile),
     resolution,
     radiusClass: round(Math.max(0.05, source.body.sizeClass), 6),
@@ -800,6 +804,30 @@ function normalizeField(values: number[], min: number, max: number): number[] {
   const sourceMax = Math.max(...values);
   if (Math.abs(sourceMax - sourceMin) < 1e-9) return values.map(() => (min + max) * 0.5);
   return values.map((value) => min + ((value - sourceMin) / (sourceMax - sourceMin)) * (max - min));
+}
+
+function blendHorizontalFieldSeam(
+  field: number[],
+  resolution: { width: number; height: number },
+  requestedColumns: number
+): number[] {
+  if (!field.length || resolution.width <= 1 || resolution.height <= 0) return [...field];
+  const output = [...field];
+  const columns = Math.max(1, Math.min(requestedColumns, Math.floor(resolution.width / 2)));
+  for (let y = 0; y < resolution.height; y += 1) {
+    const row = y * resolution.width;
+    for (let offset = 0; offset < columns; offset += 1) {
+      const leftIndex = row + offset;
+      const rightIndex = row + resolution.width - 1 - offset;
+      const left = output[leftIndex] ?? 0;
+      const right = output[rightIndex] ?? 0;
+      const meanValue = (left + right) * 0.5;
+      const weight = 1 - offset / columns;
+      output[leftIndex] = left + (meanValue - left) * weight;
+      output[rightIndex] = right + (meanValue - right) * weight;
+    }
+  }
+  return output;
 }
 
 function seamMeanDelta(field: number[], resolution: { width: number; height: number }): number {
