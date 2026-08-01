@@ -1,8 +1,8 @@
 # System Visualization and Enrichment Handoff
 
-Updated: 2026-07-31
+Updated: 2026-08-01
 
-Status: Body lifecycle, sequential queue, and first airless-moon proof validated
+Status: PI complete on dev through seasonal surface, all-body generation, and integrated validation
 
 Planning source: `refs/planning/pi-system-visualization-and-progressive-body-enrichment.md`
 
@@ -77,24 +77,18 @@ Tracking issue: #35
 
 ## Current boundaries
 
-- Airless rocky moons are the only supported secondary-body generation profile.
-- No terrestrial-active, gas-giant, ice-giant, dwarf, belt, ecology, or civilization body generation yet.
-- No N-body simulation or authoritative ephemeris.
-- No attempt to render physical body size and orbital distance at the same literal scale.
-- No precipitation, lightning, or authoritative weather forecast/history simulation.
-- No soft transmittance-based cloud shadows.
-- No seasonal surface response yet.
-- Clock-panel mobility/collapse remains a backlog item.
-- System camera panning remains a backlog item.
-- General low-resolution generated-body presentation beyond the airless-moon proof remains a backlog item.
+- Seasonal, weather, stellar, orbital, and generated-body artifacts remain derived or presentation products; they do not silently replace authoritative annual climate, world history, or orbital facts.
+- Seasonal surface v1 covers insolation, temperature response, snow, and sea ice. Vegetation phenology, detailed monsoons, precipitation seasons, and authoritative climate history remain later work.
+- System motion remains deterministic two-body presentation rather than N-body simulation or authoritative ephemeris.
+- Physical orbital values remain distinct from compressed viewer scale.
+- Cloud shadows remain bounded and do not yet model soft transmittance.
+- Clock-panel mobility, System camera panning, and export-grade high-resolution body textures are follow-up viewer work.
 - The primary generation graph, deterministic world signature, and replay contract remain unchanged.
-- Geographic drilldown issue #10 remains pinned and outside this PI slice.
+- Geographic drilldown issue #10 was pinned during this PI and may now return to roadmap consideration.
 
 ## Next increment
 
-Stop at the accepted proof boundary before expanding body profiles.
-
-The next planned slice is capability-resolved partner workflow infrastructure, followed by the first barren and geologically active terrestrial body. System panning and broader low-resolution body presentation remain explicit viewer follow-ups and should not be bundled into that workflow architecture slice.
+This PI is complete. Continue through separately tracked viewer polish or return to geographic drilldown and the broader world-simulation roadmap.
 
 ## 2026-08-01 - Globe body integration follow-up
 
@@ -146,3 +140,11 @@ The next planned slice is capability-resolved partner workflow infrastructure, f
 - Non-primary gas giants, ice giants, and qualifying rocky worlds now receive bounded deterministic major-moon scaffolds. Those moons flow through the existing orbital context and common body-generation queue.
 - Globe inspection lazily builds a cached 256x128 preview or 512x256 standard texture and separate solid-body bump map. System View retains the compact persisted field resolution.
 - Secondary composition uses independent deterministic streams while consuming the legacy system RNG pattern, so it does not perturb primary-world terrain generation.
+
+## 2026-08-01 - Seasonal surface and PI closeout
+
+- Added `project.seasonal-surface-model@1.0.0` with six inspectable nodes.
+- Compact coefficients derive opposite-hemisphere insolation, annual-baseline temperature response, seasonal snow, and sea-ice advance and retreat.
+- Annual and seasonal Map presentation share day-of-year with Globe and System through the existing deterministic clock.
+- `.wforge` round-trip, deterministic reproduction, invalidation, Dev graph telemetry, workflow equivalence, and two-viewport Chromium acceptance are included in the closeout gate.
+- Issue #35 can close after final accepted validation.

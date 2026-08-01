@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.51</p>
+            <h3>The planet has seasons now</h3>
+            <ul>
+              <li>Seasonal Surface Model runs lazily as a saved, inspectable enrichment workflow rather than adding work to ordinary generation.</li>
+              <li>Compact 128x64 coefficients drive opposite-hemisphere insolation, land and ocean temperature response, seasonal snow, and sea-ice advance and retreat.</li>
+              <li>Map can switch between annual mean and seasonal presentation, while Map and Globe share the existing simulation day.</li>
+              <li>The model is explicitly illustrative and leaves authoritative annual climate facts unchanged.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.45</p>
             <h3>The moons have entered the queue</h3>
             <ul>

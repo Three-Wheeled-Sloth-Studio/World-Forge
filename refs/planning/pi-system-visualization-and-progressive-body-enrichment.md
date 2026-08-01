@@ -1,8 +1,8 @@
 # PI: System Visualization and Progressive Body Enrichment
 
-Updated: 2026-07-31
+Updated: 2026-08-01
 
-Status: active; geographic drilldown remains pinned
+Status: complete on dev; geographic drilldown can return to roadmap consideration
 
 ## Product outcome
 
@@ -300,3 +300,12 @@ The star remains outside the secondary-body generation queue. Planets, giants, d
 - Non-primary gas giants, ice giants, and qualifying rocky worlds now receive bounded deterministic major-moon scaffolds. Those moons flow through the existing orbital context and common body-generation queue.
 - Globe inspection lazily builds a cached 256x128 preview or 512x256 standard texture and separate solid-body bump map. System View retains the compact persisted field resolution.
 - Secondary composition uses independent deterministic streams while consuming the legacy system RNG pattern, so it does not perturb primary-world terrain generation.
+
+## Seasonal surface and PI closeout slice (0.3.51)
+
+- Added inspectable `project.seasonal-surface-model@1.0.0` with six timed nodes and explicit illustrative presentation authority.
+- The artifact stores compact 128x64 annual baseline, signed temperature amplitude, insolation amplitude, snow-potential, and sea-ice-potential coefficients rather than duplicate monthly maps.
+- Map supports annual-mean versus seasonal surface presentation and a shared day-of-year control. Globe updates the primary texture from the same deterministic simulation clock.
+- Seasonal rendering is limited to supported primary-world surface views; raw elevation and unrelated diagnostic subjects remain untinted.
+- Save/load and `.wforge` round trips preserve the seasonal artifact; source or graph changes invalidate it rather than silently reusing stale coefficients.
+- The PI definition of done is satisfied: living Globe, clouds and weather, seasonal variation, full System explorer, explicit body lifecycle and queue, capability-resolved body workflows, generated stellar and secondary-body presentation, and no added ordinary-generation cost.
