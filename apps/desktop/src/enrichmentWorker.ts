@@ -1,4 +1,10 @@
-import type { AirlessRockyBodyArtifact, AtmosphericWeatherPresentationArtifact, StellarSurfacePresentationArtifact, SystemOrbitalContextArtifact } from '@world-forge/shared';
+import type {
+  AirlessRockyBodyArtifact,
+  AtmosphericWeatherPresentationArtifact,
+  GeneratedSystemBodyArtifact,
+  StellarSurfacePresentationArtifact,
+  SystemOrbitalContextArtifact
+} from '@world-forge/shared';
 import {
   runSystemOrbitalContextWorkflow,
   type ProjectEnrichmentNodeEvent,
@@ -13,6 +19,10 @@ import {
   type AirlessRockyBodySource
 } from '@world-forge/generation-runtime/enrichment/airlessRockyBody';
 import {
+  runSystemBodyGenerationWorkflow,
+  type SystemBodyGenerationSource
+} from '@world-forge/generation-runtime/enrichment/systemBodyGeneration';
+import {
   runStellarSurfacePresentationWorkflow,
   type StellarSurfacePresentationSource
 } from '@world-forge/generation-runtime/enrichment/stellarSurfacePresentation';
@@ -20,12 +30,13 @@ import {
 type RunOrbitalRequest = { type: 'run-system-orbital-context'; id: string; source: SystemOrbitalContextSource };
 type RunWeatherRequest = { type: 'run-atmospheric-weather-presentation'; id: string; source: AtmosphericWeatherPresentationSource };
 type RunAirlessRockyBodyRequest = { type: 'run-airless-rocky-body'; id: string; source: AirlessRockyBodySource };
+type RunSystemBodyRequest = { type: 'run-system-body'; id: string; source: SystemBodyGenerationSource };
 type RunStellarSurfaceRequest = { type: 'run-stellar-surface-presentation'; id: string; source: StellarSurfacePresentationSource };
 type CancelRequest = { type: 'cancel'; id: string };
-type Request = RunOrbitalRequest | RunWeatherRequest | RunAirlessRockyBodyRequest | RunStellarSurfaceRequest | CancelRequest;
+type Request = RunOrbitalRequest | RunWeatherRequest | RunAirlessRockyBodyRequest | RunSystemBodyRequest | RunStellarSurfaceRequest | CancelRequest;
 type Response =
   | { type: 'stage'; id: string; stage: ProjectEnrichmentNodeEvent }
-  | { type: 'complete'; id: string; artifact: SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact }
+  | { type: 'complete'; id: string; artifact: SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact | GeneratedSystemBodyArtifact }
   | { type: 'cancelled'; id: string }
   | { type: 'error'; id: string; message: string };
 
@@ -47,7 +58,9 @@ self.onmessage = async (event: MessageEvent<Request>) => {
         ? await runAtmosphericWeatherPresentationWorkflow(message.source, options)
         : message.type === 'run-stellar-surface-presentation'
           ? await runStellarSurfacePresentationWorkflow(message.source, options)
-          : await runAirlessRockyBodyWorkflow(message.source, options);
+          : message.type === 'run-system-body'
+            ? await runSystemBodyGenerationWorkflow(message.source, options)
+            : await runAirlessRockyBodyWorkflow(message.source, options);
     if (cancelled.has(message.id)) messenger.postMessage({ type: 'cancelled', id: message.id });
     else messenger.postMessage({ type: 'complete', id: message.id, artifact });
   } catch (error) {

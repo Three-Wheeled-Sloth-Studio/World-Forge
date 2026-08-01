@@ -760,7 +760,13 @@ export type BodyGenerationLifecycleStatus =
   | 'failed';
 
 export type BodyGenerationFidelity = 'preview' | 'standard';
-export type BodyGenerationProfile = 'airless-rocky-body';
+export type BodyGenerationProfile =
+  | 'airless-rocky-body'
+  | 'rocky-body'
+  | 'gas-giant-body'
+  | 'ice-giant-body'
+  | 'dwarf-body'
+  | 'debris-belt';
 
 export type BodyGenerationRecord = {
   bodyId: string;
@@ -1068,7 +1074,80 @@ export type AirlessRockyBodyArtifact = {
   };
 };
 
-export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact;
+export type GeneratedSystemBodyFeature = {
+  id: string;
+  kind: 'crater' | 'volcanic-hotspot' | 'storm';
+  longitudeDeg: number;
+  latitudeDeg: number;
+  angularRadiusDeg: number;
+  contrast: number;
+  hueShift: number;
+};
+
+export type GeneratedSystemBodyArtifact = {
+  artifactKey: `project.generate-system-body:${string}`;
+  artifactVersion: 1;
+  artifactRole: 'derived';
+  status: 'complete';
+  bodyId: string;
+  bodyProfile: BodyGenerationProfile;
+  requestedFidelity: BodyGenerationFidelity;
+  workflow: {
+    id: 'project.generate-system-body';
+    version: '1.0.0';
+    graphSignature: string;
+    nodes: EnrichmentNodeRunRecord[];
+  };
+  source: {
+    projectId: string;
+    worldId: string;
+    bodyId: string;
+    parentBodyId: string | null;
+    sourceSignature: string;
+    orbitalArtifactSignature: string;
+    generatorVersion: string;
+    appVersion: string;
+    sourceCommit?: string;
+  };
+  seed: string;
+  startedAt: string;
+  completedAt: string;
+  totalMs: number;
+  artifactSignature: string;
+  validation: AirlessRockyBodyArtifact['validation'];
+  payload: {
+    modelVersion: 'system-body-presentation-v1';
+    presentationKind: 'solid' | 'gas-giant' | 'ice-giant' | 'belt';
+    resolution: Resolution;
+    radiusClass: number;
+    craterCount: number;
+    heightField: number[];
+    albedoField: number[];
+    thermalField: number[];
+    bandField: number[];
+    features: GeneratedSystemBodyFeature[];
+    rings: {
+      innerRadius: number;
+      outerRadius: number;
+      opacity: number;
+      tiltDeg: number;
+    } | null;
+    belt: {
+      particleCount: number;
+      innerRadius: number;
+      outerRadius: number;
+      verticalSpread: number;
+    } | null;
+    stats: {
+      minHeight: number;
+      maxHeight: number;
+      meanAlbedo: number;
+      seamMeanDelta: number;
+    };
+  };
+};
+
+export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact | GeneratedSystemBodyArtifact;
 export type ProjectEnrichmentArtifacts = Record<string, ProjectEnrichmentArtifact>;
 
 export type WorldProject = {
