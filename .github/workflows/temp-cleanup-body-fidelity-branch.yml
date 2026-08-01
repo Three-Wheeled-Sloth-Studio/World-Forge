@@ -23,5 +23,5 @@ jobs:
           gh api --method PATCH \
             "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
             -f state=closed
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            --delete "${HEAD_BRANCH}"
+          gh api --method DELETE \
+            "repos/${GITHUB_REPOSITORY}/git/refs/heads/${HEAD_BRANCH}"
