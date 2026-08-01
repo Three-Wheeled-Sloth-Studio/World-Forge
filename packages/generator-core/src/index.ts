@@ -33,7 +33,7 @@ import {
   wrapX
 } from '@world-forge/shared';
 import { SeededRandom } from './random';
-import { generatedBodyTypeForOrbit } from './systemComposition';
+import { generateSecondaryMoons, generatedBodyTypeForOrbit } from './systemComposition';
 import { runGenerationFoundation } from './graph/run-generation-foundation';
 import type { GenerationGraphNodeRunEvent } from './graph/types';
 import { orchestratePrimaryWorld } from './primary-world-orchestrator';
@@ -271,7 +271,7 @@ export function generateSolarSystem(seed: string, values: SelectedValues, rng: S
       isPrimaryWorld,
       moons: []
     };
-    body.moons = isPrimaryWorld ? generateMoons(values.moonCount, rng) : [];
+    body.moons = isPrimaryWorld ? generateMoons(values.moonCount, rng) : generateSecondaryMoons(seed, body);
     bodies.push(body);
   }
 
