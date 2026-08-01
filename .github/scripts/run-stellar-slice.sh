@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/stellar-surface-slice-20260801-r3'
+BRANCH='automation/stellar-surface-slice-20260801-r4'
 BASE_SHA='15b5c253481b8242f42464333e78ec3ee4029f15'
 VITE_PID=''
 cleanup() {
@@ -51,6 +51,8 @@ if (failed.length) {
 }
 NODE
 
+mkdir -p .github/scripts
+cp /tmp/qa-stellar.mjs .github/scripts/qa-stellar.runtime.mjs
 npx playwright install chromium
 npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
 VITE_PID=$!
@@ -58,12 +60,13 @@ for i in {1..60}; do
   if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
   sleep 1
 done
-node /tmp/qa-stellar.mjs || {
+node .github/scripts/qa-stellar.runtime.mjs || {
   cat /tmp/world-forge-vite.log
   exit 1
 }
 kill "${VITE_PID}" || true
 VITE_PID=''
+rm .github/scripts/qa-stellar.runtime.mjs
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
