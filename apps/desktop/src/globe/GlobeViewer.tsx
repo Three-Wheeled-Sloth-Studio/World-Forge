@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { MapMode, MapTheme, PointInspectionRecord, RenderMode, renderWorldToCanvas } from '@world-forge/renderer';
-import type { AtmosphericWeatherPresentationArtifact, GeneratedSystemBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';
+import type { AtmosphericWeatherPresentationArtifact, GeneratedSystemBodyArtifact, OrbitalPresentationBody, SeasonalSurfaceModelArtifact, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 import { createGeneratedBodyObject, generatedBodyMaterialMode } from '../system/generatedBodyPresentation';
@@ -16,6 +16,7 @@ import {
   relativeOrbitalPositionAtDays
 } from './orbitalPresentation';
 import { createWeatherPresentationTexture, normalizeHorizontalTextureSeam, renderWeatherPresentationTexture } from './weatherPresentationTexture';
+import { applySeasonalSurfaceToCanvas, seasonalSurfaceAppliesToMapMode } from '../seasonal/seasonalSurfacePresentation';
 import './globeSimulation.css';
 
 export type GlobeDebugMode = 'final' | 'albedo' | 'lit' | 'water-mask' | 'sea-level' | 'coast-mask' | 'ocean-shell' | 'neutral-mesh' | 'topology-face' | 'uv-grid' | 'shade' | 'gyres';
@@ -54,6 +55,7 @@ export function GlobeViewer({
   project,
   orbitalContext,
   weatherPresentation,
+  seasonalSurface,
   simulationClock,
   mapMode,
   renderMode,
@@ -63,6 +65,7 @@ export function GlobeViewer({
   showGlobeShells,
   showClouds,
   showWeather,
+  showSeasonalSurface,
   globeDebugMode,
   diagnosticMode,
   inspectionRecord,
@@ -76,6 +79,7 @@ export function GlobeViewer({
   project: WorldProject;
   orbitalContext: SystemOrbitalContextArtifact | null;
   weatherPresentation: AtmosphericWeatherPresentationArtifact | null;
+  seasonalSurface: SeasonalSurfaceModelArtifact | null;
   simulationClock: SystemSimulationClock;
   mapMode: MapMode;
   renderMode: RenderMode;
@@ -85,6 +89,7 @@ export function GlobeViewer({
   showGlobeShells: boolean;
   showClouds: boolean;
   showWeather: boolean;
+  showSeasonalSurface: boolean;
   globeDebugMode: GlobeDebugMode;
   diagnosticMode: boolean;
   inspectionRecord: PointInspectionRecord | null;
@@ -178,11 +183,26 @@ export function GlobeViewer({
 
     const scale = defaultGlobeScale;
     let texture: THREE.CanvasTexture | null = null;
+    let baseGlobeCanvas: HTMLCanvasElement | null = null;
+    let seasonalGlobeCanvas: HTMLCanvasElement | null = null;
+    const seasonalPresentationEnabled = Boolean(
+      isPrimarySurface
+      && showSeasonalSurface
+      && seasonalSurface
+      && globeDebugMode === 'final'
+      && seasonalSurfaceAppliesToMapMode(mapMode)
+    );
     let globe: THREE.Object3D;
     if (target?.mode === 'generated-system-body' && target.artifact) {
       globe = createGeneratedBodyObject(target.artifact, 1, { detail: 'inspection' });
     } else {
-      texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
+      baseGlobeCanvas = createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode);
+      seasonalGlobeCanvas = copyCanvas(baseGlobeCanvas);
+      if (seasonalPresentationEnabled && seasonalSurface) {
+        applySeasonalSurfaceToCanvas(seasonalGlobeCanvas, project, seasonalSurface, simulationClock.getSnapshot().dayOfYear);
+        normalizeHorizontalTextureSeam(seasonalGlobeCanvas, 1);
+      }
+      texture = new THREE.CanvasTexture(seasonalGlobeCanvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -363,6 +383,7 @@ export function GlobeViewer({
     let frame = 0;
     let disposed = false;
     let lastWeatherTextureDay = Number.NaN;
+    let lastSeasonalTextureBucket = seasonalPresentationEnabled ? Math.floor(simulationClock.getSnapshot().dayOfYear / 3) : Number.NaN;
     const animate = () => {
       if (disposed) return;
       frame = requestAnimationFrame(animate);
@@ -382,6 +403,26 @@ export function GlobeViewer({
       host.dataset.cameraOrbitYaw = cameraOrbitRef.current.yaw.toFixed(6);
       host.dataset.cameraOrbitPitch = cameraOrbitRef.current.pitch.toFixed(6);
       host.dataset.observerControl = 'camera-orbit';
+      if (seasonalPresentationEnabled && seasonalSurface && texture && baseGlobeCanvas && seasonalGlobeCanvas) {
+        const yearLengthDays = Math.max(1, simulationClock.getSnapshot().yearLengthDays);
+        const dayOfYear = ((simulationDays % yearLengthDays) + yearLengthDays) % yearLengthDays + 1;
+        const bucket = Math.floor(dayOfYear / 3);
+        if (bucket !== lastSeasonalTextureBucket) {
+          const context = seasonalGlobeCanvas.getContext('2d');
+          context?.clearRect(0, 0, seasonalGlobeCanvas.width, seasonalGlobeCanvas.height);
+          context?.drawImage(baseGlobeCanvas, 0, 0);
+          applySeasonalSurfaceToCanvas(seasonalGlobeCanvas, project, seasonalSurface, dayOfYear);
+          normalizeHorizontalTextureSeam(seasonalGlobeCanvas, 1);
+          texture.needsUpdate = true;
+          lastSeasonalTextureBucket = bucket;
+        }
+        host.dataset.seasonalSurface = 'ready';
+        host.dataset.seasonalTextureDay = dayOfYear.toFixed(3);
+        host.dataset.seasonalSnowMean = seasonalGlobeCanvas.dataset.seasonalSnowMean ?? '0';
+        host.dataset.seasonalSeaIceMean = seasonalGlobeCanvas.dataset.seasonalSeaIceMean ?? '0';
+      } else {
+        host.dataset.seasonalSurface = showSeasonalSurface ? 'pending' : 'annual';
+      }
       if (isPrimarySurface && weatherPresentation) {
         updateWindAdvectedCloudMaterial(cloudMaterial, simulationDays);
         host.dataset.weatherTextureDay = simulationDays.toFixed(6);
@@ -443,7 +484,7 @@ export function GlobeViewer({
       renderer.dispose();
       host.replaceChildren();
     };
-  }, [focusTarget, globeDebugMode, inspectionRecord, isPrimarySurface, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showClouds, showGlobeShells, showPlates, showRivers, showWeather, simulationClock, target?.artifact?.artifactSignature, target?.bodyId, weatherPresentation]);
+  }, [focusTarget, globeDebugMode, inspectionRecord, isPrimarySurface, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, seasonalSurface?.artifactSignature, showClouds, showGlobeShells, showPlates, showRivers, showSeasonalSurface, showWeather, simulationClock, target?.artifact?.artifactSignature, target?.bodyId, weatherPresentation]);
 
   const moonCount = orbitalContext?.payload.bodies.filter((body) => body.kind === 'moon' && body.parentBodyId === orbitalContext.payload.primaryBodyId).length ?? 0;
   const generatedBodyCount = orbitalContext?.payload.bodies.filter((body) => {
@@ -481,6 +522,9 @@ export function GlobeViewer({
       data-weather-shell-offset="0.002"
       data-minimum-globe-zoom="35"
       data-weather-presentation={weatherPresentation ? 'ready' : 'pending'}
+      data-seasonal-surface={showSeasonalSurface ? (seasonalSurface ? 'ready' : 'pending') : 'annual'}
+      data-seasonal-authority={seasonalSurface?.seasonalAuthority ?? 'none'}
+      data-seasonal-coefficient-resolution={seasonalSurface ? `${seasonalSurface.payload.coefficientResolution.width}x${seasonalSurface.payload.coefficientResolution.height}` : 'none'}
       data-weather-authority={weatherPresentation?.weatherAuthority ?? 'none'}
       data-weather-band-count={weatherPresentation?.payload.cloudBands.length ?? 0}
       data-weather-system-count={weatherPresentation?.payload.systems.length ?? 0}
@@ -820,6 +864,14 @@ function createAtmosphereMaterial(): THREE.ShaderMaterial {
     blending: THREE.AdditiveBlending,
     side: THREE.FrontSide
   });
+}
+
+function copyCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = source.width;
+  canvas.height = source.height;
+  canvas.getContext('2d')?.drawImage(source, 0, 0);
+  return canvas;
 }
 
 function createGlobeTexture(project: WorldProject, mapMode: MapMode, renderMode: RenderMode, mapTheme: MapTheme, showRivers: boolean, showPlates: boolean, globeDebugMode: GlobeDebugMode): HTMLCanvasElement {

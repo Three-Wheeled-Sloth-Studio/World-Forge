@@ -54,12 +54,15 @@ import { useGenerationWorkflow } from './generation/useGenerationWorkflow';
 import { useProjectEnrichment } from './enrichment/useProjectEnrichment';
 import { OrbitalContextStatus } from './enrichment/OrbitalContextStatus';
 import { useAtmosphericWeatherEnrichment } from './enrichment/useAtmosphericWeatherEnrichment';
+import { useSeasonalSurfaceEnrichment } from './enrichment/useSeasonalSurfaceEnrichment';
 import { useStellarSurfaceEnrichment } from './enrichment/useStellarSurfaceEnrichment';
 import { useBodyGenerationQueue } from './enrichment/useBodyGenerationQueue';
 import { WeatherPresentationStatus } from './enrichment/WeatherPresentationStatus';
+import { SeasonalSurfaceStatus } from './enrichment/SeasonalSurfaceStatus';
 import { GlobeViewer, type GlobeDebugMode } from './globe/GlobeViewer';
 import { SystemViewer } from './system/SystemViewer';
 import { createSystemSimulationClock } from './simulation/systemSimulationClock';
+import { applySeasonalSurfaceToCanvas, clearSeasonalSurfaceCanvasMetadata, seasonalSurfaceAppliesToMapMode } from './seasonal/seasonalSurfacePresentation';
 import { useCloudWorkspaceSync } from './workspace/useCloudWorkspaceSync';
 import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
 import { APP_SOURCE_COMMIT, APP_VERSION, APP_VISIBLE_VERSION } from './appVersion';
@@ -331,6 +334,7 @@ function App() {
   const [showGlobeShells, setShowGlobeShells] = useState(true);
   const [showClouds, setShowClouds] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
+  const [surfaceSeasonMode, setSurfaceSeasonMode] = useState<'annual' | 'seasonal'>('annual');
   const [globeDebugMode, setGlobeDebugMode] = useState<GlobeDebugMode>('final');
   const [mapMode, setMapMode] = useState<MapMode>(() => storedMapMode(storedUi.mapMode));
   const [renderMode, setRenderMode] = useState<RenderMode>(() => storedRenderMode(storedUi.renderMode));
@@ -408,6 +412,7 @@ function App() {
   } = generation;
   const enrichment = useProjectEnrichment({ project, onProjectEnriched: setProject });
   const weatherEnrichment = useAtmosphericWeatherEnrichment({ project, onProjectEnriched: setProject });
+  const seasonalSurface = useSeasonalSurfaceEnrichment({ project, onProjectEnriched: setProject });
   const stellarSurface = useStellarSurfaceEnrichment({ project, orbitalContext: enrichment.artifact, onProjectEnriched: setProject });
   const bodyGeneration = useBodyGenerationQueue({ project, orbitalContext: enrichment.artifact, onProjectEnriched: setProject });
   const simulationClock = useMemo(() => {
@@ -418,6 +423,15 @@ function App() {
       yearLengthDays: primary?.orbitalPeriodDays ?? 365.256
     });
   }, [enrichment.artifact?.artifactSignature, project?.projectId]);
+  const [simulationSnapshot, setSimulationSnapshot] = useState(() => simulationClock.getSnapshot());
+  const seasonalDayBucket = Math.max(1, Math.floor(simulationSnapshot.dayOfYear));
+
+  useEffect(() => {
+    const refresh = () => setSimulationSnapshot(simulationClock.getSnapshot());
+    refresh();
+    if (surfaceSeasonMode !== 'seasonal') return;
+    return simulationClock.subscribe(refresh);
+  }, [simulationClock, surfaceSeasonMode]);
 
   useEffect(() => () => simulationClock.dispose(), [simulationClock]);
 
@@ -441,6 +455,16 @@ function App() {
     if (!project || isGenerating || viewMode !== 'globe' || (!showClouds && !showWeather) || !enrichment.artifact) return;
     weatherEnrichment.ensureWeatherPresentation();
   }, [enrichment.artifact?.artifactSignature, isGenerating, project?.projectId, project?.enrichmentArtifacts?.['project.atmospheric-weather-presentation'], showClouds, showWeather, viewMode, weatherEnrichment.ensureWeatherPresentation]);
+
+
+  useEffect(() => {
+    if (!project || isGenerating || surfaceSeasonMode !== 'seasonal') return;
+    if (!enrichment.artifact) {
+      enrichment.ensureOrbitalContext();
+      return;
+    }
+    seasonalSurface.ensureSeasonalSurface();
+  }, [enrichment.artifact?.artifactSignature, enrichment.ensureOrbitalContext, isGenerating, project?.projectId, project?.enrichmentArtifacts?.['project.seasonal-surface-model'], seasonalSurface.ensureSeasonalSurface, surfaceSeasonMode]);
 
   useEffect(() => {
     if (!configOpen) return;
@@ -469,7 +493,12 @@ function App() {
       mode: mapMode,
       targetResolution: previewResolution.width > 0 ? previewResolution : undefined
     });
-  }, [coastlineTreatment, isGenerating, mapMode, mapTheme, previewResolution, project, renderMode, showPlates, showRivers, viewMode]);
+    if (surfaceSeasonMode === 'seasonal' && seasonalSurface.artifact && seasonalSurfaceAppliesToMapMode(mapMode)) {
+      applySeasonalSurfaceToCanvas(canvasRef.current, project, seasonalSurface.artifact, seasonalDayBucket);
+    } else {
+      clearSeasonalSurfaceCanvasMetadata(canvasRef.current);
+    }
+  }, [coastlineTreatment, isGenerating, mapMode, mapTheme, previewResolution, project, renderMode, seasonalDayBucket, seasonalSurface.artifact?.artifactSignature, showPlates, showRivers, surfaceSeasonMode, viewMode]);
 
   useEffect(() => {
     setHexInspectionTarget((current) => {
@@ -957,24 +986,49 @@ function App() {
         onCoastlineTreatmentChange={setCoastlineTreatment}
         onGlobeDebugModeChange={setGlobeDebugMode}
         displayActions={(
-          <label className="workspace-inline-setting" htmlFor="preview-resolution">
-            <span>Preview</span>
-            <select
-              id="preview-resolution"
-              aria-label="Preview resolution"
-              value={`${previewResolution.width}x${previewResolution.height}`}
-              onChange={(event) => {
-                const resolution = previewResolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
-                if (resolution) setPreviewResolution(resolution);
-              }}
-            >
-              {previewResolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label.replace(' preview', '')}</option>)}
-            </select>
-          </label>
+          <>
+            <label className="workspace-inline-setting" htmlFor="preview-resolution">
+              <span>Preview</span>
+              <select
+                id="preview-resolution"
+                aria-label="Preview resolution"
+                value={`${previewResolution.width}x${previewResolution.height}`}
+                onChange={(event) => {
+                  const resolution = previewResolutionOptions.find((option) => `${option.width}x${option.height}` === event.target.value);
+                  if (resolution) setPreviewResolution(resolution);
+                }}
+              >
+                {previewResolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label.replace(' preview', '')}</option>)}
+              </select>
+            </label>
+            <label className="workspace-inline-setting" htmlFor="surface-season-mode">
+              <span>Surface season</span>
+              <select id="surface-season-mode" aria-label="Surface season" value={surfaceSeasonMode} onChange={(event) => setSurfaceSeasonMode(event.target.value as 'annual' | 'seasonal')}>
+                <option value="annual">Annual mean</option>
+                <option value="seasonal">Seasonal</option>
+              </select>
+            </label>
+            {surfaceSeasonMode === 'seasonal' && (
+              <label className="workspace-inline-setting seasonal-day-setting" htmlFor="seasonal-day-of-year">
+                <span>Day {Math.round(simulationSnapshot.dayOfYear)}</span>
+                <input
+                  id="seasonal-day-of-year"
+                  aria-label="Seasonal day of year"
+                  type="range"
+                  min={1}
+                  max={Math.max(1, Math.round(simulationSnapshot.yearLengthDays))}
+                  step={1}
+                  value={Math.round(simulationSnapshot.dayOfYear)}
+                  onChange={(event) => simulationClock.setDayOfYear(Number(event.target.value))}
+                />
+              </label>
+            )}
+          </>
         )}
         mapContent={leftPanelTab === 'dev' ? (
           devGraphWorkspace
         ) : viewMode === 'map' || isGenerating ? (
+          <>
           <div
             ref={mapFrameRef}
             className="map-canvas-frame"
@@ -990,12 +1044,23 @@ function App() {
             {showHexes && hexInspectionTarget && <HexInspectionMarker target={hexInspectionTarget} />}
             {highestPointTarget && <HighestPointMapMarker target={highestPointTarget} />}
           </div>
+          {surfaceSeasonMode === 'seasonal' && project && !isGenerating && <SeasonalSurfaceStatus
+            status={seasonalSurface.status}
+            activeNodeLabel={seasonalSurface.activeNodeLabel}
+            error={seasonalSurface.error}
+            elapsedMs={seasonalSurface.elapsedMs}
+            artifact={seasonalSurface.artifact}
+            onRetry={seasonalSurface.ensureSeasonalSurface}
+            onCancel={seasonalSurface.cancelSeasonalSurface}
+          />}
+          </>
         ) : viewMode === 'globe' && project ? (
           <div className="globe-enrichment-frame">
             <GlobeViewer
               project={project}
               orbitalContext={enrichment.artifact}
               weatherPresentation={weatherEnrichment.artifact}
+              seasonalSurface={seasonalSurface.artifact}
               simulationClock={simulationClock}
               mapMode={mapMode}
               renderMode={renderMode}
@@ -1005,6 +1070,7 @@ function App() {
               showGlobeShells={showGlobeShells}
               showClouds={showClouds}
               showWeather={showWeather}
+              showSeasonalSurface={surfaceSeasonMode === 'seasonal'}
               globeDebugMode={globeDebugMode}
               diagnosticMode={diagnosticMode}
               inspectionRecord={diagnosticMode ? inspectionRecord : null}
@@ -1032,6 +1098,15 @@ function App() {
               artifact={weatherEnrichment.artifact}
               onRetry={weatherEnrichment.ensureWeatherPresentation}
               onCancel={weatherEnrichment.cancelWeatherPresentation}
+            />}
+            {surfaceSeasonMode === 'seasonal' && <SeasonalSurfaceStatus
+              status={seasonalSurface.status}
+              activeNodeLabel={seasonalSurface.activeNodeLabel}
+              error={seasonalSurface.error}
+              elapsedMs={seasonalSurface.elapsedMs}
+              artifact={seasonalSurface.artifact}
+              onRetry={seasonalSurface.ensureSeasonalSurface}
+              onCancel={seasonalSurface.cancelSeasonalSurface}
             />}
           </div>
         ) : viewMode === 'system' && project ? (
