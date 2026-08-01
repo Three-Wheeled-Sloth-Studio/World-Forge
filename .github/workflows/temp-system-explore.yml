@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/system-explore-20260731-r2'
+    if: github.head_ref == 'automation/system-explore-20260731-r3'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout runner branch
@@ -22,6 +22,7 @@ jobs:
           cp -R apps/desktop/src/system /tmp/system
           cp .github/scripts/apply-system-explore.py /tmp/apply-system-explore.py
           cp .github/scripts/apply-system-explore-r2.py /tmp/apply-system-explore-r2.py
+          cp .github/scripts/patch-system-qa-r3.py /tmp/patch-system-qa-r3.py
           cp .github/scripts/qa-system-explore.mjs /tmp/qa-system-explore.mjs
           cp refs/handoffs/system-visualization-enrichment.md /tmp/system-visualization-enrichment.md
           cp refs/testing/system-explore-visual-qa.md /tmp/system-explore-visual-qa.md
@@ -70,6 +71,7 @@ jobs:
         run: |
           mkdir -p .github/scripts
           cp /tmp/qa-system-explore.mjs .github/scripts/qa-system-explore.runtime.mjs
+          python /tmp/patch-system-qa-r3.py .github/scripts/qa-system-explore.runtime.mjs
           npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
           VITE_PID=$!
           trap 'kill $VITE_PID || true' EXIT
@@ -103,4 +105,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/system-explore-20260731-r2 || true
+        run: git push origin --delete automation/system-explore-20260731-r3 || true
