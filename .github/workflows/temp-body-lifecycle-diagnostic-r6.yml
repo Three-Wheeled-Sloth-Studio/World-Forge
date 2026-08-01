@@ -1,0 +1,79 @@
+name: Temporary body lifecycle diagnostic r6
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'automation/body-lifecycle-airless-20260731-r6'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Diagnose selected-body lifecycle transition
+        shell: bash
+        run: |
+          set -euo pipefail
+          VITE_PID=''
+          cleanup() {
+            if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
+            git push origin --delete automation/body-lifecycle-airless-20260731-r6 || true
+          }
+          trap cleanup EXIT
+          mkdir -p /tmp/body-slice
+          cat .github/scripts/body-slice.tar.gz.b64.part-* | base64 -d | tar -xz -C /tmp/body-slice
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "7dfbc4af4c743d84216f4849292ad787311c284a"
+          git checkout -B dev origin/dev
+          npm ci
+          cp /tmp/body-slice/packages/generation-runtime/src/enrichment/* packages/generation-runtime/src/enrichment/
+          cp /tmp/body-slice/apps/desktop/src/enrichment/* apps/desktop/src/enrichment/
+          cp /tmp/body-slice/apps/desktop/src/system/* apps/desktop/src/system/
+          cp /tmp/body-slice/refs/testing/body-generation-visual-qa.md refs/testing/body-generation-visual-qa.md
+          python /tmp/body-slice/.github/scripts/apply-body-generation-boundary.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/desktop/src/system/SystemViewer.tsx')
+          text = path.read_text(encoding='utf-8')
+          old = "bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62 });"
+          new = "bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62, materialMode: 'scaffold-solid' });"
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          qa = Path('/tmp/body-slice/.github/scripts/qa-body-generation.mjs').read_text(encoding='utf-8')
+          old_wait = "await page.waitForFunction(() => document.querySelector('.system-body-generation')?.getAttribute('data-body-lifecycle-status') === 'generated', undefined, { timeout: 45000 });"
+          diagnostic = """await page.waitForTimeout(12000);
+          const diagnosticState = await page.evaluate(() => {
+            const panel = document.querySelector('.system-body-generation');
+            return {
+              status: panel?.getAttribute('data-body-lifecycle-status'),
+              activeBodyId: panel?.getAttribute('data-body-active-id'),
+              queueCount: panel?.getAttribute('data-body-queue-count'),
+              panelText: panel?.textContent,
+              surfaceMaterial: document.querySelector('.system-render-surface')?.getAttribute('data-selected-body-material')
+            };
+          });
+          console.log('QA lifecycle diagnostic:', JSON.stringify(diagnosticState));
+          if (diagnosticState.status !== 'generated') throw new Error(`Selected body did not generate: ${JSON.stringify(diagnosticState)}`);"""
+          if qa.count(old_wait) != 1:
+              raise RuntimeError('Expected one generated-status wait in QA script')
+          Path('.github/scripts/qa-body-generation.runtime.mjs').write_text(qa.replace(old_wait, diagnostic), encoding='utf-8')
+          PY
+          npx playwright install chromium
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-body-generation.runtime.mjs || {
+            cat /tmp/world-forge-vite.log
+            exit 1
+          }
