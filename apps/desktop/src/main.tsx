@@ -56,6 +56,7 @@ import { OrbitalContextStatus } from './enrichment/OrbitalContextStatus';
 import { useAtmosphericWeatherEnrichment } from './enrichment/useAtmosphericWeatherEnrichment';
 import { WeatherPresentationStatus } from './enrichment/WeatherPresentationStatus';
 import { GlobeViewer, type GlobeDebugMode } from './globe/GlobeViewer';
+import { SystemViewer } from './system/SystemViewer';
 import { createSystemSimulationClock } from './simulation/systemSimulationClock';
 import { useCloudWorkspaceSync } from './workspace/useCloudWorkspaceSync';
 import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
@@ -72,7 +73,7 @@ const FEEDBACK_EMAIL = 'support@threewheeledsloth.com';
 const FEEDBACK_SUBJECT = 'World Forge Feedback';
 const FEEDBACK_COMPOSE_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(FEEDBACK_EMAIL)}&su=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
 type RangeKey = keyof ParameterRanges;
-type ViewMode = 'map' | 'globe';
+type ViewMode = 'map' | 'globe' | 'system';
 type HighestPointTarget = { x: number; y: number; width: number; height: number; latitude: number; longitude: number };
 type HexInspectionTarget = { levelId: string; label: string; nominalHexWidthMiles: number; q: number; r: number; x: number; y: number; width: number; height: number };
 type RightPanelTab = 'world' | 'hex' | 'diagnostics';
@@ -138,7 +139,7 @@ function storedCoastlineTreatment(value: string | undefined): CoastlineTreatment
 }
 
 function storedViewMode(value: string | undefined): ViewMode {
-  return value === 'globe' ? 'globe' : 'map';
+  return value === 'globe' || value === 'system' ? value : 'map';
 }
 
 function storedRightPanelTab(value: string | undefined): RightPanelTab {
@@ -346,6 +347,7 @@ function App() {
   const [inspectionCopyStatus, setInspectionCopyStatus] = useState('');
   const [mapZoom, setMapZoom] = useState(() => clampViewZoom(storedUi.mapZoom));
   const [globeZoom, setGlobeZoom] = useState(() => clampViewZoom(storedUi.globeZoom));
+  const [systemZoom, setSystemZoom] = useState(() => clampViewZoom(storedUi.systemZoom));
   const mapFrameRef = useRef<HTMLDivElement>(null);
   const mapPanRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number; moved: boolean } | null>(null);
   const suppressNextMapClickRef = useRef(false);
@@ -415,7 +417,7 @@ function App() {
   useEffect(() => () => simulationClock.dispose(), [simulationClock]);
 
   useEffect(() => {
-    if (!project || isGenerating || viewMode !== 'globe') return;
+    if (!project || isGenerating || viewMode === 'map') return;
     enrichment.ensureOrbitalContext();
   }, [enrichment.ensureOrbitalContext, isGenerating, project?.projectId, project?.enrichmentArtifacts?.['project.system-orbital-context'], viewMode]);
 
@@ -511,6 +513,7 @@ function App() {
     setRightPanelCollapsed(ui.rightPanelCollapsed);
     setMapZoom(clampViewZoom(ui.mapZoom));
     setGlobeZoom(clampViewZoom(ui.globeZoom));
+    setSystemZoom(clampViewZoom(ui.systemZoom));
   };
 
   const workspaceSettings = useMemo(() => buildWorkspaceSettings({
@@ -541,10 +544,11 @@ function App() {
       leftPanelCollapsed,
       rightPanelCollapsed,
       mapZoom,
-      globeZoom
+      globeZoom,
+      systemZoom
     },
     savedMaps
-  }), [coastlineTreatment, config, contentLibrary, exportResolution, globeZoom, leftPanelCollapsed, leftPanelTab, mapMode, mapZoom, previewResolution, renderMode, rightPanelCollapsed, rightPanelTab, savedMaps, selectedPreset, showHexes, showPlates, showRivers, tileFeatures, tileHeight, tilePresetId, tileWidth, viewMode, vttGridEnabled, vttHexSizeMiles, vttResolution]);
+  }), [coastlineTreatment, config, contentLibrary, exportResolution, globeZoom, leftPanelCollapsed, leftPanelTab, mapMode, mapZoom, previewResolution, renderMode, rightPanelCollapsed, rightPanelTab, savedMaps, selectedPreset, showHexes, showPlates, showRivers, systemZoom, tileFeatures, tileHeight, tilePresetId, tileWidth, viewMode, vttGridEnabled, vttHexSizeMiles, vttResolution]);
 
   const applyPulledWorkspace = (workspace: typeof workspaceSettings) => {
     setConfig(normalizeGenerationConfig(workspace.config));
@@ -669,7 +673,7 @@ function App() {
   const shellAccountLabel = shellHasAccount
     ? `Signed in as ${identity.displayName}${identity.email ? ` (${identity.email})` : ''}`
     : 'Open the Parchment Worlds account page';
-  const currentViewZoom = viewMode === 'globe' ? globeZoom : mapZoom;
+  const currentViewZoom = viewMode === 'globe' ? globeZoom : viewMode === 'system' ? systemZoom : mapZoom;
   const handleMapWheelZoom = useCallback((event: WheelEvent, frame: HTMLDivElement) => {
     event.preventDefault();
     const container = frame.parentElement;
@@ -701,6 +705,11 @@ function App() {
     event.preventDefault();
     const step = event.ctrlKey || event.metaKey ? 1.35 : 1.12;
     setGlobeZoom((current) => clampViewZoom(current * (event.deltaY > 0 ? 1 / step : step)));
+  }, []);
+  const handleSystemWheelZoom = useCallback((event: WheelEvent) => {
+    event.preventDefault();
+    const step = event.ctrlKey || event.metaKey ? 1.35 : 1.12;
+    setSystemZoom((current) => clampViewZoom(current * (event.deltaY > 0 ? 1 / step : step)));
   }, []);
   const beginMapPan = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -918,7 +927,7 @@ function App() {
         coastlineTreatment={coastlineTreatment}
         globeDebugMode={globeDebugMode}
         viewZoom={currentViewZoom}
-        onViewZoomChange={viewMode === 'globe' ? setGlobeZoom : setMapZoom}
+        onViewZoomChange={viewMode === 'globe' ? setGlobeZoom : viewMode === 'system' ? setSystemZoom : setMapZoom}
         onViewModeChange={setViewMode}
         onShowRiversChange={setShowRivers}
         onShowPlatesChange={setShowPlates}
@@ -965,7 +974,7 @@ function App() {
             {showHexes && hexInspectionTarget && <HexInspectionMarker target={hexInspectionTarget} />}
             {highestPointTarget && <HighestPointMapMarker target={highestPointTarget} />}
           </div>
-        ) : project ? (
+        ) : viewMode === 'globe' && project ? (
           <div className="globe-enrichment-frame">
             <GlobeViewer
               project={project}
@@ -1006,6 +1015,25 @@ function App() {
               onRetry={weatherEnrichment.ensureWeatherPresentation}
               onCancel={weatherEnrichment.cancelWeatherPresentation}
             />}
+          </div>
+        ) : viewMode === 'system' && project ? (
+          <div className="globe-enrichment-frame system-enrichment-frame">
+            <SystemViewer
+              project={project}
+              orbitalContext={enrichment.artifact}
+              simulationClock={simulationClock}
+              zoom={systemZoom}
+              onZoom={handleSystemWheelZoom}
+            />
+            <OrbitalContextStatus
+              status={enrichment.status}
+              activeNodeLabel={enrichment.activeNodeLabel}
+              error={enrichment.error}
+              elapsedMs={enrichment.elapsedMs}
+              artifact={enrichment.artifact}
+              onRetry={enrichment.ensureOrbitalContext}
+              onCancel={enrichment.cancelOrbitalContext}
+            />
           </div>
         ) : null}
         legend={project && mapMode === 'biomes' && renderMode === 'data' && viewMode === 'map' ? <BiomeLegend theme={mapTheme} /> : null}

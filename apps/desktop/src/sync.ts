@@ -127,6 +127,7 @@ export type WorkspaceUiSettings = {
   rightPanelCollapsed: boolean;
   mapZoom: number;
   globeZoom: number;
+  systemZoom: number;
 };
 
 export type WorkspaceSettings = {
@@ -462,7 +463,8 @@ export function normalizeWorkspaceUiSettings(raw: Partial<WorkspaceUiSettings> |
     leftPanelCollapsed: raw.leftPanelCollapsed === true,
     rightPanelCollapsed: raw.rightPanelCollapsed === true,
     mapZoom: cleanZoom(raw.mapZoom),
-    globeZoom: cleanZoom(raw.globeZoom)
+    globeZoom: cleanZoom(raw.globeZoom),
+    systemZoom: cleanZoom(raw.systemZoom)
   };
 }
 
