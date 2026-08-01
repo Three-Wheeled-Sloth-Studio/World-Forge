@@ -64,6 +64,13 @@ describe('atmospheric weather presentation enrichment', () => {
     expect(first.validation.valid).toBe(true);
     expect(first.payload.cloudBands.length).toBeGreaterThanOrEqual(3);
     expect(first.payload.systems.length).toBeGreaterThanOrEqual(4);
+    expect(first.payload.windField?.resolution.width).toBeGreaterThan(0);
+    expect(first.payload.windField?.resolution.height).toBeGreaterThan(0);
+    const windCellCount = (first.payload.windField?.resolution.width ?? 0) * (first.payload.windField?.resolution.height ?? 0);
+    expect(first.payload.windField?.zonal).toHaveLength(windCellCount);
+    expect(first.payload.windField?.meridional).toHaveLength(windCellCount);
+    expect(first.payload.windField?.zonal.every(Number.isFinite)).toBe(true);
+    expect(first.payload.windField?.meridional.every(Number.isFinite)).toBe(true);
   });
 
   it('emits ordered instrumentation and registers an inspectable graph', async () => {

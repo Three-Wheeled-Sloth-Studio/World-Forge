@@ -827,6 +827,12 @@ export type WeatherCloudBand = {
   driftDegPerDay: number;
 };
 
+export type WeatherWindField = {
+  resolution: Resolution;
+  zonal: number[];
+  meridional: number[];
+};
+
 export type WeatherPresentationSystemKind = 'cyclone' | 'front' | 'convective';
 
 export type WeatherPresentationSystem = {
@@ -850,7 +856,7 @@ export type AtmosphericWeatherPresentationArtifact = {
   status: 'complete';
   workflow: {
     id: 'project.atmospheric-weather-presentation';
-    version: '1.0.0';
+    version: '1.1.0';
     graphSignature: string;
     nodes: EnrichmentNodeRunRecord[];
   };
@@ -883,6 +889,7 @@ export type AtmosphericWeatherPresentationArtifact = {
       zonalMeanDegPerDay: number;
       meridionalMeanDegPerDay: number;
     };
+    windField?: WeatherWindField;
   };
 };
 

@@ -2,6 +2,33 @@ import type { AtmosphericWeatherPresentationArtifact, WeatherPresentationSystem 
 
 export type WeatherTextureMode = 'clouds' | 'weather';
 
+type SphericalVector = { x: number; y: number; z: number };
+type TangentFrame = {
+  direction: SphericalVector;
+  east: SphericalVector;
+  north: SphericalVector;
+  longitudeRad: number;
+  latitudeRad: number;
+};
+type WindSample = {
+  tangent: SphericalVector;
+  zonal: number;
+  meridional: number;
+  speed: number;
+};
+type NoiseSeedConfig = {
+  hash: number;
+  offsetX: number;
+  offsetY: number;
+  offsetZ: number;
+};
+
+const STREAMER_OFFSETS = [-0.55, -0.3666667, -0.1833333, 0, 0.1833333, 0.3666667, 0.55] as const;
+const STREAMER_WEIGHTS = [0.031, 0.11, 0.22, 0.278, 0.22, 0.11, 0.031] as const;
+const STREAMER_ROTATIONS = STREAMER_OFFSETS.map((radians) => ({ cos: Math.cos(radians), sin: Math.sin(radians) }));
+const seedHashCache = new Map<string, number>();
+const noiseSeedCache = new Map<string, NoiseSeedConfig>();
+
 export function createWeatherPresentationTexture(
   artifact: AtmosphericWeatherPresentationArtifact | null,
   mode: WeatherTextureMode,
@@ -32,23 +59,24 @@ export function renderWeatherPresentationTexture(
   }
 
   context.globalCompositeOperation = 'lighter';
-  if (mode === 'clouds') drawLayeredCloudField(context, canvas, artifact, simulationDays);
+  if (mode === 'clouds') drawWindOrientedCloudField(context, canvas, artifact, simulationDays);
   for (const system of artifact.payload.systems) {
     drawWeatherPresentationSystem(context, canvas, artifact.seed, system, mode, simulationDays);
   }
   context.restore();
-  normalizeHorizontalTextureSeam(canvas, 3);
 }
 
-function drawLayeredCloudField(
+function drawWindOrientedCloudField(
   context: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   artifact: AtmosphericWeatherPresentationArtifact,
   simulationDays: number
 ): void {
   const field = document.createElement('canvas');
-  field.width = canvas.width;
-  field.height = canvas.height;
+  // Evaluate a bounded presentation raster, then let the soft cloud material
+  // upscale it. The artifact texture size and save/export contract remain unchanged.
+  field.width = Math.min(canvas.width, 256);
+  field.height = Math.min(canvas.height, 128);
   const fieldContext = field.getContext('2d');
   if (!fieldContext) return;
   const image = fieldContext.createImageData(field.width, field.height);
@@ -58,7 +86,7 @@ function drawLayeredCloudField(
     for (let x = 0; x < field.width; x += 1) {
       const u = (x + 0.5) / field.width;
       const coverage = cloudCoverageSample(artifact, u, v, simulationDays);
-      const value = Math.round(Math.pow(coverage, 1.12) * 255);
+      const value = Math.round(Math.pow(coverage, 1.08) * 255);
       const index = (y * field.width + x) * 4;
       image.data[index] = value;
       image.data[index + 1] = value;
@@ -70,7 +98,7 @@ function drawLayeredCloudField(
 
   context.save();
   context.imageSmoothingEnabled = true;
-  context.filter = 'blur(0.55px)';
+  context.filter = 'blur(0.72px)';
   context.globalAlpha = 1;
   context.drawImage(field, 0, 0, canvas.width, canvas.height);
   context.restore();
@@ -82,31 +110,256 @@ export function cloudCoverageSample(
   v: number,
   simulationDays: number
 ): number {
-  const latitudeDeg = 90 - clamp01(v) * 180;
-  const longitudeDeg = wrapUnit(u) * 360 - 180;
-  let bandEnvelope = 0;
+  const frame = sphericalFrameFromUv(u, v);
+  const wind = sampleWindField(artifact, u, v, frame);
+  const travelRadians = -simulationDays * (0.006 + Math.min(1.5, wind.speed) * 0.025);
+  const advectedDirection = rotateDirectionAlongTangent(frame.direction, wind.tangent, travelRadians);
+  const advectedFrame = sphericalFrameFromDirection(advectedDirection);
+  const advectedWindTangent = projectOntoTangent(wind.tangent, advectedDirection, advectedFrame.east);
 
+  const bandEnvelope = cloudBandEnvelope(artifact, advectedFrame);
+  const broadSource = sphericalValueNoise(advectedDirection, 1.7, `${artifact.seed}:cloud-source`);
+  const streamer = windOrientedStreamerAtDirection(
+    advectedDirection,
+    advectedWindTangent,
+    `${artifact.seed}:streamer`
+  );
+  const cells = sphericalValueNoise(advectedDirection, 9.2, `${artifact.seed}:cells`);
+  const edgeBreakup = sphericalValueNoise(advectedDirection, 22, `${artifact.seed}:edge-breakup`);
+
+  const source = clamp01(bandEnvelope * 0.82 + broadSource * 0.48 - 0.18);
+  const formed = smoothStep(0.48 - source * 0.17, 0.72, streamer * 0.74 + cells * 0.26);
+  const breakup = smoothStep(0.39, 0.68, cells * 0.62 + edgeBreakup * 0.38);
+  const rawCoverage = clamp01(formed * (0.16 + breakup * 0.98) * (0.28 + source * 1.22));
+  return smoothStep(0.04, 0.62, rawCoverage);
+}
+
+export function windOrientedStreamerSample(
+  artifact: Pick<AtmosphericWeatherPresentationArtifact, 'seed' | 'payload'>,
+  u: number,
+  v: number,
+  simulationDays = 0
+): number {
+  const frame = sphericalFrameFromUv(u, v);
+  const wind = sampleWindField(artifact, u, v, frame);
+  const travelRadians = -simulationDays * (0.006 + Math.min(1.5, wind.speed) * 0.025);
+  const advectedDirection = rotateDirectionAlongTangent(frame.direction, wind.tangent, travelRadians);
+  const advectedFrame = sphericalFrameFromDirection(advectedDirection);
+  const tangent = projectOntoTangent(wind.tangent, advectedDirection, advectedFrame.east);
+  return windOrientedStreamerAtDirection(advectedDirection, tangent, `${artifact.seed}:streamer`);
+}
+
+function cloudBandEnvelope(
+  artifact: Pick<AtmosphericWeatherPresentationArtifact, 'payload'>,
+  frame: TangentFrame
+): number {
+  const latitudeDeg = radiansToDegrees(frame.latitudeRad);
+  let envelope = 0;
   for (const band of artifact.payload.cloudBands) {
-    const phase = band.phaseRad + degreesToRadians(longitudeDeg * band.waveNumber + band.driftDegPerDay * simulationDays);
-    const centerLatitude = band.centerLatitudeDeg + Math.sin(phase) * band.waveAmplitudeDeg;
-    const halfWidth = Math.max(2, band.widthDeg * 0.60);
+    const periodicWaveNumber = Math.max(1, Math.round(Math.abs(band.waveNumber)));
+    const centerLatitude = band.centerLatitudeDeg
+      + Math.sin(band.phaseRad + frame.longitudeRad * periodicWaveNumber) * band.waveAmplitudeDeg;
+    const halfWidth = Math.max(2, band.widthDeg * 0.62);
     const normalizedDistance = (latitudeDeg - centerLatitude) / halfWidth;
-    const envelope = Math.exp(-0.5 * normalizedDistance * normalizedDistance) * band.density;
-    bandEnvelope = Math.max(bandEnvelope, envelope);
+    envelope = Math.max(envelope, Math.exp(-0.5 * normalizedDistance * normalizedDistance) * band.density);
+  }
+  return envelope;
+}
+
+function sampleWindField(
+  artifact: Pick<AtmosphericWeatherPresentationArtifact, 'payload'>,
+  u: number,
+  v: number,
+  frame: TangentFrame
+): WindSample {
+  const field = artifact.payload.windField;
+  let zonal: number;
+  let meridional: number;
+
+  if (field && field.resolution.width > 0 && field.resolution.height > 0
+    && field.zonal.length === field.resolution.width * field.resolution.height
+    && field.meridional.length === field.resolution.width * field.resolution.height) {
+    zonal = bilinearPeriodicSample(field.zonal, field.resolution.width, field.resolution.height, u, v);
+    meridional = bilinearPeriodicSample(field.meridional, field.resolution.width, field.resolution.height, u, v);
+  } else {
+    zonal = artifact.payload.advection.zonalMeanDegPerDay / 18;
+    meridional = artifact.payload.advection.meridionalMeanDegPerDay / 5;
   }
 
-  const latitudeRadians = degreesToRadians(latitudeDeg);
-  const latitudeFlow = 0.42 + Math.pow(Math.cos(latitudeRadians), 2) * 0.58;
-  const eastwardAdvection = simulationDays * (0.0012 + latitudeFlow * 0.0021);
-  const macro = fractalCloudNoise(wrapUnit(u + eastwardAdvection), v * 0.94 + simulationDays * 0.00012, `${artifact.seed}:macro`);
-  const filament = fractalCloudNoise(wrapUnit(u * 1.85 + eastwardAdvection * 1.7), v * 1.65 - simulationDays * 0.00018, `${artifact.seed}:filament`);
-  const cells = fractalCloudNoise(wrapUnit(u * 4.4 - eastwardAdvection * 0.55), v * 3.9 + simulationDays * 0.00031, `${artifact.seed}:cells`);
-  const texture = macro * 0.36 + filament * 0.40 + cells * 0.24;
-  const threshold = 0.60 - bandEnvelope * 0.17;
-  const formed = smoothStep(threshold, 0.83, texture + bandEnvelope * 0.14);
-  const breakup = smoothStep(0.40, 0.72, filament * 0.56 + cells * 0.44);
-  const rawCoverage = clamp01(formed * (0.20 + breakup * 0.98) * (0.36 + bandEnvelope * 0.90));
-  return smoothStep(0.08, 0.70, rawCoverage);
+  const tangentVector = addVectors(scaleVector(frame.east, zonal), scaleVector(frame.north, meridional));
+  const speed = vectorLength(tangentVector);
+  return {
+    tangent: speed > 0.000001 ? scaleVector(tangentVector, 1 / speed) : frame.east,
+    zonal,
+    meridional,
+    speed
+  };
+}
+
+function bilinearPeriodicSample(
+  values: readonly number[],
+  width: number,
+  height: number,
+  u: number,
+  v: number
+): number {
+  const x = wrapUnit(u) * width;
+  const xBase = Math.floor(x);
+  const x0 = wrapIndex(xBase, width);
+  const x1 = wrapIndex(xBase + 1, width);
+  const tx = x - xBase;
+  const y = clamp01(v) * Math.max(0, height - 1);
+  const y0 = Math.max(0, Math.min(height - 1, Math.floor(y)));
+  const y1 = Math.max(0, Math.min(height - 1, y0 + 1));
+  const ty = y - y0;
+  const a = finite(values[y0 * width + x0]);
+  const b = finite(values[y0 * width + x1]);
+  const c = finite(values[y1 * width + x0]);
+  const d = finite(values[y1 * width + x1]);
+  return linearInterpolate(linearInterpolate(a, b, tx), linearInterpolate(c, d, tx), ty);
+}
+
+function windOrientedStreamerAtDirection(
+  direction: SphericalVector,
+  tangent: SphericalVector,
+  seed: string
+): number {
+  let total = 0;
+  let weight = 0;
+  for (let index = 0; index < STREAMER_ROTATIONS.length; index += 1) {
+    const rotation = STREAMER_ROTATIONS[index];
+    const sampleDirection = normalizeVector(addVectors(
+      scaleVector(direction, rotation.cos),
+      scaleVector(tangent, rotation.sin)
+    ));
+    const sampleWeight = STREAMER_WEIGHTS[index];
+    total += sphericalValueNoise(sampleDirection, 4.4, seed) * sampleWeight;
+    weight += sampleWeight;
+  }
+  return weight > 0 ? total / weight : 0;
+}
+
+function sphericalValueNoise(direction: SphericalVector, frequency: number, seed: string): number {
+  const config = noiseSeedConfig(seed);
+  return smoothValueNoise3(
+    direction.x * frequency + config.offsetX,
+    direction.y * frequency + config.offsetY,
+    direction.z * frequency + config.offsetZ,
+    config.hash
+  );
+}
+
+function noiseSeedConfig(seed: string): NoiseSeedConfig {
+  const cached = noiseSeedCache.get(seed);
+  if (cached) return cached;
+  const hash = hashSeed(seed);
+  const config = {
+    hash,
+    offsetX: seededUnit3(hash, 17, 31, 47) * 19.3,
+    offsetY: seededUnit3(hash, 59, 71, 89) * 23.7,
+    offsetZ: seededUnit3(hash, 101, 127, 149) * 17.9
+  };
+  noiseSeedCache.set(seed, config);
+  return config;
+}
+
+function smoothValueNoise3(x: number, y: number, z: number, seedHash: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const z0 = Math.floor(z);
+  const fx = smoothStep(0, 1, x - x0);
+  const fy = smoothStep(0, 1, y - y0);
+  const fz = smoothStep(0, 1, z - z0);
+
+  const c000 = seededUnit3(seedHash, x0, y0, z0);
+  const c100 = seededUnit3(seedHash, x0 + 1, y0, z0);
+  const c010 = seededUnit3(seedHash, x0, y0 + 1, z0);
+  const c110 = seededUnit3(seedHash, x0 + 1, y0 + 1, z0);
+  const c001 = seededUnit3(seedHash, x0, y0, z0 + 1);
+  const c101 = seededUnit3(seedHash, x0 + 1, y0, z0 + 1);
+  const c011 = seededUnit3(seedHash, x0, y0 + 1, z0 + 1);
+  const c111 = seededUnit3(seedHash, x0 + 1, y0 + 1, z0 + 1);
+
+  const x00 = linearInterpolate(c000, c100, fx);
+  const x10 = linearInterpolate(c010, c110, fx);
+  const x01 = linearInterpolate(c001, c101, fx);
+  const x11 = linearInterpolate(c011, c111, fx);
+  return linearInterpolate(
+    linearInterpolate(x00, x10, fy),
+    linearInterpolate(x01, x11, fy),
+    fz
+  );
+}
+
+function sphericalFrameFromUv(u: number, v: number): TangentFrame {
+  const longitudeRad = wrapUnit(u) * Math.PI * 2 - Math.PI;
+  const latitudeRad = Math.PI / 2 - clamp01(v) * Math.PI;
+  const cosLatitude = Math.cos(latitudeRad);
+  return {
+    direction: normalizeVector({
+      x: cosLatitude * Math.cos(longitudeRad),
+      y: Math.sin(latitudeRad),
+      z: cosLatitude * Math.sin(longitudeRad)
+    }),
+    east: normalizeVector({ x: -Math.sin(longitudeRad), y: 0, z: Math.cos(longitudeRad) }),
+    north: normalizeVector({
+      x: -Math.sin(latitudeRad) * Math.cos(longitudeRad),
+      y: cosLatitude,
+      z: -Math.sin(latitudeRad) * Math.sin(longitudeRad)
+    }),
+    longitudeRad,
+    latitudeRad
+  };
+}
+
+function sphericalFrameFromDirection(direction: SphericalVector): TangentFrame {
+  const normalized = normalizeVector(direction);
+  const longitudeRad = Math.atan2(normalized.z, normalized.x);
+  const latitudeRad = Math.asin(Math.max(-1, Math.min(1, normalized.y)));
+  const cosLatitude = Math.cos(latitudeRad);
+  const fallbackEast = Math.abs(cosLatitude) < 0.000001 ? { x: 1, y: 0, z: 0 } : undefined;
+  return {
+    direction: normalized,
+    east: fallbackEast ?? normalizeVector({ x: -Math.sin(longitudeRad), y: 0, z: Math.cos(longitudeRad) }),
+    north: normalizeVector({
+      x: -Math.sin(latitudeRad) * Math.cos(longitudeRad),
+      y: cosLatitude,
+      z: -Math.sin(latitudeRad) * Math.sin(longitudeRad)
+    }),
+    longitudeRad,
+    latitudeRad
+  };
+}
+
+function rotateDirectionAlongTangent(
+  direction: SphericalVector,
+  tangent: SphericalVector,
+  radians: number
+): SphericalVector {
+  if (Math.abs(radians) < 0.00000001) return direction;
+  const normalizedDirection = normalizeVector(direction);
+  const normalizedTangent = projectOntoTangent(tangent, normalizedDirection, orthogonalTangent(normalizedDirection));
+  return normalizeVector(addVectors(
+    scaleVector(normalizedDirection, Math.cos(radians)),
+    scaleVector(normalizedTangent, Math.sin(radians))
+  ));
+}
+
+function orthogonalTangent(direction: SphericalVector): SphericalVector {
+  const reference = Math.abs(direction.y) < 0.92
+    ? { x: 0, y: 1, z: 0 }
+    : { x: 1, y: 0, z: 0 };
+  return normalizeVector(crossVectors(reference, direction));
+}
+
+function projectOntoTangent(
+  vector: SphericalVector,
+  surfaceDirection: SphericalVector,
+  fallback: SphericalVector
+): SphericalVector {
+  const projected = addVectors(vector, scaleVector(surfaceDirection, -dotVectors(vector, surfaceDirection)));
+  const length = vectorLength(projected);
+  return length > 0.000001 ? scaleVector(projected, 1 / length) : fallback;
 }
 
 function drawWeatherPresentationSystem(
@@ -182,6 +435,8 @@ function drawSoftPuff(
   context.restore();
 }
 
+// Projected surface and debug textures still use this helper. The Cycle 2.2 cloud
+// field is intrinsically spherical and never calls it.
 export function normalizeHorizontalTextureSeam(canvas: HTMLCanvasElement, columns = 2): void {
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context || canvas.width < 2 || canvas.height < 1) return;
@@ -203,39 +458,27 @@ export function normalizeHorizontalTextureSeam(canvas: HTMLCanvasElement, column
   context.putImageData(image, 0, 0);
 }
 
-function fractalCloudNoise(u: number, v: number, seed: string): number {
-  let amplitude = 0.58;
-  let frequency = 2.1;
-  let total = 0;
-  let weight = 0;
-  for (let octave = 0; octave < 5; octave += 1) {
-    total += smoothValueNoise(u * frequency, v * frequency, `${seed}:cloud:${octave}`) * amplitude;
-    weight += amplitude;
-    amplitude *= 0.52;
-    frequency *= 2.05;
-  }
-  return weight > 0 ? total / weight : 0;
+function hashSeed(seed: string): number {
+  const cached = seedHashCache.get(seed);
+  if (cached !== undefined) return cached;
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) hash = Math.imul(hash ^ seed.charCodeAt(index), 16777619);
+  const normalized = hash >>> 0;
+  seedHashCache.set(seed, normalized);
+  return normalized;
 }
 
-function smoothValueNoise(x: number, y: number, seed: string): number {
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const fx = smoothStep(0, 1, x - x0);
-  const fy = smoothStep(0, 1, y - y0);
-  const a = seededUnit(seed, x0, y0);
-  const b = seededUnit(seed, x0 + 1, y0);
-  const c = seededUnit(seed, x0, y0 + 1);
-  const d = seededUnit(seed, x0 + 1, y0 + 1);
-  return linearInterpolate(linearInterpolate(a, b, fx), linearInterpolate(c, d, fx), fy);
+function seededUnit3(seedHash: number, x: number, y: number, z: number): number {
+  let hash = seedHash;
+  hash ^= Math.imul(x + 374761393, 668265263);
+  hash ^= Math.imul(y + 2246822519, 3266489917);
+  hash ^= Math.imul(z + 3266489917, 374761393);
+  hash = Math.imul(hash ^ (hash >>> 15), 2246822507);
+  return ((hash ^ (hash >>> 13)) >>> 0) / 4294967295;
 }
 
 function seededUnit(seed: string, x: number, y: number): number {
-  let hash = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) hash = Math.imul(hash ^ seed.charCodeAt(index), 16777619);
-  hash ^= Math.imul(x + 374761393, 668265263);
-  hash ^= Math.imul(y + 2246822519, 3266489917);
-  hash = Math.imul(hash ^ (hash >>> 15), 2246822507);
-  return ((hash ^ (hash >>> 13)) >>> 0) / 4294967295;
+  return seededUnit3(hashSeed(seed), x, y, x ^ y);
 }
 
 function smoothStep(edge0: number, edge1: number, value: number): number {
@@ -249,8 +492,41 @@ function linearInterpolate(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-function degreesToRadians(value: number): number {
-  return value * Math.PI / 180;
+function dotVectors(a: SphericalVector, b: SphericalVector): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function crossVectors(a: SphericalVector, b: SphericalVector): SphericalVector {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  };
+}
+
+function addVectors(a: SphericalVector, b: SphericalVector): SphericalVector {
+  return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+}
+
+function scaleVector(vector: SphericalVector, scale: number): SphericalVector {
+  return { x: vector.x * scale, y: vector.y * scale, z: vector.z * scale };
+}
+
+function vectorLength(vector: SphericalVector): number {
+  return Math.sqrt(dotVectors(vector, vector));
+}
+
+function normalizeVector(vector: SphericalVector): SphericalVector {
+  const length = vectorLength(vector);
+  return length > 0.000001 ? scaleVector(vector, 1 / length) : { x: 1, y: 0, z: 0 };
+}
+
+function radiansToDegrees(value: number): number {
+  return value * 180 / Math.PI;
+}
+
+function wrapIndex(value: number, size: number): number {
+  return ((value % size) + size) % size;
 }
 
 function wrapUnit(value: number): number {
@@ -259,6 +535,10 @@ function wrapUnit(value: number): number {
 
 function wrapSignedDegrees(value: number): number {
   return ((value + 180) % 360 + 360) % 360 - 180;
+}
+
+function finite(value: number | undefined, fallback = 0): number {
+  return Number.isFinite(value) ? value as number : fallback;
 }
 
 function clamp01(value: number): number {

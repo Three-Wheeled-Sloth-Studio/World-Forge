@@ -5,13 +5,14 @@ import type {
   Resolution,
   WeatherCloudBand,
   WeatherPresentationSystem,
+  WeatherWindField,
   WorldProject
 } from '@world-forge/shared';
 import type { GenerationGraphNodeDefinition } from '../graph/generationGraph';
 import type { ProjectEnrichmentNodeEvent } from './systemOrbitalContext';
 
 export const ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID = 'project.atmospheric-weather-presentation' as const;
-export const ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_VERSION = '1.0.0' as const;
+export const ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_VERSION = '1.1.0' as const;
 
 export type AtmosphericWeatherPresentationSource = {
   projectId: string;
@@ -63,11 +64,11 @@ const nodes: readonly GenerationGraphNodeDefinition[] = [
   {
     id: 'enrichment.weather.resolve-advection',
     stageId: 'enrichment.weather.resolve-advection',
-    implementationId: 'generation-runtime.enrichment.weather.resolve-advection-v1',
+    implementationId: 'generation-runtime.enrichment.weather.resolve-advection-v2',
     label: 'Resolve atmospheric motion',
-    description: 'Translate existing wind fields into bounded presentation drift for cloud bands and weather systems.',
+    description: 'Translate generated wind fields into bounded mean drift and a compact local flow field for spherical cloud sampling.',
     inputs: ['enrichment.weather-source@1.0.0', 'enrichment.weather-systems@1.0.0'],
-    outputs: ['enrichment.weather-advection@1.0.0'],
+    outputs: ['enrichment.weather-advection@1.1.0'],
     fidelity: ['presentation']
   },
   {
@@ -192,6 +193,7 @@ export async function runAtmosphericWeatherPresentationWorkflow(source: Atmosphe
   let cloudBands: WeatherCloudBand[] = [];
   let systems: WeatherPresentationSystem[] = [];
   let advection: AtmosphericWeatherPresentationArtifact['payload']['advection'] = { zonalMeanDegPerDay: 0, meridionalMeanDegPerDay: 0 };
+  let windField: WeatherWindField = { resolution: { width: 1, height: 1 }, zonal: [0], meridional: [0] };
   let meanCloudCover = 0;
   let validation: AtmosphericWeatherPresentationArtifact['validation'] = { valid: true, issues: [] };
 
@@ -221,9 +223,11 @@ export async function runAtmosphericWeatherPresentationWorkflow(source: Atmosphe
       } else if (definition.id === 'enrichment.weather.seed-systems') {
         systems = deriveWeatherSystems(source, seed, meanCloudCover);
       } else if (definition.id === 'enrichment.weather.resolve-advection') {
-        advection = deriveAdvection(source);
+        const resolvedMotion = deriveAdvection(source);
+        advection = resolvedMotion.advection;
+        windField = resolvedMotion.windField;
       } else if (definition.id === 'enrichment.weather.validate') {
-        validation = validateWeatherPresentation(source, cloudBands, systems, advection, meanCloudCover);
+        validation = validateWeatherPresentation(source, cloudBands, systems, advection, windField, meanCloudCover);
         if (!validation.valid) throw new Error(validation.issues.map((issue) => issue.message).join(' '));
       }
       await (options.yieldControl?.() ?? Promise.resolve());
@@ -282,7 +286,8 @@ export async function runAtmosphericWeatherPresentationWorkflow(source: Atmosphe
     meanCloudCover,
     cloudBands,
     systems,
-    advection
+    advection,
+    windField
   };
   const completedAt = new Date().toISOString();
   return {
@@ -421,7 +426,10 @@ function systemFromCell(source: AtmosphericWeatherPresentationSource, seed: stri
   };
 }
 
-function deriveAdvection(source: AtmosphericWeatherPresentationSource): AtmosphericWeatherPresentationArtifact['payload']['advection'] {
+function deriveAdvection(source: AtmosphericWeatherPresentationSource): {
+  advection: AtmosphericWeatherPresentationArtifact['payload']['advection'];
+  windField: WeatherWindField;
+} {
   let zonal = 0;
   let meridional = 0;
   let count = 0;
@@ -431,9 +439,46 @@ function deriveAdvection(source: AtmosphericWeatherPresentationSource): Atmosphe
     meridional += finite(source.layers.windY[index]);
     count += 1;
   }
+
+  const sourceWidth = source.mapResolution.width;
+  const sourceHeight = source.mapResolution.height;
+  const width = Math.max(1, Math.min(64, sourceWidth));
+  const height = Math.max(1, Math.min(32, sourceHeight));
+  const fieldZonal: number[] = [];
+  const fieldMeridional: number[] = [];
+
+  for (let targetY = 0; targetY < height; targetY += 1) {
+    const startY = Math.floor(targetY * sourceHeight / height);
+    const endY = Math.max(startY + 1, Math.floor((targetY + 1) * sourceHeight / height));
+    for (let targetX = 0; targetX < width; targetX += 1) {
+      const startX = Math.floor(targetX * sourceWidth / width);
+      const endX = Math.max(startX + 1, Math.floor((targetX + 1) * sourceWidth / width));
+      let localZonal = 0;
+      let localMeridional = 0;
+      let localCount = 0;
+      for (let y = startY; y < endY; y += 1) {
+        for (let x = startX; x < endX; x += 1) {
+          const index = y * sourceWidth + x;
+          localZonal += finite(source.layers.windX[index]);
+          localMeridional += finite(source.layers.windY[index]);
+          localCount += 1;
+        }
+      }
+      fieldZonal.push(round(clamp(localCount ? localZonal / localCount : 0, -2, 2), 6));
+      fieldMeridional.push(round(clamp(localCount ? localMeridional / localCount : 0, -2, 2), 6));
+    }
+  }
+
   return {
-    zonalMeanDegPerDay: round(clamp((count ? zonal / count : 0) * 18, -24, 24), 5),
-    meridionalMeanDegPerDay: round(clamp((count ? meridional / count : 0) * 5, -6, 6), 5)
+    advection: {
+      zonalMeanDegPerDay: round(clamp((count ? zonal / count : 0) * 18, -24, 24), 5),
+      meridionalMeanDegPerDay: round(clamp((count ? meridional / count : 0) * 5, -6, 6), 5)
+    },
+    windField: {
+      resolution: { width, height },
+      zonal: fieldZonal,
+      meridional: fieldMeridional
+    }
   };
 }
 
@@ -442,6 +487,7 @@ function validateWeatherPresentation(
   cloudBands: WeatherCloudBand[],
   systems: WeatherPresentationSystem[],
   advection: AtmosphericWeatherPresentationArtifact['payload']['advection'],
+  windField: WeatherWindField,
   meanCloudCover: number
 ): AtmosphericWeatherPresentationArtifact['validation'] {
   const issues: AtmosphericWeatherPresentationArtifact['validation']['issues'] = [];
@@ -450,6 +496,13 @@ function validateWeatherPresentation(
   if (systems.length < 4) issues.push({ severity: 'error', message: 'Weather presentation produced too few weather systems.' });
   if (!Number.isFinite(meanCloudCover) || meanCloudCover < 0 || meanCloudCover > 1) issues.push({ severity: 'error', message: 'Mean cloud cover is outside the accepted range.' });
   if (![advection.zonalMeanDegPerDay, advection.meridionalMeanDegPerDay].every(Number.isFinite)) issues.push({ severity: 'error', message: 'Atmospheric advection contains non-finite values.' });
+  const windCellCount = windField.resolution.width * windField.resolution.height;
+  if (windField.resolution.width < 1 || windField.resolution.height < 1 || windField.zonal.length !== windCellCount || windField.meridional.length !== windCellCount) {
+    issues.push({ severity: 'error', message: 'Atmospheric wind field has invalid dimensions.' });
+  }
+  if (![...windField.zonal, ...windField.meridional].every(Number.isFinite)) {
+    issues.push({ severity: 'error', message: 'Atmospheric wind field contains non-finite values.' });
+  }
   for (const band of cloudBands) {
     if (![band.centerLatitudeDeg, band.widthDeg, band.density, band.waveAmplitudeDeg, band.waveNumber, band.phaseRad, band.driftDegPerDay].every(Number.isFinite)) {
       issues.push({ severity: 'error', message: `Cloud band ${band.id} contains non-finite values.` });

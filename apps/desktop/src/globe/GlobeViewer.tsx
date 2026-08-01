@@ -216,23 +216,20 @@ export function GlobeViewer({
     planetSpinGroup.add(ocean);
 
     const initialWeatherDay = simulationClock.currentDays(performance.now());
-    const cloudCanvas = createWeatherPresentationTexture(weatherPresentation, 'clouds', initialWeatherDay);
+    // The deterministic globe-space field is generated once. Shared-clock
+    // advection is handled by the local-flow shader below, not by rebuilding
+    // the CPU canvas every animation tick.
+    const cloudCanvas = createWeatherPresentationTexture(weatherPresentation, 'clouds', 0);
     const cloudAlpha = new THREE.CanvasTexture(cloudCanvas);
     cloudAlpha.wrapS = THREE.RepeatWrapping;
     cloudAlpha.wrapT = THREE.ClampToEdgeWrapping;
     cloudAlpha.minFilter = THREE.LinearFilter;
     cloudAlpha.magFilter = THREE.LinearFilter;
+    const cloudWindTexture = createWeatherWindTexture(weatherPresentation);
+    const cloudMaterial = createWindAdvectedCloudMaterial(cloudAlpha, cloudWindTexture, initialWeatherDay);
     const clouds = new THREE.Mesh(
       new THREE.SphereGeometry(scale.cloudShellRadius, 128, 64),
-      new THREE.MeshLambertMaterial({
-        color: 0xffffff,
-        alphaMap: cloudAlpha,
-        transparent: true,
-        opacity: 0.82,
-        alphaTest: 0.045,
-        depthWrite: false,
-        depthTest: true
-      })
+      cloudMaterial
     );
     clouds.castShadow = false;
     clouds.receiveShadow = true;
@@ -363,13 +360,14 @@ export function GlobeViewer({
       host.dataset.cameraOrbitYaw = cameraOrbitRef.current.yaw.toFixed(6);
       host.dataset.cameraOrbitPitch = cameraOrbitRef.current.pitch.toFixed(6);
       host.dataset.observerControl = 'camera-orbit';
-      if (weatherPresentation && (!Number.isFinite(lastWeatherTextureDay) || Math.abs(simulationDays - lastWeatherTextureDay) >= 0.04)) {
-        renderWeatherPresentationTexture(cloudCanvas, weatherPresentation, 'clouds', simulationDays);
-        renderWeatherPresentationTexture(weatherCanvas, weatherPresentation, 'weather', simulationDays);
-        cloudAlpha.needsUpdate = true;
-        weatherAlpha.needsUpdate = true;
-        lastWeatherTextureDay = simulationDays;
+      if (weatherPresentation) {
+        updateWindAdvectedCloudMaterial(cloudMaterial, simulationDays);
         host.dataset.weatherTextureDay = simulationDays.toFixed(6);
+        if (!Number.isFinite(lastWeatherTextureDay) || Math.abs(simulationDays - lastWeatherTextureDay) >= 0.08) {
+          renderWeatherPresentationTexture(weatherCanvas, weatherPresentation, 'weather', simulationDays);
+          weatherAlpha.needsUpdate = true;
+          lastWeatherTextureDay = simulationDays;
+        }
       }
       if (orbitalPresentation && orbitalContext) {
         updateOrbitalPresentationScene(orbitalPresentation, orbitalContext, simulationDays);
@@ -410,6 +408,7 @@ export function GlobeViewer({
       material.dispose();
       texture.dispose();
       cloudAlpha.dispose();
+      cloudWindTexture.dispose();
       weatherAlpha.dispose();
       ocean.geometry.dispose();
       (ocean.material as THREE.Material).dispose();
@@ -443,14 +442,19 @@ export function GlobeViewer({
       data-moon-shadow-mode={orbitalContext ? 'pcf-soft-tracked' : 'disabled'}
       data-moon-shadow-caster-count={moonCount}
       data-cloud-shadow-mode="disabled-until-soft-shadow"
-      data-cloud-renderer="sparse-layered-noise-v3"
-      data-cloud-coverage-profile="clear-sky-gaps"
+      data-cloud-renderer="wind-oriented-spherical-v4"
+      data-cloud-coverage-profile="thin-streamers-clear-sky"
+      data-cloud-seam-mode="spherical-continuous"
+      data-cloud-advection-mode="local-flow-shader"
       data-weather-shell-offset="0.002"
       data-minimum-globe-zoom="35"
       data-weather-presentation={weatherPresentation ? 'ready' : 'pending'}
       data-weather-authority={weatherPresentation?.weatherAuthority ?? 'none'}
       data-weather-band-count={weatherPresentation?.payload.cloudBands.length ?? 0}
       data-weather-system-count={weatherPresentation?.payload.systems.length ?? 0}
+      data-weather-wind-field={weatherPresentation?.payload.windField
+        ? `${weatherPresentation.payload.windField.resolution.width}x${weatherPresentation.payload.windField.resolution.height}`
+        : 'none'}
       data-cloud-layer={weatherPresentation && showClouds ? 'visible' : 'hidden'}
       data-weather-layer={weatherPresentation && showWeather ? 'visible' : 'hidden'}
     >
@@ -458,6 +462,112 @@ export function GlobeViewer({
       {orbitalContext && <SystemSimulationControls clock={simulationClock} artifact={orbitalContext} />}
     </div>
   );
+}
+
+
+type WindCloudShaderState = {
+  uniforms: {
+    weatherSimulationDays: { value: number };
+  };
+};
+
+function createWeatherWindTexture(
+  artifact: AtmosphericWeatherPresentationArtifact | null
+): THREE.DataTexture {
+  const field = artifact?.payload.windField;
+  const width = Math.max(1, field?.resolution.width ?? 1);
+  const height = Math.max(1, field?.resolution.height ?? 1);
+  const data = new Uint8Array(width * height * 4);
+  const fallbackZonal = artifact ? artifact.payload.advection.zonalMeanDegPerDay / 18 : 0;
+  const fallbackMeridional = artifact ? artifact.payload.advection.meridionalMeanDegPerDay / 5 : 0;
+
+  for (let index = 0; index < width * height; index += 1) {
+    const zonal = clampSigned(field?.zonal[index] ?? fallbackZonal, 2);
+    const meridional = clampSigned(field?.meridional[index] ?? fallbackMeridional, 2);
+    const offset = index * 4;
+    data[offset] = encodeSignedWind(zonal);
+    data[offset + 1] = encodeSignedWind(meridional);
+    data[offset + 2] = 128;
+    data[offset + 3] = 255;
+  }
+
+  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createWindAdvectedCloudMaterial(
+  alphaMap: THREE.Texture,
+  windMap: THREE.Texture,
+  initialSimulationDays: number
+): THREE.MeshLambertMaterial {
+  const material = new THREE.MeshLambertMaterial({
+    color: 0xffffff,
+    alphaMap,
+    transparent: true,
+    opacity: 0.78,
+    alphaTest: 0.012,
+    depthWrite: false,
+    depthTest: true
+  });
+  material.userData.weatherSimulationDays = initialSimulationDays;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.weatherWindMap = { value: windMap };
+    shader.uniforms.weatherSimulationDays = { value: material.userData.weatherSimulationDays as number };
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform sampler2D weatherWindMap;
+uniform float weatherSimulationDays;
+vec2 wrapWeatherUv(vec2 uv) {
+  float wrappedY = mod(uv.y, 2.0);
+  if (wrappedY < 0.0) wrappedY += 2.0;
+  float wrappedX = uv.x;
+  if (wrappedY > 1.0) {
+    wrappedY = 2.0 - wrappedY;
+    wrappedX += 0.5;
+  }
+  return vec2(fract(wrappedX), wrappedY);
+}`
+      )
+      .replace(
+        '#include <alphamap_fragment>',
+        `#ifdef USE_ALPHAMAP
+  vec2 weatherFlow = texture2D(weatherWindMap, vAlphaMapUv).rg * 2.0 - 1.0;
+  float latitudeScale = max(0.24, sin(PI * clamp(vAlphaMapUv.y, 0.0, 1.0)));
+  vec2 weatherOffset = vec2(weatherFlow.x / latitudeScale, -weatherFlow.y)
+    * weatherSimulationDays * 0.0035;
+  vec2 weatherUv = wrapWeatherUv(vAlphaMapUv - weatherOffset);
+  diffuseColor.a *= texture2D(alphaMap, weatherUv).g;
+#endif`
+      );
+    material.userData.weatherShader = shader as unknown as WindCloudShaderState;
+  };
+  material.customProgramCacheKey = () => 'world-forge-wind-cloud-advection-v1';
+  return material;
+}
+
+function updateWindAdvectedCloudMaterial(
+  material: THREE.MeshLambertMaterial,
+  simulationDays: number
+): void {
+  material.userData.weatherSimulationDays = simulationDays;
+  const shader = material.userData.weatherShader as WindCloudShaderState | undefined;
+  if (shader) shader.uniforms.weatherSimulationDays.value = simulationDays;
+}
+
+function encodeSignedWind(value: number): number {
+  return Math.round((clampSigned(value, 2) / 2 * 0.5 + 0.5) * 255);
+}
+
+function clampSigned(value: number, limit: number): number {
+  return Math.max(-limit, Math.min(limit, Number.isFinite(value) ? value : 0));
 }
 
 function createGlobeTargetMarker(direction: THREE.Vector3): THREE.Group {
