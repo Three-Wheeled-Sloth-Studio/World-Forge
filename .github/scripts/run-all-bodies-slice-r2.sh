@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/all-system-bodies-20260801-r4'
+BRANCH='automation/all-system-bodies-20260801-r5'
 BASE_SHA='a8fe9af37e1581cf4d4c03c2c1c3e62d7700354e'
 VITE_PID=''
 cleanup() {
@@ -36,6 +36,84 @@ test "$(git rev-parse origin/dev)" = "${BASE_SHA}"
 git checkout -B dev origin/dev
 npm ci
 python /tmp/apply-all-bodies.py
+python - <<'PYINTEGRATE'
+from pathlib import Path
+import re
+
+def replace_once(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding='utf-8')
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f'{path}: expected one match, found {count}: {old[:100]!r}')
+    target.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+# Register the generic system-body workflow with the shared enrichment event/graph registry.
+replace_once(
+    'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
+    "import {\n  STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID,\n  stellarSurfacePresentationWorkflowDescriptor\n} from './stellarSurfacePresentation';",
+    "import {\n  STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID,\n  stellarSurfacePresentationWorkflowDescriptor\n} from './stellarSurfacePresentation';\nimport {\n  SYSTEM_BODY_GENERATION_WORKFLOW_ID,\n  systemBodyGenerationWorkflowDescriptor\n} from './systemBodyGeneration';"
+)
+replace_once(
+    'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
+    "export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID | typeof STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID | typeof AIRLESS_ROCKY_BODY_WORKFLOW_ID;",
+    "export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID | typeof STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID | typeof AIRLESS_ROCKY_BODY_WORKFLOW_ID | typeof SYSTEM_BODY_GENERATION_WORKFLOW_ID;"
+)
+replace_once(
+    'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
+    "  stellarSurfacePresentationWorkflowDescriptor,\n  airlessRockyBodyWorkflowDescriptor",
+    "  stellarSurfacePresentationWorkflowDescriptor,\n  airlessRockyBodyWorkflowDescriptor,\n  systemBodyGenerationWorkflowDescriptor"
+)
+replace_once(
+    'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
+    "return value === SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID || value === ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID || value === STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID || value === AIRLESS_ROCKY_BODY_WORKFLOW_ID;",
+    "return value === SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID || value === ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID || value === STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID || value === AIRLESS_ROCKY_BODY_WORKFLOW_ID || value === SYSTEM_BODY_GENERATION_WORKFLOW_ID;"
+)
+
+# Match the established enrichment validation issue contract.
+generation_path = Path('packages/generation-runtime/src/enrichment/systemBodyGeneration.ts')
+generation_text = generation_path.read_text(encoding='utf-8')
+generation_text, issue_count = re.subn(
+    r"\{ code: '[^']+', message:",
+    "{ severity: 'error', message:",
+    generation_text
+)
+if issue_count != 9:
+    raise SystemExit(f'expected nine validation issue conversions, found {issue_count}')
+generation_path.write_text(generation_text, encoding='utf-8')
+
+# Finish converting the primary-Globe orbital helpers from the airless proof to generic body artifacts.
+replace_once(
+    'apps/desktop/src/globe/GlobeViewer.tsx',
+    "import type { AtmosphericWeatherPresentationArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';",
+    "import type { AtmosphericWeatherPresentationArtifact, GeneratedSystemBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';"
+)
+replace_once(
+    'apps/desktop/src/globe/GlobeViewer.tsx',
+    "type OrbitalBodyVisual = {\n  body: OrbitalPresentationBody;\n  group: THREE.Group;\n  mesh: THREE.Mesh;\n  displayRadius: number;\n};",
+    "type OrbitalBodyVisual = {\n  body: OrbitalPresentationBody;\n  group: THREE.Group;\n  mesh: THREE.Object3D;\n  displayRadius: number;\n};"
+)
+replace_once(
+    'apps/desktop/src/globe/GlobeViewer.tsx',
+    "        const generatedArtifact = airlessArtifactForBody(project, artifact, body.id, fidelity);",
+    "        const generatedArtifact = bodyArtifactForBody(project, artifact, body.id, fidelity);"
+)
+replace_once(
+    'apps/desktop/src/globe/GlobeViewer.tsx',
+    "      .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body), null))",
+    "      .map((body) => {\n        const fidelity = project.bodyGeneration?.records[body.id]?.requestedFidelity ?? 'preview';\n        const generatedArtifact = bodyArtifactForBody(project, artifact, body.id, fidelity);\n        return createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body), generatedArtifact);\n      })"
+)
+replace_once(
+    'apps/desktop/src/globe/GlobeViewer.tsx',
+    "function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number, generatedArtifact: import('@world-forge/shared').AirlessRockyBodyArtifact | null): OrbitalBodyVisual {",
+    "function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number, generatedArtifact: GeneratedSystemBodyArtifact | null): OrbitalBodyVisual {"
+)
+replace_once(
+    'apps/desktop/src/globe/GlobeViewer.tsx',
+    "  const mesh = generatedArtifact\n    ? createAirlessBodyMesh(generatedArtifact, radius)",
+    "  const mesh = generatedArtifact\n    ? createGeneratedBodyObject(generatedArtifact, radius)"
+)
+PYINTEGRATE
 git diff --check
 
 npx vitest run \
@@ -90,6 +168,7 @@ git add \
   packages/generation-runtime/src/enrichment/systemBodyGeneration.test.ts \
   packages/generation-runtime/src/enrichment/bodyGenerationLifecycle.ts \
   packages/generation-runtime/src/enrichment/bodyGenerationLifecycle.test.ts \
+  packages/generation-runtime/src/enrichment/systemOrbitalContext.ts \
   apps/desktop/src/enrichmentWorker.ts
 git diff --cached --check
 git commit -m "Add capability-resolved system body generation"
