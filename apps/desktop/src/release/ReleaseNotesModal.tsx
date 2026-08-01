@@ -28,6 +28,17 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.45</p>
+            <h3>The moons have entered the queue</h3>
+            <ul>
+              <li>System bodies now carry saved lifecycle state, stable seeds, workflow identity, fidelity, queue order, stale and failure reasons, and artifact references.</li>
+              <li>Selected placeholder moons and unresolved-moon batches run sequentially through the inspectable Generate Airless Rocky Body workflow.</li>
+              <li>The first generated moon proof produces deterministic globe-space crater terrain, albedo, and thermal fields without climate, hydrology, ecology, or civilization work.</li>
+              <li>Generated airless moons replace wireframes with a low-resolution displaced and textured body while ordinary primary-world generation remains unchanged.</li>
+            </ul>
+          </section>
+
+          <section>
             <p className="release-kicker">Release 0.3.40</p>
             <h3>Weather, without pretending we own a supercomputer</h3>
             <ul>

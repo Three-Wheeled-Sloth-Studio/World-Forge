@@ -208,7 +208,10 @@ export function useDevGraphWorkspace(currentProject: WorldProject | null = null)
   const requestedStartIndex = telemetry?.startNodeId ? workflow.nodes.findIndex((node) => node.id === telemetry.startNodeId) : 0;
   const graphDiagnosticsByNode = useMemo(() => {
     if (isProjectEnrichmentWorkflowId(toolbar.workflowId)) {
-      const artifact = effectiveProject?.enrichmentArtifacts?.[toolbar.workflowId];
+      const exactArtifact = effectiveProject?.enrichmentArtifacts?.[toolbar.workflowId];
+      const artifact = exactArtifact ?? Object.values(effectiveProject?.enrichmentArtifacts ?? {})
+        .filter((candidate) => candidate.workflow.id === toolbar.workflowId)
+        .sort((left, right) => right.completedAt.localeCompare(left.completedAt))[0];
       const entries = artifact?.workflow.nodes ?? [];
       return new Map(entries.map((entry) => [entry.nodeId, {
         nodeId: entry.nodeId, version: entry.version, dependencies: entry.dependencies, durationMs: entry.durationMs,

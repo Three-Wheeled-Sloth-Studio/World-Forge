@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import type { OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import type { AirlessRockyBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
+import type { BodyGenerationQueueController } from '../enrichment/useBodyGenerationQueue';
+import { airlessArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
+import { BodyGenerationPanel } from './BodyGenerationPanel';
+import { createAirlessBodyMesh } from './airlessBodyPresentation';
 import { SystemSimulationControls } from '../globe/SystemSimulationControls';
 import { deterministicStarDirections } from '../globe/orbitalPresentation';
 import {
@@ -21,6 +25,7 @@ type CameraOrbit = { yaw: number; pitch: number };
 type BodySceneRecord = {
   group: THREE.Group;
   displaySize: number;
+  materialMode: 'scaffold-solid' | 'placeholder-wireframe' | 'airless-rocky-v1';
 };
 type OrbitSceneRecord = {
   line: THREE.LineLoop;
@@ -31,12 +36,14 @@ export function SystemViewer({
   project,
   orbitalContext,
   simulationClock,
+  bodyGeneration,
   zoom,
   onZoom
 }: {
   project: WorldProject;
   orbitalContext: SystemOrbitalContextArtifact | null;
   simulationClock: SystemSimulationClock;
+  bodyGeneration: BodyGenerationQueueController;
   zoom: number;
   onZoom: (event: WheelEvent) => void;
 }) {
@@ -52,7 +59,7 @@ export function SystemViewer({
   const [focusedBodyId, setFocusedBodyId] = useState('');
   const catalog = useMemo(
     () => orbitalContext ? buildSystemCatalog(project, orbitalContext) : [],
-    [orbitalContext?.artifactSignature, project.projectId, project.projectName]
+    [orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.projectId, project.projectName]
   );
   const selectedEntry = catalog.find((entry) => entry.id === selectedBodyId) ?? null;
 
@@ -130,14 +137,16 @@ export function SystemViewer({
     starGroup.add(starGlow);
     if (showLabels && starEntry) starGroup.add(createBodyLabelSprite(starEntry.label, 'generated', 0.94));
     scene.add(starGroup);
-    bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62 });
+    bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62, materialMode: 'scaffold-solid' });
 
     const starLight = new THREE.PointLight(orbitalContext.payload.star.colorHex, 6.4, 80, 1.35);
     scene.add(starLight);
 
     for (const entry of catalog) {
       if (!entry.body) continue;
-      const record = createBodySceneRecord(entry, showLabels);
+      const requestedFidelity = project.bodyGeneration?.records[entry.id]?.requestedFidelity ?? 'preview';
+      const generatedArtifact = airlessArtifactForBody(project, orbitalContext, entry.id, requestedFidelity);
+      const record = createBodySceneRecord(entry, showLabels, generatedArtifact);
       scene.add(record.group);
       bodyRecords.set(entry.id, record);
       if (showOrbitPaths) {
@@ -286,6 +295,7 @@ export function SystemViewer({
       host.dataset.simulationDays = simulationDays.toFixed(6);
       host.dataset.cameraDistance = camera.position.length().toFixed(6);
       host.dataset.focusedBody = focusedId;
+      host.dataset.selectedBodyMaterial = selectedRecord?.materialMode ?? 'none';
       renderer.render(scene, camera);
       animationFrame = window.requestAnimationFrame(animate);
     };
@@ -304,7 +314,7 @@ export function SystemViewer({
       host.replaceChildren();
       cameraRef.current = null;
     };
-  }, [catalog, onZoom, orbitalContext?.artifactSignature, project.projectId, scaleMode, showLabels, showOrbitPaths, simulationClock]);
+  }, [catalog, onZoom, orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.enrichmentArtifacts, project.projectId, scaleMode, showLabels, showOrbitPaths, simulationClock]);
 
   const primaryBodyId = orbitalContext?.payload.primaryBodyId ?? '';
   const starId = orbitalContext?.payload.star.id ?? '';
@@ -322,6 +332,8 @@ export function SystemViewer({
       data-system-focused-body={focusedBodyId || 'none'}
       data-system-orbit-paths={showOrbitPaths ? 'visible' : 'hidden'}
       data-system-labels={showLabels ? 'visible' : 'hidden'}
+      data-system-body-queue={bodyGeneration.lifecycle?.queue.length ?? 0}
+      data-system-active-body-generation={bodyGeneration.lifecycle?.activeBodyId ?? 'none'}
       data-system-distance-authority="physical-data-distinct-from-display"
     >
       <div ref={hostRef} className="system-render-surface" aria-label="Generated system viewer" />
@@ -420,6 +432,7 @@ export function SystemViewer({
                 Return to primary
               </button>
             </div>
+            <BodyGenerationPanel selectedEntry={selectedEntry} controller={bodyGeneration} />
             <small>
               Physical orbital values remain authoritative. Body sizes and display distances are exaggerated for inspection.
             </small>
@@ -433,17 +446,21 @@ export function SystemViewer({
   );
 }
 
-function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean): BodySceneRecord {
+function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean, generatedArtifact: AirlessRockyBodyArtifact | null): BodySceneRecord {
   const body = entry.body!;
   const group = new THREE.Group();
   group.userData.systemBodyId = entry.id;
   const displaySize = systemDisplayBodySize(body);
   const color = bodyColor(body.kind, entry.generationStatus);
-  const material = entry.generationStatus === 'placeholder'
-    ? new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.78 })
-    : new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 });
+  const material = entry.generationStatus === 'generated'
+    ? new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 })
+    : new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: entry.generationStatus === 'generating' ? 0.94 : 0.78 });
 
-  if (body.kind === 'belt') {
+  if (generatedArtifact && body.kind !== 'belt') {
+    const mesh = createAirlessBodyMesh(generatedArtifact, displaySize);
+    mesh.userData.systemBodyId = entry.id;
+    group.add(mesh);
+  } else if (body.kind === 'belt') {
     const belt = new THREE.Mesh(
       new THREE.TorusGeometry(displaySize * 1.75, Math.max(0.018, displaySize * 0.1), 8, 56),
       material
@@ -463,7 +480,11 @@ function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean): B
   }
 
   if (showLabel) group.add(createBodyLabelSprite(entry.label, entry.generationStatus, displaySize + 0.28));
-  return { group, displaySize };
+  return {
+    group,
+    displaySize,
+    materialMode: generatedArtifact ? 'airless-rocky-v1' : entry.generationStatus === 'generated' ? 'scaffold-solid' : 'placeholder-wireframe'
+  };
 }
 
 function createOrbitLine(
@@ -499,7 +520,7 @@ function createBodyLabelSprite(
     context.strokeStyle = 'rgba(1, 4, 10, 0.95)';
     context.lineWidth = 7;
     context.strokeText(label, canvas.width / 2, canvas.height / 2);
-    context.fillStyle = status === 'generated' ? '#f6e3ad' : '#aebdca';
+    context.fillStyle = status === 'generated' ? '#f6e3ad' : status === 'generating' ? '#9ee6c3' : status === 'failed' ? '#ff9b94' : status === 'stale' ? '#f1c27d' : '#aebdca';
     context.fillText(label, canvas.width / 2, canvas.height / 2);
   }
   const texture = new THREE.CanvasTexture(canvas);
@@ -534,7 +555,11 @@ function createSystemStarField(seed: string): THREE.Points {
 }
 
 function bodyColor(kind: OrbitalPresentationBody['kind'], status: SystemCatalogEntry['generationStatus']): number {
-  if (status === 'placeholder') return kind === 'moon' ? 0x8d99a4 : 0x72879a;
+  if (status === 'generating') return 0x7ed6ad;
+  if (status === 'queued') return 0x79a9d6;
+  if (status === 'failed') return 0xc56f68;
+  if (status === 'stale') return 0xd2a35e;
+  if (status !== 'generated') return kind === 'moon' ? 0x8d99a4 : 0x72879a;
   if (kind === 'gas-giant') return 0xc99b6b;
   if (kind === 'ice-giant') return 0x74a9bd;
   if (kind === 'dwarf') return 0x9c8f82;
