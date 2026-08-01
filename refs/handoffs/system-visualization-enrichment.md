@@ -126,3 +126,13 @@ The next planned slice is capability-resolved partner workflow infrastructure, f
 - The saved artifact is presentation-only and records the current orbital artifact signature and Experimental world-workflow identity for invalidation.
 - System view now replaces the flat star material with the generated photosphere texture and activity-scaled corona after explicit user launch.
 - Detailed and ordinary primary-world generation remain unchanged.
+
+
+## Capability-resolved all-body generation slice (0.3.49)
+
+- Every non-primary orbital body is now eligible for explicit generation.
+- The queue resolves airless rocky, rocky, gas giant, ice giant, dwarf, and debris-belt profiles before execution.
+- Structurally irrelevant nodes are absent from each graph rather than running and immediately exiting.
+- Generated artifacts persist compact fields or procedural particle parameters; GPU textures and meshes are materialized only by active views.
+- System View renders each generated profile and Globe View can open every generated non-primary body, including debris belts.
+- The primary-world workflow remains unchanged.
