@@ -95,3 +95,11 @@ Tracking issue: #35
 Stop at the accepted proof boundary before expanding body profiles.
 
 The next planned slice is capability-resolved partner workflow infrastructure, followed by the first barren and geologically active terrestrial body. System panning and broader low-resolution body presentation remain explicit viewer follow-ups and should not be bundled into that workflow architecture slice.
+
+## 2026-08-01 - Globe body integration follow-up
+
+- Generated airless moon artifacts now replace placeholder moon visuals in primary-world Globe view.
+- System inspector adds `Zoom to globe` for the primary world and generated moons.
+- Globe view accepts an explicit body target, renders generated airless moons as the central globe, and provides a return-to-primary action.
+- Star presentation in System view now maintains a bounded apparent angular size while orbiting the camera, preventing near-camera tilt blowups.
+- Other secondary body profiles remain deferred until this viewer integration is accepted.
