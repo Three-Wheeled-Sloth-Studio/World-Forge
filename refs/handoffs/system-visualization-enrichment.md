@@ -2,7 +2,7 @@
 
 Updated: 2026-07-31
 
-Status: Visualizer Cycle 3 bounded System Explore viewer validated; body lifecycle and queue are next
+Status: Body lifecycle, sequential queue, and first airless-moon proof validated
 
 Planning source: `refs/planning/pi-system-visualization-and-progressive-body-enrichment.md`
 
@@ -65,28 +65,33 @@ Tracking issue: #35
 - System zoom is independently persisted from Map and Globe zoom.
 - Focused deterministic contracts cover catalog completeness, parent-relative moon placement, orbital ordering in both display modes, and physical-versus-display separation.
 
+## Fleshing Cycle 1 and first airless-moon proof
+
+- Added saved `body-generation-lifecycle-v1` state with stable seeds, eligibility, profile, workflow identity, requested fidelity, queue order, active body, artifact references, stale reasons, and failure reasons.
+- Queue execution is sequential by default and supports selected generation, unresolved-moon batch queueing, start, pause-after-active, cancel, remove, retry, regenerate, completion, and stale reconciliation.
+- Added inspectable `project.generate-airless-rocky-body@1.0.0` with seven measured nodes.
+- The resolved graph intentionally contains no climate, hydrology, ecology, or civilization nodes.
+- The first generated body artifact stores deterministic globe-space crater relief, albedo, and illustrative thermal fields at preview or standard fidelity.
+- Completed artifacts persist through ordinary project save and export paths and reconcile on reopen.
+- System view replaces the selected moon wireframe with a low-resolution displaced and textured generated-body representation.
+
 ## Current boundaries
 
-- No secondary-body terrain, climate, ecology, or civilization generation.
-- No body lifecycle or generation queue yet.
-- No airless-moon generation proof yet.
+- Airless rocky moons are the only supported secondary-body generation profile.
+- No terrestrial-active, gas-giant, ice-giant, dwarf, belt, ecology, or civilization body generation yet.
 - No N-body simulation or authoritative ephemeris.
 - No attempt to render physical body size and orbital distance at the same literal scale.
 - No precipitation, lightning, or authoritative weather forecast/history simulation.
 - No soft transmittance-based cloud shadows.
 - No seasonal surface response yet.
 - Clock-panel mobility/collapse remains a backlog item.
+- System camera panning remains a backlog item.
+- General low-resolution generated-body presentation beyond the airless-moon proof remains a backlog item.
 - The primary generation graph, deterministic world signature, and replay contract remain unchanged.
 - Geographic drilldown issue #10 remains pinned and outside this PI slice.
 
 ## Next increment
 
-Implement body lifecycle and queue management as an inspectable enrichment surface, then prove the first secondary-body workflow with an airless moon.
+Stop at the accepted proof boundary before expanding body profiles.
 
-The next slice should establish:
-
-- body generation status and eligibility;
-- explicit queue, start, cancel, retry, stale, and completion behavior;
-- versioned body-specific artifacts and provenance;
-- bounded resource and telemetry reporting;
-- a single airless-moon generation proof that plugs into System selection without expanding ordinary primary-world generation.
+The next planned slice is capability-resolved partner workflow infrastructure, followed by the first barren and geologically active terrestrial body. System panning and broader low-resolution body presentation remain explicit viewer follow-ups and should not be bundled into that workflow architecture slice.

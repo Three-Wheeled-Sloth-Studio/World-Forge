@@ -156,6 +156,8 @@ Flat map receives annual-versus-seasonal controls and a day-of-year slider. Glob
 
 ### Fleshing Cycle 1: body lifecycle and queue
 
+Implementation status (2026-07-31): saved lifecycle records, sequential queue controls, cancellation, retry, regeneration, stale reconciliation, provenance, and body-specific artifact references are implemented and validated.
+
 Bodies support explicit states:
 
 - `placeholder`
@@ -189,6 +191,8 @@ Capability resolution includes solid surface, geological activity, substantial a
 Skipped work is absent from the resolved graph rather than represented by meaningless zero-duration nodes.
 
 ## First secondary-body proof
+
+Implementation status (2026-07-31): the bounded airless-moon workflow, generated artifact persistence, deterministic reproduction, sequential unresolved-moon queue, and low-resolution System-view material replacement are implemented and validated.
 
 The first fully generated non-primary body is an airless moon:
 
