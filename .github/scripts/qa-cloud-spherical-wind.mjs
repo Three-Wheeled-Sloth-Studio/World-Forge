@@ -78,12 +78,12 @@ await page.screenshot({ path: '/tmp/world-forge-cloud-cycle-2-2-1440x900.png', f
 
 const zoomButton = page.getByRole('button', { name: /^Zoom \d+ percent$/ });
 await zoomButton.click({ force: true });
-await page.getByRole('menuitem', { name: '35%' }).click({ force: true });
+await page.getByRole('menuitem', { name: '35%', exact: true }).click({ force: true });
 await page.waitForTimeout(120);
 const distance35 = Number(await surface.getAttribute('data-camera-distance'));
 
 await zoomButton.click({ force: true });
-await page.getByRole('menuitem', { name: '50%' }).click({ force: true });
+await page.getByRole('menuitem', { name: '50%', exact: true }).click({ force: true });
 await page.waitForTimeout(120);
 const distance50 = Number(await surface.getAttribute('data-camera-distance'));
 if (!(distance35 > distance50)) throw new Error(`Expected 35% zoom to be farther than 50%: ${distance35} vs ${distance50}.`);
