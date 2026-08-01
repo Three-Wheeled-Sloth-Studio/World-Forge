@@ -1094,7 +1094,7 @@ export type GeneratedSystemBodyArtifact = {
   requestedFidelity: BodyGenerationFidelity;
   workflow: {
     id: 'project.generate-system-body';
-    version: '1.0.0';
+    version: '1.1.0';
     graphSignature: string;
     nodes: EnrichmentNodeRunRecord[];
   };
@@ -1116,7 +1116,7 @@ export type GeneratedSystemBodyArtifact = {
   artifactSignature: string;
   validation: AirlessRockyBodyArtifact['validation'];
   payload: {
-    modelVersion: 'system-body-presentation-v1';
+    modelVersion: 'system-body-presentation-v2';
     presentationKind: 'solid' | 'gas-giant' | 'ice-giant' | 'belt';
     resolution: Resolution;
     radiusClass: number;
