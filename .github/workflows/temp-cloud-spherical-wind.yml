@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/cloud-spherical-wind-20260731-r3'
+    if: github.head_ref == 'automation/cloud-spherical-wind-20260731-r4'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout runner branch
@@ -21,6 +21,8 @@ jobs:
         run: |
           cp .github/scripts/apply-cloud-spherical-wind.py /tmp/apply-cloud-spherical-wind.py
           cp .github/scripts/optimize-cloud-spherical-wind.py /tmp/optimize-cloud-spherical-wind.py
+          cp .github/scripts/finalize-cloud-shader-advection.py /tmp/finalize-cloud-shader-advection.py
+          cp .github/scripts/fix-cloud-shader-types.py /tmp/fix-cloud-shader-types.py
           cp .github/scripts/qa-cloud-spherical-wind.mjs /tmp/qa-cloud-spherical-wind.mjs
 
       - name: Switch to exact accepted dev
@@ -38,20 +40,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply and optimize Cycle 2.2 cloud correction
+      - name: Apply Cycle 2.2 spherical clouds and shader advection
         run: |
           python /tmp/apply-cloud-spherical-wind.py
           python /tmp/optimize-cloud-spherical-wind.py
+          python /tmp/finalize-cloud-shader-advection.py
+          python /tmp/fix-cloud-shader-types.py
           git diff --check
           grep -q "APP_VERSION = '0.3.43'" apps/desktop/src/appVersion.ts
           grep -q "wind-oriented-spherical-v4" apps/desktop/src/globe/GlobeViewer.tsx
           grep -q "spherical-continuous" apps/desktop/src/globe/GlobeViewer.tsx
+          grep -q "local-flow-shader" apps/desktop/src/globe/GlobeViewer.tsx
+          grep -q "createWeatherWindTexture" apps/desktop/src/globe/GlobeViewer.tsx
+          grep -q "updateWindAdvectedCloudMaterial" apps/desktop/src/globe/GlobeViewer.tsx
           grep -q "WORKFLOW_VERSION = '1.1.0'" packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.ts
           grep -q "windField" packages/shared/src/index.ts
           grep -q "Math.min(canvas.width, 256)" apps/desktop/src/globe/weatherPresentationTexture.ts
           grep -q "STREAMER_ROTATIONS" apps/desktop/src/globe/weatherPresentationTexture.ts
           grep -q "noiseSeedCache" apps/desktop/src/globe/weatherPresentationTexture.ts
           ! grep -A12 "renderWeatherPresentationTexture" apps/desktop/src/globe/weatherPresentationTexture.ts | grep -q "normalizeHorizontalTextureSeam"
+          ! grep -A12 "if (weatherPresentation)" apps/desktop/src/globe/GlobeViewer.tsx | grep -q "renderWeatherPresentationTexture(cloudCanvas"
 
       - name: Focused weather and cloud tests
         run: npx vitest run apps/desktop/src/globe/weatherPresentationTexture.test.ts packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.test.ts
@@ -90,4 +98,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/cloud-spherical-wind-20260731-r3 || true
+        run: git push origin --delete automation/cloud-spherical-wind-20260731-r4 || true
