@@ -1,4 +1,4 @@
-import type { AtmosphericWeatherPresentationArtifact, SystemOrbitalContextArtifact } from '@world-forge/shared';
+import type { AirlessRockyBodyArtifact, AtmosphericWeatherPresentationArtifact, SystemOrbitalContextArtifact } from '@world-forge/shared';
 import {
   runSystemOrbitalContextWorkflow,
   type ProjectEnrichmentNodeEvent,
@@ -8,14 +8,19 @@ import {
   runAtmosphericWeatherPresentationWorkflow,
   type AtmosphericWeatherPresentationSource
 } from '@world-forge/generation-runtime/enrichment/atmosphericWeatherPresentation';
+import {
+  runAirlessRockyBodyWorkflow,
+  type AirlessRockyBodySource
+} from '@world-forge/generation-runtime/enrichment/airlessRockyBody';
 
 type RunOrbitalRequest = { type: 'run-system-orbital-context'; id: string; source: SystemOrbitalContextSource };
 type RunWeatherRequest = { type: 'run-atmospheric-weather-presentation'; id: string; source: AtmosphericWeatherPresentationSource };
+type RunAirlessRockyBodyRequest = { type: 'run-airless-rocky-body'; id: string; source: AirlessRockyBodySource };
 type CancelRequest = { type: 'cancel'; id: string };
-type Request = RunOrbitalRequest | RunWeatherRequest | CancelRequest;
+type Request = RunOrbitalRequest | RunWeatherRequest | RunAirlessRockyBodyRequest | CancelRequest;
 type Response =
   | { type: 'stage'; id: string; stage: ProjectEnrichmentNodeEvent }
-  | { type: 'complete'; id: string; artifact: SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact }
+  | { type: 'complete'; id: string; artifact: SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | AirlessRockyBodyArtifact }
   | { type: 'cancelled'; id: string }
   | { type: 'error'; id: string; message: string };
 
@@ -33,7 +38,9 @@ self.onmessage = async (event: MessageEvent<Request>) => {
   try {
     const artifact = message.type === 'run-system-orbital-context'
       ? await runSystemOrbitalContextWorkflow(message.source, options)
-      : await runAtmosphericWeatherPresentationWorkflow(message.source, options);
+      : message.type === 'run-atmospheric-weather-presentation'
+        ? await runAtmosphericWeatherPresentationWorkflow(message.source, options)
+        : await runAirlessRockyBodyWorkflow(message.source, options);
     if (cancelled.has(message.id)) messenger.postMessage({ type: 'cancelled', id: message.id });
     else messenger.postMessage({ type: 'complete', id: message.id, artifact });
   } catch (error) {

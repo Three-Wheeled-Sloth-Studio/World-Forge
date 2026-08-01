@@ -750,6 +750,52 @@ export type EnrichmentNodeRunRecord = {
   };
 };
 
+export type BodyGenerationLifecycleStatus =
+  | 'placeholder'
+  | 'ready'
+  | 'queued'
+  | 'generating'
+  | 'generated'
+  | 'stale'
+  | 'failed';
+
+export type BodyGenerationFidelity = 'preview' | 'standard';
+export type BodyGenerationProfile = 'airless-rocky-body';
+
+export type BodyGenerationRecord = {
+  bodyId: string;
+  parentBodyId: string | null;
+  status: BodyGenerationLifecycleStatus;
+  eligible: boolean;
+  eligibilityReason: string;
+  profile: BodyGenerationProfile | null;
+  stableSeed: string;
+  requestedFidelity: BodyGenerationFidelity;
+  workflow: {
+    id: string;
+    version: string;
+    graphSignature?: string;
+  };
+  sourceBodySignature: string;
+  artifactKeys: string[];
+  requestedAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  updatedAt: string;
+  staleReason?: string;
+  failureReason?: string;
+};
+
+export type BodyGenerationLifecycle = {
+  modelVersion: 'body-generation-lifecycle-v1';
+  executionMode: 'sequential';
+  queue: string[];
+  activeBodyId: string | null;
+  paused: boolean;
+  updatedAt: string;
+  records: Record<string, BodyGenerationRecord>;
+};
+
 export type OrbitalPresentationBody = {
   id: string;
   parentBodyId: string | null;
@@ -893,7 +939,58 @@ export type AtmosphericWeatherPresentationArtifact = {
   };
 };
 
-export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact;
+export type AirlessRockyBodyArtifact = {
+  artifactKey: `project.generate-airless-rocky-body:${string}`;
+  artifactVersion: 1;
+  artifactRole: 'derived';
+  status: 'complete';
+  bodyId: string;
+  bodyProfile: 'airless-rocky-body';
+  requestedFidelity: BodyGenerationFidelity;
+  workflow: {
+    id: 'project.generate-airless-rocky-body';
+    version: '1.0.0';
+    graphSignature: string;
+    nodes: EnrichmentNodeRunRecord[];
+  };
+  source: {
+    projectId: string;
+    worldId: string;
+    bodyId: string;
+    parentBodyId: string | null;
+    sourceSignature: string;
+    orbitalArtifactSignature: string;
+    generatorVersion: string;
+    appVersion: string;
+    sourceCommit?: string;
+  };
+  seed: string;
+  startedAt: string;
+  completedAt: string;
+  totalMs: number;
+  artifactSignature: string;
+  validation: {
+    valid: boolean;
+    issues: Array<{ severity: 'error' | 'warning'; message: string }>;
+  };
+  payload: {
+    modelVersion: 'airless-rocky-body-v1';
+    resolution: Resolution;
+    radiusClass: number;
+    craterCount: number;
+    heightField: number[];
+    albedoField: number[];
+    thermalField: number[];
+    stats: {
+      minHeight: number;
+      maxHeight: number;
+      meanAlbedo: number;
+      seamMeanDelta: number;
+    };
+  };
+};
+
+export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | AirlessRockyBodyArtifact;
 export type ProjectEnrichmentArtifacts = Record<string, ProjectEnrichmentArtifact>;
 
 export type WorldProject = {
@@ -911,6 +1008,7 @@ export type WorldProject = {
   primaryWorld: PrimaryWorld;
   metrics: WorldMetrics;
   diagnostics?: GenerationDiagnostics;
+  bodyGeneration?: BodyGenerationLifecycle;
   enrichmentArtifacts?: ProjectEnrichmentArtifacts;
   exports: {
     packageExtension: '.wforge';
