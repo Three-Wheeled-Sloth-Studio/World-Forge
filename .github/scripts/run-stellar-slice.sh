@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/stellar-surface-slice-20260801'
+BRANCH='automation/stellar-surface-slice-20260801-r2'
 BASE_SHA='15b5c253481b8242f42464333e78ec3ee4029f15'
 VITE_PID=''
 cleanup() {
@@ -11,7 +11,7 @@ trap cleanup EXIT
 
 printf '%s  %s\n' \
   '73d19a71ea5d956661baaeaad20af6ab3b051cebc297ffabaa379dcf203d3194' '/tmp/apply-stellar.b64' \
-  '88d8edc42c8f56a007e286cc618c4230cbd48ed98630e57a30d7421f60da7b54' '/tmp/qa-stellar.b64' > /tmp/stellar-inputs.sha256
+  '567962974906ade2a82cc220caf8409c9143dcf566d901b504763a1b572af259' '/tmp/qa-stellar.b64' > /tmp/stellar-inputs.sha256
 cat .github/scripts/apply-stellar.part.* > /tmp/apply-stellar.b64
 cat .github/scripts/qa-stellar.mjs.gz.b64 > /tmp/qa-stellar.b64
 sha256sum -c /tmp/stellar-inputs.sha256
