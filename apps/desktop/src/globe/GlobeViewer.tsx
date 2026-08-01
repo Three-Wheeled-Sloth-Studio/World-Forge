@@ -180,7 +180,7 @@ export function GlobeViewer({
     let texture: THREE.CanvasTexture | null = null;
     let globe: THREE.Object3D;
     if (target?.mode === 'generated-system-body' && target.artifact) {
-      globe = createGeneratedBodyObject(target.artifact, 1);
+      globe = createGeneratedBodyObject(target.artifact, 1, { detail: 'inspection' });
     } else {
       texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -201,6 +201,9 @@ export function GlobeViewer({
     globe.receiveShadow = true;
     planetSpinGroup.add(globe);
     globeMeshRef.current = globe;
+    host.dataset.globeSurfaceTextureDetail = String(
+      globe.userData.generatedBodyTextureDetail ?? (isPrimarySurface ? 'primary-2048x1024' : 'none')
+    );
 
     if (isPrimarySurface && diagnosticModeRef.current && inspectionRecord) {
       const marker = createGlobeInspectionMarker(inspectionRecord);

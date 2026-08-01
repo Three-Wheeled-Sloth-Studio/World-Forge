@@ -290,3 +290,13 @@ The star remains outside the secondary-body generation queue. Planets, giants, d
 - Generated artifacts persist compact fields or procedural particle parameters; GPU textures and meshes are materialized only by active views.
 - System View renders each generated profile and Globe View can open every generated non-primary body, including debris belts.
 - The primary-world workflow remains unchanged.
+
+
+## Body fidelity and satellite population slice (0.3.50)
+
+- Generated solid and giant fields now blend across the wrapped longitude before packaging, and displaced solid meshes use radial normals to avoid a visible UV seam.
+- Casual-inspection materials use deterministic solar-system-inspired palette families. Massive rocky worlds receive atmosphere-informed haze coloring; airless worlds remain mineral or regolith colored.
+- Outer orbital positions have progressively higher giant probability without reserving a mandatory giant slot. Gas giants are favored in the nearer giant region and ice giants farther out.
+- Non-primary gas giants, ice giants, and qualifying rocky worlds now receive bounded deterministic major-moon scaffolds. Those moons flow through the existing orbital context and common body-generation queue.
+- Globe inspection lazily builds a cached 256x128 preview or 512x256 standard texture and separate solid-body bump map. System View retains the compact persisted field resolution.
+- Secondary composition uses independent deterministic streams while consuming the legacy system RNG pattern, so it does not perturb primary-world terrain generation.
