@@ -50,9 +50,9 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
   },
   {
     id: 'core.world-generation-experimental',
-    version: '0.2.0',
+    version: '0.3.0',
     label: 'World Generation (Experimental)',
-    description: 'Development workflow testing cached present-climate topology traversal while Detailed remains the comparison baseline.',
+    description: 'Development workflow testing capability-resolved graph composition, explicit conditional skips, and cached present-climate traversal while Detailed remains the comparison baseline.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true

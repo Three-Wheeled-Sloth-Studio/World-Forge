@@ -9,6 +9,12 @@ import { GenerationGraphRunner } from './runner';
 import type { GenerationDiagnostics } from '@world-forge/shared';
 import type { GenerationGraphNodeRunEvent, GenerationNode } from './types';
 import {
+  resolveCapabilityGraph,
+  type CapabilityGraphResolution,
+  type GenerationBodyProfileId,
+  type GenerationNodeCapabilityRule
+} from './workflow-capabilities';
+import {
   CrustFieldsOutput,
   crustFieldsNode,
   crustFieldsNodeId
@@ -70,6 +76,7 @@ export type GenerationFoundationInput = {
   values: SelectedValues;
   rng: SeededRandom;
   workflowId?: GenerationWorkflowId;
+  bodyProfileId?: GenerationBodyProfileId;
   terrainFinalization?: TerrainFinalizationInput;
   waterGeology?: WaterGeologyInput;
   climateGlaciation?: ClimateGlaciationInput;
@@ -82,6 +89,11 @@ export type GenerationFoundationGraphDiagnostics = NonNullable<GenerationDiagnos
   workflowId: GenerationWorkflowId;
   workflowVersion: string;
   contractSignature: string;
+  capabilityResolution?: {
+    profileId: GenerationBodyProfileId;
+    capabilities: CapabilityGraphResolution<RegisteredNode>['capabilities'];
+    omittedNodes: CapabilityGraphResolution<RegisteredNode>['omittedNodes'];
+  };
 };
 
 export type GenerationFoundationOutput = {
@@ -156,10 +168,35 @@ const performanceFoundationWorkflowNodes: readonly RegisteredNode[] = [
   projectionAssemblyNode
 ];
 
+const experimentalCapabilityRules: Readonly<Record<string, GenerationNodeCapabilityRule>> = {
+  [topologyConstructionNodeId]: { requiredAll: ['projected-surface'] },
+  [primordialTerrainNodeId]: { requiredAll: ['solid-surface'] },
+  [plateConstructionNodeId]: { requiredAll: ['solid-surface', 'geological-activity'] },
+  [crustFieldsNodeId]: { requiredAll: ['solid-surface', 'geological-activity'] },
+  [topologyElevationNodeId]: { requiredAll: ['solid-surface', 'geological-activity'] },
+  [terrainFinalizationNodeId]: { requiredAll: ['solid-surface'] },
+  [waterGeologyNodeId]: { requiredAll: ['solid-surface'] },
+  [climateGlaciationNodeId]: { requiredAll: ['substantial-atmosphere'] },
+  [hydrologyBiomesNodeId]: { requiredAll: ['surface-liquid', 'ecological-potential'] },
+  [projectionAssemblyNodeId]: { requiredAll: ['projected-surface'] }
+};
+
 function workflowNodes(workflowId: GenerationWorkflowId): readonly RegisteredNode[] {
   return generationWorkflowDescriptor(workflowId).seedStrategy === 'semantic-node'
     ? performanceFoundationWorkflowNodes
     : liveWorkflowNodes;
+}
+
+function resolveWorkflowNodes(
+  workflowId: GenerationWorkflowId,
+  bodyProfileId: GenerationBodyProfileId
+): CapabilityGraphResolution<RegisteredNode> | null {
+  if (workflowId !== 'core.world-generation-experimental') return null;
+  return resolveCapabilityGraph(
+    performanceFoundationWorkflowNodes,
+    bodyProfileId,
+    experimentalCapabilityRules
+  );
 }
 
 export function runGenerationFoundation(
@@ -167,7 +204,9 @@ export function runGenerationFoundation(
   input: GenerationFoundationInput
 ): GenerationFoundationOutput {
   const workflow = generationWorkflowDescriptor(input.workflowId ?? defaultGenerationWorkflowId);
-  const nodes = workflowNodes(workflow.id);
+  const bodyProfileId = input.bodyProfileId ?? 'terrestrial-habitable';
+  const capabilityResolution = resolveWorkflowNodes(workflow.id, bodyProfileId);
+  const nodes = capabilityResolution?.nodes ?? workflowNodes(workflow.id);
   const runner = new GenerationGraphRunner(nodes);
   const inputs = new Map<string, unknown>([
     [topologyConstructionNodeId, input.topology],
@@ -181,7 +220,11 @@ export function runGenerationFoundation(
   if (input.climateGlaciation) inputs.set(climateGlaciationNodeId, input.climateGlaciation);
   if (input.hydrologyBiomes) inputs.set(hydrologyBiomesNodeId, input.hydrologyBiomes);
   if (input.projectionAssembly) inputs.set(projectionAssemblyNodeId, input.projectionAssembly);
-  const targetNodeId = input.projectionAssembly ? projectionAssemblyNodeId : input.hydrologyBiomes ? hydrologyBiomesNodeId : input.climateGlaciation ? climateGlaciationNodeId : input.waterGeology ? waterGeologyNodeId : input.terrainFinalization ? terrainFinalizationNodeId : topologyElevationNodeId;
+  const requestedTargetNodeId = input.projectionAssembly ? projectionAssemblyNodeId : input.hydrologyBiomes ? hydrologyBiomesNodeId : input.climateGlaciation ? climateGlaciationNodeId : input.waterGeology ? waterGeologyNodeId : input.terrainFinalization ? terrainFinalizationNodeId : topologyElevationNodeId;
+  const targetNodeId = nodes.some((node) => node.id === requestedTargetNodeId)
+    ? requestedTargetNodeId
+    : capabilityResolution?.targetNodeId;
+  if (!targetNodeId) throw new Error(`Generation workflow ${workflow.id} resolved to an empty graph for ${bodyProfileId}.`);
   const run = runner.run(targetNodeId, { rootSeed }, inputs, input.onNodeEvent);
   const topologyExecution = run.results.get(topologyConstructionNodeId);
   const primordialExecution = run.results.get(primordialTerrainNodeId);
@@ -235,7 +278,17 @@ export function runGenerationFoundation(
     graph: {
       workflowId: workflow.id,
       workflowVersion: workflow.version,
-      contractSignature: workflowContractSignature(workflow.id, workflow.version, nodes),
+      contractSignature: workflowContractSignature(
+        workflow.id,
+        workflow.version,
+        nodes,
+        capabilityResolution ? `body-profile:${bodyProfileId}` : undefined
+      ),
+      capabilityResolution: capabilityResolution ? {
+        profileId: capabilityResolution.profileId,
+        capabilities: capabilityResolution.capabilities,
+        omittedNodes: capabilityResolution.omittedNodes
+      } : undefined,
       targetNodeId: run.targetNodeId,
       nodes: Array.from(run.results.values()).map((execution) => {
         const node = nodes.find((candidate) => candidate.id === execution.nodeId);
@@ -245,18 +298,21 @@ export function runGenerationFoundation(
           dependencies: [...(node?.dependencies ?? [])],
           durationMs: round(execution.durationMs),
           validation: execution.validation,
-          outputs: summarizeNodeOutput(execution.nodeId, execution.output)
+          outputs: execution.status === 'skipped'
+            ? [`Skipped: ${execution.skipReason ?? 'condition not met'}`]
+            : summarizeNodeOutput(execution.nodeId, execution.output)
         };
       })
     }
   };
 }
 
-function workflowContractSignature(workflowId: GenerationWorkflowId, workflowVersion: string, nodes: readonly RegisteredNode[]): string {
+function workflowContractSignature(workflowId: GenerationWorkflowId, workflowVersion: string, nodes: readonly RegisteredNode[], scope?: string): string {
   let hash = 2166136261;
   const text = [
     workflowId,
     workflowVersion,
+    ...(scope ? [scope] : []),
     ...nodes.map((node) => `${node.id}@${node.version}<-${node.dependencies.join(',')}`)
   ].join('|');
   for (let index = 0; index < text.length; index += 1) {

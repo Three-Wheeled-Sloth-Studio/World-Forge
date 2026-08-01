@@ -56,9 +56,57 @@ export class GenerationGraphRunner {
         startedAt,
         timestamp: startedAt
       });
-      let output: unknown;
+
       try {
-        output = node.execute(context, input, dependencyOutputs);
+        const condition = node.condition?.(context, input, dependencyOutputs);
+        if (condition && !condition.run) {
+          const finishedAt = nowMs();
+          const execution: GenerationNodeExecution<unknown> = {
+            nodeId,
+            version: node.version,
+            status: 'skipped',
+            output: condition.output,
+            durationMs: finishedAt - startedAt,
+            skipReason: condition.reason
+          };
+          results.set(nodeId, execution);
+          onNodeEvent?.({
+            nodeId,
+            version: node.version,
+            dependencies: node.dependencies,
+            phase: 'skipped',
+            startedAt,
+            timestamp: finishedAt,
+            durationMs: execution.durationMs,
+            skipReason: condition.reason
+          });
+          return execution;
+        }
+
+        const output = node.execute(context, input, dependencyOutputs);
+        const finishedAt = nowMs();
+        const validation = node.validate?.(input, output);
+        const execution: GenerationNodeExecution<unknown> = {
+          nodeId,
+          version: node.version,
+          status: 'completed',
+          output,
+          durationMs: finishedAt - startedAt,
+          validation
+        };
+
+        results.set(nodeId, execution);
+        onNodeEvent?.({
+          nodeId,
+          version: node.version,
+          dependencies: node.dependencies,
+          phase: 'completed',
+          startedAt,
+          timestamp: finishedAt,
+          durationMs: execution.durationMs,
+          validation
+        });
+        return execution;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const timestamp = nowMs();
@@ -76,29 +124,6 @@ export class GenerationGraphRunner {
       } finally {
         visiting.delete(nodeId);
       }
-      const finishedAt = nowMs();
-      const validation = node.validate?.(input, output);
-
-      const execution: GenerationNodeExecution<unknown> = {
-        nodeId,
-        version: node.version,
-        output,
-        durationMs: finishedAt - startedAt,
-        validation
-      };
-
-      results.set(nodeId, execution);
-      onNodeEvent?.({
-        nodeId,
-        version: node.version,
-        dependencies: node.dependencies,
-        phase: 'completed',
-        startedAt,
-        timestamp: finishedAt,
-        durationMs: execution.durationMs,
-        validation
-      });
-      return execution;
     };
 
     executeNode(targetNodeId);

@@ -35,7 +35,43 @@ describe('GenerationGraphRunner', () => {
 
     expect(calls).toEqual(['upstream', 'downstream']);
     expect(run.results.get('upstream')?.output).toBe(6);
+    expect(run.results.get('upstream')?.status).toBe('completed');
     expect(run.results.get('downstream')?.output).toBe(10);
+  });
+
+  it('records explicit conditional skips without executing the node', () => {
+    const calls: string[] = [];
+    const events: string[] = [];
+    const node: GenerationNode<number, number> = {
+      id: 'conditional',
+      version: '1',
+      dependencies: [],
+      condition(_context, input) {
+        return input < 0
+          ? { run: false, reason: 'Negative inputs are outside this node contract.', output: 0 }
+          : { run: true };
+      },
+      execute(_context, input) {
+        calls.push('execute');
+        return input * 2;
+      }
+    };
+
+    const run = new GenerationGraphRunner([node]).run(
+      'conditional',
+      { rootSeed: 'seed' },
+      new Map([['conditional', -1]]),
+      (event) => events.push(event.phase)
+    );
+    const result = run.results.get('conditional');
+
+    expect(calls).toEqual([]);
+    expect(events).toEqual(['started', 'skipped']);
+    expect(result).toMatchObject({
+      status: 'skipped',
+      output: 0,
+      skipReason: 'Negative inputs are outside this node contract.'
+    });
   });
 
   it('rejects duplicate node registration', () => {

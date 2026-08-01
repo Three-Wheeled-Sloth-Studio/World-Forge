@@ -57,7 +57,7 @@ describe('generation workflow contracts', () => {
       optimizePresentClimateTraversal: true
     });
     expect(generationWorkflowDescriptor('core.world-generation-experimental')).toMatchObject({
-      version: '0.2.0',
+      version: '0.3.0',
       label: 'World Generation (Experimental)',
       status: 'experimental',
       seedStrategy: 'semantic-node',
