@@ -88,6 +88,12 @@ export function systemDisplayOrbitRadius(
   return clamp(1.75 + Math.max(1, body.orbitalOrder) * 1.34, 3.05, 13.2);
 }
 
+export function systemStarVisualScale(cameraDistance: number, referenceDistance: number): number {
+  const safeReference = finitePositive(referenceDistance, 1);
+  const safeDistance = finitePositive(cameraDistance, safeReference);
+  return clamp(safeDistance / safeReference, 0.08, 1.25);
+}
+
 export function systemDisplayBodySize(body: OrbitalPresentationBody): number {
   const scaled = Math.max(0.04, body.sizeClass);
   if (body.kind === 'moon') return clamp(0.055 + scaled * 0.035, 0.07, 0.16);

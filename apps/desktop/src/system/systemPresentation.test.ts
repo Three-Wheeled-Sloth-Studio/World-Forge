@@ -5,7 +5,8 @@ import {
   systemDisplayOrbitRadius,
   systemDisplayPositions,
   systemOrbitPathPoints,
-  systemPhysicalOrbit
+  systemPhysicalOrbit,
+  systemStarVisualScale
 } from './systemPresentation';
 
 const bodies = [
@@ -112,6 +113,13 @@ describe('System Explore presentation model', () => {
     const giant = artifact().payload.bodies.find((body) => body.id === 'planet-1')!;
     expect(systemDisplayOrbitRadius(primary, 'compressed')).toBeLessThan(systemDisplayOrbitRadius(giant, 'compressed'));
     expect(systemDisplayOrbitRadius(primary, 'relative')).toBeLessThan(systemDisplayOrbitRadius(giant, 'relative'));
+  });
+
+  it('keeps the star angular size stable as camera distance changes', () => {
+    expect(systemStarVisualScale(14.6, 14.6)).toBeCloseTo(1, 6);
+    expect(systemStarVisualScale(7.3, 14.6)).toBeCloseTo(0.5, 6);
+    expect(systemStarVisualScale(100, 14.6)).toBe(1.25);
+    expect(systemStarVisualScale(0.1, 14.6)).toBe(0.08);
   });
 
   it('keeps physical orbital values separate from exaggerated display scale', () => {

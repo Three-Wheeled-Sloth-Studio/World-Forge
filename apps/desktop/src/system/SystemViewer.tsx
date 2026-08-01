@@ -15,6 +15,7 @@ import {
   systemDisplayOrbitRadius,
   systemDisplayPositions,
   systemOrbitPathPoints,
+  systemStarVisualScale,
   type SystemCatalogEntry,
   type SystemScaleMode
 } from './systemPresentation';
@@ -38,7 +39,8 @@ export function SystemViewer({
   simulationClock,
   bodyGeneration,
   zoom,
-  onZoom
+  onZoom,
+  onOpenGlobe
 }: {
   project: WorldProject;
   orbitalContext: SystemOrbitalContextArtifact | null;
@@ -46,6 +48,7 @@ export function SystemViewer({
   bodyGeneration: BodyGenerationQueueController;
   zoom: number;
   onZoom: (event: WheelEvent) => void;
+  onOpenGlobe: (bodyId: string) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -280,12 +283,21 @@ export function SystemViewer({
         );
       }
 
+      const referenceCameraDistance = systemCameraDistance(zoom);
+      const starCameraDistance = camera.position.distanceTo(starGroup.position);
+      const starVisualScale = systemStarVisualScale(starCameraDistance, referenceCameraDistance);
+      starGroup.scale.setScalar(starVisualScale);
+      const starApparentRadius = 0.62 * starVisualScale / Math.max(0.001, starCameraDistance);
+
       const selectedId = selectedBodyIdRef.current;
       const selectedRecord = bodyRecords.get(selectedId);
       if (selectedRecord) {
         selectionRing.visible = true;
         selectionRing.position.copy(selectedRecord.group.position);
-        const scale = Math.max(0.14, selectedRecord.displaySize * 1.7);
+        const visualSize = selectedId === orbitalContext.payload.star.id
+          ? selectedRecord.displaySize * starVisualScale
+          : selectedRecord.displaySize;
+        const scale = Math.max(0.14, visualSize * 1.7);
         selectionRing.scale.setScalar(scale);
         selectionRing.lookAt(camera.position);
       } else {
@@ -296,6 +308,8 @@ export function SystemViewer({
       host.dataset.cameraDistance = camera.position.length().toFixed(6);
       host.dataset.focusedBody = focusedId;
       host.dataset.selectedBodyMaterial = selectedRecord?.materialMode ?? 'none';
+      host.dataset.starVisualScale = starVisualScale.toFixed(6);
+      host.dataset.starApparentRadius = starApparentRadius.toFixed(6);
       renderer.render(scene, camera);
       animationFrame = window.requestAnimationFrame(animate);
     };
@@ -321,6 +335,12 @@ export function SystemViewer({
   const selectedDisplayRadius = selectedEntry?.body
     ? systemDisplayOrbitRadius(selectedEntry.body, scaleMode)
     : 0;
+  const selectedFidelity = selectedBodyId ? project.bodyGeneration?.records[selectedBodyId]?.requestedFidelity ?? 'preview' : 'preview';
+  const selectedGeneratedArtifact = selectedEntry?.body && orbitalContext
+    ? airlessArtifactForBody(project, orbitalContext, selectedBodyId, selectedFidelity)
+    : null;
+  const canOpenSelectedGlobe = selectedBodyId === primaryBodyId
+    || (selectedEntry?.kind === 'moon' && Boolean(selectedGeneratedArtifact));
 
   return (
     <div
@@ -422,7 +442,17 @@ export function SystemViewer({
               </button>
               <button
                 type="button"
+                aria-label="Zoom to selected body globe"
+                disabled={!canOpenSelectedGlobe}
+                title={canOpenSelectedGlobe ? 'Open Globe view centered on this generated body.' : 'Generate this moon before opening it as a globe.'}
+                onClick={() => onOpenGlobe(selectedBodyId)}
+              >
+                Zoom to globe
+              </button>
+              <button
+                type="button"
                 aria-label="Return to primary"
+
                 disabled={focusedBodyId === primaryBodyId}
                 onClick={() => {
                   setSelectedBodyId(primaryBodyId);
