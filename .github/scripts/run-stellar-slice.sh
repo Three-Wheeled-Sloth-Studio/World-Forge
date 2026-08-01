@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/stellar-surface-slice-20260801-r2'
+BRANCH='automation/stellar-surface-slice-20260801-r3'
 BASE_SHA='15b5c253481b8242f42464333e78ec3ee4029f15'
 VITE_PID=''
 cleanup() {
@@ -10,13 +10,11 @@ cleanup() {
 trap cleanup EXIT
 
 printf '%s  %s\n' \
-  '73d19a71ea5d956661baaeaad20af6ab3b051cebc297ffabaa379dcf203d3194' '/tmp/apply-stellar.b64' \
-  '567962974906ade2a82cc220caf8409c9143dcf566d901b504763a1b572af259' '/tmp/qa-stellar.b64' > /tmp/stellar-inputs.sha256
+  '73d19a71ea5d956661baaeaad20af6ab3b051cebc297ffabaa379dcf203d3194' '/tmp/apply-stellar.b64' > /tmp/stellar-inputs.sha256
 cat .github/scripts/apply-stellar.part.* > /tmp/apply-stellar.b64
-cat .github/scripts/qa-stellar.mjs.gz.b64 > /tmp/qa-stellar.b64
 sha256sum -c /tmp/stellar-inputs.sha256
 base64 -d /tmp/apply-stellar.b64 | gzip -d > /tmp/apply-stellar.py
-base64 -d /tmp/qa-stellar.b64 | gzip -d > /tmp/qa-stellar.mjs
+cp .github/scripts/qa-stellar-source.mjs /tmp/qa-stellar.mjs
 python -m py_compile /tmp/apply-stellar.py
 node --check /tmp/qa-stellar.mjs
 
@@ -53,8 +51,6 @@ if (failed.length) {
 }
 NODE
 
-mkdir -p .github/scripts
-cp /tmp/qa-stellar.mjs .github/scripts/qa-stellar.runtime.mjs
 npx playwright install chromium
 npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
 VITE_PID=$!
@@ -62,13 +58,12 @@ for i in {1..60}; do
   if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
   sleep 1
 done
-node .github/scripts/qa-stellar.runtime.mjs || {
+node /tmp/qa-stellar.mjs || {
   cat /tmp/world-forge-vite.log
   exit 1
 }
 kill "${VITE_PID}" || true
 VITE_PID=''
-rm .github/scripts/qa-stellar.runtime.mjs
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
