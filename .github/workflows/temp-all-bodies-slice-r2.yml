@@ -1,4 +1,4 @@
-name: Temporary all system body slice r4
+name: Temporary all system body slice r5
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/all-system-bodies-20260801-r4'
+    if: github.head_ref == 'automation/all-system-bodies-20260801-r5'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
