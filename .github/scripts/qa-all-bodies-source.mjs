@@ -65,8 +65,7 @@ for (const viewport of viewports) {
     }
     if (state.queueCount === 0 && state.active === 'none' && state.generatedCount < state.eligibleCount) {
       const statuses = [];
-      for (const option of options) {
-        if (option.value === options[0].value || option.value === primaryId) continue;
+      for (const option of options.slice(2)) {
         await bodySelect.selectOption(option.value);
         await page.waitForTimeout(20);
         statuses.push({
@@ -100,7 +99,7 @@ for (const viewport of viewports) {
         && (surface?.getAttribute('data-selected-body-material') ?? '').startsWith('system-body-');
     }, id, { timeout: 30000 });
     const material = await page.locator('.system-render-surface').getAttribute('data-selected-body-material');
-    const typeText = await page.locator('.system-body-inspector dl').innerText();
+    const typeText = await page.locator('.system-body-inspector > dl').innerText();
 
     await page.getByRole('button', { name: 'Zoom to selected body globe' }).click();
     await page.waitForFunction((bodyId) => {
