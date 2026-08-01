@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { AirlessRockyBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import type { StellarSurfaceEnrichmentController } from '../enrichment/useStellarSurfaceEnrichment';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import type { BodyGenerationQueueController } from '../enrichment/useBodyGenerationQueue';
 import { airlessArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 import { BodyGenerationPanel } from './BodyGenerationPanel';
+import { StellarSurfacePanel } from './StellarSurfacePanel';
+import { createStellarCoronaMaterial, createStellarCoronaStreamers, createStellarSurfaceMaterial } from './stellarSurfacePresentation';
 import { createAirlessBodyMesh } from './airlessBodyPresentation';
 import { SystemSimulationControls } from '../globe/SystemSimulationControls';
 import { deterministicStarDirections } from '../globe/orbitalPresentation';
@@ -26,7 +29,7 @@ type CameraOrbit = { yaw: number; pitch: number };
 type BodySceneRecord = {
   group: THREE.Group;
   displaySize: number;
-  materialMode: 'scaffold-solid' | 'placeholder-wireframe' | 'airless-rocky-v1';
+  materialMode: 'scaffold-solid' | 'placeholder-wireframe' | 'airless-rocky-v1' | 'stellar-surface-v1';
 };
 type OrbitSceneRecord = {
   line: THREE.LineLoop;
@@ -38,6 +41,7 @@ export function SystemViewer({
   orbitalContext,
   simulationClock,
   bodyGeneration,
+  stellarSurface,
   zoom,
   onZoom,
   onOpenGlobe
@@ -46,6 +50,7 @@ export function SystemViewer({
   orbitalContext: SystemOrbitalContextArtifact | null;
   simulationClock: SystemSimulationClock;
   bodyGeneration: BodyGenerationQueueController;
+  stellarSurface: StellarSurfaceEnrichmentController;
   zoom: number;
   onZoom: (event: WheelEvent) => void;
   onOpenGlobe: (bodyId: string) => void;
@@ -120,27 +125,32 @@ export function SystemViewer({
     const starEntry = catalog.find((entry) => entry.kind === 'star');
     const starGroup = new THREE.Group();
     starGroup.userData.systemBodyId = orbitalContext.payload.star.id;
+    const stellarArtifact = stellarSurface.artifact;
     const starMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.62, 48, 24),
-      new THREE.MeshBasicMaterial({ color: orbitalContext.payload.star.colorHex })
+      new THREE.SphereGeometry(0.62, 64, 32),
+      stellarArtifact
+        ? createStellarSurfaceMaterial(stellarArtifact)
+        : new THREE.MeshBasicMaterial({ color: orbitalContext.payload.star.colorHex })
     );
     starMesh.userData.systemBodyId = orbitalContext.payload.star.id;
     starGroup.add(starMesh);
     const starGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.78, 32, 16),
-      new THREE.MeshBasicMaterial({
-        color: orbitalContext.payload.star.colorHex,
-        transparent: true,
-        opacity: 0.14,
-        depthWrite: false,
-        side: THREE.BackSide
-      })
+      new THREE.SphereGeometry(0.62 * (stellarArtifact?.payload.corona.haloScale ?? 1.26), 40, 20),
+      stellarArtifact
+        ? createStellarCoronaMaterial(stellarArtifact)
+        : new THREE.MeshBasicMaterial({
+          color: orbitalContext.payload.star.colorHex,
+          transparent: true,
+          opacity: 0.14,
+          depthWrite: false,
+          side: THREE.BackSide
+        })
     );
     starGlow.userData.systemBodyId = orbitalContext.payload.star.id;
     starGroup.add(starGlow);
     if (showLabels && starEntry) starGroup.add(createBodyLabelSprite(starEntry.label, 'generated', 0.94));
     scene.add(starGroup);
-    bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62, materialMode: 'scaffold-solid' });
+    bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62, materialMode: stellarArtifact ? 'stellar-surface-v1' : 'scaffold-solid' });
 
     const starLight = new THREE.PointLight(orbitalContext.payload.star.colorHex, 6.4, 80, 1.35);
     scene.add(starLight);
@@ -269,6 +279,7 @@ export function SystemViewer({
         );
         const body = orbitalContext.payload.bodies.find((candidate) => candidate.id === bodyId);
         if (body) record.group.rotation.y = simulationDays * Math.PI * 2 / Math.max(0.1, body.rotationPeriodHours / 24);
+        else if (bodyId === orbitalContext.payload.star.id && stellarArtifact) record.group.rotation.y = simulationDays * Math.PI * 2 / Math.max(0.1, stellarArtifact.payload.rotationPeriodDays);
       }
 
       starLight.position.copy(starGroup.position);
@@ -328,7 +339,7 @@ export function SystemViewer({
       host.replaceChildren();
       cameraRef.current = null;
     };
-  }, [catalog, onZoom, orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.enrichmentArtifacts, project.projectId, scaleMode, showLabels, showOrbitPaths, simulationClock]);
+  }, [catalog, onZoom, orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.enrichmentArtifacts, project.projectId, scaleMode, showLabels, showOrbitPaths, simulationClock, stellarSurface.artifact?.artifactSignature]);
 
   const primaryBodyId = orbitalContext?.payload.primaryBodyId ?? '';
   const starId = orbitalContext?.payload.star.id ?? '';
@@ -354,6 +365,7 @@ export function SystemViewer({
       data-system-labels={showLabels ? 'visible' : 'hidden'}
       data-system-body-queue={bodyGeneration.lifecycle?.queue.length ?? 0}
       data-system-active-body-generation={bodyGeneration.lifecycle?.activeBodyId ?? 'none'}
+      data-stellar-surface-status={stellarSurface.status}
       data-system-distance-authority="physical-data-distinct-from-display"
     >
       <div ref={hostRef} className="system-render-surface" aria-label="Generated system viewer" />
@@ -462,7 +474,9 @@ export function SystemViewer({
                 Return to primary
               </button>
             </div>
-            <BodyGenerationPanel selectedEntry={selectedEntry} controller={bodyGeneration} />
+            {selectedBodyId === starId
+              ? <StellarSurfacePanel controller={stellarSurface} />
+              : <BodyGenerationPanel selectedEntry={selectedEntry} controller={bodyGeneration} />}
             <small>
               Physical orbital values remain authoritative. Body sizes and display distances are exaggerated for inspection.
             </small>

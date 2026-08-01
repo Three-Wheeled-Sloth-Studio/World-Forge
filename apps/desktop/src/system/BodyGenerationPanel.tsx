@@ -65,12 +65,11 @@ export function BodyGenerationPanel({
             </select>
           </label>
           <div className="system-generation-actions">
-            {(record.status === 'ready' || record.status === 'placeholder') && (
+            {record.eligible && (record.status === 'ready' || record.status === 'placeholder') && (
               <button
                 type="button"
                 className="primary-button"
                 aria-label="Generate selected body"
-                disabled={!record.eligible}
                 onClick={() => controller.queueBody(record.bodyId, fidelity, true)}
               >
                 Generate selected

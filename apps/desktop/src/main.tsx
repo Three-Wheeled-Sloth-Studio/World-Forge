@@ -54,6 +54,7 @@ import { useGenerationWorkflow } from './generation/useGenerationWorkflow';
 import { useProjectEnrichment } from './enrichment/useProjectEnrichment';
 import { OrbitalContextStatus } from './enrichment/OrbitalContextStatus';
 import { useAtmosphericWeatherEnrichment } from './enrichment/useAtmosphericWeatherEnrichment';
+import { useStellarSurfaceEnrichment } from './enrichment/useStellarSurfaceEnrichment';
 import { useBodyGenerationQueue } from './enrichment/useBodyGenerationQueue';
 import { WeatherPresentationStatus } from './enrichment/WeatherPresentationStatus';
 import { GlobeViewer, type GlobeDebugMode } from './globe/GlobeViewer';
@@ -407,6 +408,7 @@ function App() {
   } = generation;
   const enrichment = useProjectEnrichment({ project, onProjectEnriched: setProject });
   const weatherEnrichment = useAtmosphericWeatherEnrichment({ project, onProjectEnriched: setProject });
+  const stellarSurface = useStellarSurfaceEnrichment({ project, orbitalContext: enrichment.artifact, onProjectEnriched: setProject });
   const bodyGeneration = useBodyGenerationQueue({ project, orbitalContext: enrichment.artifact, onProjectEnriched: setProject });
   const simulationClock = useMemo(() => {
     const artifact = enrichment.artifact;
@@ -1039,6 +1041,7 @@ function App() {
               orbitalContext={enrichment.artifact}
               simulationClock={simulationClock}
               bodyGeneration={bodyGeneration}
+              stellarSurface={stellarSurface}
               zoom={systemZoom}
               onZoom={handleSystemWheelZoom}
               onOpenGlobe={openGlobeForBody}

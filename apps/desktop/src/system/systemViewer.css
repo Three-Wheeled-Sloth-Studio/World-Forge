@@ -309,3 +309,35 @@
 .system-body-inspector[data-body-generation-status="stale"] .system-inspector-heading strong {
   color: #f1c27d;
 }
+
+
+.stellar-surface-panel {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid rgba(246, 210, 125, 0.28);
+  border-radius: 8px;
+  background: rgba(20, 12, 3, 0.56);
+}
+
+.stellar-surface-panel dl {
+  gap: 1px;
+}
+
+.stellar-surface-panel dl div {
+  grid-template-columns: 78px minmax(0, 1fr);
+  padding: 2px 0;
+}
+
+.stellar-surface-panel[data-stellar-surface-status="complete"] .system-generation-heading strong {
+  color: #f6e3ad;
+}
+
+.stellar-surface-panel[data-stellar-surface-status="running"] .system-generation-heading strong {
+  color: #ffd27d;
+}
+
+.stellar-surface-panel[data-stellar-surface-status="unavailable"] {
+  border-color: rgba(190, 206, 215, 0.18);
+  background: rgba(3, 8, 14, 0.5);
+}
