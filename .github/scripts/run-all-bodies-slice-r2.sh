@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/all-system-bodies-20260801-r5'
+BRANCH='automation/all-system-bodies-20260801-r6'
 BASE_SHA='a8fe9af37e1581cf4d4c03c2c1c3e62d7700354e'
 VITE_PID=''
 cleanup() {
@@ -48,21 +48,16 @@ def replace_once(path: str, old: str, new: str) -> None:
         raise SystemExit(f'{path}: expected one match, found {count}: {old[:100]!r}')
     target.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-# Register the generic system-body workflow with the shared enrichment event/graph registry.
+# Register the generic workflow ID with shared enrichment events. The descriptor itself is profile-resolved.
 replace_once(
     'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
     "import {\n  STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID,\n  stellarSurfacePresentationWorkflowDescriptor\n} from './stellarSurfacePresentation';",
-    "import {\n  STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID,\n  stellarSurfacePresentationWorkflowDescriptor\n} from './stellarSurfacePresentation';\nimport {\n  SYSTEM_BODY_GENERATION_WORKFLOW_ID,\n  systemBodyGenerationWorkflowDescriptor\n} from './systemBodyGeneration';"
+    "import {\n  STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID,\n  stellarSurfacePresentationWorkflowDescriptor\n} from './stellarSurfacePresentation';\nimport { SYSTEM_BODY_GENERATION_WORKFLOW_ID } from './systemBodyGeneration';"
 )
 replace_once(
     'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
     "export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID | typeof STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID | typeof AIRLESS_ROCKY_BODY_WORKFLOW_ID;",
     "export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID | typeof STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID | typeof AIRLESS_ROCKY_BODY_WORKFLOW_ID | typeof SYSTEM_BODY_GENERATION_WORKFLOW_ID;"
-)
-replace_once(
-    'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
-    "  stellarSurfacePresentationWorkflowDescriptor,\n  airlessRockyBodyWorkflowDescriptor",
-    "  stellarSurfacePresentationWorkflowDescriptor,\n  airlessRockyBodyWorkflowDescriptor,\n  systemBodyGenerationWorkflowDescriptor"
 )
 replace_once(
     'packages/generation-runtime/src/enrichment/systemOrbitalContext.ts',
