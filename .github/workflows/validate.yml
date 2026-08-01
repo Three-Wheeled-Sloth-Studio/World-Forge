@@ -6,13 +6,15 @@ on:
       - dev
       - qa
       - main
+      - automation/body-fidelity-satellites-20260801
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
+    if: github.ref_name != 'automation/body-fidelity-satellites-20260801'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,3 +31,14 @@ jobs:
 
       - name: Validate
         run: npm run verify
+
+  delete-disposable-branch:
+    if: github.ref_name == 'automation/body-fidelity-satellites-20260801'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete disposable branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            --delete automation/body-fidelity-satellites-20260801
