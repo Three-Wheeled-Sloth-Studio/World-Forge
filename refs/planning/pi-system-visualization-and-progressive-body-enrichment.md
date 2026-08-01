@@ -271,3 +271,12 @@ This PI is complete when:
 - at least one airless moon can be generated, persisted, reopened, and reproduced;
 - partner body workflows skip unnecessary geology, climate, hydrology, or ecology by graph construction;
 - ordinary primary-world generation remains bounded and does not pay for unused visualizer enrichment.
+
+
+### Fleshing Cycle 2.1: generated stellar surface and activity presentation
+
+Implementation status (2026-08-01): the first stellar presentation slice is implemented behind Experimental and explicit user launch.
+
+The inspectable `project.stellar-surface-presentation` workflow consumes the generated stellar scaffold and current orbital artifact, then derives deterministic photosphere granulation, rotation, differential rotation, activity class, magnetic-cycle phase, flare cadence, starspots, faculae, and a bounded corona. The artifact is illustrative presentation data and does not replace authoritative stellar facts.
+
+The star remains outside the secondary-body generation queue. Planets, giants, dwarfs, belts, and the star have no generic body-generation action until their own supported workflow profile exists.

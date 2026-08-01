@@ -115,3 +115,14 @@ The next planned slice is capability-resolved partner workflow infrastructure, f
 - Runtime-only conditions now produce first-class `skipped` node results, events, reasons, fallback outputs, and Dev graph presentation.
 - The existing primary-world Experimental graph resolves to the same full node set and preserves authoritative output.
 - Next implementation target is `stellar-surface-presentation`, followed by the first barren and geologically active terrestrial profile.
+
+
+## 2026-08-01 - Experimental stellar surface presentation
+
+- Confirmed the System UI has no executable secondary-body generation path for planets, gas giants, ice giants, dwarfs, belts, or the star. Only eligible placeholder moons can enter the body queue, and ineligible records are rejected again at the lifecycle boundary.
+- Removed the generic selected-body generation action from ineligible body panels instead of relying on a disabled button alone.
+- Added inspectable `project.stellar-surface-presentation@1.0.0` as an Experimental-only, explicit post-generation workflow.
+- The workflow generates deterministic photosphere granulation, activity class, rotation and differential rotation, magnetic-cycle phase, flare cadence, starspots, faculae, and coronal streamers.
+- The saved artifact is presentation-only and records the current orbital artifact signature and Experimental world-workflow identity for invalidation.
+- System view now replaces the flat star material with the generated photosphere texture and activity-scaled corona after explicit user launch.
+- Detailed and ordinary primary-world generation remain unchanged.
