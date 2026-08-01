@@ -1,0 +1,129 @@
+name: Temporary body lifecycle and airless-moon runner r9
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/body-lifecycle-airless-20260731-r9'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Apply, validate, and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          VITE_PID=''
+          cleanup() {
+            if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
+            git push origin --delete automation/body-lifecycle-airless-20260731-r9 || true
+          }
+          trap cleanup EXIT
+
+          mkdir -p /tmp/body-slice
+          cat .github/scripts/body-slice.tar.gz.b64.part-* | base64 -d | tar -xz -C /tmp/body-slice
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "7dfbc4af4c743d84216f4849292ad787311c284a"
+          git checkout -B dev origin/dev
+
+          npm ci
+          cp /tmp/body-slice/packages/generation-runtime/src/enrichment/* packages/generation-runtime/src/enrichment/
+          cp /tmp/body-slice/apps/desktop/src/enrichment/* apps/desktop/src/enrichment/
+          cp /tmp/body-slice/apps/desktop/src/system/* apps/desktop/src/system/
+          cp /tmp/body-slice/refs/testing/body-generation-visual-qa.md refs/testing/body-generation-visual-qa.md
+          python /tmp/body-slice/.github/scripts/apply-body-generation-boundary.py
+          mkdir -p .github/scripts
+
+          python - <<'PY'
+          from pathlib import Path
+
+          viewer = Path('apps/desktop/src/system/SystemViewer.tsx')
+          text = viewer.read_text(encoding='utf-8')
+          old = "bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62 });"
+          new = "bodyRecords.set(orbitalContext.payload.star.id, { group: starGroup, displaySize: 0.62, materialMode: 'scaffold-solid' });"
+          if text.count(old) != 1:
+              raise RuntimeError(f'Expected one star record construction, found {text.count(old)}')
+          viewer.write_text(text.replace(old, new), encoding='utf-8')
+
+          queue = Path('apps/desktop/src/enrichment/useBodyGenerationQueue.ts')
+          text = queue.read_text(encoding='utf-8')
+          old = "    workerRef.current = worker;\n    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {"
+          new = """    workerRef.current = worker;
+              window.setTimeout(() => {
+                const currentProject = projectRef.current;
+                const currentOrbitalContext = orbitalContextRef.current;
+                if (!currentProject || !currentOrbitalContext || taskIdRef.current) return;
+                const pendingLifecycle = reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext);
+                if (!pendingLifecycle.paused && !pendingLifecycle.activeBodyId && pendingLifecycle.queue.length > 0) {
+                  runNext(pendingLifecycle);
+                }
+              }, 0);
+              worker.onmessage = (event: MessageEvent<WorkerResponse>) => {"""
+          if text.count(old) != 1:
+              raise RuntimeError(f'Expected one worker initialization boundary, found {text.count(old)}')
+          queue.write_text(text.replace(old, new), encoding='utf-8')
+
+          qa = Path('/tmp/body-slice/.github/scripts/qa-body-generation.mjs').read_text(encoding='utf-8')
+          old = "await page.waitForFunction(() => document.querySelector('.system-body-generation')?.getAttribute('data-body-lifecycle-status') === 'generated', undefined, { timeout: 45000 });"
+          new = """await page.waitForFunction(() => {
+            const status = document.querySelector('.system-body-generation')?.getAttribute('data-body-lifecycle-status');
+            return status === 'generated' || status === 'failed' || status === 'stale';
+          }, undefined, { timeout: 60000 });
+          const terminalBodyState = await page.evaluate(() => {
+            const panel = document.querySelector('.system-body-generation');
+            return {
+              status: panel?.getAttribute('data-body-lifecycle-status'),
+              activeBodyId: panel?.getAttribute('data-body-active-id'),
+              queueCount: panel?.getAttribute('data-body-queue-count'),
+              panelText: panel?.textContent
+            };
+          });
+          if (terminalBodyState.status !== 'generated') {
+            throw new Error(`Selected body generation ended in ${JSON.stringify(terminalBodyState)}`);
+          }"""
+          if qa.count(old) != 1:
+              raise RuntimeError(f'Expected one initial generated-status wait, found {qa.count(old)}')
+          Path('.github/scripts/qa-body-generation.runtime.mjs').write_text(qa.replace(old, new), encoding='utf-8')
+          PY
+
+          git diff --check
+          npx vitest run packages/generation-runtime/src/enrichment/airlessRockyBody.test.ts packages/generation-runtime/src/enrichment/bodyGenerationLifecycle.test.ts apps/desktop/src/system/systemPresentation.test.ts
+          npm run verify
+
+          npx playwright install chromium
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-body-generation.runtime.mjs || {
+            cat /tmp/world-forge-vite.log
+            exit 1
+          }
+          kill "${VITE_PID}" || true
+          VITE_PID=''
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/shared/src/index.ts packages/generation-runtime/src/enrichment apps/desktop/src/enrichmentWorker.ts
+          git diff --cached --check
+          git commit -m "Add body lifecycle and airless moon workflow"
+          git add apps/desktop/src
+          git diff --cached --check
+          git commit -m "Add System body queue and moon presentation"
+          git add refs/planning/pi-system-visualization-and-progressive-body-enrichment.md refs/handoffs/system-visualization-enrichment.md refs/testing/body-generation-visual-qa.md
+          git diff --cached --check
+          git commit -m "Document airless moon proof boundary"
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
