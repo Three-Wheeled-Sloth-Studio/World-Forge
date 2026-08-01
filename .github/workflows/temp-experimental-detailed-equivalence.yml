@@ -1,0 +1,64 @@
+name: Temporary Experimental Detailed equivalence
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-equivalence:
+    if: github.head_ref == 'automation/experimental-detailed-equivalence-20260801'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Compare Detailed and Experimental
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            git push origin --delete automation/experimental-detailed-equivalence-20260801 || true
+          }
+          trap cleanup EXIT
+
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "d0b7fa8d3a2b27257798999525eb8bb36e12a05a"
+          git checkout --detach origin/dev
+          npm ci
+
+          npm run benchmark:workflows -- \
+            --workflows=core.performance-foundation,core.world-generation-experimental \
+            --resolution=256x128 \
+            --runs=1 \
+            --seeds=1001001,3141592,8675309 \
+            --scenarios=earthlike-standard,archipelago-standard,geology-glacial-stress \
+            --source-commit=d0b7fa8d3a2b27257798999525eb8bb36e12a05a
+
+          REPORT="$(ls -1t refs/testing/generation-workflow-comparison-*.json | head -n 1)"
+          node --input-type=module - "$REPORT" <<'NODE'
+          import fs from 'node:fs';
+          const path = process.argv[2];
+          const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const comparisons = report.comparisons;
+          const failed = comparisons.filter((entry) => !entry.signaturesEqual || !entry.authoritativeSignaturesEqual);
+          const summary = comparisons.map((entry) => ({
+            pairId: entry.pairId,
+            signaturesEqual: entry.signaturesEqual,
+            authoritativeSignaturesEqual: entry.authoritativeSignaturesEqual,
+            runtimeDeltaPercent: entry.runtimeDeltaPercent,
+            deepTimeDeltaPercent: entry.deepTimeDeltaPercent
+          }));
+          console.log('EQUIVALENCE_SUMMARY=' + JSON.stringify(summary));
+          console.log(`EQUIVALENCE_RESULT=${failed.length === 0 ? 'MATCH' : 'MISMATCH'}`);
+          if (failed.length) {
+            console.error('Mismatched pairs:', JSON.stringify(failed, null, 2));
+            process.exit(2);
+          }
+          NODE
