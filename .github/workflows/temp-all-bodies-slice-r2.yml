@@ -1,4 +1,4 @@
-name: Temporary all system body slice r10
+name: Temporary all system body slice r11
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/all-system-bodies-20260801-r10'
+    if: github.head_ref == 'automation/all-system-bodies-20260801-r11'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -19,6 +19,6 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
-      - name: Diagnose generated body presentation
+      - name: Apply, validate, and publish all-body generation
         shell: bash
-        run: bash .github/scripts/run-all-bodies-slice-r10.sh
+        run: bash .github/scripts/run-all-bodies-slice-r11.sh
