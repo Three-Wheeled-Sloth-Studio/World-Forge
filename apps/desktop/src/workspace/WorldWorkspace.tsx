@@ -25,7 +25,7 @@ export type WorldWorkspaceProps = {
     nodeId: string;
     label: string;
     progress: number;
-    status: 'waiting' | 'running' | 'complete' | 'failed';
+    status: 'waiting' | 'running' | 'complete' | 'failed' | 'skipped';
     elapsedMs?: number;
   }>;
   viewMode: WorkspaceViewMode;

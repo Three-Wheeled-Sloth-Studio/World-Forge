@@ -45,7 +45,7 @@ function desktopStageEvent(taskId: string, event: NativeGenerationStageEvent): G
 function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEvent): GenerationStageTelemetryDetail {
   const definition = generationGraphNodeForStageId(event.nodeId);
   const index = Math.max(0, coreGenerationGraph.findIndex((node) => node.id === event.nodeId));
-  const localProgress = event.phase === 'completed' ? 1 : event.phase === 'failed' ? 1 : 0.02;
+  const localProgress = event.phase === 'completed' || event.phase === 'failed' || event.phase === 'skipped' ? 1 : 0.02;
   return {
     taskId,
     nodeId: event.nodeId,
@@ -62,7 +62,7 @@ function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEven
     graphNode: true,
     dependencies: [...event.dependencies],
     version: event.version,
-    message: event.error,
+    message: event.error ?? event.skipReason,
     metrics: event.validation ? {
       validationValid: event.validation.valid,
       validationIssueCount: event.validation.issues.length

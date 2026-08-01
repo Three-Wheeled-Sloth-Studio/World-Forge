@@ -59,7 +59,7 @@ export type GenerationNodeProgress = {
   nodeId: string;
   label: string;
   progress: number;
-  status: 'waiting' | 'running' | 'complete' | 'failed';
+  status: 'waiting' | 'running' | 'complete' | 'skipped' | 'failed';
   elapsedMs?: number;
 };
 
@@ -96,7 +96,7 @@ function desktopStageEvent(taskId: string, event: NativeGenerationStageEvent): G
 function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEvent): GenerationStageTelemetryDetail {
   const definition = generationGraphNodeForStageId(event.nodeId);
   const index = Math.max(0, coreGenerationGraph.findIndex((node) => node.id === event.nodeId));
-  const localProgress = event.phase === 'completed' ? 1 : event.phase === 'failed' ? 1 : 0.02;
+  const localProgress = event.phase === 'completed' || event.phase === 'failed' || event.phase === 'skipped' ? 1 : 0.02;
   return {
     taskId,
     nodeId: event.nodeId,
@@ -113,7 +113,7 @@ function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEven
     graphNode: true,
     dependencies: [...event.dependencies],
     version: event.version,
-    message: event.error,
+    message: event.error ?? event.skipReason,
     metrics: event.validation ? {
       validationValid: event.validation.valid,
       validationIssueCount: event.validation.issues.length
@@ -505,8 +505,8 @@ function updateNodeProgress(current: GenerationNodeProgress[], stage: Generation
     if (node.nodeId !== stage.nodeId) return node;
     return {
       ...node,
-      progress: stage.phase === 'completed' ? 1 : stage.phase === 'failed' ? 1 : Math.max(0.02, Math.min(0.98, stage.progress)),
-      status: stage.phase === 'completed' ? 'complete' : stage.phase === 'failed' ? 'failed' : 'running',
+      progress: stage.phase === 'completed' || stage.phase === 'failed' || stage.phase === 'skipped' ? 1 : Math.max(0.02, Math.min(0.98, stage.progress)),
+      status: stage.phase === 'completed' ? 'complete' : stage.phase === 'skipped' ? 'skipped' : stage.phase === 'failed' ? 'failed' : 'running',
       elapsedMs: stage.elapsedMs
     };
   });
@@ -514,6 +514,7 @@ function updateNodeProgress(current: GenerationNodeProgress[], stage: Generation
 
 function localStageProgress(stage: GenerationStageTelemetryDetail): number {
   if (stage.phase === 'completed') return 1;
+  if (stage.phase === 'skipped') return 1;
   if (stage.phase === 'failed') return 1;
   return Math.max(0.02, Math.min(0.98, stage.progress));
 }

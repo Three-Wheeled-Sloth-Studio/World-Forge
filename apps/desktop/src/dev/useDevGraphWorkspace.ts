@@ -235,9 +235,9 @@ export function useDevGraphWorkspace(currentProject: WorldProject | null = null)
       else if (stage.phase === 'skipped') status = 'skipped';
     } else if (!retained && telemetry?.phase === 'completed') status = 'complete';
 
-    const progress = status === 'complete' || status === 'retained' ? 1 : status === 'running' ? Math.max(0.02, Math.min(0.99, stage?.progress ?? 0)) : 0;
+    const progress = status === 'complete' || status === 'retained' || status === 'skipped' ? 1 : status === 'running' ? Math.max(0.02, Math.min(0.99, stage?.progress ?? 0)) : 0;
     const findings: string[] = [];
-    if (stage?.message && (stage.phase === 'warning' || stage.phase === 'failed')) findings.push(stage.message);
+    if (stage?.message && (stage.phase === 'warning' || stage.phase === 'failed' || stage.phase === 'skipped')) findings.push(stage.message);
     for (const issue of graphDiagnostic?.validation?.issues ?? []) findings.push(`${issue.severity}: ${issue.message}`);
     if (stage && !stage.measured) findings.push('Legacy stage boundary was not measured by generator-core.');
 
