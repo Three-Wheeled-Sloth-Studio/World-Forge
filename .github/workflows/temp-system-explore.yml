@@ -1,0 +1,105 @@
+name: Temporary System Explore runner
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/system-explore-20260731'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Preserve staged product and validation files
+        run: |
+          cp -R apps/desktop/src/system /tmp/system
+          cp .github/scripts/apply-system-explore.py /tmp/apply-system-explore.py
+          cp .github/scripts/qa-system-explore.mjs /tmp/qa-system-explore.mjs
+          cp refs/handoffs/system-visualization-enrichment.md /tmp/system-visualization-enrichment.md
+          cp refs/testing/system-explore-visual-qa.md /tmp/system-explore-visual-qa.md
+
+      - name: Switch to exact accepted dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "27c8b64928d006042494b07467bdf51dd88083c2"
+          git checkout -B dev origin/dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply bounded System Explore slice
+        run: |
+          mkdir -p apps/desktop/src/system refs/testing
+          cp -R /tmp/system/. apps/desktop/src/system/
+          cp /tmp/system-visualization-enrichment.md refs/handoffs/system-visualization-enrichment.md
+          cp /tmp/system-explore-visual-qa.md refs/testing/system-explore-visual-qa.md
+          python /tmp/apply-system-explore.py
+          git diff --check
+          grep -q "APP_VERSION = '0.3.44'" apps/desktop/src/appVersion.ts
+          grep -q "type ViewMode = 'map' | 'globe' | 'system'" apps/desktop/src/main.tsx
+          grep -q "SystemViewer" apps/desktop/src/main.tsx
+          grep -q "aria-label=\"System view\"" apps/desktop/src/workspace/WorldWorkspace.tsx
+          grep -q "systemZoom" apps/desktop/src/sync.ts
+          grep -q "data-system-distance-authority=\"physical-data-distinct-from-display\"" apps/desktop/src/system/SystemViewer.tsx
+          grep -q "secondary-body" refs/handoffs/system-visualization-enrichment.md
+
+      - name: Focused System presentation tests
+        run: npx vitest run apps/desktop/src/system/systemPresentation.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Focused Chromium QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/qa-system-explore.mjs .github/scripts/qa-system-explore.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-system-explore.runtime.mjs || {
+            cat /tmp/world-forge-vite.log
+            exit 1
+          }
+
+      - name: Commit validated System Explore product code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/src
+          git diff --cached --check
+          git commit -m "Add bounded System Explore viewer"
+
+      - name: Commit validated System Explore references
+        run: |
+          git add refs/handoffs/system-visualization-enrichment.md refs/testing/system-explore-visual-qa.md
+          git diff --cached --check
+          git commit -m "Document System Explore validation boundary"
+
+      - name: Push validated commits directly to dev
+        run: |
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/system-explore-20260731 || true
