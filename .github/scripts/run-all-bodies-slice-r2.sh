@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/all-system-bodies-20260801-r3'
+BRANCH='automation/all-system-bodies-20260801-r4'
 BASE_SHA='a8fe9af37e1581cf4d4c03c2c1c3e62d7700354e'
 VITE_PID=''
 cleanup() {
@@ -14,6 +14,19 @@ base64 -d /tmp/apply-all-bodies.b64 | gzip -d > /tmp/apply-all-bodies.py
 printf '%s  %s\n' \
   '89317db4a65eb92420cb93f482a5a4829bbb15d6dff6308ee3228bca6f734c61' '/tmp/apply-all-bodies.py' > /tmp/all-bodies-source.sha256
 sha256sum -c /tmp/all-bodies-source.sha256
+python - <<'PYFIX'
+from pathlib import Path
+path = Path('/tmp/apply-all-bodies.py')
+text = path.read_text(encoding='utf-8')
+old = r"    workflow: artifact.workflow,\n    source: artifact.source,"
+new = r"    workflow: {\n      id: artifact.workflow.id,\n      version: artifact.workflow.version,\n      graphSignature: artifact.workflow.graphSignature\n    },\n    source: artifact.source,"
+if text.count(old) != 1:
+    raise SystemExit(f'expected one deterministic-signature patch point, found {text.count(old)}')
+path.write_text(text.replace(old, new), encoding='utf-8')
+PYFIX
+printf '%s  %s\n' \
+  '5a1f2b1d89a771485ac178d2b40deee0d3489370add53cecdab0d15b17ef0647' '/tmp/apply-all-bodies.py' > /tmp/all-bodies-fixed.sha256
+sha256sum -c /tmp/all-bodies-fixed.sha256
 cp .github/scripts/qa-all-bodies-source.mjs /tmp/qa-all-bodies.mjs
 python -m py_compile /tmp/apply-all-bodies.py
 node --check /tmp/qa-all-bodies.mjs
