@@ -1,0 +1,25 @@
+.seasonal-surface-status {
+  position: absolute;
+  top: 126px;
+  right: 12px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(430px, calc(100% - 24px));
+  padding: 9px 10px;
+  border: 1px solid rgba(190, 206, 215, 0.28);
+  border-radius: 10px;
+  background: rgba(14, 23, 29, 0.9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+.seasonal-surface-status.status-failed { border-color: rgba(224, 105, 99, 0.72); }
+.seasonal-surface-status.status-complete { border-color: rgba(116, 181, 153, 0.48); }
+.seasonal-surface-icon { display: inline-flex; color: #c9d8df; }
+.seasonal-surface-copy { display: grid; gap: 2px; min-width: 0; }
+.seasonal-surface-copy strong { font-size: 0.78rem; color: #f5f7f7; }
+.seasonal-surface-copy small { color: #afc0c8; line-height: 1.2; }
+.seasonal-surface-status button { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 5px 7px; border-radius: 7px; }
+.seasonal-surface-spinner { animation: seasonal-surface-spin 0.9s linear infinite; }
+@keyframes seasonal-surface-spin { to { transform: rotate(360deg); } }

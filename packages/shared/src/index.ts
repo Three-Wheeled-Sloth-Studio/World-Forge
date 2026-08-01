@@ -1147,7 +1147,59 @@ export type GeneratedSystemBodyArtifact = {
   };
 };
 
-export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact | GeneratedSystemBodyArtifact;
+export type SeasonalSurfaceModelArtifact = {
+  artifactKey: 'project.seasonal-surface-model';
+  artifactVersion: 1;
+  artifactRole: 'presentation';
+  seasonalAuthority: 'illustrative';
+  status: 'complete';
+  workflow: {
+    id: 'project.seasonal-surface-model';
+    version: '1.0.0';
+    graphSignature: string;
+    nodes: EnrichmentNodeRunRecord[];
+  };
+  source: {
+    projectId: string;
+    worldId: string;
+    sourceSignature: string;
+    generatorVersion: string;
+    appVersion: string;
+    sourceCommit?: string;
+    orbitalArtifactSignature: string;
+  };
+  seed: string;
+  epochIso: string;
+  startedAt: string;
+  completedAt: string;
+  totalMs: number;
+  artifactSignature: string;
+  validation: {
+    valid: boolean;
+    issues: Array<{ severity: 'error' | 'warning'; message: string }>;
+  };
+  payload: {
+    modelVersion: 'seasonal-surface-model-v1';
+    coefficientResolution: Resolution;
+    yearLengthDays: number;
+    northSummerPeakDay: number;
+    periapsisDay: number;
+    eccentricityTemperatureAmplitudeC: number;
+    baselineTemperatureC: number[];
+    temperatureAmplitudeC: number[];
+    insolationAmplitude: number[];
+    snowPotential: number[];
+    seaIcePotential: number[];
+    stats: {
+      meanTemperatureAmplitudeC: number;
+      maxTemperatureAmplitudeC: number;
+      meanSnowPotential: number;
+      meanSeaIcePotential: number;
+    };
+  };
+};
+
+export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | SeasonalSurfaceModelArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact | GeneratedSystemBodyArtifact;
 export type ProjectEnrichmentArtifacts = Record<string, ProjectEnrichmentArtifact>;
 
 export type WorldProject = {
