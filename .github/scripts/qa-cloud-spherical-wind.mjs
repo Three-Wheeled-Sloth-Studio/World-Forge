@@ -45,6 +45,7 @@ await globe.waitFor({ state: 'visible' });
 if (await globe.getAttribute('data-cloud-renderer') !== 'wind-oriented-spherical-v4') throw new Error('Wind-oriented spherical cloud renderer is not active.');
 if (await globe.getAttribute('data-cloud-coverage-profile') !== 'thin-streamers-clear-sky') throw new Error('Thin-streamer clear-sky profile is not active.');
 if (await globe.getAttribute('data-cloud-seam-mode') !== 'spherical-continuous') throw new Error('Spherical seam-continuity contract is not active.');
+if (await globe.getAttribute('data-cloud-advection-mode') !== 'local-flow-shader') throw new Error('Local-flow shader advection is not active.');
 if (await globe.getAttribute('data-weather-wind-field') === 'none') throw new Error('Generated wind field is missing from the weather artifact.');
 if (await globe.getAttribute('data-weather-shell-offset') !== '0.002') throw new Error('Weather systems moved away from the accepted cloud-deck offset.');
 if (await globe.getAttribute('data-cloud-shadow-mode') !== 'disabled-until-soft-shadow') throw new Error('Hard cloud shadows were re-enabled.');
@@ -57,7 +58,7 @@ await page.waitForFunction((before) => {
   return Number.isFinite(current) && current > Number(before) + 0.08;
 }, textureDayBefore, { timeout: 20000 });
 const textureDayAfter = Number(await surface.getAttribute('data-weather-texture-day'));
-console.log('QA: shared-clock cloud evolution confirmed');
+console.log('QA: shared-clock shader evolution confirmed');
 
 const box = await surface.boundingBox();
 if (!box) throw new Error('Globe render surface has no bounding box.');
@@ -100,6 +101,7 @@ console.log(JSON.stringify({
   renderer: await globe.getAttribute('data-cloud-renderer'),
   coverageProfile: await globe.getAttribute('data-cloud-coverage-profile'),
   seamMode: await globe.getAttribute('data-cloud-seam-mode'),
+  advectionMode: await globe.getAttribute('data-cloud-advection-mode'),
   windField: await globe.getAttribute('data-weather-wind-field'),
   cloudEnableMs,
   textureDayBefore,
