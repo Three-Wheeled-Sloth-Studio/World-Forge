@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/all-system-bodies-20260801-r2'
-BASE_SHA='195c36aa5cfc56c7017d08a886501d83f1e935f7'
+BRANCH='automation/all-system-bodies-20260801-r3'
+BASE_SHA='a8fe9af37e1581cf4d4c03c2c1c3e62d7700354e'
 VITE_PID=''
 cleanup() {
   if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
@@ -12,8 +12,8 @@ trap cleanup EXIT
 cat .github/scripts/apply-all-bodies.part.* > /tmp/apply-all-bodies.b64
 base64 -d /tmp/apply-all-bodies.b64 | gzip -d > /tmp/apply-all-bodies.py
 printf '%s  %s\n' \
-  '89317db4a65eb92420cb93f482a5a4829bbb15d6dff6308ee3228bca6f734c61' '/tmp/apply-all-bodies.py' > /tmp/all-bodies-input.sha256
-sha256sum -c /tmp/all-bodies-input.sha256
+  '89317db4a65eb92420cb93f482a5a4829bbb15d6dff6308ee3228bca6f734c61' '/tmp/apply-all-bodies.py' > /tmp/all-bodies-source.sha256
+sha256sum -c /tmp/all-bodies-source.sha256
 cp .github/scripts/qa-all-bodies-source.mjs /tmp/qa-all-bodies.mjs
 python -m py_compile /tmp/apply-all-bodies.py
 node --check /tmp/qa-all-bodies.mjs
