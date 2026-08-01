@@ -1,0 +1,27 @@
+name: Temporary cleanup body fidelity branch
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  close-and-delete:
+    if: github.head_ref == 'automation/body-fidelity-satellites-20260801'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close cleanup PR and delete branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          gh api --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+            -f state=closed
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            --delete "${HEAD_BRANCH}"
