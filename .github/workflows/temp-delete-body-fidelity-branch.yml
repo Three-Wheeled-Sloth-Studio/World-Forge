@@ -1,0 +1,20 @@
+name: Temporary delete body fidelity runner branch
+
+on:
+  push:
+    branches:
+      - automation/body-fidelity-satellites-20260801
+
+permissions:
+  contents: write
+
+jobs:
+  delete-runner-branch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete disposable branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            --delete automation/body-fidelity-satellites-20260801
