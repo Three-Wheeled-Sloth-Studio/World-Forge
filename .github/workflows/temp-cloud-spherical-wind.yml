@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/cloud-spherical-wind-20260731-r2'
+    if: github.head_ref == 'automation/cloud-spherical-wind-20260731-r3'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout runner branch
@@ -20,6 +20,7 @@ jobs:
       - name: Preserve temporary scripts
         run: |
           cp .github/scripts/apply-cloud-spherical-wind.py /tmp/apply-cloud-spherical-wind.py
+          cp .github/scripts/optimize-cloud-spherical-wind.py /tmp/optimize-cloud-spherical-wind.py
           cp .github/scripts/qa-cloud-spherical-wind.mjs /tmp/qa-cloud-spherical-wind.mjs
 
       - name: Switch to exact accepted dev
@@ -37,15 +38,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply Cycle 2.2 cloud correction
+      - name: Apply and optimize Cycle 2.2 cloud correction
         run: |
           python /tmp/apply-cloud-spherical-wind.py
+          python /tmp/optimize-cloud-spherical-wind.py
           git diff --check
           grep -q "APP_VERSION = '0.3.43'" apps/desktop/src/appVersion.ts
           grep -q "wind-oriented-spherical-v4" apps/desktop/src/globe/GlobeViewer.tsx
           grep -q "spherical-continuous" apps/desktop/src/globe/GlobeViewer.tsx
           grep -q "WORKFLOW_VERSION = '1.1.0'" packages/generation-runtime/src/enrichment/atmosphericWeatherPresentation.ts
           grep -q "windField" packages/shared/src/index.ts
+          grep -q "Math.min(canvas.width, 256)" apps/desktop/src/globe/weatherPresentationTexture.ts
+          grep -q "STREAMER_ROTATIONS" apps/desktop/src/globe/weatherPresentationTexture.ts
+          grep -q "noiseSeedCache" apps/desktop/src/globe/weatherPresentationTexture.ts
           ! grep -A12 "renderWeatherPresentationTexture" apps/desktop/src/globe/weatherPresentationTexture.ts | grep -q "normalizeHorizontalTextureSeam"
 
       - name: Focused weather and cloud tests
@@ -68,7 +73,10 @@ jobs:
             if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
             sleep 1
           done
-          node .github/scripts/qa-cloud-spherical-wind.runtime.mjs
+          node .github/scripts/qa-cloud-spherical-wind.runtime.mjs || {
+            cat /tmp/world-forge-vite.log
+            exit 1
+          }
 
       - name: Commit validated Cycle 2.2 product changes to dev
         run: |
@@ -82,4 +90,4 @@ jobs:
 
       - name: Delete disposable runner branch
         if: always()
-        run: git push origin --delete automation/cloud-spherical-wind-20260731-r2 || true
+        run: git push origin --delete automation/cloud-spherical-wind-20260731-r3 || true
