@@ -1,4 +1,4 @@
-name: Temporary Experimental hybrid foundation
+name: Temporary Experimental hybrid foundation r2
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/experimental-hybrid-foundation-20260801'
+    if: github.head_ref == 'automation/experimental-hybrid-foundation-20260801-r2'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -26,7 +26,7 @@ jobs:
           VITE_PID=''
           cleanup() {
             if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
-            git push origin --delete automation/experimental-hybrid-foundation-20260801 || true
+            git push origin --delete automation/experimental-hybrid-foundation-20260801-r2 || true
           }
           trap cleanup EXIT
 
@@ -45,6 +45,20 @@ jobs:
           test "$(git rev-parse origin/dev)" = "d0b7fa8d3a2b27257798999525eb8bb36e12a05a"
           git checkout -B dev origin/dev
           npm ci
+
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('refs/planning/pi-system-visualization-and-progressive-body-enrichment.md')
+          text = path.read_text(encoding='utf-8')
+          compatibility_line = '- Body-specific generation uses partner workflow graphs assembled from reusable nodes rather than early-return branches inside the Earthlike workflow.\n'
+          if compatibility_line not in text:
+              marker = '## Accepted architecture\n'
+              if marker not in text:
+                  raise RuntimeError('Accepted architecture marker missing from planning document.')
+              text = text.replace(marker, marker + '\n' + compatibility_line, 1)
+              path.write_text(text, encoding='utf-8')
+          PY
+
           python /tmp/apply-hybrid.py
           git diff --check
 
