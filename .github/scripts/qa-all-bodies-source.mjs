@@ -37,15 +37,47 @@ for (const viewport of viewports) {
   await page.getByRole('button', { name: 'Queue unresolved system bodies' }).click();
   await page.getByRole('button', { name: /Start body generation queue/ }).click();
 
-  await page.waitForFunction(() => {
-    const panel = document.querySelector('.system-body-generation');
-    if (!panel) return false;
-    const eligibleCount = Number(panel.getAttribute('data-body-eligible-count'));
-    const generatedCount = Number(panel.getAttribute('data-body-generated-count'));
-    const queueCount = Number(panel.getAttribute('data-body-queue-count'));
-    const active = panel.getAttribute('data-body-active-id');
-    return eligibleCount > 0 && generatedCount === eligibleCount && queueCount === 0 && active === 'none';
-  }, null, { timeout: 180000 });
+  let queueCompleted = false;
+  let previousQueueState = '';
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const state = await page.evaluate(() => {
+      const panel = document.querySelector('.system-body-generation');
+      return {
+        eligibleCount: Number(panel?.getAttribute('data-body-eligible-count')),
+        generatedCount: Number(panel?.getAttribute('data-body-generated-count')),
+        queueCount: Number(panel?.getAttribute('data-body-queue-count')),
+        active: panel?.getAttribute('data-body-active-id') ?? 'missing',
+        selectedStatus: panel?.getAttribute('data-body-lifecycle-status') ?? 'missing',
+        errors: Array.from(document.querySelectorAll('.system-generation-error')).map((node) => node.textContent?.trim()).filter(Boolean),
+        progress: document.querySelector('.system-generation-progress')?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+      };
+    });
+    const serialized = JSON.stringify(state);
+    if (serialized !== previousQueueState) {
+      console.log('BODY_QUEUE_STATE=' + serialized);
+      previousQueueState = serialized;
+    }
+    if (state.errors.length) throw new Error(`Body queue failed: ${serialized}`);
+    if (state.eligibleCount > 0 && state.generatedCount === state.eligibleCount && state.queueCount === 0 && state.active === 'none') {
+      queueCompleted = true;
+      break;
+    }
+    if (state.queueCount === 0 && state.active === 'none' && state.generatedCount < state.eligibleCount) {
+      const statuses = [];
+      for (const option of options.slice(2)) {
+        await bodySelect.selectOption(option.value);
+        await page.waitForTimeout(20);
+        statuses.push({
+          id: option.value,
+          status: await bodyPanel.getAttribute('data-body-lifecycle-status'),
+          text: (await bodyPanel.innerText()).replace(/\s+/g, ' ').slice(0, 320)
+        });
+      }
+      throw new Error(`Body queue stalled: ${serialized}; bodies=${JSON.stringify(statuses)}`);
+    }
+    await page.waitForTimeout(500);
+  }
+  if (!queueCompleted) throw new Error(`Body queue timed out: ${previousQueueState}`);
 
   const generatedSummary = {
     eligible: Number(await bodyPanel.getAttribute('data-body-eligible-count')),
