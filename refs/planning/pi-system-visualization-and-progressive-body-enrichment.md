@@ -12,6 +12,8 @@ The system visualizer becomes both a presentation surface and the launch point f
 
 ## Accepted architecture
 
+- Body-specific generation uses capability-resolved workflow graphs assembled from reusable nodes. Structurally inapplicable nodes are absent from the resolved graph; conditions discovered during execution produce explicit skipped-node records rather than silent early returns.
+
 ### Ordinary generation remains bounded
 
 The existing world-generation button continues to produce the primary `WorldProject` and its coarse solar-system scaffold. Orbital presentation, weather presentation, seasonal surface modeling, and secondary-body generation are not added to the ordinary generation graph or its runtime.
@@ -174,21 +176,33 @@ System view provides selected-body generation, unresolved-body batch generation,
 
 ### Fleshing Cycle 2: body-aware workflow family
 
-Do not add a pile of early exits to the habitable Earthlike graph. Build partner workflows from reusable nodes and resolve graph shape from required body capabilities.
+Do not add a pile of private early exits to the habitable Earthlike graph. Compose workflow graphs from reusable nodes and resolve structural graph shape from required body capabilities. Keep a node only when applicability depends on upstream generated results, and record an explicit skipped state and reason when that runtime condition is not met.
 
 Initial workflow profiles:
 
-1. terrestrial habitable;
-2. terrestrial barren and geologically active;
-3. airless or inactive rocky body;
-4. gas giant;
-5. ice giant;
-6. dwarf or minor body;
-7. asteroid or debris belt.
+1. stellar surface and activity presentation;
+2. terrestrial habitable;
+3. terrestrial barren and geologically active;
+4. airless or inactive rocky body;
+5. gas giant;
+6. ice giant;
+7. dwarf or minor body;
+8. asteroid or debris belt.
 
 Capability resolution includes solid surface, geological activity, substantial atmosphere, surface liquid, ecological potential, projected-surface requirement, and ring system.
 
 Skipped work is absent from the resolved graph rather than represented by meaningless zero-duration nodes.
+
+8. Generated stellar surface and activity presentation.
+9. Barren active worlds, gas giants, ice giants, belts, and richer minor bodies.
+
+## Stellar presentation proof
+
+Before expanding the secondary-planet family, replace the uniform star placeholder with a deterministic `stellar-surface-presentation` artifact derived from the generated stellar model.
+
+The bounded first graph should resolve the stellar visual regime, photosphere color and spectrum, limb darkening, granulation, starspot and facula activity, rotation, restrained corona/prominence parameters, and emitted-light presentation. It is a scientifically informed presentation model, not a magnetohydrodynamics simulation.
+
+This workflow is the first non-terrestrial proof of capability-resolved composition. It should contain no planetary terrain, hydrology, climate, or ecology nodes.
 
 ## First secondary-body proof
 

@@ -103,3 +103,15 @@ The next planned slice is capability-resolved partner workflow infrastructure, f
 - Globe view accepts an explicit body target, renders generated airless moons as the central globe, and provides a return-to-primary action.
 - Star presentation in System view now maintains a bounded apparent angular size while orbiting the camera, preventing near-camera tilt blowups.
 - Other secondary body profiles remain deferred until this viewer integration is accepted.
+
+## 2026-08-01 - Experimental hybrid workflow foundation
+
+- Detailed and Experimental were compared across three seeds and three world scenarios at 256 x 128.
+- All nine rendered-output signatures and normalized authoritative signatures matched.
+- Experimental completed 17.2% to 37.9% faster overall and 27.2% to 41.7% faster in deep-time processing.
+- Detailed remains frozen as the production/control workflow.
+- Experimental now resolves graph structure from explicit body capabilities.
+- Structurally inapplicable nodes are omitted before execution.
+- Runtime-only conditions now produce first-class `skipped` node results, events, reasons, fallback outputs, and Dev graph presentation.
+- The existing primary-world Experimental graph resolves to the same full node set and preserves authoritative output.
+- Next implementation target is `stellar-surface-presentation`, followed by the first barren and geologically active terrestrial profile.
