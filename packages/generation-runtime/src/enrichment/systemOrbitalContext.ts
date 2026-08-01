@@ -15,10 +15,14 @@ import {
   AIRLESS_ROCKY_BODY_WORKFLOW_ID,
   airlessRockyBodyWorkflowDescriptor
 } from './airlessRockyBody';
+import {
+  STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID,
+  stellarSurfacePresentationWorkflowDescriptor
+} from './stellarSurfacePresentation';
 
 export const SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID = 'project.system-orbital-context' as const;
 export const SYSTEM_ORBITAL_CONTEXT_WORKFLOW_VERSION = '1.0.0' as const;
-export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID | typeof AIRLESS_ROCKY_BODY_WORKFLOW_ID;
+export type ProjectEnrichmentWorkflowId = typeof SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID | typeof ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID | typeof STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID | typeof AIRLESS_ROCKY_BODY_WORKFLOW_ID;
 
 export type ProjectEnrichmentWorkflowDescriptor = {
   kind: 'enrichment';
@@ -135,11 +139,12 @@ const systemOrbitalContextWorkflowDescriptor: ProjectEnrichmentWorkflowDescripto
 export const projectEnrichmentWorkflowDescriptors: readonly ProjectEnrichmentWorkflowDescriptor[] = [
   systemOrbitalContextWorkflowDescriptor,
   atmosphericWeatherPresentationWorkflowDescriptor,
+  stellarSurfacePresentationWorkflowDescriptor,
   airlessRockyBodyWorkflowDescriptor
 ];
 
 export function isProjectEnrichmentWorkflowId(value: string | undefined): value is ProjectEnrichmentWorkflowId {
-  return value === SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID || value === ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID || value === AIRLESS_ROCKY_BODY_WORKFLOW_ID;
+  return value === SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID || value === ATMOSPHERIC_WEATHER_PRESENTATION_WORKFLOW_ID || value === STELLAR_SURFACE_PRESENTATION_WORKFLOW_ID || value === AIRLESS_ROCKY_BODY_WORKFLOW_ID;
 }
 
 export function projectEnrichmentWorkflowDescriptor(value: string | undefined): ProjectEnrichmentWorkflowDescriptor {

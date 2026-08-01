@@ -65,6 +65,8 @@ describe('body generation lifecycle', () => {
     expect(lifecycle.records['primary-world:moon-1'].stableSeed).toContain('primary-world:moon-1');
     expect(lifecycle.records['body-2'].status).toBe('placeholder');
     expect(lifecycle.records['body-2'].eligible).toBe(false);
+    expect(queueBodyGeneration(lifecycle, 'body-2')).toBe(lifecycle);
+    expect(queueBodyGeneration(lifecycle, orbitalContext.payload.star.id)).toBe(lifecycle);
   });
 
   it('runs the queue sequentially and supports remove and cancel', () => {

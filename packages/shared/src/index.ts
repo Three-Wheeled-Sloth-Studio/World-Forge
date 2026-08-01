@@ -939,6 +939,84 @@ export type AtmosphericWeatherPresentationArtifact = {
   };
 };
 
+export type StellarSurfaceFeature = {
+  id: string;
+  kind: 'spot' | 'facula';
+  latitudeDeg: number;
+  longitudeDeg: number;
+  angularRadiusDeg: number;
+  contrast: number;
+  phaseRad: number;
+  lifetimeDays: number;
+};
+
+export type StellarCoronalStreamer = {
+  id: string;
+  angleDeg: number;
+  widthDeg: number;
+  reach: number;
+  brightness: number;
+};
+
+export type StellarSurfacePresentationArtifact = {
+  artifactKey: 'project.stellar-surface-presentation';
+  artifactVersion: 1;
+  artifactRole: 'presentation';
+  stellarAuthority: 'illustrative';
+  status: 'complete';
+  workflow: {
+    id: 'project.stellar-surface-presentation';
+    version: '1.0.0';
+    graphSignature: string;
+    nodes: EnrichmentNodeRunRecord[];
+  };
+  source: {
+    projectId: string;
+    worldId: string;
+    starId: string;
+    sourceSignature: string;
+    orbitalArtifactSignature: string;
+    generatorVersion: string;
+    appVersion: string;
+    sourceCommit?: string;
+    worldWorkflowId: string;
+  };
+  seed: string;
+  epochIso: string;
+  startedAt: string;
+  completedAt: string;
+  totalMs: number;
+  artifactSignature: string;
+  validation: {
+    valid: boolean;
+    issues: Array<{ severity: 'error' | 'warning'; message: string }>;
+  };
+  payload: {
+    modelVersion: 'stellar-surface-presentation-v1';
+    baseColorHex: string;
+    effectiveTemperatureK: number;
+    rotationPeriodDays: number;
+    differentialRotationFraction: number;
+    activityIndex: number;
+    activityClass: 'quiet' | 'solar-like' | 'active';
+    cyclePeriodYears: number;
+    cyclePhase: number;
+    flareRatePerDay: number;
+    granulation: {
+      cellScale: number;
+      contrast: number;
+      phase: number;
+    };
+    spots: StellarSurfaceFeature[];
+    faculae: StellarSurfaceFeature[];
+    corona: {
+      glowStrength: number;
+      haloScale: number;
+      streamers: StellarCoronalStreamer[];
+    };
+  };
+};
+
 export type AirlessRockyBodyArtifact = {
   artifactKey: `project.generate-airless-rocky-body:${string}`;
   artifactVersion: 1;
@@ -990,7 +1068,7 @@ export type AirlessRockyBodyArtifact = {
   };
 };
 
-export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | AirlessRockyBodyArtifact;
+export type ProjectEnrichmentArtifact = SystemOrbitalContextArtifact | AtmosphericWeatherPresentationArtifact | StellarSurfacePresentationArtifact | AirlessRockyBodyArtifact;
 export type ProjectEnrichmentArtifacts = Record<string, ProjectEnrichmentArtifact>;
 
 export type WorldProject = {
