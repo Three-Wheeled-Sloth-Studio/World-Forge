@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VITE_PID=''
+cleanup() {
+  if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
+  git push origin --delete automation/experimental-hybrid-foundation-20260801-r4 || true
+}
+trap cleanup EXIT
+
+printf '%s  %s\n' \
+  '9233d56d5f5e1ec38eb8de539d444f87c8d2149f150826e26f45cbe35c0cca56' '/tmp/apply-hybrid.b64' \
+  '4d7ce208cf1445082bd4042a888315669053f7527c2cc91a7fdae8b2330bf8ff' '/tmp/qa-hybrid.b64' > /tmp/hybrid-inputs.sha256
+cat .github/scripts/apply-hybrid.py.gz.b64 > /tmp/apply-hybrid.b64
+cat .github/scripts/qa-hybrid.mjs.gz.b64 > /tmp/qa-hybrid.b64
+sha256sum -c /tmp/hybrid-inputs.sha256
+base64 -d /tmp/apply-hybrid.b64 | gzip -d > /tmp/apply-hybrid.py
+base64 -d /tmp/qa-hybrid.b64 | gzip -d > /tmp/qa-hybrid.mjs
+python -m py_compile /tmp/apply-hybrid.py
+node --check /tmp/qa-hybrid.mjs
+
+git fetch origin dev
+test "$(git rev-parse origin/dev)" = "d0b7fa8d3a2b27257798999525eb8bb36e12a05a"
+git checkout -B dev origin/dev
+npm ci
+
+python - <<'PY'
+from pathlib import Path
+path = Path('refs/planning/pi-system-visualization-and-progressive-body-enrichment.md')
+text = path.read_text(encoding='utf-8')
+compatibility_line = '- Body-specific generation uses partner workflow graphs assembled from reusable nodes rather than early-return branches inside the Earthlike workflow.\n'
+if compatibility_line not in text:
+    marker = '## Accepted architecture\n'
+    if marker not in text:
+        raise RuntimeError('Accepted architecture marker missing from planning document.')
+    text = text.replace(marker, marker + '\n' + compatibility_line, 1)
+delivery_line = '8. Barren active worlds, gas giants, ice giants, belts, and richer minor bodies.\n'
+if delivery_line not in text:
+    marker = '## First secondary-body proof\n'
+    if marker not in text:
+        raise RuntimeError('First secondary-body proof marker missing from planning document.')
+    text = text.replace(marker, delivery_line + '\n' + marker, 1)
+path.write_text(text, encoding='utf-8')
+PY
+
+python /tmp/apply-hybrid.py
+
+python - <<'PY'
+from pathlib import Path
+path = Path('apps/desktop/src/workspace/WorldWorkspace.tsx')
+text = path.read_text(encoding='utf-8')
+old = "    status: 'waiting' | 'running' | 'complete' | 'failed';"
+new = "    status: 'waiting' | 'running' | 'complete' | 'failed' | 'skipped';"
+count = text.count(old)
+if count != 1:
+    raise RuntimeError(f'WorldWorkspace status contract: expected one match, found {count}')
+path.write_text(text.replace(old, new), encoding='utf-8')
+PY
+
+git diff --check
+
+npx vitest run \
+  packages/generator-core/src/graph/runner.test.ts \
+  packages/generator-core/src/graph/workflow-capabilities.test.ts \
+  packages/generator-core/src/workflows.test.ts
+npm run verify
+
+npm run benchmark:workflows -- \
+  --workflows=core.performance-foundation,core.world-generation-experimental \
+  --resolution=256x128 \
+  --runs=1 \
+  --seeds=1001001,3141592,8675309 \
+  --scenarios=earthlike-standard,archipelago-standard,geology-glacial-stress \
+  --source-commit=d0b7fa8d3a2b27257798999525eb8bb36e12a05a
+REPORT="$(ls -1t refs/testing/generation-workflow-comparison-*.json | head -n 1)"
+node --input-type=module - "$REPORT" <<'NODE'
+import fs from 'node:fs';
+const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const failed = report.comparisons.filter((entry) => !entry.signaturesEqual || !entry.authoritativeSignaturesEqual);
+console.log('POST_CHANGE_EQUIVALENCE=' + JSON.stringify(report.comparisons));
+if (failed.length) {
+  console.error(JSON.stringify(failed, null, 2));
+  process.exit(2);
+}
+NODE
+
+mkdir -p .github/scripts
+cp /tmp/qa-hybrid.mjs .github/scripts/qa-hybrid.runtime.mjs
+npx playwright install chromium
+npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+VITE_PID=$!
+for i in {1..60}; do
+  if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+  sleep 1
+done
+node .github/scripts/qa-hybrid.runtime.mjs || {
+  cat /tmp/world-forge-vite.log
+  exit 1
+}
+kill "${VITE_PID}" || true
+VITE_PID=''
+rm .github/scripts/qa-hybrid.runtime.mjs
+
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+git add \
+  packages/generator-core/src/graph/workflow-capabilities.ts \
+  packages/generator-core/src/graph/workflow-capabilities.test.ts \
+  packages/generator-core/src/graph/types.ts \
+  packages/generator-core/src/graph/runner.ts \
+  packages/generator-core/src/graph/runner.test.ts \
+  packages/generator-core/src/graph/run-generation-foundation.ts \
+  packages/generator-core/src/workflows.ts \
+  packages/generator-core/src/workflows.test.ts
+git diff --cached --check
+git commit -m "Add Experimental capability-resolved graph foundation"
+
+git add \
+  apps/desktop/src/generationWorker.ts \
+  apps/desktop/src/generation/useGenerationWorkflow.ts \
+  apps/desktop/src/dev/useDevGraphWorkspace.ts \
+  apps/desktop/src/workspace/WorldWorkspace.tsx
+git diff --cached --check
+git commit -m "Expose explicit skipped generation nodes"
+
+git add \
+  apps/desktop/src/appVersion.ts \
+  refs/planning/pi-system-visualization-and-progressive-body-enrichment.md \
+  refs/handoffs/system-visualization-enrichment.md \
+  refs/testing/experimental-hybrid-workflow-qa.md
+git diff --cached --check
+git commit -m "Document Experimental hybrid workflow boundary"
+
+git push origin HEAD:dev
+echo "Validated dev commit: $(git rev-parse HEAD)"
