@@ -1,0 +1,119 @@
+name: Temporary body lifecycle and airless-moon runner r4
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/body-lifecycle-airless-20260731-r4'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate and preserve staged product files
+        run: |
+          cat > /tmp/body-parts.sha256 <<'EOF'
+          b840a9f739f1ecf33dd3892f7a74590dd3fa07bde7ef68e1b086297b72229fd0  .github/scripts/body-slice.tar.gz.b64.part-00a
+          747c470e1ddaa9f8154c13bef8ce8a357374e4faf15784fa4b4f882c363bca34  .github/scripts/body-slice.tar.gz.b64.part-00b
+          16660ea513b96ba2f98ddc3a2475144af18d011f5c3ce7598ba1e9ccf37f233f  .github/scripts/body-slice.tar.gz.b64.part-00c
+          930daa4450cd34e28fe0e33267d025c032a5f6d830654355e44b356281b68a08  .github/scripts/body-slice.tar.gz.b64.part-00d
+          9fca08fb4205e9edb406b2e358d7f698aae07b0c2e450571ed2400d9514c6b88  .github/scripts/body-slice.tar.gz.b64.part-01
+          3cb2178ca774301f8768734b7bf36de3f858e0c04fcad0bb44957a89440b9723  .github/scripts/body-slice.tar.gz.b64.part-02
+          9175d3f90d5aac89a4ce59bf700fe49eeebc37a7721c8cb9ab3304224db860ce  .github/scripts/body-slice.tar.gz.b64.part-03
+          1903ebed9d06869ab2361c698645f75f3f223cc1d25c19f017db79bfcf838740  .github/scripts/body-slice.tar.gz.b64.part-04
+          090fdbef8c65d710f5d144abe0086e2214f209f1de283ed0f9f52f478a2a43f9  .github/scripts/body-slice.tar.gz.b64.part-05
+          b6b329992a435ab8123dabd9b838251d87e9ee09da7ca151d1e066cce3e12beb  .github/scripts/body-slice.tar.gz.b64.part-06
+          3954d69796a252ad38d1dead685a70c5e9f735afc0932650a6f88e9a24a62890  .github/scripts/body-slice.tar.gz.b64.part-07
+          ebc3d0b42c5f0c1a74b08266032ca5bcb48e2d77bf7e6d7a78c854f9016ec619  .github/scripts/body-slice.tar.gz.b64.part-08
+          9fda83612290681cacbe51ede64167ea099ea999bf072a78fda48201f0965361  .github/scripts/body-slice.tar.gz.b64.part-09
+          e82b620bd7cb35c192058664a32577012782b06c00321a48387821dedef23294  .github/scripts/body-slice.tar.gz.b64.part-10
+          8b274179bd11ed5e30c1d6fbb4578c966a8fb949672a0291cbdf7a53b89ac57f  .github/scripts/body-slice.tar.gz.b64.part-11
+          EOF
+          sha256sum -c /tmp/body-parts.sha256
+          mkdir -p /tmp/body-slice
+          cat .github/scripts/body-slice.tar.gz.b64.part-* | base64 -d | tar -xz -C /tmp/body-slice
+
+      - name: Switch to exact accepted dev
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "7dfbc4af4c743d84216f4849292ad787311c284a"
+          git checkout -B dev origin/dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply body lifecycle and airless-moon boundary
+        run: |
+          cp /tmp/body-slice/packages/generation-runtime/src/enrichment/* packages/generation-runtime/src/enrichment/
+          cp /tmp/body-slice/apps/desktop/src/enrichment/* apps/desktop/src/enrichment/
+          cp /tmp/body-slice/apps/desktop/src/system/* apps/desktop/src/system/
+          cp /tmp/body-slice/refs/testing/body-generation-visual-qa.md refs/testing/body-generation-visual-qa.md
+          python /tmp/body-slice/.github/scripts/apply-body-generation-boundary.py
+          git diff --check
+
+      - name: Focused lifecycle and body-generation tests
+        run: npx vitest run packages/generation-runtime/src/enrichment/airlessRockyBody.test.ts packages/generation-runtime/src/enrichment/bodyGenerationLifecycle.test.ts apps/desktop/src/system/systemPresentation.test.ts
+
+      - name: Full repository verification
+        run: npm run verify
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Focused Chromium QA
+        run: |
+          mkdir -p .github/scripts
+          cp /tmp/body-slice/.github/scripts/qa-body-generation.mjs .github/scripts/qa-body-generation.runtime.mjs
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node .github/scripts/qa-body-generation.runtime.mjs || {
+            cat /tmp/world-forge-vite.log
+            exit 1
+          }
+
+      - name: Commit body lifecycle and generated-body runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/shared/src/index.ts packages/generation-runtime/src/enrichment apps/desktop/src/enrichmentWorker.ts
+          git diff --cached --check
+          git commit -m "Add body lifecycle and airless moon workflow"
+
+      - name: Commit System queue and generated-body presentation
+        run: |
+          git add apps/desktop/src
+          git diff --cached --check
+          git commit -m "Add System body queue and moon presentation"
+
+      - name: Commit body-generation planning and QA references
+        run: |
+          git add refs/planning/pi-system-visualization-and-progressive-body-enrichment.md refs/handoffs/system-visualization-enrichment.md refs/testing/body-generation-visual-qa.md
+          git diff --cached --check
+          git commit -m "Document airless moon proof boundary"
+
+      - name: Push validated commits directly to dev
+        run: |
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
+
+      - name: Delete disposable runner branch
+        if: always()
+        run: git push origin --delete automation/body-lifecycle-airless-20260731-r4 || true
