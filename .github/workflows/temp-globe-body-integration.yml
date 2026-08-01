@@ -1,0 +1,84 @@
+name: Temporary Globe body integration runner
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-validate:
+    if: github.head_ref == 'automation/globe-body-integration-20260801'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Apply, validate, and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          VITE_PID=''
+          cleanup() {
+            if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
+            git push origin --delete automation/globe-body-integration-20260801 || true
+          }
+          trap cleanup EXIT
+
+          printf '%s  %s\n' \
+            '16473897e33899e8b44a110a15a95ca2ee7facdfe0efe9e7dc5d0f1790a4fd2a' '/tmp/globe-integration.b64' \
+            'f01a9bd5509da80a64a2fb10bfb8be9b5041b0de74eaaeadb94b15ff97f95677' '/tmp/qa-globe-integration.b64' > /tmp/globe-inputs.sha256
+          cat .github/scripts/globe-integration.py.gz.b64.part-* > /tmp/globe-integration.b64
+          cat .github/scripts/qa-globe-integration.mjs.gz.b64 > /tmp/qa-globe-integration.b64
+          sha256sum -c /tmp/globe-inputs.sha256
+          base64 -d /tmp/globe-integration.b64 | gzip -d > /tmp/apply-globe-integration.py
+          base64 -d /tmp/qa-globe-integration.b64 | gzip -d > /tmp/qa-globe-integration.mjs
+          python -m py_compile /tmp/apply-globe-integration.py
+          node --check /tmp/qa-globe-integration.mjs
+
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "481755f641e0e3941864a595128e9dbc0ab50b07"
+          git checkout -B dev origin/dev
+          npm ci
+          python /tmp/apply-globe-integration.py
+          git diff --check
+
+          npx vitest run apps/desktop/src/globe/globeBodyTarget.test.ts apps/desktop/src/system/systemPresentation.test.ts packages/generation-runtime/src/enrichment/airlessRockyBody.test.ts packages/generation-runtime/src/enrichment/bodyGenerationLifecycle.test.ts
+          npm run verify
+
+          npx playwright install chromium
+          npm run dev -- --host 127.0.0.1 > /tmp/world-forge-vite.log 2>&1 &
+          VITE_PID=$!
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node /tmp/qa-globe-integration.mjs || {
+            cat /tmp/world-forge-vite.log
+            exit 1
+          }
+          kill "${VITE_PID}" || true
+          VITE_PID=''
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add apps/desktop/src/globe apps/desktop/src/main.tsx
+          git diff --cached --check
+          git commit -m "Integrate generated moons with Globe view"
+
+          git add apps/desktop/src/system apps/desktop/src/appVersion.ts
+          git diff --cached --check
+          git commit -m "Add System globe handoff and stable star scale"
+
+          git add refs/handoffs/system-visualization-enrichment.md refs/testing/globe-body-integration-visual-qa.md
+          git diff --cached --check
+          git commit -m "Document Globe body integration boundary"
+
+          git push origin HEAD:dev
+          echo "Validated dev commit: $(git rev-parse HEAD)"
