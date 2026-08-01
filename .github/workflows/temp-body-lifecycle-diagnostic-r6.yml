@@ -1,4 +1,4 @@
-name: Temporary body lifecycle diagnostic r6
+name: Temporary body lifecycle diagnostic r7
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   diagnose:
-    if: github.head_ref == 'automation/body-lifecycle-airless-20260731-r6'
+    if: github.head_ref == 'automation/body-lifecycle-airless-20260731-r7'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -26,7 +26,7 @@ jobs:
           VITE_PID=''
           cleanup() {
             if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
-            git push origin --delete automation/body-lifecycle-airless-20260731-r6 || true
+            git push origin --delete automation/body-lifecycle-airless-20260731-r7 || true
           }
           trap cleanup EXIT
           mkdir -p /tmp/body-slice
@@ -40,6 +40,7 @@ jobs:
           cp /tmp/body-slice/apps/desktop/src/system/* apps/desktop/src/system/
           cp /tmp/body-slice/refs/testing/body-generation-visual-qa.md refs/testing/body-generation-visual-qa.md
           python /tmp/body-slice/.github/scripts/apply-body-generation-boundary.py
+          mkdir -p .github/scripts
           python - <<'PY'
           from pathlib import Path
           path = Path('apps/desktop/src/system/SystemViewer.tsx')
