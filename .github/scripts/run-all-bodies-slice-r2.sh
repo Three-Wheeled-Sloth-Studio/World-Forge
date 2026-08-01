@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/all-system-bodies-20260801-r7'
+BRANCH='automation/all-system-bodies-20260801-r8'
 BASE_SHA='a8fe9af37e1581cf4d4c03c2c1c3e62d7700354e'
 VITE_PID=''
 cleanup() {
@@ -107,6 +107,18 @@ replace_once(
     'apps/desktop/src/globe/GlobeViewer.tsx',
     "  const mesh = generatedArtifact\n    ? createAirlessBodyMesh(generatedArtifact, radius)",
     "  const mesh = generatedArtifact\n    ? createGeneratedBodyObject(generatedArtifact, radius)"
+)
+
+# Drive queue continuation from persisted lifecycle state rather than a recursive timeout chain.
+replace_once(
+    'apps/desktop/src/enrichment/useBodyGenerationQueue.ts',
+    "        window.setTimeout(() => runNext(completedLifecycle), 0);",
+    ""
+)
+replace_once(
+    'apps/desktop/src/enrichment/useBodyGenerationQueue.ts',
+    "  useEffect(() => {\n    if (!lifecycle?.activeBodyId) return;\n    const refresh = () => setElapsedMs(Math.max(0, performance.now() - taskStartedAtRef.current));\n    refresh();\n    const timer = window.setInterval(refresh, 100);\n    return () => window.clearInterval(timer);\n  }, [lifecycle?.activeBodyId]);\n\n  const updateAndMaybeRun",
+    "  useEffect(() => {\n    if (!lifecycle?.activeBodyId) return;\n    const refresh = () => setElapsedMs(Math.max(0, performance.now() - taskStartedAtRef.current));\n    refresh();\n    const timer = window.setInterval(refresh, 100);\n    return () => window.clearInterval(timer);\n  }, [lifecycle?.activeBodyId]);\n\n  const queuedBodyIds = lifecycle?.queue.join('|') ?? '';\n  useEffect(() => {\n    if (!lifecycle || lifecycle.paused || lifecycle.activeBodyId || lifecycle.queue.length === 0 || taskIdRef.current) return;\n    const timer = window.setTimeout(() => runNext(lifecycle), 0);\n    return () => window.clearTimeout(timer);\n  }, [lifecycle?.activeBodyId, lifecycle?.paused, queuedBodyIds, runNext]);\n\n  const updateAndMaybeRun"
 )
 PYINTEGRATE
 git diff --check
