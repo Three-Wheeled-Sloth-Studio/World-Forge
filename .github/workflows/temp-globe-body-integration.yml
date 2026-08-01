@@ -1,4 +1,4 @@
-name: Temporary Globe body integration runner
+name: Temporary Globe body integration runner r2
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/globe-body-integration-20260801'
+    if: github.head_ref == 'automation/globe-body-integration-20260801-r2'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -26,12 +26,12 @@ jobs:
           VITE_PID=''
           cleanup() {
             if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
-            git push origin --delete automation/globe-body-integration-20260801 || true
+            git push origin --delete automation/globe-body-integration-20260801-r2 || true
           }
           trap cleanup EXIT
 
           printf '%s  %s\n' \
-            '16473897e33899e8b44a110a15a95ca2ee7facdfe0efe9e7dc5d0f1790a4fd2a' '/tmp/globe-integration.b64' \
+            '5f318a696f319e0fd7685842825c3b694cf5511175528a7f2888861364398032' '/tmp/globe-integration.b64' \
             'f01a9bd5509da80a64a2fb10bfb8be9b5041b0de74eaaeadb94b15ff97f95677' '/tmp/qa-globe-integration.b64' > /tmp/globe-inputs.sha256
           cat .github/scripts/globe-integration.py.gz.b64.part-* > /tmp/globe-integration.b64
           cat .github/scripts/qa-globe-integration.mjs.gz.b64 > /tmp/qa-globe-integration.b64
