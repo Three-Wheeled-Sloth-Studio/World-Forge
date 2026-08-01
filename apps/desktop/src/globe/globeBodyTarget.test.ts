@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AirlessRockyBodyArtifact, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import type { GeneratedSystemBodyArtifact, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
 import { resolveGlobeBodyTarget } from './globeBodyTarget';
 
 const primary = {
@@ -16,6 +16,13 @@ const moon = {
   orbitalPeriodDays: 22, phaseAtEpochRad: 0, rotationPeriodHours: 528,
   axialTiltDeg: 2, sizeClass: 0.35, massClass: 0.04, visibleFromPrimary: true, placeholder: true
 } as const;
+const belt = {
+  id: 'belt-1', parentBodyId: 'star-1', kind: 'belt', orbitalOrder: 4,
+  semiMajorAxisAu: 3.2, semiMajorAxisParentRadii: null, eccentricity: 0.04,
+  inclinationDeg: 2, longitudeAscendingNodeDeg: 0, argumentOfPeriapsisDeg: 0,
+  orbitalPeriodDays: 2100, phaseAtEpochRad: 0, rotationPeriodHours: 200,
+  axialTiltDeg: 0, sizeClass: 1.2, massClass: 0.2, visibleFromPrimary: true, placeholder: true
+} as const;
 
 function orbitalContext(): SystemOrbitalContextArtifact {
   return {
@@ -24,7 +31,7 @@ function orbitalContext(): SystemOrbitalContextArtifact {
       star: { id: 'star-1', massSolar: 1, radiusSolar: 1, luminositySolar: 1, effectiveTemperatureK: 5772, colorHex: '#fff0b0' },
       primaryBodyId: primary.id,
       visibleBodyIds: [],
-      bodies: [{ ...primary }, { ...moon }]
+      bodies: [{ ...primary }, { ...moon }, { ...belt }]
     }
   } as unknown as SystemOrbitalContextArtifact;
 }
@@ -37,7 +44,8 @@ function project(status: 'ready' | 'generated'): WorldProject {
     },
     bodyGeneration: {
       records: {
-        [moon.id]: { status, requestedFidelity: 'preview' }
+        [moon.id]: { status, requestedFidelity: 'preview' },
+        [belt.id]: { status, requestedFidelity: 'preview' }
       }
     }
   } as unknown as WorldProject;
@@ -50,18 +58,23 @@ describe('Globe body target resolution', () => {
     expect(target?.mode).toBe('primary-world');
   });
 
-  it('falls back to primary for an unresolved moon', () => {
+  it('falls back to primary for an unresolved body', () => {
     const lookup = vi.fn();
     const target = resolveGlobeBodyTarget(project('ready'), orbitalContext(), moon.id, lookup);
     expect(target?.bodyId).toBe(primary.id);
     expect(lookup).not.toHaveBeenCalled();
   });
 
-  it('opens a generated moon artifact as the globe target', () => {
-    const artifact = { bodyId: moon.id, artifactSignature: 'moon-artifact' } as AirlessRockyBodyArtifact;
-    const lookup = vi.fn(() => artifact);
-    const target = resolveGlobeBodyTarget(project('generated'), orbitalContext(), moon.id, lookup);
-    expect(target).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-airless-moon', artifact });
-    expect(lookup).toHaveBeenCalledWith(expect.anything(), expect.anything(), moon.id, 'preview');
+  it('opens any generated body artifact as a detailed target', () => {
+    const moonArtifact = { bodyId: moon.id, bodyProfile: 'airless-rocky-body', artifactSignature: 'moon-artifact' } as GeneratedSystemBodyArtifact;
+    const moonLookup = vi.fn(() => moonArtifact);
+    const moonTarget = resolveGlobeBodyTarget(project('generated'), orbitalContext(), moon.id, moonLookup);
+    expect(moonTarget).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-system-body', artifact: moonArtifact });
+
+    const beltArtifact = { bodyId: belt.id, bodyProfile: 'debris-belt', artifactSignature: 'belt-artifact' } as GeneratedSystemBodyArtifact;
+    const beltLookup = vi.fn(() => beltArtifact);
+    const beltTarget = resolveGlobeBodyTarget(project('generated'), orbitalContext(), belt.id, beltLookup);
+    expect(beltTarget).toMatchObject({ bodyId: belt.id, mode: 'generated-system-body', artifact: beltArtifact });
+    expect(beltLookup).toHaveBeenCalledWith(expect.anything(), expect.anything(), belt.id, 'preview');
   });
 });

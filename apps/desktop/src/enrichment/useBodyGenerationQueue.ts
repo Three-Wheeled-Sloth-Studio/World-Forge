@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  AirlessRockyBodyArtifact,
   BodyGenerationFidelity,
   BodyGenerationLifecycle,
+  GeneratedSystemBodyArtifact,
   SystemOrbitalContextArtifact,
   WorldProject
 } from '@world-forge/shared';
 import {
-  airlessRockyBodySourceFromProject,
-  airlessRockyBodyWorkflowDescriptor,
-  type AirlessRockyBodySource
-} from '@world-forge/generation-runtime/enrichment/airlessRockyBody';
+  systemBodyGenerationSourceFromProject,
+  systemBodyGenerationWorkflowDescriptor,
+  type SystemBodyGenerationSource
+} from '@world-forge/generation-runtime/enrichment/systemBodyGeneration';
 import {
   cancelActiveBodyGeneration,
   completeBodyGeneration,
   failBodyGeneration,
   pauseBodyGenerationQueue,
   queueBodyGeneration,
-  queueUnresolvedAirlessMoons,
+  queueUnresolvedBodies,
   reconcileBodyGenerationLifecycle,
   removeQueuedBodyGeneration,
   resumeBodyGenerationQueue,
@@ -38,6 +38,7 @@ export type BodyGenerationQueueController = {
   elapsedMs: number;
   error: string;
   queueBody: (bodyId: string, fidelity?: BodyGenerationFidelity, start?: boolean) => void;
+  queueUnresolvedBodies: (fidelity?: BodyGenerationFidelity) => void;
   queueUnresolvedMoons: (fidelity?: BodyGenerationFidelity) => void;
   startQueue: () => void;
   pauseQueue: () => void;
@@ -49,7 +50,7 @@ export type BodyGenerationQueueController = {
 
 type WorkerResponse =
   | { type: 'stage'; id: string; stage: ProjectEnrichmentNodeEvent }
-  | { type: 'complete'; id: string; artifact: AirlessRockyBodyArtifact }
+  | { type: 'complete'; id: string; artifact: GeneratedSystemBodyArtifact }
   | { type: 'cancelled'; id: string }
   | { type: 'error'; id: string; message: string };
 
@@ -69,6 +70,8 @@ export function useBodyGenerationQueue({
   const taskIdRef = useRef('');
   const taskStartedAtRef = useRef(0);
   const activeBodyIdRef = useRef('');
+  const activeWorkflowNodesRef = useRef<ReturnType<typeof systemBodyGenerationWorkflowDescriptor>['nodes']>([]);
+  const interruptionCheckKeyRef = useRef('');
   const projectRef = useRef(project);
   const orbitalContextRef = useRef(orbitalContext);
   const onProjectEnrichedRef = useRef(onProjectEnriched);
@@ -82,7 +85,7 @@ export function useBodyGenerationQueue({
     return reconcileBodyGenerationLifecycle(project, orbitalContext);
   }, [orbitalContext?.artifactSignature, project?.bodyGeneration?.updatedAt, project?.enrichmentArtifacts, project?.projectId]);
 
-  const persistLifecycle = useCallback((nextLifecycle: BodyGenerationLifecycle, artifact?: AirlessRockyBodyArtifact) => {
+  const persistLifecycle = useCallback((nextLifecycle: BodyGenerationLifecycle, artifact?: GeneratedSystemBodyArtifact) => {
     const current = projectRef.current;
     if (!current) return;
     const next: WorldProject = {
@@ -103,14 +106,18 @@ export function useBodyGenerationQueue({
   }, [lifecycle, orbitalContext?.artifactSignature, persistLifecycle, project?.bodyGeneration, project?.projectId]);
 
   useEffect(() => {
-    const interruptedBodyId = lifecycle?.activeBodyId;
+    if (!project || !orbitalContext || !lifecycle) return;
+    const checkKey = `${project.projectId}:${orbitalContext.artifactSignature}`;
+    if (interruptionCheckKeyRef.current === checkKey) return;
+    interruptionCheckKeyRef.current = checkKey;
+    const interruptedBodyId = lifecycle.activeBodyId;
     if (!interruptedBodyId || taskIdRef.current) return;
     persistLifecycle(failBodyGeneration(
       lifecycle,
       interruptedBodyId,
       'Body generation was interrupted before the project was reopened. Retry to resume from a clean deterministic workflow run.'
     ));
-  }, [lifecycle, persistLifecycle]);
+  }, [lifecycle, orbitalContext, persistLifecycle, project]);
 
   const runNext = useCallback((inputLifecycle?: BodyGenerationLifecycle) => {
     const currentProject = projectRef.current;
@@ -125,7 +132,7 @@ export function useBodyGenerationQueue({
     }
     const bodyId = nextLifecycle.activeBodyId;
     const record = nextLifecycle.records[bodyId];
-    if (!record) return;
+    if (!record?.profile) return;
     persistLifecycle(nextLifecycle);
     activeBodyIdRef.current = bodyId;
     const id = `body-enrichment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -133,8 +140,10 @@ export function useBodyGenerationQueue({
     taskStartedAtRef.current = performance.now();
     setElapsedMs(0);
     setError('');
-    setActiveNodeLabel(airlessRockyBodyWorkflowDescriptor.nodes[0].label);
-    const source: AirlessRockyBodySource = airlessRockyBodySourceFromProject(
+    const workflow = systemBodyGenerationWorkflowDescriptor(record.profile);
+    activeWorkflowNodesRef.current = workflow.nodes;
+    setActiveNodeLabel(workflow.nodes[0]?.label ?? workflow.label);
+    const source: SystemBodyGenerationSource = systemBodyGenerationSourceFromProject(
       currentProject,
       currentOrbitalContext,
       bodyId,
@@ -144,14 +153,14 @@ export function useBodyGenerationQueue({
       phase: 'started',
       taskId: id,
       progress: 0,
-      label: `${airlessRockyBodyWorkflowDescriptor.label}: ${bodyId}`,
+      label: `${workflow.label}: ${bodyId}`,
       seed: source.seed,
       startNodeId: null,
       startedAt: taskStartedAtRef.current,
       timestamp: taskStartedAtRef.current
     };
     window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
-    worker.postMessage({ type: 'run-airless-rocky-body', id, source });
+    worker.postMessage({ type: 'run-system-body', id, source });
   }, [persistLifecycle]);
 
   useEffect(() => {
@@ -170,15 +179,16 @@ export function useBodyGenerationQueue({
       const message = event.data;
       if (message.id !== taskIdRef.current) return;
       if (message.type === 'stage') {
-        const index = Math.max(0, airlessRockyBodyWorkflowDescriptor.nodes.findIndex((node) => node.id === message.stage.nodeId));
+        const nodes = activeWorkflowNodesRef.current;
+        const index = Math.max(0, nodes.findIndex((node) => node.id === message.stage.nodeId));
         const detail: GenerationStageTelemetryDetail = {
           taskId: message.id,
           nodeId: message.stage.nodeId,
           stageId: message.stage.stageId,
           phase: message.stage.phase,
           progress: message.stage.phase === 'completed' ? 1 : 0.05,
-          overallProgress: Math.min(1, (index + (message.stage.phase === 'completed' ? 1 : 0.05)) / airlessRockyBodyWorkflowDescriptor.nodes.length),
-          label: airlessRockyBodyWorkflowDescriptor.nodes[index]?.label ?? message.stage.nodeId,
+          overallProgress: Math.min(1, (index + (message.stage.phase === 'completed' ? 1 : 0.05)) / Math.max(1, nodes.length)),
+          label: nodes[index]?.label ?? message.stage.nodeId,
           startedAt: message.stage.startedAt,
           timestamp: message.stage.timestamp,
           elapsedMs: message.stage.durationMs,
@@ -208,11 +218,13 @@ export function useBodyGenerationQueue({
         persistLifecycle(completedLifecycle, message.artifact);
         setActiveNodeLabel('Generated body ready');
         setElapsedMs(Math.max(0, performance.now() - taskStartedAtRef.current));
+        const record = completedLifecycle.records[bodyId];
+        const workflow = record?.profile ? systemBodyGenerationWorkflowDescriptor(record.profile) : null;
         const detail: GenerationTelemetryDetail = {
           phase: 'completed',
           taskId: message.id,
           progress: 1,
-          label: `${airlessRockyBodyWorkflowDescriptor.label}: ${bodyId}`,
+          label: `${workflow?.label ?? 'Generate body'}: ${bodyId}`,
           seed: message.artifact.seed,
           startNodeId: null,
           startedAt: taskStartedAtRef.current,
@@ -222,13 +234,15 @@ export function useBodyGenerationQueue({
         window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
         activeBodyIdRef.current = '';
         taskIdRef.current = '';
-        window.setTimeout(() => runNext(completedLifecycle), 0);
+        activeWorkflowNodesRef.current = [];
+
       } else if (message.type === 'cancelled') {
         const cancelledLifecycle = cancelActiveBodyGeneration(currentLifecycle, bodyId);
         persistLifecycle(cancelledLifecycle);
         setActiveNodeLabel('Generation cancelled');
         activeBodyIdRef.current = '';
         taskIdRef.current = '';
+        activeWorkflowNodesRef.current = [];
       } else {
         const failedLifecycle = failBodyGeneration(currentLifecycle, bodyId, message.message);
         persistLifecycle(failedLifecycle);
@@ -238,7 +252,7 @@ export function useBodyGenerationQueue({
           phase: 'failed',
           taskId: message.id,
           progress: 1,
-          label: `${airlessRockyBodyWorkflowDescriptor.label}: ${bodyId}`,
+          label: `Generate body: ${bodyId}`,
           seed: currentLifecycle.records[bodyId]?.stableSeed ?? '',
           startNodeId: null,
           startedAt: taskStartedAtRef.current,
@@ -248,6 +262,7 @@ export function useBodyGenerationQueue({
         window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
         activeBodyIdRef.current = '';
         taskIdRef.current = '';
+        activeWorkflowNodesRef.current = [];
       }
     };
     return () => {
@@ -264,6 +279,13 @@ export function useBodyGenerationQueue({
     return () => window.clearInterval(timer);
   }, [lifecycle?.activeBodyId]);
 
+  const queuedBodyIds = lifecycle?.queue.join('|') ?? '';
+  useEffect(() => {
+    if (!lifecycle || lifecycle.paused || lifecycle.activeBodyId || lifecycle.queue.length === 0 || taskIdRef.current) return;
+    const timer = window.setTimeout(() => runNext(lifecycle), 0);
+    return () => window.clearTimeout(timer);
+  }, [lifecycle?.activeBodyId, lifecycle?.paused, queuedBodyIds, runNext]);
+
   const updateAndMaybeRun = useCallback((nextLifecycle: BodyGenerationLifecycle, start: boolean) => {
     const prepared = start ? resumeBodyGenerationQueue(nextLifecycle) : nextLifecycle;
     persistLifecycle(prepared);
@@ -278,12 +300,12 @@ export function useBodyGenerationQueue({
     updateAndMaybeRun(queueBodyGeneration(current, bodyId, fidelity), start);
   }, [updateAndMaybeRun]);
 
-  const queueUnresolvedMoons = useCallback((fidelity: BodyGenerationFidelity = 'preview') => {
+  const queueAll = useCallback((fidelity: BodyGenerationFidelity = 'preview') => {
     const currentProject = projectRef.current;
     const currentOrbitalContext = orbitalContextRef.current;
     if (!currentProject || !currentOrbitalContext) return;
     const current = reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext);
-    persistLifecycle(queueUnresolvedAirlessMoons(current, fidelity));
+    persistLifecycle(queueUnresolvedBodies(current, fidelity));
   }, [persistLifecycle]);
 
   const startQueue = useCallback(() => {
@@ -333,7 +355,8 @@ export function useBodyGenerationQueue({
     elapsedMs,
     error,
     queueBody,
-    queueUnresolvedMoons,
+    queueUnresolvedBodies: queueAll,
+    queueUnresolvedMoons: queueAll,
     startQueue,
     pauseQueue,
     removeQueuedBody,

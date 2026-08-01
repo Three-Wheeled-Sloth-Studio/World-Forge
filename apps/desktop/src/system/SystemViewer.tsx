@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import type { AirlessRockyBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import type { GeneratedSystemBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
 import type { StellarSurfaceEnrichmentController } from '../enrichment/useStellarSurfaceEnrichment';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import type { BodyGenerationQueueController } from '../enrichment/useBodyGenerationQueue';
-import { airlessArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
+import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 import { BodyGenerationPanel } from './BodyGenerationPanel';
 import { StellarSurfacePanel } from './StellarSurfacePanel';
 import { createStellarCoronaMaterial, createStellarCoronaStreamers, createStellarSurfaceMaterial } from './stellarSurfacePresentation';
-import { createAirlessBodyMesh } from './airlessBodyPresentation';
+import { createGeneratedBodyObject, generatedBodyMaterialMode } from './generatedBodyPresentation';
 import { SystemSimulationControls } from '../globe/SystemSimulationControls';
 import { deterministicStarDirections } from '../globe/orbitalPresentation';
 import {
@@ -29,7 +29,7 @@ type CameraOrbit = { yaw: number; pitch: number };
 type BodySceneRecord = {
   group: THREE.Group;
   displaySize: number;
-  materialMode: 'scaffold-solid' | 'placeholder-wireframe' | 'airless-rocky-v1' | 'stellar-surface-v1';
+  materialMode: string;
 };
 type OrbitSceneRecord = {
   line: THREE.LineLoop;
@@ -158,7 +158,7 @@ export function SystemViewer({
     for (const entry of catalog) {
       if (!entry.body) continue;
       const requestedFidelity = project.bodyGeneration?.records[entry.id]?.requestedFidelity ?? 'preview';
-      const generatedArtifact = airlessArtifactForBody(project, orbitalContext, entry.id, requestedFidelity);
+      const generatedArtifact = bodyArtifactForBody(project, orbitalContext, entry.id, requestedFidelity);
       const record = createBodySceneRecord(entry, showLabels, generatedArtifact);
       scene.add(record.group);
       bodyRecords.set(entry.id, record);
@@ -348,10 +348,9 @@ export function SystemViewer({
     : 0;
   const selectedFidelity = selectedBodyId ? project.bodyGeneration?.records[selectedBodyId]?.requestedFidelity ?? 'preview' : 'preview';
   const selectedGeneratedArtifact = selectedEntry?.body && orbitalContext
-    ? airlessArtifactForBody(project, orbitalContext, selectedBodyId, selectedFidelity)
+    ? bodyArtifactForBody(project, orbitalContext, selectedBodyId, selectedFidelity)
     : null;
-  const canOpenSelectedGlobe = selectedBodyId === primaryBodyId
-    || (selectedEntry?.kind === 'moon' && Boolean(selectedGeneratedArtifact));
+  const canOpenSelectedGlobe = selectedBodyId === primaryBodyId || Boolean(selectedGeneratedArtifact);
 
   return (
     <div
@@ -456,7 +455,7 @@ export function SystemViewer({
                 type="button"
                 aria-label="Zoom to selected body globe"
                 disabled={!canOpenSelectedGlobe}
-                title={canOpenSelectedGlobe ? 'Open Globe view centered on this generated body.' : 'Generate this moon before opening it as a globe.'}
+                title={canOpenSelectedGlobe ? 'Open detailed view centered on this generated body.' : 'Generate this body before opening its detailed view.'}
                 onClick={() => onOpenGlobe(selectedBodyId)}
               >
                 Zoom to globe
@@ -490,7 +489,7 @@ export function SystemViewer({
   );
 }
 
-function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean, generatedArtifact: AirlessRockyBodyArtifact | null): BodySceneRecord {
+function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean, generatedArtifact: GeneratedSystemBodyArtifact | null): BodySceneRecord {
   const body = entry.body!;
   const group = new THREE.Group();
   group.userData.systemBodyId = entry.id;
@@ -500,10 +499,11 @@ function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean, ge
     ? new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 })
     : new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: entry.generationStatus === 'generating' ? 0.94 : 0.78 });
 
-  if (generatedArtifact && body.kind !== 'belt') {
-    const mesh = createAirlessBodyMesh(generatedArtifact, displaySize);
-    mesh.userData.systemBodyId = entry.id;
-    group.add(mesh);
+  if (generatedArtifact) {
+    const object = createGeneratedBodyObject(generatedArtifact, displaySize);
+    object.userData.systemBodyId = entry.id;
+    object.traverse((child) => { child.userData.systemBodyId = entry.id; });
+    group.add(object);
   } else if (body.kind === 'belt') {
     const belt = new THREE.Mesh(
       new THREE.TorusGeometry(displaySize * 1.75, Math.max(0.018, displaySize * 0.1), 8, 56),
@@ -527,7 +527,7 @@ function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean, ge
   return {
     group,
     displaySize,
-    materialMode: generatedArtifact ? 'airless-rocky-v1' : entry.generationStatus === 'generated' ? 'scaffold-solid' : 'placeholder-wireframe'
+    materialMode: generatedArtifact ? generatedBodyMaterialMode(generatedArtifact) : entry.generationStatus === 'generated' ? 'scaffold-solid' : 'placeholder-wireframe'
   };
 }
 

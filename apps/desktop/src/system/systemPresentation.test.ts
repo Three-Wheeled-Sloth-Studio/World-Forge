@@ -86,9 +86,11 @@ describe('System Explore presentation model', () => {
     expect(first.map((entry) => entry.id)).toEqual(['star-1', 'world-1', 'world-1:moon-a', 'planet-1']);
     expect(first.find((entry) => entry.id === 'star-1')?.generationStatus).toBe('generated');
     expect(first.find((entry) => entry.id === 'world-1')?.generationStatus).toBe('generated');
-    expect(first.find((entry) => entry.id === 'planet-1')?.generationStatus).toBe('placeholder');
+    expect(first.find((entry) => entry.id === 'planet-1')?.generationStatus).toBe('ready');
     expect(first.find((entry) => entry.id === 'world-1:moon-a')?.generationStatus).toBe('ready');
     expect(first.find((entry) => entry.id === 'world-1:moon-a')?.generationEligible).toBe(true);
+    expect(first.find((entry) => entry.id === 'planet-1')?.generationEligible).toBe(true);
+    expect(first.find((entry) => entry.id === 'planet-1')?.generationProfile).toBe('gas-giant-body');
     expect(first.find((entry) => entry.id === 'world-1:moon-a')?.label).toBe('Selene');
   });
 

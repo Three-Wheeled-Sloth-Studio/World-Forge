@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { MapMode, MapTheme, PointInspectionRecord, RenderMode, renderWorldToCanvas } from '@world-forge/renderer';
-import type { AtmosphericWeatherPresentationArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';
+import type { AtmosphericWeatherPresentationArtifact, GeneratedSystemBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
-import { airlessArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
-import { createAirlessBodyMesh } from '../system/airlessBodyPresentation';
+import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
+import { createGeneratedBodyObject, generatedBodyMaterialMode } from '../system/generatedBodyPresentation';
 import { resolveGlobeBodyTarget } from './globeBodyTarget';
 import { SystemSimulationControls } from './SystemSimulationControls';
 import {
@@ -99,10 +99,10 @@ export function GlobeViewer({
     () => orbitalContext ? resolveGlobeBodyTarget(project, orbitalContext, targetBodyId) : null,
     [orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.enrichmentArtifacts, project.projectId, targetBodyId]
   );
-  const isPrimarySurface = target?.mode !== 'generated-airless-moon';
+  const isPrimarySurface = target?.mode === 'primary-world';
   const hostRef = useRef<HTMLDivElement>(null);
   const cameraOrbitRef = useRef<CameraOrbit>({ yaw: 0.55, pitch: 0 });
-  const globeMeshRef = useRef<THREE.Mesh | null>(null);
+  const globeMeshRef = useRef<THREE.Object3D | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const markerRef = useRef<THREE.Group | null>(null);
   const focusMarkerRef = useRef<THREE.Group | null>(null);
@@ -178,9 +178,9 @@ export function GlobeViewer({
 
     const scale = defaultGlobeScale;
     let texture: THREE.CanvasTexture | null = null;
-    let globe: THREE.Mesh;
-    if (target?.mode === 'generated-airless-moon' && target.artifact) {
-      globe = createAirlessBodyMesh(target.artifact, 1);
+    let globe: THREE.Object3D;
+    if (target?.mode === 'generated-system-body' && target.artifact) {
+      globe = createGeneratedBodyObject(target.artifact, 1);
     } else {
       texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -327,7 +327,7 @@ export function GlobeViewer({
         pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
         raycaster.setFromCamera(pointer, camera);
-        const hit = raycaster.intersectObject(globe, false)[0];
+        const hit = raycaster.intersectObject(globe, true)[0];
         if (hit) {
           const world = project.primaryWorld;
           const uvPoint = hit.uv
@@ -423,8 +423,7 @@ export function GlobeViewer({
       }
       globeMeshRef.current = null;
       cameraRef.current = null;
-      globe.geometry.dispose();
-      disposeGlobeSurfaceMaterial(globe.material);
+      disposeObjectTree(globe);
       texture?.dispose();
       cloudAlpha.dispose();
       cloudWindTexture.dispose();
@@ -444,10 +443,10 @@ export function GlobeViewer({
   }, [focusTarget, globeDebugMode, inspectionRecord, isPrimarySurface, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showClouds, showGlobeShells, showPlates, showRivers, showWeather, simulationClock, target?.artifact?.artifactSignature, target?.bodyId, weatherPresentation]);
 
   const moonCount = orbitalContext?.payload.bodies.filter((body) => body.kind === 'moon' && body.parentBodyId === orbitalContext.payload.primaryBodyId).length ?? 0;
-  const generatedMoonCount = orbitalContext?.payload.bodies.filter((body) => {
-    if (body.kind !== 'moon' || body.parentBodyId !== orbitalContext.payload.primaryBodyId) return false;
+  const generatedBodyCount = orbitalContext?.payload.bodies.filter((body) => {
+    if (body.id === orbitalContext.payload.primaryBodyId) return false;
     const fidelity = project.bodyGeneration?.records[body.id]?.requestedFidelity ?? 'preview';
-    return Boolean(airlessArtifactForBody(project, orbitalContext, body.id, fidelity));
+    return Boolean(bodyArtifactForBody(project, orbitalContext, body.id, fidelity));
   }).length ?? 0;
   const visibleBodyCount = orbitalContext?.payload.bodies.filter((body) => body.kind !== 'moon' && body.id !== orbitalContext.payload.primaryBodyId && (body.visibleFromPrimary || orbitalContext.payload.visibleBodyIds.includes(body.id))).length ?? 0;
   const axialTilt = orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId)?.axialTiltDeg ?? project.selectedValues.axialTiltDeg;
@@ -461,9 +460,10 @@ export function GlobeViewer({
       data-orbital-context={orbitalContext ? 'ready' : 'pending'}
       data-orbital-star-count={orbitalContext ? '1' : '0'}
       data-orbital-moon-count={moonCount}
-      data-generated-moon-count={generatedMoonCount}
-      data-generated-moon-presentation={generatedMoonCount > 0 ? 'airless-rocky-v1' : 'none'}
-      data-globe-surface-material={target?.mode === 'generated-airless-moon' ? 'airless-rocky-v1' : 'primary-world'}
+      data-generated-moon-count={generatedBodyCount}
+      data-generated-moon-presentation={generatedBodyCount > 0 ? 'capability-resolved-v1' : 'none'}
+      data-generated-body-count={generatedBodyCount}
+      data-globe-surface-material={target?.artifact ? generatedBodyMaterialMode(target.artifact) : 'primary-world'}
       data-orbital-visible-body-count={visibleBodyCount}
       data-orbital-axial-tilt={Number.isFinite(axialTilt) ? axialTilt.toFixed(3) : '0.000'}
       data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
@@ -492,7 +492,7 @@ export function GlobeViewer({
         <section className="globe-body-target-status" aria-label="Globe target">
           <span>Viewing</span>
           <strong>{target.label}</strong>
-          <small>{target.mode === 'generated-airless-moon' ? 'Generated airless moon' : 'Primary generated world'}</small>
+          <small>{target.mode === 'generated-system-body' ? `Generated ${target.artifact?.bodyProfile ?? 'system body'}` : 'Primary generated world'}</small>
           {target.mode !== 'primary-world' && (
             <button type="button" aria-label="Return globe to primary world" onClick={() => onTargetBodyChange(orbitalContext.payload.primaryBodyId)}>
               Return to primary
@@ -505,6 +505,20 @@ export function GlobeViewer({
   );
 }
 
+
+function disposeObjectTree(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    const rendered = object as THREE.Object3D & { geometry?: THREE.BufferGeometry; material?: THREE.Material | THREE.Material[] };
+    rendered.geometry?.dispose();
+    const materials = Array.isArray(rendered.material) ? rendered.material : rendered.material ? [rendered.material] : [];
+    for (const material of materials) {
+      const textured = material as THREE.Material & { map?: THREE.Texture; bumpMap?: THREE.Texture };
+      textured.map?.dispose();
+      if (textured.bumpMap && textured.bumpMap !== textured.map) textured.bumpMap.dispose();
+      material.dispose();
+    }
+  });
+}
 
 type WindCloudShaderState = {
   uniforms: {
@@ -1092,7 +1106,7 @@ function wrapUnit(value: number): number {
 type OrbitalBodyVisual = {
   body: OrbitalPresentationBody;
   group: THREE.Group;
-  mesh: THREE.Mesh;
+  mesh: THREE.Object3D;
   displayRadius: number;
 };
 
@@ -1157,7 +1171,7 @@ function createOrbitalPresentationScene(
       .filter((body) => body.kind === 'moon' && body.parentBodyId === artifact.payload.primaryBodyId)
       .map((body) => {
         const fidelity = project.bodyGeneration?.records[body.id]?.requestedFidelity ?? 'preview';
-        const generatedArtifact = airlessArtifactForBody(project, artifact, body.id, fidelity);
+        const generatedArtifact = bodyArtifactForBody(project, artifact, body.id, fidelity);
         return createOrbitalBodyVisual(scene, body, displayRadiusForMoon(body), generatedArtifact);
       })
     : [];
@@ -1165,7 +1179,11 @@ function createOrbitalPresentationScene(
   const visibleBodies = includeOrbitingBodies
     ? artifact.payload.bodies
       .filter((body) => body.kind !== 'moon' && body.id !== artifact.payload.primaryBodyId && (body.visibleFromPrimary || visibleIds.has(body.id)))
-      .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body), null))
+      .map((body) => {
+        const fidelity = project.bodyGeneration?.records[body.id]?.requestedFidelity ?? 'preview';
+        const generatedArtifact = bodyArtifactForBody(project, artifact, body.id, fidelity);
+        return createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body), generatedArtifact);
+      })
     : [];
 
   const presentation = { starfield, starMesh, starHalo, haloTexture, sun, primary, moons, visibleBodies };
@@ -1173,12 +1191,12 @@ function createOrbitalPresentationScene(
   return presentation;
 }
 
-function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number, generatedArtifact: import('@world-forge/shared').AirlessRockyBodyArtifact | null): OrbitalBodyVisual {
+function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number, generatedArtifact: GeneratedSystemBodyArtifact | null): OrbitalBodyVisual {
   const group = new THREE.Group();
   const radius = displaySizeForBody(body);
   const color = new THREE.Color(orbitalBodyColor(body.kind));
   const mesh = generatedArtifact
-    ? createAirlessBodyMesh(generatedArtifact, radius)
+    ? createGeneratedBodyObject(generatedArtifact, radius)
     : new THREE.Mesh(
       new THREE.SphereGeometry(radius, 30, 16),
       new THREE.MeshStandardMaterial({

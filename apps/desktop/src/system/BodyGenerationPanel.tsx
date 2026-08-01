@@ -24,6 +24,8 @@ export function BodyGenerationPanel({
   const unresolvedCount = Object.values(controller.lifecycle?.records ?? {})
     .filter((candidate) => candidate.eligible && candidate.status !== 'generated' && candidate.status !== 'generating' && candidate.status !== 'queued')
     .length;
+  const eligibleCount = Object.values(controller.lifecycle?.records ?? {}).filter((candidate) => candidate.eligible).length;
+  const generatedCount = Object.values(controller.lifecycle?.records ?? {}).filter((candidate) => candidate.eligible && candidate.status === 'generated').length;
   const activeBodyId = controller.lifecycle?.activeBodyId ?? null;
   const queueCount = controller.lifecycle?.queue.length ?? 0;
   const isActive = Boolean(record && activeBodyId === record.bodyId);
@@ -37,6 +39,8 @@ export function BodyGenerationPanel({
       data-body-artifact-count={record?.artifactKeys.length ?? 0}
       data-body-queue-count={queueCount}
       data-body-active-id={activeBodyId ?? 'none'}
+      data-body-generated-count={generatedCount}
+      data-body-eligible-count={eligibleCount}
     >
       <div className="system-generation-heading">
         <strong>Body generation</strong>
@@ -107,11 +111,11 @@ export function BodyGenerationPanel({
       <div className="system-queue-actions">
         <button
           type="button"
-          aria-label="Queue unresolved moons"
+          aria-label="Queue unresolved system bodies"
           disabled={unresolvedCount === 0}
-          onClick={() => controller.queueUnresolvedMoons(fidelity)}
+          onClick={() => controller.queueUnresolvedBodies(fidelity)}
         >
-          Queue moons ({unresolvedCount})
+          Queue bodies ({unresolvedCount})
         </button>
         <button
           type="button"
@@ -128,6 +132,7 @@ export function BodyGenerationPanel({
           </button>
         )}
       </div>
+      <small>{generatedCount} of {eligibleCount} non-primary bodies generated.</small>
       {(activeBodyId || controller.activeNodeLabel) && (
         <div className="system-generation-progress" role="status">
           <strong>{controller.activeNodeLabel || 'Generating body'}</strong>
