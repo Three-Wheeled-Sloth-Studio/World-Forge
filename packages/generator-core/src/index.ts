@@ -33,6 +33,7 @@ import {
   wrapX
 } from '@world-forge/shared';
 import { SeededRandom } from './random';
+import { generatedBodyTypeForOrbit } from './systemComposition';
 import { runGenerationFoundation } from './graph/run-generation-foundation';
 import type { GenerationGraphNodeRunEvent } from './graph/types';
 import { orchestratePrimaryWorld } from './primary-world-orchestrator';
@@ -239,7 +240,7 @@ function selectValues(config: GenerationConfig, rng: SeededRandom): SelectedValu
   };
 }
 
-function generateSolarSystem(seed: string, values: SelectedValues, rng: SeededRandom): SolarSystem {
+export function generateSolarSystem(seed: string, values: SelectedValues, rng: SeededRandom): SolarSystem {
   const starType = rng.pick(['G', 'K', 'F']);
   const star = {
     id: 'star-primary',
@@ -253,8 +254,12 @@ function generateSolarSystem(seed: string, values: SelectedValues, rng: SeededRa
   const bodies: SystemBody[] = [];
   for (let i = 1; i <= rng.int(6, 9); i += 1) {
     const isPrimaryWorld = i === primaryOrder;
-    const bodyType = i > 5 && rng.next() > 0.45 ? rng.pick(['gas-giant', 'ice-giant'] as const) : 'rocky';
-    bodies.push({
+    const legacyOuterRoll = i > 5 ? rng.next() : null;
+    if (legacyOuterRoll !== null && legacyOuterRoll > 0.45) {
+      rng.pick(['gas-giant', 'ice-giant'] as const);
+    }
+    const bodyType = isPrimaryWorld ? 'rocky' : generatedBodyTypeForOrbit(seed, i);
+    const body: SystemBody = {
       id: isPrimaryWorld ? 'primary-world' : `body-${i}`,
       bodyType,
       orbitalOrder: i,
@@ -264,8 +269,10 @@ function generateSolarSystem(seed: string, values: SelectedValues, rng: SeededRa
       massClass: isPrimaryWorld ? round(values.sizeClass * rng.range(0.85, 1.2), 2) : round(rng.range(0.1, 12), 2),
       visibleFromPrimary: !isPrimaryWorld && Math.abs(i - primaryOrder) <= 2,
       isPrimaryWorld,
-      moons: isPrimaryWorld ? generateMoons(values.moonCount, rng) : []
-    });
+      moons: []
+    };
+    body.moons = isPrimaryWorld ? generateMoons(values.moonCount, rng) : [];
+    bodies.push(body);
   }
 
   return {
