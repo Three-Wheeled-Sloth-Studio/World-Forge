@@ -1,4 +1,4 @@
-name: Temporary all system body slice r8
+name: Temporary all system body slice r9
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/all-system-bodies-20260801-r8'
+    if: github.head_ref == 'automation/all-system-bodies-20260801-r9'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -21,4 +21,4 @@ jobs:
           package-manager-cache: false
       - name: Apply, validate, and publish
         shell: bash
-        run: bash .github/scripts/run-all-bodies-slice-r2.sh
+        run: bash .github/scripts/run-all-bodies-slice-r9.sh
