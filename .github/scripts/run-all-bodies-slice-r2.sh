@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BRANCH='automation/all-system-bodies-20260801-r6'
+BRANCH='automation/all-system-bodies-20260801-r7'
 BASE_SHA='a8fe9af37e1581cf4d4c03c2c1c3e62d7700354e'
 VITE_PID=''
 cleanup() {
