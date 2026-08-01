@@ -1,4 +1,4 @@
-name: Temporary Experimental hybrid foundation r2
+name: Temporary Experimental hybrid foundation r3
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   implement-and-validate:
-    if: github.head_ref == 'automation/experimental-hybrid-foundation-20260801-r2'
+    if: github.head_ref == 'automation/experimental-hybrid-foundation-20260801-r3'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -26,7 +26,7 @@ jobs:
           VITE_PID=''
           cleanup() {
             if [ -n "${VITE_PID}" ]; then kill "${VITE_PID}" || true; fi
-            git push origin --delete automation/experimental-hybrid-foundation-20260801-r2 || true
+            git push origin --delete automation/experimental-hybrid-foundation-20260801-r3 || true
           }
           trap cleanup EXIT
 
@@ -56,7 +56,13 @@ jobs:
               if marker not in text:
                   raise RuntimeError('Accepted architecture marker missing from planning document.')
               text = text.replace(marker, marker + '\n' + compatibility_line, 1)
-              path.write_text(text, encoding='utf-8')
+          delivery_line = '8. Barren active worlds, gas giants, ice giants, belts, and richer minor bodies.\n'
+          if delivery_line not in text:
+              marker = '## First secondary-body proof\n'
+              if marker not in text:
+                  raise RuntimeError('First secondary-body proof marker missing from planning document.')
+              text = text.replace(marker, delivery_line + '\n' + marker, 1)
+          path.write_text(text, encoding='utf-8')
           PY
 
           python /tmp/apply-hybrid.py
