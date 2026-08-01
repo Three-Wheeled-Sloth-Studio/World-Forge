@@ -1,8 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { MapMode, MapTheme, PointInspectionRecord, RenderMode, renderWorldToCanvas } from '@world-forge/renderer';
 import type { AtmosphericWeatherPresentationArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WeatherPresentationSystem, WorldProject } from '@world-forge/shared';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
+import { airlessArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
+import { createAirlessBodyMesh } from '../system/airlessBodyPresentation';
+import { resolveGlobeBodyTarget } from './globeBodyTarget';
 import { SystemSimulationControls } from './SystemSimulationControls';
 import {
   deterministicStarDirections,
@@ -66,7 +69,9 @@ export function GlobeViewer({
   focusTarget,
   zoom,
   onZoom,
-  onInspect
+  onInspect,
+  targetBodyId,
+  onTargetBodyChange
 }: {
   project: WorldProject;
   orbitalContext: SystemOrbitalContextArtifact | null;
@@ -87,7 +92,14 @@ export function GlobeViewer({
   zoom: number;
   onZoom: (event: WheelEvent) => void;
   onInspect: (x: number, y: number, screen: { x: number; y: number }) => void;
+  targetBodyId: string;
+  onTargetBodyChange: (bodyId: string) => void;
 }) {
+  const target = useMemo(
+    () => orbitalContext ? resolveGlobeBodyTarget(project, orbitalContext, targetBodyId) : null,
+    [orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.enrichmentArtifacts, project.projectId, targetBodyId]
+  );
+  const isPrimarySurface = target?.mode !== 'generated-airless-moon';
   const hostRef = useRef<HTMLDivElement>(null);
   const cameraOrbitRef = useRef<CameraOrbit>({ yaw: 0.55, pitch: 0 });
   const globeMeshRef = useRef<THREE.Mesh | null>(null);
@@ -115,13 +127,14 @@ export function GlobeViewer({
       disposeGlobeMarker(markerRef.current);
       markerRef.current = null;
     }
+    if (!isPrimarySurface) return;
     if (diagnosticMode && inspectionRecord) {
       const marker = createGlobeInspectionMarker(inspectionRecord);
       globe.add(marker);
       markerRef.current = marker;
       orientCameraToGlobeDirection(camera, globe, directionFromInspection(inspectionRecord), globeCameraDistance(zoom), cameraOrbitRef.current);
     }
-  }, [diagnosticMode, focusTarget, inspectionRecord, zoom]);
+  }, [diagnosticMode, focusTarget, inspectionRecord, isPrimarySurface, zoom]);
 
   useEffect(() => {
     const globe = globeMeshRef.current;
@@ -132,7 +145,7 @@ export function GlobeViewer({
       disposeGlobeMarker(focusMarkerRef.current);
       focusMarkerRef.current = null;
     }
-    if (!focusTarget) return;
+    if (!isPrimarySurface || !focusTarget) return;
     const u = (focusTarget.x + 0.5) / Math.max(1, focusTarget.width);
     const v = 1 - (focusTarget.y + 0.5) / Math.max(1, focusTarget.height);
     const direction = directionFromGlobeUv(u, v);
@@ -140,7 +153,7 @@ export function GlobeViewer({
     globe.add(marker);
     focusMarkerRef.current = marker;
     orientCameraToGlobeDirection(camera, globe, direction, globeCameraDistance(zoom), cameraOrbitRef.current);
-  }, [focusTarget, zoom]);
+  }, [focusTarget, isPrimarySurface, zoom]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -163,33 +176,39 @@ export function GlobeViewer({
     scene.add(axialTiltGroup);
     axialTiltGroup.add(planetSpinGroup);
 
-    const texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.generateMipmaps = false;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-
     const scale = defaultGlobeScale;
-    const geometry = createGlobeGeometry(project, scale);
-    const material = createGlobeMaterial(texture, globeDebugMode);
-    const primaryPresentation = orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId) ?? null;
-    axialTiltGroup.rotation.z = THREE.MathUtils.degToRad(primaryPresentation?.axialTiltDeg ?? project.selectedValues.axialTiltDeg ?? 0);
-    const globe = new THREE.Mesh(geometry, material);
+    let texture: THREE.CanvasTexture | null = null;
+    let globe: THREE.Mesh;
+    if (target?.mode === 'generated-airless-moon' && target.artifact) {
+      globe = createAirlessBodyMesh(target.artifact, 1);
+    } else {
+      texture = new THREE.CanvasTexture(createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode));
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.generateMipmaps = false;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      globe = new THREE.Mesh(createGlobeGeometry(project, scale), createGlobeMaterial(texture, globeDebugMode));
+    }
+    const focusedPresentation = target?.body
+      ?? orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId)
+      ?? null;
+    axialTiltGroup.rotation.z = THREE.MathUtils.degToRad(focusedPresentation?.axialTiltDeg ?? project.selectedValues.axialTiltDeg ?? 0);
+    globe.userData.globeBodyId = target?.bodyId ?? orbitalContext?.payload.primaryBodyId ?? 'primary-world';
     globe.castShadow = true;
     globe.receiveShadow = true;
     planetSpinGroup.add(globe);
     globeMeshRef.current = globe;
 
-    if (diagnosticModeRef.current && inspectionRecord) {
+    if (isPrimarySurface && diagnosticModeRef.current && inspectionRecord) {
       const marker = createGlobeInspectionMarker(inspectionRecord);
       globe.add(marker);
       markerRef.current = marker;
       orientCameraToGlobeDirection(camera, globe, directionFromInspection(inspectionRecord), globeCameraDistance(zoom), cameraOrbitRef.current);
     }
-    if (focusTarget) {
+    if (isPrimarySurface && focusTarget) {
       const u = (focusTarget.x + 0.5) / Math.max(1, focusTarget.width);
       const v = 1 - (focusTarget.y + 0.5) / Math.max(1, focusTarget.height);
       const direction = directionFromGlobeUv(u, v);
@@ -212,7 +231,7 @@ export function GlobeViewer({
         depthTest: true
       })
     );
-    ocean.visible = showGlobeShells && (globeDebugMode === 'final' || globeDebugMode === 'ocean-shell');
+    ocean.visible = isPrimarySurface && showGlobeShells && (globeDebugMode === 'final' || globeDebugMode === 'ocean-shell');
     planetSpinGroup.add(ocean);
 
     const initialWeatherDay = simulationClock.currentDays(performance.now());
@@ -233,7 +252,7 @@ export function GlobeViewer({
     );
     clouds.castShadow = false;
     clouds.receiveShadow = true;
-    clouds.visible = Boolean(weatherPresentation && showClouds);
+    clouds.visible = isPrimarySurface && Boolean(weatherPresentation && showClouds);
     planetSpinGroup.add(clouds);
 
     const weatherCanvas = createWeatherPresentationTexture(weatherPresentation, 'weather', initialWeatherDay);
@@ -255,14 +274,14 @@ export function GlobeViewer({
       })
     );
     weatherSystems.castShadow = false;
-    weatherSystems.visible = Boolean(weatherPresentation && showWeather);
+    weatherSystems.visible = isPrimarySurface && Boolean(weatherPresentation && showWeather);
     planetSpinGroup.add(weatherSystems);
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(scale.atmosphereShellRadius, 96, 48),
       createAtmosphereMaterial()
     );
-    atmosphere.visible = showGlobeShells && globeDebugMode === 'final';
+    atmosphere.visible = isPrimarySurface && showGlobeShells && globeDebugMode === 'final';
     planetSpinGroup.add(atmosphere);
 
     scene.add(new THREE.AmbientLight(0x9fb5bd, orbitalContext ? 0.28 : 0.46));
@@ -271,7 +290,7 @@ export function GlobeViewer({
       fallbackSun.position.set(-4.2, 1.35, 0.55);
       scene.add(fallbackSun);
     }
-    const orbitalPresentation = orbitalContext ? createOrbitalPresentationScene(scene, orbitalContext) : null;
+    const orbitalPresentation = orbitalContext ? createOrbitalPresentationScene(scene, project, orbitalContext, isPrimarySurface) : null;
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -303,7 +322,7 @@ export function GlobeViewer({
       renderer.domElement.releasePointerCapture(event.pointerId);
       host.dataset.clockGrabState = 'released';
       if (drag.resumePlaying) simulationClock.setPlaying(true);
-      if (diagnosticModeRef.current && movement <= 4) {
+      if (isPrimarySurface && diagnosticModeRef.current && movement <= 4) {
         const rect = renderer.domElement.getBoundingClientRect();
         pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
@@ -346,8 +365,8 @@ export function GlobeViewer({
       frame = requestAnimationFrame(animate);
       const simulationDays = simulationClock.currentDays(performance.now());
 
-      if (primaryPresentation) {
-        const rotationPeriodDays = Math.max(0.08, Math.abs(primaryPresentation.rotationPeriodHours) / 24);
+      if (focusedPresentation) {
+        const rotationPeriodDays = Math.max(0.08, Math.abs(focusedPresentation.rotationPeriodHours) / 24);
         planetSpinGroup.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays;
       } else if (!drag.active && !freezeSpinRef.current) {
         fallbackSpin += 0.0017;
@@ -360,7 +379,7 @@ export function GlobeViewer({
       host.dataset.cameraOrbitYaw = cameraOrbitRef.current.yaw.toFixed(6);
       host.dataset.cameraOrbitPitch = cameraOrbitRef.current.pitch.toFixed(6);
       host.dataset.observerControl = 'camera-orbit';
-      if (weatherPresentation) {
+      if (isPrimarySurface && weatherPresentation) {
         updateWindAdvectedCloudMaterial(cloudMaterial, simulationDays);
         host.dataset.weatherTextureDay = simulationDays.toFixed(6);
         if (!Number.isFinite(lastWeatherTextureDay) || Math.abs(simulationDays - lastWeatherTextureDay) >= 0.08) {
@@ -404,9 +423,9 @@ export function GlobeViewer({
       }
       globeMeshRef.current = null;
       cameraRef.current = null;
-      geometry.dispose();
-      material.dispose();
-      texture.dispose();
+      globe.geometry.dispose();
+      disposeGlobeSurfaceMaterial(globe.material);
+      texture?.dispose();
       cloudAlpha.dispose();
       cloudWindTexture.dispose();
       weatherAlpha.dispose();
@@ -422,19 +441,29 @@ export function GlobeViewer({
       renderer.dispose();
       host.replaceChildren();
     };
-  }, [focusTarget, globeDebugMode, inspectionRecord, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showClouds, showGlobeShells, showPlates, showRivers, showWeather, simulationClock, weatherPresentation]);
+  }, [focusTarget, globeDebugMode, inspectionRecord, isPrimarySurface, mapMode, mapTheme, onInspect, onZoom, orbitalContext, project, renderMode, showClouds, showGlobeShells, showPlates, showRivers, showWeather, simulationClock, target?.artifact?.artifactSignature, target?.bodyId, weatherPresentation]);
 
   const moonCount = orbitalContext?.payload.bodies.filter((body) => body.kind === 'moon' && body.parentBodyId === orbitalContext.payload.primaryBodyId).length ?? 0;
+  const generatedMoonCount = orbitalContext?.payload.bodies.filter((body) => {
+    if (body.kind !== 'moon' || body.parentBodyId !== orbitalContext.payload.primaryBodyId) return false;
+    const fidelity = project.bodyGeneration?.records[body.id]?.requestedFidelity ?? 'preview';
+    return Boolean(airlessArtifactForBody(project, orbitalContext, body.id, fidelity));
+  }).length ?? 0;
   const visibleBodyCount = orbitalContext?.payload.bodies.filter((body) => body.kind !== 'moon' && body.id !== orbitalContext.payload.primaryBodyId && (body.visibleFromPrimary || orbitalContext.payload.visibleBodyIds.includes(body.id))).length ?? 0;
   const axialTilt = orbitalContext?.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId)?.axialTiltDeg ?? project.selectedValues.axialTiltDeg;
 
   return (
     <div
       className={`globe-viewer ${diagnosticMode ? 'diagnostic-active' : ''}`}
-      aria-label={`Generated globe for ${project.projectName}`}
+      aria-label={`Generated globe for ${target?.label ?? project.projectName}`}
+      data-globe-target-body={target?.bodyId ?? orbitalContext?.payload.primaryBodyId ?? 'primary'}
+      data-globe-target-mode={target?.mode ?? 'primary-world'}
       data-orbital-context={orbitalContext ? 'ready' : 'pending'}
       data-orbital-star-count={orbitalContext ? '1' : '0'}
       data-orbital-moon-count={moonCount}
+      data-generated-moon-count={generatedMoonCount}
+      data-generated-moon-presentation={generatedMoonCount > 0 ? 'airless-rocky-v1' : 'none'}
+      data-globe-surface-material={target?.mode === 'generated-airless-moon' ? 'airless-rocky-v1' : 'primary-world'}
       data-orbital-visible-body-count={visibleBodyCount}
       data-orbital-axial-tilt={Number.isFinite(axialTilt) ? axialTilt.toFixed(3) : '0.000'}
       data-system-star-light={orbitalContext ? 'coupled' : 'fallback'}
@@ -459,6 +488,18 @@ export function GlobeViewer({
       data-weather-layer={weatherPresentation && showWeather ? 'visible' : 'hidden'}
     >
       <div ref={hostRef} className="globe-render-surface" />
+      {orbitalContext && target && (
+        <section className="globe-body-target-status" aria-label="Globe target">
+          <span>Viewing</span>
+          <strong>{target.label}</strong>
+          <small>{target.mode === 'generated-airless-moon' ? 'Generated airless moon' : 'Primary generated world'}</small>
+          {target.mode !== 'primary-world' && (
+            <button type="button" aria-label="Return globe to primary world" onClick={() => onTargetBodyChange(orbitalContext.payload.primaryBodyId)}>
+              Return to primary
+            </button>
+          )}
+        </section>
+      )}
       {orbitalContext && <SystemSimulationControls clock={simulationClock} artifact={orbitalContext} />}
     </div>
   );
@@ -683,6 +724,21 @@ function mapPointFromGlobeLocalDirection(direction: THREE.Vector3, width: number
     x: wrapUnit(phi / (Math.PI * 2)) * width,
     y: clamp01(theta / Math.PI) * height
   };
+}
+
+function disposeGlobeSurfaceMaterial(material: THREE.Material | THREE.Material[]): void {
+  const materials = Array.isArray(material) ? material : [material];
+  const disposedTextures = new Set<THREE.Texture>();
+  for (const candidate of materials) {
+    const textured = candidate as THREE.Material & { map?: THREE.Texture | null; bumpMap?: THREE.Texture | null };
+    for (const texture of [textured.map, textured.bumpMap]) {
+      if (texture && !disposedTextures.has(texture)) {
+        texture.dispose();
+        disposedTextures.add(texture);
+      }
+    }
+    candidate.dispose();
+  }
 }
 
 function disposeGlobeMarker(marker: THREE.Group) {
@@ -1053,7 +1109,9 @@ type OrbitalPresentationScene = {
 
 function createOrbitalPresentationScene(
   scene: THREE.Scene,
-  artifact: SystemOrbitalContextArtifact
+  project: WorldProject,
+  artifact: SystemOrbitalContextArtifact,
+  includeOrbitingBodies: boolean
 ): OrbitalPresentationScene | null {
   const primary = artifact.payload.bodies.find((body) => body.id === artifact.payload.primaryBodyId);
   if (!primary) return null;
@@ -1094,36 +1152,48 @@ function createOrbitalPresentationScene(
   scene.add(sun);
   scene.add(sun.target);
 
-  const moons = artifact.payload.bodies
-    .filter((body) => body.kind === 'moon' && body.parentBodyId === artifact.payload.primaryBodyId)
-    .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForMoon(body)));
+  const moons = includeOrbitingBodies
+    ? artifact.payload.bodies
+      .filter((body) => body.kind === 'moon' && body.parentBodyId === artifact.payload.primaryBodyId)
+      .map((body) => {
+        const fidelity = project.bodyGeneration?.records[body.id]?.requestedFidelity ?? 'preview';
+        const generatedArtifact = airlessArtifactForBody(project, artifact, body.id, fidelity);
+        return createOrbitalBodyVisual(scene, body, displayRadiusForMoon(body), generatedArtifact);
+      })
+    : [];
   const visibleIds = new Set(artifact.payload.visibleBodyIds);
-  const visibleBodies = artifact.payload.bodies
-    .filter((body) => body.kind !== 'moon' && body.id !== artifact.payload.primaryBodyId && (body.visibleFromPrimary || visibleIds.has(body.id)))
-    .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body)));
+  const visibleBodies = includeOrbitingBodies
+    ? artifact.payload.bodies
+      .filter((body) => body.kind !== 'moon' && body.id !== artifact.payload.primaryBodyId && (body.visibleFromPrimary || visibleIds.has(body.id)))
+      .map((body) => createOrbitalBodyVisual(scene, body, displayRadiusForVisibleBody(body), null))
+    : [];
 
   const presentation = { starfield, starMesh, starHalo, haloTexture, sun, primary, moons, visibleBodies };
   updateOrbitalPresentationScene(presentation, artifact, 0);
   return presentation;
 }
 
-function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number): OrbitalBodyVisual {
+function createOrbitalBodyVisual(scene: THREE.Scene, body: OrbitalPresentationBody, displayRadius: number, generatedArtifact: import('@world-forge/shared').AirlessRockyBodyArtifact | null): OrbitalBodyVisual {
   const group = new THREE.Group();
   const radius = displaySizeForBody(body);
   const color = new THREE.Color(orbitalBodyColor(body.kind));
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    roughness: body.kind === 'gas-giant' || body.kind === 'ice-giant' ? 0.72 : 0.9,
-    metalness: 0.01,
-    transparent: body.placeholder,
-    opacity: body.placeholder ? 0.78 : 1
-  });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 30, 16), material);
+  const mesh = generatedArtifact
+    ? createAirlessBodyMesh(generatedArtifact, radius)
+    : new THREE.Mesh(
+      new THREE.SphereGeometry(radius, 30, 16),
+      new THREE.MeshStandardMaterial({
+        color,
+        roughness: body.kind === 'gas-giant' || body.kind === 'ice-giant' ? 0.72 : 0.9,
+        metalness: 0.01,
+        transparent: body.placeholder,
+        opacity: body.placeholder ? 0.78 : 1
+      })
+    );
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   group.add(mesh);
 
-  if (body.placeholder) {
+  if (body.placeholder && !generatedArtifact) {
     const wireframe = new THREE.Mesh(
       new THREE.SphereGeometry(radius * 1.15, 14, 8),
       new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.32, depthWrite: false })

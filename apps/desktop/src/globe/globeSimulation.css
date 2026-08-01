@@ -103,3 +103,35 @@
     padding: 7px 8px;
   }
 }
+
+.globe-body-target-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  padding: 9px 10px;
+  border: 1px solid rgba(190, 206, 215, 0.3);
+  border-radius: 10px;
+  background: rgba(10, 17, 24, 0.88);
+  color: #edf4f7;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.globe-body-target-status span,
+.globe-body-target-status small {
+  color: #9fb0b9;
+  font-size: 0.68rem;
+}
+
+.globe-body-target-status strong {
+  color: #f6e3ad;
+}
+
+.globe-body-target-status button {
+  margin-top: 5px;
+  min-height: 28px;
+}

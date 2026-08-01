@@ -349,6 +349,7 @@ function App() {
   const [mapZoom, setMapZoom] = useState(() => clampViewZoom(storedUi.mapZoom));
   const [globeZoom, setGlobeZoom] = useState(() => clampViewZoom(storedUi.globeZoom));
   const [systemZoom, setSystemZoom] = useState(() => clampViewZoom(storedUi.systemZoom));
+  const [globeTargetBodyId, setGlobeTargetBodyId] = useState('');
   const mapFrameRef = useRef<HTMLDivElement>(null);
   const mapPanRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number; moved: boolean } | null>(null);
   const suppressNextMapClickRef = useRef(false);
@@ -417,6 +418,17 @@ function App() {
   }, [enrichment.artifact?.artifactSignature, project?.projectId]);
 
   useEffect(() => () => simulationClock.dispose(), [simulationClock]);
+
+  useEffect(() => {
+    const primaryBodyId = enrichment.artifact?.payload.primaryBodyId;
+    if (primaryBodyId) setGlobeTargetBodyId(primaryBodyId);
+  }, [enrichment.artifact?.artifactSignature, project?.projectId]);
+
+  const openGlobeForBody = useCallback((bodyId: string) => {
+    setGlobeTargetBodyId(bodyId);
+    setGlobeZoom(1);
+    setViewMode('globe');
+  }, []);
 
   useEffect(() => {
     if (!project || isGenerating || viewMode === 'map') return;
@@ -998,6 +1010,8 @@ function App() {
               zoom={globeZoom}
               onZoom={handleGlobeWheelZoom}
               onInspect={inspectGlobePoint}
+              targetBodyId={globeTargetBodyId}
+              onTargetBodyChange={setGlobeTargetBodyId}
             />
             <OrbitalContextStatus
               status={enrichment.status}
@@ -1027,6 +1041,7 @@ function App() {
               bodyGeneration={bodyGeneration}
               zoom={systemZoom}
               onZoom={handleSystemWheelZoom}
+              onOpenGlobe={openGlobeForBody}
             />
             <OrbitalContextStatus
               status={enrichment.status}
