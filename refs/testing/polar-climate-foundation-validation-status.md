@@ -6,11 +6,20 @@ Implementation branch: `agent/polar-climate-foundation-profiling`
 
 Pull request: #112
 
-Current implementation head before validation trigger: `41363252057e799d19bd2544894b87b7012f2172`
+Current implementation head before validation trigger: `c2afee1e8ff2834c8b5f106a959c230542cdb4af`
 
-Validation state: implementation applied from the planning artifact. The first TypeScript pass found four integration-wiring errors only: the duplicated shared export type lacked the additive polar diagnostic, the retained legacy climate call lacked its explicit legacy profile, and final system/orbit reconciliation used an out-of-scope config reference. Those wiring errors are corrected; full repository validation has been requested again.
+Validation state: the implementation now carries the Experimental latitude profile through both Initial world foundation and final deep-time climate reconciliation. Direct graph-node callers default to the legacy profile. The revised calibration and reason for moving from the originally proposed 40 C linear candidate to a 52 C mean-centered power candidate are documented in `refs/planning/polar-climate-calibration-decision.md`.
 
-Experimental remains the only workflow using the mean-centered latitude-temperature candidate. Detailed remains the production baseline.
+Earlier gates established:
+
+- TypeScript passed after the first wiring correction;
+- 329 of 334 tests passed;
+- finer Initial world foundation profiling passed;
+- warm/cold ordering passed;
+- Experimental deterministic replay passed;
+- the remaining failures identified the missing direct-node fallback and the final deep-time overwrite, both now corrected.
+
+Experimental remains the only workflow using the mean-centered power-profile candidate. Detailed remains the production baseline.
 
 Evidence to add after validation:
 
