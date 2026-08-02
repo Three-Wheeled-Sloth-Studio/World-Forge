@@ -1,0 +1,22 @@
+{
+  "runs": 3,
+  "resolution": "2048x1024",
+  "cases": [
+    {
+      "id": "earthlike",
+      "seed": "1001001",
+      "starSeed": "1001001",
+      "preset": "Earthlike",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation"
+    },
+    {
+      "id": "archipelago",
+      "seed": "3141592",
+      "starSeed": "3141592",
+      "preset": "Archipelago",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation"
+    }
+  ]
+}
