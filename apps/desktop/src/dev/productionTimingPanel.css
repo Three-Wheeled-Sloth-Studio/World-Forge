@@ -1,0 +1,36 @@
+.production-timing-panel { display: grid; gap: 10px; padding: 11px; border: 1px solid rgba(74,55,29,.16); border-radius: 8px; background: rgba(255,255,255,.3); }
+.production-timing-heading { display: flex; align-items: flex-start; gap: 9px; }
+.production-timing-heading div,
+.production-timing-identity { display: grid; gap: 2px; min-width: 0; }
+.production-timing-heading span,
+.production-timing-identity span,
+.production-timing-identity small,
+.production-timing-empty { color: var(--muted, #81786b); font-size: .72rem; line-height: 1.35; overflow-wrap: anywhere; }
+.production-timing-empty { margin: 0; }
+.production-timing-identity { padding: 9px; border-radius: 7px; background: rgba(65,146,154,.08); }
+.production-timing-metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin: 0; }
+.production-timing-metrics div { display: grid; gap: 2px; min-width: 0; padding: 7px 8px; border: 1px solid rgba(74,55,29,.1); border-radius: 6px; background: rgba(255,252,244,.58); }
+.production-timing-metrics dt { color: #81786b; font-size: .64rem; letter-spacing: .03em; text-transform: uppercase; }
+.production-timing-metrics dd { margin: 0; color: #302a23; font-size: .76rem; font-weight: 650; overflow-wrap: anywhere; }
+.production-timing-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.production-timing-actions button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 8px; font-size: .7rem; }
+.production-timing-status { color: #2b6d43; font-size: .72rem; }
+.production-timing-details,
+.production-timing-gaps,
+.production-timing-history { border-top: 1px solid rgba(74,55,29,.11); padding-top: 8px; }
+.production-timing-details summary,
+.production-timing-gaps summary,
+.production-timing-history summary { color: #5f564a; cursor: pointer; font-size: .73rem; font-weight: 650; }
+.production-timing-stage-list { display: grid; gap: 4px; margin-top: 8px; }
+.production-timing-stage-list span { display: flex; justify-content: space-between; gap: 8px; padding: 5px 7px; border-radius: 5px; background: rgba(255,252,244,.54); font-size: .68rem; }
+.production-timing-stage-list small { color: #6f6659; }
+.production-timing-stage-list strong { color: #302a23; white-space: nowrap; }
+.graph-node-timings { margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(74,55,29,.14); }
+.production-timing-gaps ul { display: grid; gap: 5px; margin: 8px 0 0; padding-left: 18px; color: #765f39; font-size: .69rem; line-height: 1.35; }
+.production-timing-history ol { display: grid; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.production-timing-history li { display: flex; justify-content: space-between; gap: 8px; color: #665d51; font-size: .69rem; }
+.production-timing-history strong { color: #302a23; }
+
+@media (max-width: 1180px) {
+  .production-timing-metrics { grid-template-columns: minmax(0,1fr); }
+}
