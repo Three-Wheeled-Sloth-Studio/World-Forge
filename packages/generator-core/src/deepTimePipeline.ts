@@ -3065,7 +3065,16 @@ export function applyDeepTimeFoundation(
   const presentClimate = buildPresentClimateDiagnostics(mutable, topology, climateRefresh.derivedFields);
 
   onProgress?.({ phase: 'reconciling', progress: 0.93, message: 'Reclassifying final biomes and projecting aged topology' });
-  const topologyBiomeCorrections = classifyTopologyBiomes(mutable);
+  const topologyBiomeCorrections = traceGenerationPerformance(
+    'deep-time.final.biome-classification',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: topology.cellCount,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: 0
+    },
+    () => classifyTopologyBiomes(mutable)
+  );
   const projectedCellsRefreshed = traceGenerationPerformance(
     'topology-to-raster-final-projection',
     {
@@ -3076,9 +3085,36 @@ export function applyDeepTimeFoundation(
     },
     () => projectFinalTopology(mutable, topology)
   );
-  applyBasinAwareCirculation(mutable);
-  mutable.primaryWorld.rivers = projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers);
-  const consistency = refreshMetrics(mutable);
+  traceGenerationPerformance(
+    'deep-time.final.basin-circulation',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: mutable.primaryWorld.layers.elevation.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => applyBasinAwareCirculation(mutable)
+  );
+  mutable.primaryWorld.rivers = traceGenerationPerformance(
+    'deep-time.final.river-path-projection',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: mutable.primaryWorld.rivers.length,
+      fullTopologyPasses: 0,
+      allocatedBufferBytes: 0
+    },
+    () => projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers)
+  );
+  const consistency = traceGenerationPerformance(
+    'deep-time.final.metrics-validation',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: mutable.primaryWorld.layers.elevation.length,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: 0
+    },
+    () => refreshMetrics(mutable)
+  );
   if (fragmentPlacement.retainedCellRatio < 0.97) consistency.findings.push('Authoritative fragment placement retained less than 97 percent of source continental cells.');
   if (fragmentPlacement.mergedCollisionCellShare > 0.01) consistency.findings.push('Fragment placement required merged collision handling across more than one percent of topology cells.');
   consistency.topologyWaterMaskCorrections = topologyWaterMaskCorrections;

@@ -32,9 +32,9 @@ export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.performan
 export const generationWorkflowDescriptors: readonly GenerationWorkflowDescriptor[] = [
   {
     id: 'core.performance-foundation',
-    version: '1.1.0',
+    version: '1.2.0',
     label: 'World Generation (Detailed)',
-    description: 'Primary production workflow with bounded aging, climate-field reuse, optimized hydrology, cached present-climate traversal, and High-resolution terrain continuity.',
+    description: 'Primary production workflow with bounded aging, optimized climate and hydrology traversal, High-resolution terrain continuity, and the approved mean-centered polar climate profile.',
     status: 'production',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true
@@ -50,9 +50,9 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
   },
   {
     id: 'core.world-generation-experimental',
-    version: '0.5.0',
+    version: '0.6.0',
     label: 'World Generation (Experimental)',
-    description: 'Development workflow testing a mean-centered latitude-temperature profile and permanent polar ice while Detailed remains the production comparison baseline.',
+    description: 'Development workflow currently aligned with Detailed after polar-climate promotion and reserved for the next isolated performance or quality candidate.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true

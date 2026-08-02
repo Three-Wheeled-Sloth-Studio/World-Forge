@@ -28,16 +28,20 @@ export const legacyLatitudeTemperatureProfile: LatitudeTemperatureProfile = {
   equatorToPoleContrastC: 28
 };
 
-export const experimentalLatitudeTemperatureProfile: LatitudeTemperatureProfile = {
+export const meanCenteredLatitudeTemperatureProfile: LatitudeTemperatureProfile = {
   id: 'mean-centered-power-v1',
   equatorToPoleContrastC: 52
 };
 
+// Compatibility alias retained for callers and saved diagnostics introduced while the profile was Experimental.
+export const experimentalLatitudeTemperatureProfile = meanCenteredLatitudeTemperatureProfile;
+
 export function latitudeTemperatureProfileForWorkflow(
   workflowId: GenerationWorkflowId | undefined
 ): LatitudeTemperatureProfile {
-  return workflowId === 'core.world-generation-experimental'
-    ? experimentalLatitudeTemperatureProfile
+  return workflowId === 'core.performance-foundation'
+    || workflowId === 'core.world-generation-experimental'
+    ? meanCenteredLatitudeTemperatureProfile
     : legacyLatitudeTemperatureProfile;
 }
 
@@ -49,6 +53,8 @@ export function latitudeTemperatureOffsetC(
   if (profile.id === 'legacy-linear-v1') {
     return (1 - latitude) * profile.equatorToPoleContrastC - profile.equatorToPoleContrastC / 2;
   }
+  // Future calibration may derive the contrast or exponent from axial tilt and eccentricity.
+  // Version 1 remains fixed so accepted worlds retain deterministic climate provenance.
   return profile.equatorToPoleContrastC * (sphericalMeanPolarLatitudePower13 - Math.pow(latitude, 1.3));
 }
 

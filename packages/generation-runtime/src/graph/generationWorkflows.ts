@@ -45,8 +45,6 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
     nodes = nodes.map((node) => node.id === 'world.deep-time-aging'
       ? { ...node, implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1', version: '4' }
       : node);
-  }
-  if (workflowId === 'core.world-generation-experimental') {
     nodes = nodes.map((node) => node.id === 'climate.glaciation'
       ? { ...node, implementationId: 'core.climate.glaciation.mean-centered-power-v1', version: '2' }
       : node);

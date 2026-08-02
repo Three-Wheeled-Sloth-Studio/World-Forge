@@ -26,20 +26,15 @@ describe('generation graph workflows', () => {
     expect(experimental.status).toBe('experimental');
   });
 
-  it('isolates only the new polar climate implementation from Detailed', () => {
+  it('aligns Detailed and Experimental after polar climate promotion', () => {
     const detailed = generationGraphWorkflow('core.performance-foundation');
     const experimental = generationGraphWorkflow('core.world-generation-experimental');
-    const detailedById = new Map(detailed.nodes.map((node) => [node.id, node]));
-    for (const node of experimental.nodes) {
-      const baseline = detailedById.get(node.id);
-      expect(baseline).toBeDefined();
-      if (node.id === 'climate.glaciation') {
-        expect(node.implementationId).toBe('core.climate.glaciation.mean-centered-power-v1');
-        expect(node.implementationId).not.toBe(baseline?.implementationId);
-      } else {
-        expect(node.implementationId).toBe(baseline?.implementationId);
-      }
-    }
+    expect(experimental.nodes.map((node) => ({ id: node.id, implementationId: node.implementationId, version: node.version })))
+      .toEqual(detailed.nodes.map((node) => ({ id: node.id, implementationId: node.implementationId, version: node.version })));
+    expect(detailed.nodes.find((node) => node.id === 'climate.glaciation')).toMatchObject({
+      implementationId: 'core.climate.glaciation.mean-centered-power-v1',
+      version: '2'
+    });
     expect(detailed.nodes.find((node) => node.id === 'world.deep-time-aging')).toMatchObject({
       implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1',
       version: '4'
@@ -53,7 +48,7 @@ describe('generation graph workflows', () => {
     for (const node of candidate.nodes) {
       const baseline = controlById.get(node.id);
       expect(baseline).toBeDefined();
-      if (node.id === 'world.deep-time-aging') expect(node.implementationId).not.toBe(baseline?.implementationId);
+      if (node.id === 'world.deep-time-aging' || node.id === 'climate.glaciation') expect(node.implementationId).not.toBe(baseline?.implementationId);
       else expect(node.implementationId).toBe(baseline?.implementationId);
     }
   });

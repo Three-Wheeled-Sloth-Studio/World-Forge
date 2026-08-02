@@ -1,0 +1,5775 @@
+{
+  "format": "world-forge-current-generation-profile",
+  "version": 1,
+  "generatedAt": "2026-08-02T15:37:45.768Z",
+  "sourceCommit": "9fced66219acfe8bf8ff314f024be322a7fba7c1",
+  "environment": {
+    "node": "v22.23.1",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "options": {
+    "workflowId": "core.performance-foundation",
+    "workflowVersion": "1.2.0",
+    "seeds": [
+      "1001001",
+      "3141592",
+      "8675309"
+    ],
+    "scenarios": [
+      "earthlike-standard",
+      "archipelago-standard",
+      "geology-glacial-stress"
+    ],
+    "resolution": "512x256",
+    "runs": 1
+  },
+  "results": [
+    {
+      "runId": "earthlike-standard-1001001-512x256-run1",
+      "scenarioId": "earthlike-standard",
+      "seed": "1001001",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 4185.5,
+      "wallMs": 4186.1,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 2392.789,
+        "attributedMs": 2205.638,
+        "unattributedMs": 187.151,
+        "attributionShare": 0.92179,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 29.109,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 9,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 131.499,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 66292,
+              "targetCells": 62473,
+              "movingFragments": 21,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9423912387618415
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 483.297,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 229117,
+              "affectedCellProcessTotal": 6704,
+              "tectonicOperations": 0,
+              "impactOperations": 4887,
+              "weatheringOperations": 13847,
+              "glacialOperations": 1471,
+              "coastalOperations": 5033
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 102.087,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 21,
+              "keyframeCount": 105,
+              "pairEvaluations": 1697,
+              "terrainResponseCellShare": 0.341787,
+              "volcanismResponseCellShare": 0.039012
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 103.213,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2035,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 59069
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 533.571,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 271.849,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1453,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 551.013,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 30882,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 187.151,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 229117,
+              "depositedCells": 1923,
+              "depositionOperations": 3450,
+              "unclassifiedMutationOperations": 217903
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 2.7,
+          "topologyCells": 98304,
+          "activeCells": 4343,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 6.3,
+          "topologyCells": 24576,
+          "activeCells": 4343,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 6.2,
+          "topologyCells": 98304,
+          "activeCells": 4343,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 2,
+          "topologyCells": 98304,
+          "activeCells": 4343,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 15.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 8.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 9.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 13.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 21.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 11,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 70.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 85.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 188.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 3.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 22.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 9.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 106,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 4.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 39.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 57.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 25.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 4.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 6.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 7.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 1,
+          "topologyCells": 98304,
+          "activeCells": 2088,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 5.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 5.2,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 2.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0.4,
+          "topologyCells": 98304,
+          "activeCells": 21,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 3.5,
+          "topologyCells": 98304,
+          "activeCells": 3859,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 15436
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 1.8,
+          "topologyCells": 98304,
+          "activeCells": 11500,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 9.6,
+          "topologyCells": 98304,
+          "activeCells": 11500,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 3.8,
+          "topologyCells": 24576,
+          "activeCells": 11500,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 6.9,
+          "topologyCells": 98304,
+          "activeCells": 11500,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 46000
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 25.6,
+          "topologyCells": 98304,
+          "activeCells": 11500,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 131.4,
+          "topologyCells": 98304,
+          "activeCells": 66292,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 1.7,
+          "topologyCells": 98304,
+          "activeCells": 2239,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 4.3,
+          "topologyCells": 24576,
+          "activeCells": 2239,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 4.3,
+          "topologyCells": 98304,
+          "activeCells": 2239,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 2.1,
+          "topologyCells": 98304,
+          "activeCells": 2239,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 102,
+          "topologyCells": 98304,
+          "activeCells": 21,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 37.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 21.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 27.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 14.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 15.2,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 355.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 492.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.6,
+          "topologyCells": 98304,
+          "activeCells": 80,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 7.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 75.21,
+        "icePercentage": 1.38,
+        "riverCount": 80
+      }
+    },
+    {
+      "runId": "earthlike-standard-3141592-512x256-run1",
+      "scenarioId": "earthlike-standard",
+      "seed": "3141592",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3470,
+      "wallMs": 3470.2,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 2045.749,
+        "attributedMs": 1895.961,
+        "unattributedMs": 149.788,
+        "attributionShare": 0.92678,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 17.789,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 8,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 102.507,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 50590,
+              "targetCells": 45843,
+              "movingFragments": 17,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9061672267246491
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 441.519,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 219476,
+              "affectedCellProcessTotal": 9903,
+              "tectonicOperations": 0,
+              "impactOperations": 4907,
+              "weatheringOperations": 15147,
+              "glacialOperations": 6314,
+              "coastalOperations": 6154
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 75.501,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 17,
+              "keyframeCount": 85,
+              "pairEvaluations": 964,
+              "terrainResponseCellShare": 0.329234,
+              "volcanismResponseCellShare": 0.033193
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 84.858,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 4463,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 60209
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 442.284,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 225.313,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 3064,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 506.19,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 32678,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 149.788,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 219476,
+              "depositedCells": 2188,
+              "depositionOperations": 3900,
+              "unclassifiedMutationOperations": 203508
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 3.4,
+          "topologyCells": 98304,
+          "activeCells": 3768,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.6,
+          "topologyCells": 24576,
+          "activeCells": 3768,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 5.6,
+          "topologyCells": 98304,
+          "activeCells": 3768,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.7,
+          "topologyCells": 98304,
+          "activeCells": 3768,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 10.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 5.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 5.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 9.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 8.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 57,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 55.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 161.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 19,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 99.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 3.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 48,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 51.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 23.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 3.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 3.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 6.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.7,
+          "topologyCells": 98304,
+          "activeCells": 2117,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 3.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 1.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 17,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 7.1,
+          "topologyCells": 98304,
+          "activeCells": 6441,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 25764
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 1.7,
+          "topologyCells": 98304,
+          "activeCells": 12843,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 10.4,
+          "topologyCells": 98304,
+          "activeCells": 12843,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 2.4,
+          "topologyCells": 24576,
+          "activeCells": 12843,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 4.7,
+          "topologyCells": 98304,
+          "activeCells": 12843,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 51372
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 21.7,
+          "topologyCells": 98304,
+          "activeCells": 12843,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 102.4,
+          "topologyCells": 98304,
+          "activeCells": 50590,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 1982,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.4,
+          "topologyCells": 24576,
+          "activeCells": 1982,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 1982,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 2.2,
+          "topologyCells": 98304,
+          "activeCells": 1982,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 75.5,
+          "topologyCells": 98304,
+          "activeCells": 17,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 25.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 18.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 24.2,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 15.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 13,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 370.2,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 457.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.6,
+          "topologyCells": 98304,
+          "activeCells": 80,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 5.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 73.99,
+        "icePercentage": 2.74,
+        "riverCount": 80
+      }
+    },
+    {
+      "runId": "earthlike-standard-8675309-512x256-run1",
+      "scenarioId": "earthlike-standard",
+      "seed": "8675309",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3473.3,
+      "wallMs": 3473.5,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 2050.533,
+        "attributedMs": 1914.832,
+        "unattributedMs": 135.701,
+        "attributionShare": 0.93382,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 24.459,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 23,
+              "cratonCount": 14,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 130.036,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 81758,
+              "targetCells": 70902,
+              "movingFragments": 27,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8672178869346119
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 416.001,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 267040,
+              "affectedCellProcessTotal": 8765,
+              "tectonicOperations": 0,
+              "impactOperations": 4815,
+              "weatheringOperations": 12590,
+              "glacialOperations": 4544,
+              "coastalOperations": 6157
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 90.538,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 27,
+              "keyframeCount": 135,
+              "pairEvaluations": 2563,
+              "terrainResponseCellShare": 0.379649,
+              "volcanismResponseCellShare": 0.045431
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 84.132,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 949,
+              "marineCells": 64881,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 59531
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 435.864,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 33423,
+              "marineCells": 64881
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 237.982,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 2288,
+              "acceptedRivers": 80,
+              "maximumRivers": 80
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 495.82,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 34298,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 135.701,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 267040,
+              "depositedCells": 1945,
+              "depositionOperations": 3280,
+              "unclassifiedMutationOperations": 253601
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 4270,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 4270,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 4270,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 4270,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 11.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 6.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 10.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 9.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 52.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 57.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 161.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 18.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 86.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 37.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 47.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 23.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 3.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 4.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 4.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 2.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.5,
+          "topologyCells": 98304,
+          "activeCells": 1821,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 5.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 3.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 27,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 4.7,
+          "topologyCells": 98304,
+          "activeCells": 6318,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 25272
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 2.1,
+          "topologyCells": 98304,
+          "activeCells": 15293,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 9.4,
+          "topologyCells": 98304,
+          "activeCells": 15293,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 2.8,
+          "topologyCells": 24576,
+          "activeCells": 15293,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 7,
+          "topologyCells": 98304,
+          "activeCells": 15293,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 61172
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 23.1,
+          "topologyCells": 98304,
+          "activeCells": 15293,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 130,
+          "topologyCells": 98304,
+          "activeCells": 81758,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 2498,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 2498,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 2498,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 2498,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 90.5,
+          "topologyCells": 98304,
+          "activeCells": 27,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 30,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 17.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 24.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 18.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 17.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 325,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 443.3,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.4,
+          "topologyCells": 98304,
+          "activeCells": 80,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 8.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 74.04,
+        "icePercentage": 2.11,
+        "riverCount": 80
+      }
+    },
+    {
+      "runId": "archipelago-standard-1001001-512x256-run1",
+      "scenarioId": "archipelago-standard",
+      "seed": "1001001",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 2907,
+      "wallMs": 2907.2,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 1646.82,
+        "attributedMs": 1530.876,
+        "unattributedMs": 115.944,
+        "attributionShare": 0.9296,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 15.19,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 91.311,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 81968,
+              "targetCells": 70892,
+              "movingFragments": 33,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8648740972086668
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 360.952,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 281035,
+              "affectedCellProcessTotal": 12835,
+              "tectonicOperations": 0,
+              "impactOperations": 6320,
+              "weatheringOperations": 13720,
+              "glacialOperations": 11581,
+              "coastalOperations": 6160
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 42.515,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 33,
+              "keyframeCount": 160,
+              "pairEvaluations": 3094,
+              "terrainResponseCellShare": 0.422231,
+              "volcanismResponseCellShare": 0.052297
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 77.717,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 1806,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 62113
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 366.359,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 189.62,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 2276,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 387.212,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 37768,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 115.944,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 281035,
+              "depositedCells": 2227,
+              "depositionOperations": 4132,
+              "unclassifiedMutationOperations": 261235
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 4990,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.4,
+          "topologyCells": 24576,
+          "activeCells": 4990,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 4990,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.7,
+          "topologyCells": 98304,
+          "activeCells": 4990,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 6.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 2.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 3.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 6.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 9.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 46.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 43.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 155.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 18.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 78.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 3.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 37.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 40.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 24.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 3.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 2.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 2.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 2.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 521,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 9.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 1.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 33,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 4.6,
+          "topologyCells": 98304,
+          "activeCells": 4696,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 18784
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 17959,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 9.1,
+          "topologyCells": 98304,
+          "activeCells": 17959,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 0.6,
+          "topologyCells": 24576,
+          "activeCells": 17959,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 5.4,
+          "topologyCells": 98304,
+          "activeCells": 17959,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 71836
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 16,
+          "topologyCells": 98304,
+          "activeCells": 17959,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 91.3,
+          "topologyCells": 98304,
+          "activeCells": 81968,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 2852,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 2852,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 2852,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 2852,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 42.5,
+          "topologyCells": 98304,
+          "activeCells": 33,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 24.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 14.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 20.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 9.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 5.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 296.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 348.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 55,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 2.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 68.92,
+        "icePercentage": 9.94,
+        "riverCount": 55
+      }
+    },
+    {
+      "runId": "archipelago-standard-3141592-512x256-run1",
+      "scenarioId": "archipelago-standard",
+      "seed": "3141592",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3126.8,
+      "wallMs": 3127,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 1814.636,
+        "attributedMs": 1682.933,
+        "unattributedMs": 131.703,
+        "attributionShare": 0.92742,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 10.498,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 8,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 89.921,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 52790,
+              "targetCells": 44080,
+              "movingFragments": 20,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8350066300435689
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 390.181,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 236612,
+              "affectedCellProcessTotal": 10394,
+              "tectonicOperations": 0,
+              "impactOperations": 6352,
+              "weatheringOperations": 15003,
+              "glacialOperations": 6086,
+              "coastalOperations": 6574
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 66.936,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 20,
+              "keyframeCount": 100,
+              "pairEvaluations": 1466,
+              "terrainResponseCellShare": 0.350739,
+              "volcanismResponseCellShare": 0.042409
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 78.405,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 4278,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 65347
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 368.395,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 202.396,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1109,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 476.201,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 30131,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 131.703,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 236612,
+              "depositedCells": 2387,
+              "depositionOperations": 4259,
+              "unclassifiedMutationOperations": 219738
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 4781,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 4781,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 4781,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 4781,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 6.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 2.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 3.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 9.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 9.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 46.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 43,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 154.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 18.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 77.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 4.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 37.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 40.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 24,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 4.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 2.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 4.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 2.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 1260,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 4.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 2.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 20,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 9.2,
+          "topologyCells": 98304,
+          "activeCells": 10230,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 40920
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 18123,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 7,
+          "topologyCells": 98304,
+          "activeCells": 18123,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 0.5,
+          "topologyCells": 24576,
+          "activeCells": 18123,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 5.4,
+          "topologyCells": 98304,
+          "activeCells": 18123,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 72492
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 13.7,
+          "topologyCells": 98304,
+          "activeCells": 18123,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 89.9,
+          "topologyCells": 98304,
+          "activeCells": 52790,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 2372,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.4,
+          "topologyCells": 24576,
+          "activeCells": 2372,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 2372,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.6,
+          "topologyCells": 98304,
+          "activeCells": 2372,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 66.9,
+          "topologyCells": 98304,
+          "activeCells": 20,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 25.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 15,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 20.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 18.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 318.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 431.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 55,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 7.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 73.85,
+        "icePercentage": 5.39,
+        "riverCount": 55
+      }
+    },
+    {
+      "runId": "archipelago-standard-8675309-512x256-run1",
+      "scenarioId": "archipelago-standard",
+      "seed": "8675309",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3068.2,
+      "wallMs": 3068.4,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 1826.594,
+        "attributedMs": 1713.198,
+        "unattributedMs": 113.396,
+        "attributionShare": 0.93792,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 15.927,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 31,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 119.564,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 85271,
+              "targetCells": 70599,
+              "movingFragments": 36,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.8279368132190311
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 360.052,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 280527,
+              "affectedCellProcessTotal": 7503,
+              "tectonicOperations": 0,
+              "impactOperations": 6308,
+              "weatheringOperations": 15412,
+              "glacialOperations": 117,
+              "coastalOperations": 7604
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 92.016,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 36,
+              "keyframeCount": 180,
+              "pairEvaluations": 3239,
+              "terrainResponseCellShare": 0.41805,
+              "volcanismResponseCellShare": 0.052399
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 79.768,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 1880,
+              "marineCells": 70779,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 63170
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 366.908,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 27525,
+              "marineCells": 70779
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 195.369,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 1988,
+              "acceptedRivers": 55,
+              "maximumRivers": 55
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 483.594,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 35059,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 4
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 113.396,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 280527,
+              "depositedCells": 2474,
+              "depositionOperations": 4361,
+              "unclassifiedMutationOperations": 268007
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 4833,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 4833,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 4833,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 4833,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 6.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 2.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 3.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 3.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 3,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 9.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 47.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 43.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 155.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 18.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 72.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 3.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 37.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 39.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 24.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 2.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 2.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 2.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.4,
+          "topologyCells": 98304,
+          "activeCells": 1007,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 4.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 5.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 36,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 5,
+          "topologyCells": 98304,
+          "activeCells": 6718,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 26872
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 20385,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 8.4,
+          "topologyCells": 98304,
+          "activeCells": 20385,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 0.6,
+          "topologyCells": 24576,
+          "activeCells": 20385,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 6,
+          "topologyCells": 98304,
+          "activeCells": 20385,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 81540
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 15.9,
+          "topologyCells": 98304,
+          "activeCells": 20385,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 119.5,
+          "topologyCells": 98304,
+          "activeCells": 85271,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 2905,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 2905,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 2905,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 2905,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 92,
+          "topologyCells": 98304,
+          "activeCells": 36,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 20.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 14.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 21,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 5.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 334.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 437.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 55,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 80.32,
+        "icePercentage": 0,
+        "riverCount": 55
+      }
+    },
+    {
+      "runId": "geology-glacial-stress-1001001-512x256-run1",
+      "scenarioId": "geology-glacial-stress",
+      "seed": "1001001",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3019.6,
+      "wallMs": 3019.8,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 1689.015,
+        "attributedMs": 1575.748,
+        "unattributedMs": 113.267,
+        "attributionShare": 0.93294,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 14.112,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 29,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 92.897,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 76172,
+              "targetCells": 59207,
+              "movingFragments": 56,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.777280365488631
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 415.197,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 305711,
+              "affectedCellProcessTotal": 19584,
+              "tectonicOperations": 0,
+              "impactOperations": 16333,
+              "weatheringOperations": 20444,
+              "glacialOperations": 13112,
+              "coastalOperations": 8314
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 48.033,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 56,
+              "keyframeCount": 280,
+              "pairEvaluations": 3527,
+              "terrainResponseCellShare": 0.524333,
+              "volcanismResponseCellShare": 0.063883
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 72.816,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2523,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 51094
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 469.354,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 233.314,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 4353,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 230.025,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 40137,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 113.267,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 305711,
+              "depositedCells": 3342,
+              "depositionOperations": 6298,
+              "unclassifiedMutationOperations": 275682
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 6018,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 6018,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 6018,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 6018,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 15.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 3.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 5,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 4.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 4.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 10.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 46.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 39,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 171.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 19.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 102.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 4.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 39,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 48.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 23.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 5.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 3.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 3.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.4,
+          "topologyCells": 98304,
+          "activeCells": 1974,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 5.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 2.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 56,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 9.9,
+          "topologyCells": 98304,
+          "activeCells": 9767,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 39068
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 22780,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 9.8,
+          "topologyCells": 98304,
+          "activeCells": 22780,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 0.6,
+          "topologyCells": 24576,
+          "activeCells": 22780,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 6.7,
+          "topologyCells": 98304,
+          "activeCells": 22780,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 91120
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 18.2,
+          "topologyCells": 98304,
+          "activeCells": 22780,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 92.9,
+          "topologyCells": 98304,
+          "activeCells": 76172,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 3735,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 3735,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 3735,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 3735,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 48,
+          "topologyCells": 98304,
+          "activeCells": 56,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 20.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 14.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 21.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 4.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 4.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 145.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 188.5,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 118,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 2.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 60.46,
+        "icePercentage": 17.83,
+        "riverCount": 118
+      }
+    },
+    {
+      "runId": "geology-glacial-stress-3141592-512x256-run1",
+      "scenarioId": "geology-glacial-stress",
+      "seed": "3141592",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3216,
+      "wallMs": 3216.2,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 1878.466,
+        "attributedMs": 1749.733,
+        "unattributedMs": 128.733,
+        "attributionShare": 0.93147,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 9.462,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 17,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 61.977,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 44774,
+              "targetCells": 40306,
+              "movingFragments": 36,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.9002099432706482
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 436.752,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 235449,
+              "affectedCellProcessTotal": 16824,
+              "tectonicOperations": 0,
+              "impactOperations": 16373,
+              "weatheringOperations": 21363,
+              "glacialOperations": 7256,
+              "coastalOperations": 7469
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 71.649,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 36,
+              "keyframeCount": 170,
+              "pairEvaluations": 1600,
+              "terrainResponseCellShare": 0.351206,
+              "volcanismResponseCellShare": 0.03715
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 76.23,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 2542,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 55541
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 456.419,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 251.04,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 5267,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 386.204,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 27367,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 128.733,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 235449,
+              "depositedCells": 3248,
+              "depositionOperations": 5935,
+              "unclassifiedMutationOperations": 209711
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 5645,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.4,
+          "topologyCells": 24576,
+          "activeCells": 5645,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 5645,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.5,
+          "topologyCells": 98304,
+          "activeCells": 5645,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 15.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 3.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 5,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 4.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 4.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 8.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 46.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 38.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 166.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 19.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 100.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 38.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 40.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 23.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 3.1,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 3.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 2.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.9,
+          "topologyCells": 98304,
+          "activeCells": 2852,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 3.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 1.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 36,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 9.5,
+          "topologyCells": 98304,
+          "activeCells": 8491,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 33964
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 11725,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 6.7,
+          "topologyCells": 98304,
+          "activeCells": 11725,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 0.4,
+          "topologyCells": 24576,
+          "activeCells": 11725,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 3.5,
+          "topologyCells": 98304,
+          "activeCells": 11725,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 46900
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 11.2,
+          "topologyCells": 98304,
+          "activeCells": 11725,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 61.9,
+          "topologyCells": 98304,
+          "activeCells": 44774,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 1967,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.4,
+          "topologyCells": 24576,
+          "activeCells": 1967,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 1967,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.6,
+          "topologyCells": 98304,
+          "activeCells": 1967,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 71.6,
+          "topologyCells": 98304,
+          "activeCells": 36,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 20.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 15.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 21.4,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 4.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 5.2,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 246.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 338.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 118,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 7.6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 68.07,
+        "icePercentage": 7.61,
+        "riverCount": 118
+      }
+    },
+    {
+      "runId": "geology-glacial-stress-8675309-512x256-run1",
+      "scenarioId": "geology-glacial-stress",
+      "seed": "8675309",
+      "runIndex": 0,
+      "resolution": "512x256",
+      "workflowId": "core.performance-foundation",
+      "workflowVersion": "1.2.0",
+      "totalMs": 3393.2,
+      "wallMs": 3393.5,
+      "topologyCells": 98304,
+      "outputPixels": 131072,
+      "deepTime": {
+        "version": "deep-time-instrumentation-v1",
+        "reportedDeepTimeMs": 2050.78,
+        "attributedMs": 1918.927,
+        "unattributedMs": 131.853,
+        "attributionShare": 0.93571,
+        "topologyCells": 98304,
+        "projectedCells": 131072,
+        "epochs": 3,
+        "surfaceAgingSamples": 5,
+        "substages": [
+          {
+            "id": "setup-models",
+            "label": "Initializing stellar, orbital, craton, and epoch models",
+            "elapsedMs": 18.352,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "plateCount": 60,
+              "cratonCount": 27,
+              "epochCount": 3
+            }
+          },
+          {
+            "id": "fragment-placement",
+            "label": "Applying authoritative continental fragment transforms",
+            "elapsedMs": 93.26,
+            "progressEvents": 1,
+            "work": {
+              "sourceCells": 76568,
+              "targetCells": 60217,
+              "movingFragments": 54,
+              "fullArrayClones": 3,
+              "retainedCellRatio": 0.7864512590115975
+            }
+          },
+          {
+            "id": "surface-aging",
+            "label": "Deep-time epoch 3 of 3",
+            "elapsedMs": 446.793,
+            "progressEvents": 3,
+            "work": {
+              "epochs": 3,
+              "climateSamples": 5,
+              "scheduledIterations": 24,
+              "mutationOperations": 291174,
+              "affectedCellProcessTotal": 14133,
+              "tectonicOperations": 0,
+              "impactOperations": 16377,
+              "weatheringOperations": 21103,
+              "glacialOperations": 1856,
+              "coastalOperations": 8125
+            }
+          },
+          {
+            "id": "fragment-history",
+            "label": "Applying fragment-history terrain response",
+            "elapsedMs": 102.47,
+            "progressEvents": 1,
+            "work": {
+              "fragmentCount": 54,
+              "keyframeCount": 270,
+              "pairEvaluations": 4068,
+              "terrainResponseCellShare": 0.467753,
+              "volcanismResponseCellShare": 0.058858
+            }
+          },
+          {
+            "id": "water-reconciliation",
+            "label": "Resolving final sea level and water masks",
+            "elapsedMs": 94.559,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "waterMaskCorrections": 1347,
+              "marineCells": 60949,
+              "lakeCells": 0,
+              "marineDepthAdjustedCells": 53067
+            }
+          },
+          {
+            "id": "climate-rebuild",
+            "label": "Rebuilding present-day climate and moisture",
+            "elapsedMs": 516.157,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "climateCellsRefreshed": 98304,
+              "landCells": 37355,
+              "marineCells": 60949
+            }
+          },
+          {
+            "id": "hydrology-rebuild",
+            "label": "Rebuilding drainage, rivers, lakes, and wetlands",
+            "elapsedMs": 264.312,
+            "progressEvents": 1,
+            "work": {
+              "topologyCells": 98304,
+              "hydrologyCellsRebuilt": 98304,
+              "sourceCandidates": 5585,
+              "acceptedRivers": 118,
+              "maximumRivers": 118
+            }
+          },
+          {
+            "id": "biome-projection-validation",
+            "label": "Reclassifying final biomes and projecting aged topology",
+            "elapsedMs": 383.024,
+            "progressEvents": 1,
+            "work": {
+              "projectedCells": 131072,
+              "biomeCorrections": 42000,
+              "invalidRiverCellsCleared": 0,
+              "validationFindings": 3
+            }
+          },
+          {
+            "id": "ledger-and-unattributed",
+            "label": "Mutation-ledger setup, finalization, and unattributed overhead",
+            "elapsedMs": 131.853,
+            "progressEvents": 0,
+            "work": {
+              "mutationOperations": 291174,
+              "depositedCells": 3276,
+              "depositionOperations": 5768,
+              "unclassifiedMutationOperations": 269688
+            }
+          }
+        ]
+      },
+      "traces": [
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 5608,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 1.3,
+          "topologyCells": 24576,
+          "activeCells": 5608,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.4,
+          "topologyCells": 98304,
+          "activeCells": 5608,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.6,
+          "topologyCells": 98304,
+          "activeCells": 5608,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.terrain.impacts",
+          "elapsedMs": 15.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.terrain.thermal-weathering",
+          "elapsedMs": 3.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 5,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.hydraulic-erosion",
+          "elapsedMs": 4.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.terrain.coastal-shelves",
+          "elapsedMs": 4.5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.water-distance",
+          "elapsedMs": 14.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 18,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.temperature-field",
+          "elapsedMs": 10.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.atmospheric-flow",
+          "elapsedMs": 46.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.ocean-currents",
+          "elapsedMs": 38.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.climate.wetness-traversal",
+          "elapsedMs": 168.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.wetness-smoothing",
+          "elapsedMs": 0.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-water-distance",
+          "elapsedMs": 19.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 24,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-land-distance",
+          "elapsedMs": 6.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 8,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-traversal",
+          "elapsedMs": 97.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.climate.moisture-candidate-smoothing",
+          "elapsedMs": 4.8,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.water-distance",
+          "elapsedMs": 39.2,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 48,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.drainage-surface",
+          "elapsedMs": 38.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "foundation.hydrology.elevation-ordering",
+          "elapsedMs": 23.6,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.receiver-flow-initialization",
+          "elapsedMs": 5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.flow-accumulation",
+          "elapsedMs": 4.7,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.channel-marking",
+          "elapsedMs": 5,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.hydrology.source-ordering",
+          "elapsedMs": 3.3,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "foundation.hydrology.river-path-tracing",
+          "elapsedMs": 0.6,
+          "topologyCells": 98304,
+          "activeCells": 2142,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-lookup",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.scalar-copy",
+          "elapsedMs": 5.9,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-lookup",
+          "elapsedMs": 0,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "foundation.projection.vector-copy",
+          "elapsedMs": 2.3,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "rigid-plate-rotation-construction",
+          "elapsedMs": 0.1,
+          "topologyCells": 98304,
+          "activeCells": 54,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "vacated-fragment-corridor-repair",
+          "elapsedMs": 12.1,
+          "topologyCells": 98304,
+          "activeCells": 13008,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 52032
+        },
+        {
+          "name": "reference-scale-mask-reduction",
+          "elapsedMs": 0.3,
+          "topologyCells": 98304,
+          "activeCells": 20758,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 24576
+        },
+        {
+          "name": "reference-scale-field-reduction",
+          "elapsedMs": 8.9,
+          "topologyCells": 98304,
+          "activeCells": 20758,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 122880
+        },
+        {
+          "name": "reference-scale-corridor-propagation",
+          "elapsedMs": 0.6,
+          "topologyCells": 24576,
+          "activeCells": 20758,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "masked-topology-field-expansion-and-blend",
+          "elapsedMs": 6.3,
+          "topologyCells": 98304,
+          "activeCells": 20758,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 83032
+        },
+        {
+          "name": "topology-field-stabilization",
+          "elapsedMs": 16.6,
+          "topologyCells": 98304,
+          "activeCells": 20758,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "authoritative-fragment-transforms",
+          "elapsedMs": 93.2,
+          "topologyCells": 98304,
+          "activeCells": 76568,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "reference-scale-signal-reduction",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 3032,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 98304
+        },
+        {
+          "name": "reference-scale-signal-smoothing",
+          "elapsedMs": 2.2,
+          "topologyCells": 24576,
+          "activeCells": 3032,
+          "fullTopologyPasses": 7,
+          "allocatedBufferBytes": 688128
+        },
+        {
+          "name": "authoritative-topology-signal-expansion",
+          "elapsedMs": 2.8,
+          "topologyCells": 98304,
+          "activeCells": 3032,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 393216
+        },
+        {
+          "name": "authoritative-topology-post-expansion-smoothing",
+          "elapsedMs": 1.8,
+          "topologyCells": 98304,
+          "activeCells": 3032,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 786432
+        },
+        {
+          "name": "fragment-history-deformation",
+          "elapsedMs": 102.4,
+          "topologyCells": 98304,
+          "activeCells": 54,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0,
+          "parent": true
+        },
+        {
+          "name": "permanent-ice-classification",
+          "elapsedMs": 22.9,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 4,
+          "allocatedBufferBytes": 589824
+        },
+        {
+          "name": "deep-time.final.biome-classification",
+          "elapsedMs": 16.4,
+          "topologyCells": 98304,
+          "activeCells": 98304,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "topology-to-raster-final-projection",
+          "elapsedMs": 24,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "basin-circulation.label-basins",
+          "elapsedMs": 5.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.coast-distance",
+          "elapsedMs": 6,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 2,
+          "allocatedBufferBytes": 524288
+        },
+        {
+          "name": "basin-circulation.pack-gyres",
+          "elapsedMs": 228.7,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 14,
+          "allocatedBufferBytes": 262144
+        },
+        {
+          "name": "deep-time.final.basin-circulation",
+          "elapsedMs": 329.1,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.river-path-projection",
+          "elapsedMs": 0.2,
+          "topologyCells": 98304,
+          "activeCells": 118,
+          "fullTopologyPasses": 0,
+          "allocatedBufferBytes": 0
+        },
+        {
+          "name": "deep-time.final.metrics-validation",
+          "elapsedMs": 10.3,
+          "topologyCells": 98304,
+          "activeCells": 131072,
+          "fullTopologyPasses": 1,
+          "allocatedBufferBytes": 0
+        }
+      ],
+      "metrics": {
+        "oceanPercentage": 71.78,
+        "icePercentage": 2.66,
+        "riverCount": 118
+      }
+    }
+  ],
+  "finePhaseRanking": [
+    {
+      "name": "deep-time.final.basin-circulation",
+      "samples": 9,
+      "averageMs": 385.3,
+      "medianMs": 431.7,
+      "p90Ms": 457.1,
+      "averagePercentOfTotal": 11.58,
+      "averageNsPerTopologyCell": 3919.4,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "basin-circulation.pack-gyres",
+      "samples": 9,
+      "averageMs": 291.2,
+      "medianMs": 318.9,
+      "p90Ms": 355.9,
+      "averagePercentOfTotal": 8.78,
+      "averageNsPerTopologyCell": 2962.2,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 14,
+      "averageAllocatedBufferMb": 0.25
+    },
+    {
+      "name": "foundation.climate.wetness-traversal",
+      "samples": 9,
+      "averageMs": 164.9,
+      "medianMs": 161.8,
+      "p90Ms": 171.7,
+      "averagePercentOfTotal": 5,
+      "averageNsPerTopologyCell": 1677.9,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.climate.moisture-candidate-traversal",
+      "samples": 9,
+      "averageMs": 91.2,
+      "medianMs": 97.6,
+      "p90Ms": 102.3,
+      "averagePercentOfTotal": 2.76,
+      "averageNsPerTopologyCell": 928.2,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.climate.atmospheric-flow",
+      "samples": 9,
+      "averageMs": 51.2,
+      "medianMs": 46.9,
+      "p90Ms": 57,
+      "averagePercentOfTotal": 1.54,
+      "averageNsPerTopologyCell": 520.9,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 2,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "foundation.climate.ocean-currents",
+      "samples": 9,
+      "averageMs": 49.5,
+      "medianMs": 43.6,
+      "p90Ms": 57.7,
+      "averagePercentOfTotal": 1.47,
+      "averageNsPerTopologyCell": 503.8,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 2,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "foundation.hydrology.drainage-surface",
+      "samples": 9,
+      "averageMs": 44.9,
+      "medianMs": 40.7,
+      "p90Ms": 51.2,
+      "averagePercentOfTotal": 1.35,
+      "averageNsPerTopologyCell": 456.4,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "foundation.hydrology.water-distance",
+      "samples": 9,
+      "averageMs": 39.2,
+      "medianMs": 38.4,
+      "p90Ms": 39.3,
+      "averagePercentOfTotal": 1.19,
+      "averageNsPerTopologyCell": 399.2,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 48,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "permanent-ice-classification",
+      "samples": 9,
+      "averageMs": 25.4,
+      "medianMs": 24.7,
+      "p90Ms": 30,
+      "averagePercentOfTotal": 0.76,
+      "averageNsPerTopologyCell": 258.2,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 4,
+      "averageAllocatedBufferMb": 0.56
+    },
+    {
+      "name": "foundation.hydrology.elevation-ordering",
+      "samples": 9,
+      "averageMs": 24,
+      "medianMs": 23.8,
+      "p90Ms": 24.1,
+      "averagePercentOfTotal": 0.73,
+      "averageNsPerTopologyCell": 244.3,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "topology-to-raster-final-projection",
+      "samples": 9,
+      "averageMs": 22.8,
+      "medianMs": 21.6,
+      "p90Ms": 24.5,
+      "averagePercentOfTotal": 0.69,
+      "averageNsPerTopologyCell": 232.4,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.climate.moisture-candidate-water-distance",
+      "samples": 9,
+      "averageMs": 19.4,
+      "medianMs": 19,
+      "p90Ms": 19.7,
+      "averagePercentOfTotal": 0.59,
+      "averageNsPerTopologyCell": 197.5,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 24,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "deep-time.final.biome-classification",
+      "samples": 9,
+      "averageMs": 16.5,
+      "medianMs": 15.8,
+      "p90Ms": 18.4,
+      "averagePercentOfTotal": 0.5,
+      "averageNsPerTopologyCell": 167.6,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.climate.water-distance",
+      "samples": 9,
+      "averageMs": 15.1,
+      "medianMs": 14.2,
+      "p90Ms": 14.8,
+      "averagePercentOfTotal": 0.46,
+      "averageNsPerTopologyCell": 153.9,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 18,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "foundation.terrain.impacts",
+      "samples": 9,
+      "averageMs": 11.3,
+      "medianMs": 11.9,
+      "p90Ms": 15.4,
+      "averagePercentOfTotal": 0.34,
+      "averageNsPerTopologyCell": 115.4,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "basin-circulation.label-basins",
+      "samples": 9,
+      "averageMs": 10.9,
+      "medianMs": 9.4,
+      "p90Ms": 18.1,
+      "averagePercentOfTotal": 0.32,
+      "averageNsPerTopologyCell": 110.4,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.5
+    },
+    {
+      "name": "foundation.climate.temperature-field",
+      "samples": 9,
+      "averageMs": 9.7,
+      "medianMs": 9.6,
+      "p90Ms": 10.8,
+      "averagePercentOfTotal": 0.29,
+      "averageNsPerTopologyCell": 98.7,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "reference-scale-field-reduction",
+      "samples": 9,
+      "averageMs": 8.8,
+      "medianMs": 9.1,
+      "p90Ms": 9.8,
+      "averagePercentOfTotal": 0.27,
+      "averageNsPerTopologyCell": 89.6,
+      "averageActiveCellShare": 0.1711,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0.12
+    },
+    {
+      "name": "basin-circulation.coast-distance",
+      "samples": 9,
+      "averageMs": 8.8,
+      "medianMs": 6,
+      "p90Ms": 15.2,
+      "averagePercentOfTotal": 0.26,
+      "averageNsPerTopologyCell": 89.5,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 2,
+      "averageAllocatedBufferMb": 0.5
+    },
+    {
+      "name": "foundation.terrain.coastal-shelves",
+      "samples": 9,
+      "averageMs": 7.4,
+      "medianMs": 6.1,
+      "p90Ms": 10.2,
+      "averagePercentOfTotal": 0.22,
+      "averageNsPerTopologyCell": 75.3,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 3.33,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "vacated-fragment-corridor-repair",
+      "samples": 9,
+      "averageMs": 7.3,
+      "medianMs": 7.1,
+      "p90Ms": 9.9,
+      "averagePercentOfTotal": 0.22,
+      "averageNsPerTopologyCell": 74.1,
+      "averageActiveCellShare": 0.0786,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.03
+    },
+    {
+      "name": "foundation.climate.moisture-candidate-land-distance",
+      "samples": 9,
+      "averageMs": 6.9,
+      "medianMs": 6.5,
+      "p90Ms": 6.7,
+      "averagePercentOfTotal": 0.21,
+      "averageNsPerTopologyCell": 69.9,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 8,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "deep-time.final.metrics-validation",
+      "samples": 9,
+      "averageMs": 6.8,
+      "medianMs": 7.6,
+      "p90Ms": 9,
+      "averagePercentOfTotal": 0.2,
+      "averageNsPerTopologyCell": 69.2,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "masked-topology-field-expansion-and-blend",
+      "samples": 9,
+      "averageMs": 5.8,
+      "medianMs": 6,
+      "p90Ms": 6.9,
+      "averagePercentOfTotal": 0.17,
+      "averageNsPerTopologyCell": 58.7,
+      "averageActiveCellShare": 0.1711,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0.06
+    },
+    {
+      "name": "foundation.projection.scalar-copy",
+      "samples": 9,
+      "averageMs": 5.3,
+      "medianMs": 5.2,
+      "p90Ms": 5.9,
+      "averagePercentOfTotal": 0.16,
+      "averageNsPerTopologyCell": 54,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.terrain.hydraulic-erosion",
+      "samples": 9,
+      "averageMs": 5.2,
+      "medianMs": 4.8,
+      "p90Ms": 6.5,
+      "averagePercentOfTotal": 0.15,
+      "averageNsPerTopologyCell": 53.2,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 3,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "foundation.terrain.thermal-weathering",
+      "samples": 9,
+      "averageMs": 4.4,
+      "medianMs": 3.8,
+      "p90Ms": 6.8,
+      "averagePercentOfTotal": 0.13,
+      "averageNsPerTopologyCell": 44.4,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 3.67,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "foundation.hydrology.channel-marking",
+      "samples": 9,
+      "averageMs": 4.3,
+      "medianMs": 4.5,
+      "p90Ms": 6.1,
+      "averagePercentOfTotal": 0.13,
+      "averageNsPerTopologyCell": 44.1,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.hydrology.receiver-flow-initialization",
+      "samples": 9,
+      "averageMs": 4,
+      "medianMs": 3.9,
+      "p90Ms": 5,
+      "averagePercentOfTotal": 0.12,
+      "averageNsPerTopologyCell": 40.6,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "foundation.hydrology.flow-accumulation",
+      "samples": 9,
+      "averageMs": 3.9,
+      "medianMs": 3.9,
+      "p90Ms": 4.7,
+      "averagePercentOfTotal": 0.11,
+      "averageNsPerTopologyCell": 39.2,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.climate.moisture-candidate-smoothing",
+      "samples": 9,
+      "averageMs": 3.8,
+      "medianMs": 4,
+      "p90Ms": 4.6,
+      "averagePercentOfTotal": 0.12,
+      "averageNsPerTopologyCell": 39,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 2,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "foundation.hydrology.source-ordering",
+      "samples": 9,
+      "averageMs": 3.5,
+      "medianMs": 2.9,
+      "p90Ms": 5,
+      "averagePercentOfTotal": 0.1,
+      "averageNsPerTopologyCell": 35.3,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "authoritative-topology-signal-expansion",
+      "samples": 18,
+      "averageMs": 2.9,
+      "medianMs": 2.4,
+      "p90Ms": 4.3,
+      "averagePercentOfTotal": 0.09,
+      "averageNsPerTopologyCell": 29.7,
+      "averageActiveCellShare": 0.0383,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "foundation.projection.vector-copy",
+      "samples": 9,
+      "averageMs": 2.6,
+      "medianMs": 2.5,
+      "p90Ms": 3.1,
+      "averagePercentOfTotal": 0.08,
+      "averageNsPerTopologyCell": 26.6,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "reference-scale-signal-smoothing",
+      "samples": 18,
+      "averageMs": 1.8,
+      "medianMs": 1.4,
+      "p90Ms": 2.2,
+      "averagePercentOfTotal": 0.05,
+      "averageNsPerTopologyCell": 74.8,
+      "averageActiveCellShare": 0.1534,
+      "averageFullTopologyPasses": 7,
+      "averageAllocatedBufferMb": 0.66
+    },
+    {
+      "name": "authoritative-topology-post-expansion-smoothing",
+      "samples": 18,
+      "averageMs": 1.7,
+      "medianMs": 1.6,
+      "p90Ms": 2,
+      "averagePercentOfTotal": 0.05,
+      "averageNsPerTopologyCell": 16.8,
+      "averageActiveCellShare": 0.0383,
+      "averageFullTopologyPasses": 2,
+      "averageAllocatedBufferMb": 0.75
+    },
+    {
+      "name": "reference-scale-corridor-propagation",
+      "samples": 9,
+      "averageMs": 1.4,
+      "medianMs": 0.6,
+      "p90Ms": 2.8,
+      "averagePercentOfTotal": 0.04,
+      "averageNsPerTopologyCell": 55.6,
+      "averageActiveCellShare": 0.6843,
+      "averageFullTopologyPasses": 4,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "foundation.climate.wetness-smoothing",
+      "samples": 9,
+      "averageMs": 1.2,
+      "medianMs": 0.9,
+      "p90Ms": 0.9,
+      "averagePercentOfTotal": 0.03,
+      "averageNsPerTopologyCell": 12.1,
+      "averageActiveCellShare": 1,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.38
+    },
+    {
+      "name": "reference-scale-mask-reduction",
+      "samples": 9,
+      "averageMs": 0.8,
+      "medianMs": 0.3,
+      "p90Ms": 1.8,
+      "averagePercentOfTotal": 0.02,
+      "averageNsPerTopologyCell": 8.3,
+      "averageActiveCellShare": 0.1711,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.02
+    },
+    {
+      "name": "reference-scale-signal-reduction",
+      "samples": 18,
+      "averageMs": 0.6,
+      "medianMs": 0.2,
+      "p90Ms": 1.7,
+      "averagePercentOfTotal": 0.02,
+      "averageNsPerTopologyCell": 6.3,
+      "averageActiveCellShare": 0.0383,
+      "averageFullTopologyPasses": 1,
+      "averageAllocatedBufferMb": 0.09
+    },
+    {
+      "name": "foundation.projection.scalar-lookup",
+      "samples": 9,
+      "averageMs": 0.6,
+      "medianMs": 0,
+      "p90Ms": 0.1,
+      "averagePercentOfTotal": 0.02,
+      "averageNsPerTopologyCell": 6.6,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.hydrology.river-path-tracing",
+      "samples": 9,
+      "averageMs": 0.5,
+      "medianMs": 0.5,
+      "p90Ms": 0.9,
+      "averagePercentOfTotal": 0.02,
+      "averageNsPerTopologyCell": 5.5,
+      "averageActiveCellShare": 0.0178,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "deep-time.final.river-path-projection",
+      "samples": 9,
+      "averageMs": 0.3,
+      "medianMs": 0.2,
+      "p90Ms": 0.6,
+      "averagePercentOfTotal": 0.01,
+      "averageNsPerTopologyCell": 2.8,
+      "averageActiveCellShare": 0.0009,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "rigid-plate-rotation-construction",
+      "samples": 9,
+      "averageMs": 0.1,
+      "medianMs": 0.1,
+      "p90Ms": 0.1,
+      "averagePercentOfTotal": 0,
+      "averageNsPerTopologyCell": 0.9,
+      "averageActiveCellShare": 0.0003,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    },
+    {
+      "name": "foundation.projection.vector-lookup",
+      "samples": 9,
+      "averageMs": 0,
+      "medianMs": 0,
+      "p90Ms": 0,
+      "averagePercentOfTotal": 0,
+      "averageNsPerTopologyCell": 0,
+      "averageActiveCellShare": 1.3333,
+      "averageFullTopologyPasses": 0,
+      "averageAllocatedBufferMb": 0
+    }
+  ],
+  "deepTimeSubstageRanking": [
+    {
+      "name": "climate-rebuild",
+      "samples": 9,
+      "averageMs": 439.5,
+      "medianMs": 442.3,
+      "p90Ms": 516.2,
+      "averagePercentOfTotal": 13.26
+    },
+    {
+      "name": "biome-projection-validation",
+      "samples": 9,
+      "averageMs": 433.3,
+      "medianMs": 476.2,
+      "p90Ms": 506.2,
+      "averagePercentOfTotal": 13.03
+    },
+    {
+      "name": "surface-aging",
+      "samples": 9,
+      "averageMs": 416.7,
+      "medianMs": 416,
+      "p90Ms": 446.8,
+      "averagePercentOfTotal": 12.6
+    },
+    {
+      "name": "hydrology-rebuild",
+      "samples": 9,
+      "averageMs": 230.1,
+      "medianMs": 233.3,
+      "p90Ms": 264.3,
+      "averagePercentOfTotal": 6.95
+    },
+    {
+      "name": "ledger-and-unattributed",
+      "samples": 9,
+      "averageMs": 134.2,
+      "medianMs": 131.7,
+      "p90Ms": 149.8,
+      "averagePercentOfTotal": 4.03
+    },
+    {
+      "name": "fragment-placement",
+      "samples": 9,
+      "averageMs": 101.4,
+      "medianMs": 93.3,
+      "p90Ms": 130,
+      "averagePercentOfTotal": 3.06
+    },
+    {
+      "name": "water-reconciliation",
+      "samples": 9,
+      "averageMs": 83.5,
+      "medianMs": 79.8,
+      "p90Ms": 94.6,
+      "averagePercentOfTotal": 2.52
+    },
+    {
+      "name": "fragment-history",
+      "samples": 9,
+      "averageMs": 76.9,
+      "medianMs": 75.5,
+      "p90Ms": 102.1,
+      "averagePercentOfTotal": 2.3
+    },
+    {
+      "name": "setup-models",
+      "samples": 9,
+      "averageMs": 17.2,
+      "medianMs": 15.9,
+      "p90Ms": 24.5,
+      "averagePercentOfTotal": 0.51
+    }
+  ]
+}
