@@ -45,11 +45,11 @@ describe('generation parameter controls', () => {
     expect(overridden.spread).toBe(9);
   });
 
-  it('clamps edited targets to the supported control bounds', () => {
+  it('clamps edited targets to the selected preset hard bounds', () => {
     const config = createDefaultConfig('target-test');
     const next = updateGenerationParameterDistribution(config, 'Earthlike', 'continentCount', 'target', 99);
     const edited = distributionTargetAndSpread(generationParameterDistribution(next, 'Earthlike', 'continentCount'));
-    expect(edited.target).toBe(12);
+    expect(edited.target).toBe(10);
   });
 
   it('labels generation and replacement actions distinctly', () => {
