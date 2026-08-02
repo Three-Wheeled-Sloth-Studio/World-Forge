@@ -61,21 +61,21 @@ const earthlike: WorldParameterDistributions = {
 };
 
 const habitable: WorldParameterDistributions = {
-  systemAgeGy: normal(earthlike.systemAgeGy.median, 2, 0.8, 10.5),
-  oceanPercentage: normal(earthlike.oceanPercentage.median, 12, 20, 95),
-  averageTemperatureC: normal(earthlike.averageTemperatureC.median, 7, -20, 42),
-  aridity: normal(earthlike.aridity.median, 0.18, 0.05, 0.95),
-  seaLevel: normal(earthlike.seaLevel.median, 0.06, -0.2, 0.2),
-  axialTiltDeg: normal(earthlike.axialTiltDeg.median, 14, 0, 70),
-  orbitalEccentricity: normal(earthlike.orbitalEccentricity.median, 0.05, 0, 0.28),
-  sizeClass: normal(earthlike.sizeClass.median, 0.2, 0.45, 2.2),
-  moonCount: normal(earthlike.moonCount.median, 1.4, 0, 5),
-  impactFrequency: normal(earthlike.impactFrequency.median, 0.55, 0.2, 2.5),
-  plateCount: normal(earthlike.plateCount.median, 11, 4, 64),
-  riverDensity: normal(earthlike.riverDensity.median, 0.7, 0.1, 3.5),
-  continentCount: normal(earthlike.continentCount.median, 2.2, 1, 10),
-  continentScale: normal(earthlike.continentScale.median, 0.18, 0.15, 1),
-  islandDensity: normal(earthlike.islandDensity.median, 0.25, 0, 1)
+  systemAgeGy: normal(distributionCenter(earthlike.systemAgeGy), 2, 0.8, 10.5),
+  oceanPercentage: normal(distributionCenter(earthlike.oceanPercentage), 12, 20, 95),
+  averageTemperatureC: normal(distributionCenter(earthlike.averageTemperatureC), 7, -20, 42),
+  aridity: normal(distributionCenter(earthlike.aridity), 0.18, 0.05, 0.95),
+  seaLevel: normal(distributionCenter(earthlike.seaLevel), 0.06, -0.2, 0.2),
+  axialTiltDeg: normal(distributionCenter(earthlike.axialTiltDeg), 14, 0, 70),
+  orbitalEccentricity: normal(distributionCenter(earthlike.orbitalEccentricity), 0.05, 0, 0.28),
+  sizeClass: normal(distributionCenter(earthlike.sizeClass), 0.2, 0.45, 2.2),
+  moonCount: normal(distributionCenter(earthlike.moonCount), 1.4, 0, 5),
+  impactFrequency: normal(distributionCenter(earthlike.impactFrequency), 0.55, 0.2, 2.5),
+  plateCount: normal(distributionCenter(earthlike.plateCount), 11, 4, 64),
+  riverDensity: normal(distributionCenter(earthlike.riverDensity), 0.7, 0.1, 3.5),
+  continentCount: normal(distributionCenter(earthlike.continentCount), 2.2, 1, 10),
+  continentScale: normal(distributionCenter(earthlike.continentScale), 0.18, 0.15, 1),
+  islandDensity: normal(distributionCenter(earthlike.islandDensity), 0.25, 0, 1)
 };
 
 function fromHabitable(overrides: Partial<WorldParameterDistributions>): WorldParameterDistributions {
