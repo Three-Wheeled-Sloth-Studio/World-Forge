@@ -268,7 +268,7 @@ function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarM
   project.metrics.icePercentage = round((iceCount / Math.max(1, world.layers.ice.length)) * 100, 2);
   project.metrics.biomeCounts = biomeCounts as typeof project.metrics.biomeCounts;
   if (world.climate) {
-    const latitudeProfile = latitudeTemperatureProfileForWorkflow(config.workflowId);
+    const latitudeProfile = latitudeTemperatureProfileForWorkflow((project.config as ExtendedGenerationConfig).workflowId);
     const polarClimate = summarizePolarClimate(
       layers.temperature,
       layers.ice,

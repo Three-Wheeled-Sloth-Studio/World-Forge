@@ -39,7 +39,7 @@ import type { GenerationGraphNodeRunEvent } from './graph/types';
 import { orchestratePrimaryWorld } from './primary-world-orchestrator';
 import { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
-import { latitudeTemperatureOffsetC, type LatitudeTemperatureProfile } from './latitudeTemperatureProfile';
+import { latitudeTemperatureOffsetC, legacyLatitudeTemperatureProfile, type LatitudeTemperatureProfile } from './latitudeTemperatureProfile';
 import type { TerrainDiagnosticBypasses, TerrainDiagnosticSnapshotCallback } from './terrainDiagnostics';
 
 export { SeededRandom, createDefaultConfig, defaultParameterRanges };
@@ -412,7 +412,7 @@ function generatePrimaryWorldLegacy(
   diagnostics.measure('topology.volcanism', () => assignTopologyVolcanism(topologyVolcanism, topologyElevation, topologyPlates, topologyPlateData, topology, seaLevel));
   emitTopologyPreview(options, 'water', 'Sea level and basins', 0.62, topology, topologyElevation, topologyWater, seaLevel);
   diagnostics.measure('topology.climate', () =>
-    generateTopologyClimate(topologyTemperature, topologyWetness, topologyWindX, topologyWindY, topologyCurrentX, topologyCurrentY, topologyElevation, topologyWater, topology, values, tideInfluence)
+    generateTopologyClimate(topologyTemperature, topologyWetness, topologyWindX, topologyWindY, topologyCurrentX, topologyCurrentY, topologyElevation, topologyWater, topology, values, tideInfluence, legacyLatitudeTemperatureProfile)
   );
   diagnostics.measure('topology.climate.moisture-candidate', () =>
     generateTopologyClimateMoistureCandidate(
