@@ -16,6 +16,7 @@
     "test:production-page-harness": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page-runner.ts --self-test && npm run profile:production-page:inner -- --self-test",
     "test:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts --self-test",
     "smoke:production-page-harness": "npm run profile:production-page -- --skip-build --browser chrome --headless --resolution 256x128 --runs 1 --warmup 0 --timeout-minutes 5 --output .local/performance/production-page-ci-smoke",
+    "smoke:production-rerank": "npm run profile:production-rerank -- --skip-build --browser chrome --headless --resolution 256x128 --runs 1 --timeout-minutes 5 --output .local/performance/production-rerank-ci-smoke",
     "evaluate:regions": "tsx --tsconfig tsconfig.scripts.json scripts/evaluate-geographic-regions.ts",
     "investigate:map-lines-polar-ice": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-map-lines-polar-ice.ts",
     "investigate:striping": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-vertical-striping.ts",
