@@ -2,212 +2,159 @@
 
 Updated: 2026-08-02
 
-Status: approved implementation plan
+Status: accepted and promoted
 
 Related:
 
 - Issue #14: Generation performance foundation PI
 - Issue #111: Restore coherent Earthlike polar temperature gradients and permanent ice
+- PR #112: Experimental polar climate and fine foundation profiling
 - `refs/planning/pi-generation-performance-foundation.md`
-- `refs/planning/parameter-target-audit-and-correlation.md`
+- `refs/planning/polar-climate-calibration-decision.md`
+- `refs/planning/current-generation-bottleneck-profiling.md`
 
-## Decision
+## Final decision
 
-Implement two tightly bounded changes in the same development increment:
+The increment delivered two separately gated changes:
 
-1. an output-changing Experimental climate candidate that restores a physically coherent Earthlike latitude-temperature gradient and permanent polar ice;
-2. output-neutral fine-grained profiling of the native Initial world foundation path for both Detailed and Experimental workflows.
+1. the output-changing `mean-centered-power-v1` polar climate profile;
+2. output-neutral fine-grained profiling of the native Initial world foundation path.
 
-The two changes may share a branch and validation run, but they have separate acceptance gates. Profiling must not alter authoritative output. The climate candidate must remain isolated to Experimental until fixed-seed, integration, and visual QA support promotion.
+Automated validation passed in PR #112. Manual flat-map and Globe QA subsequently accepted the generated polar temperature gradient and permanent ice behavior. The climate profile is therefore promoted into World Generation (Detailed), and Experimental is realigned with Detailed for the next isolated candidate.
 
-## Current problem
+The profiling infrastructure remains shared and output-neutral.
 
-The current initial topology climate formula uses an approximately 28 C equator-to-pole latitude term. With an Earthlike global target near 15 C, a sea-level pole lands around 1 C before local variation and later stellar/orbital forcing.
+## Accepted climate model
 
-Permanent-ice classification evaluates warm-season survival. At Earthlike axial tilt, the existing seasonal term adds roughly 7 C at the pole before applying water and land ice thresholds. The generated annual polar field is therefore normally too warm to retain permanent ice even when the focused classifier tests pass.
+The initial 40 C linear proposal was superseded during integration validation after a second authoritative temperature solve was found in deep-time reconciliation. The accepted model is applied consistently in both initial climate construction and final deep-time climate reconciliation:
 
-The focused tests use synthetic latitude gradients materially steeper than the production climate path. They verify that the classifier can form ice but do not verify that ordinary Earthlike generation supplies a compatible temperature field.
+```text
+profile ID: mean-centered-power-v1
+exponent: 1.3
+spherical mean of polarLatitude^1.3: approximately 0.291719
+latitude offset = 52 C * (0.291719 - polarLatitude^1.3)
+```
 
-## Climate implementation boundary
+Approximate latitude-only offsets:
 
-### Workflow isolation
+- equator: +15.2 C;
+- pole: -36.8 C;
+- equator-to-pole contrast: 52 C;
+- spherical area-weighted mean: approximately 0 C.
 
-- Detailed remains the accepted production baseline.
-- Experimental receives a distinct climate/glaciation implementation ID and node version.
-- Legacy and developer control workflows retain their existing climate behavior.
-- No system-generation, orbit-generation, parameter-distribution, moisture-fetch, hydrology, or biome-rule changes are included.
+The selected `averageTemperatureC` remains the intended planet-wide target. Elevation, ocean moderation, stellar forcing, orbital state, circulation, and local variation remain explicit downstream contributors.
 
-### Mean-centered latitude profile
+## Promotion boundary
 
-The selected `averageTemperatureC` remains the intended global mean target.
+- `core.performance-foundation` / World Generation (Detailed) uses `mean-centered-power-v1`.
+- `core.world-generation-experimental` uses the same climate implementation until a new isolated candidate is selected.
+- `core.live-world` and developer attribution controls retain the legacy latitude profile for rollback and comparison.
+- The climate/glaciation graph implementation ID is `core.climate.glaciation.mean-centered-power-v1`.
+- Detailed workflow version advances to `1.2.0`.
+- Experimental workflow version advances to `0.6.0` and is behavior-aligned with Detailed.
 
-The replacement latitude term must be area-weighted and approximately mean-zero over the sphere. It may redistribute thermal energy by latitude but must not silently add or remove global heat.
+No system-generation, orbit-generation, parameter-distribution, moisture-fetch, runoff, or biome-rule change is part of this promotion.
 
-Use a profile based on absolute normalized latitude and subtract its spherical area-weighted mean. Initial calibration target:
+## Accepted diagnostics
 
-- equator-to-pole contrast: benchmark 38 C, 40 C, and 42 C;
-- initial implementation candidate: 40 C unless the fixed-seed integration matrix rejects it;
-- authoritative mean drift before elevation, local noise, and stellar forcing: less than 0.25 C at topology resolution 64 and above.
+The climate pipeline records:
 
-The implementation should expose one named helper with a stable algorithm identifier rather than embedding a new magic coefficient inside the climate loop.
-
-### Permanent ice
-
-- Reuse the existing warm-season permanent-ice classifier initially.
-- Do not lower ice thresholds merely to force white poles.
-- Preserve asymmetric north/south results from land/ocean distribution, elevation, circulation, and stellar/orbital forcing.
-- Preserve warm-world ice suppression, cold-world expansion, and alpine ice.
-- Keep permanent ice separate from seasonal snow and seasonal sea-ice presentation.
-
-### Diagnostics added with the candidate
-
-Record or expose at least:
-
+- selected latitude-profile algorithm ID and contrast;
 - authoritative mean temperature;
 - equatorial mean temperature;
 - north high-latitude mean temperature;
 - south high-latitude mean temperature;
-- north and south permanent-ice share above the selected polar latitude threshold;
-- land-ice and water-ice counts;
-- selected latitude-profile algorithm ID and contrast.
+- north and south permanent-ice share;
+- land-ice and water-ice counts.
 
-These diagnostics are the beginning of the planned parameter target ledger, not a substitute for it.
+These diagnostics support inspection and later parameter-ledger work but do not replace a full target-versus-achieved ledger.
 
-## Initial world foundation profiling boundary
+## Accepted validation evidence
 
-The user-facing `Initial world foundation` stage currently groups six native graph nodes:
+Automated validation established that:
 
-1. `terrain.topology-elevation`
-2. `terrain.finalization`
-3. `terrain.water-geology`
-4. `climate.glaciation`
-5. `ecology.hydrology-biomes`
-6. `projection.equirectangular-assembly`
+- Detailed and Experimental system/orbit artifacts remained identical during candidate comparison;
+- selected parameter values remained identical;
+- both polar regions became materially colder after the complete generation and reconciliation path;
+- permanent ice did not regress relative to the prior Detailed baseline;
+- warm worlds remained comparatively ice-poor;
+- cold worlds expanded permanent ice;
+- deterministic replay remained exact;
+- all repository tests and the production build passed.
 
-Fine profiling must retain these node timings and add stable subphase timings beneath them.
+Manual QA then accepted:
 
-### Required subphases
+- flat-map polar climate and biome behavior;
+- Globe appearance at both poles;
+- coherent permanent ice rather than symmetric painted circles;
+- acceptable asymmetric land/ocean responses;
+- no blocking low-latitude leakage or excessive sea-ice coverage.
 
-#### Terrain finalization
+Issue #111 may close as completed after the promotion commit lands on `dev`.
 
-- sea-level solve, pre-aging;
-- impacts;
-- thermal weathering;
-- hydraulic erosion;
-- coastal shelf shaping;
-- terrain enrichment;
-- sea-level solve, final.
+## Fine foundation profiling delivered
 
-#### Water and geology
+The user-facing `Initial world foundation` stage remains stable while the performance tracer records coherent child operations beneath it.
 
-- water mask;
-- volcanism.
+### Terrain
 
-#### Climate and glaciation
+- `topology.terrain.aging.impacts`
+- `topology.terrain.aging.weathering`
+- `topology.terrain.aging.hydraulic`
+- `topology.terrain.aging.coasts`
 
-- latitude/elevation temperature field;
-- atmospheric flow;
-- ocean currents;
-- wetness/moisture traversal;
-- climate-moisture candidate traversal;
-- permanent-ice classification;
-- climate preview/summary assembly.
+### Climate
 
-#### Hydrology and biomes
+- `foundation.climate.water-distance`
+- `foundation.climate.temperature-field`
+- `foundation.climate.atmospheric-flow`
+- `foundation.climate.ocean-currents`
+- `foundation.climate.wetness-traversal`
+- `foundation.climate.moisture-candidate-water-distance`
+- `foundation.climate.moisture-candidate-traversal`
+- associated smoothing operations
 
-- water-distance or ocean-influence construction;
-- drainage-surface fill;
-- receiver construction and flow accumulation;
-- source scoring and ordering;
-- river path tracing;
-- lake marking;
-- biome assignment.
+### Hydrology
 
-#### Projection assembly
+- `foundation.hydrology.water-distance`
+- `foundation.hydrology.drainage-surface`
+- `foundation.hydrology.elevation-ordering`
+- `foundation.hydrology.receiver-flow-initialization`
+- `foundation.hydrology.flow-accumulation`
+- channel marking
+- `foundation.hydrology.source-ordering`
+- `foundation.hydrology.river-path-tracing`
 
-- topology-to-raster scalar layers;
-- topology-to-raster vector layers;
-- river projection and object assembly.
+### Projection
 
-### Profiling rules
+- `foundation.projection.scalar-lookup`
+- `foundation.projection.scalar-copy`
+- `foundation.projection.vector-lookup`
+- `foundation.projection.vector-copy`
+- projected river-object assembly
 
-- Use the existing diagnostics recorder and performance-trace conventions.
-- Stable phase IDs are part of the developer observability contract.
-- Do not double-count subphase timings when aggregating user-facing native stage totals.
-- Do not make generated output depend on whether profiling is enabled.
-- Avoid timing wrappers inside extremely tight per-cell loops; profile coherent operations.
-- Include basic work-shape counters where the existing performance tracer supports them.
-- Preserve current stage labels and user-facing timing behavior.
+Profiling does not affect authoritative output, native-stage aggregation, lifecycle ordering, or deterministic replay.
 
-## Validation matrix
+## Deferred climate refinement
 
-### Output-neutral profiling gate
+Future climate calibration should consider making the latitude-gradient shape or contrast respond to:
 
-For Detailed and Experimental before the climate candidate is enabled:
+- axial tilt, especially its effect on high-latitude seasonal energy;
+- orbital eccentricity, including interaction with periapsis season and hemisphere;
+- potentially stellar/orbital forcing already available to the climate pipeline.
 
-- authoritative signatures identical before and after profiling;
-- selected values and system/orbit models identical;
-- node outputs and metrics identical;
-- full repository validation passes.
+That work must preserve the global-mean contract. It requires a new versioned algorithm ID, matched deterministic tests, warm/cold/high-tilt/high-eccentricity cases, and manual visual QA. It is not part of the current performance increment.
 
-### Climate candidate gate
+## Next increment
 
-Compare Detailed baseline against Experimental candidate using at least:
+Use the accepted fine profiling to rank current production bottlenecks before selecting another optimization. The authoritative measurement plan is:
 
-- seeds `1001001`, `3141592`, and `8675309`;
-- Earthlike;
-- Habitable World;
-- explicitly warm Earthlike or Habitable case;
-- explicitly cold Earthlike or Habitable case;
-- high-tilt case.
+`refs/planning/current-generation-bottleneck-profiling.md`
 
-Required checks:
+Explicitly keep the following outside that optimization slice unless selected by separate planning:
 
-- system-generation and orbit outputs remain identical;
-- selected parameter values remain identical;
-- authoritative global mean temperature remains close to the selected target after accounting for documented elevation and stellar forcing;
-- ordinary Earthlike worlds show coherent high-latitude permanent ice unless an inspectable forcing explains an ice-free result;
-- warm cases can remain ice-free;
-- cold cases expand permanent ice;
-- high tilt may reduce permanent ice through warm-season survival rather than through a global-temperature error;
-- no routine low-latitude ice except supported alpine cases;
-- hydrology validity and biome continuity remain acceptable;
-- deterministic replay remains exact within each workflow version.
-
-### Visual QA
-
-Review at minimum:
-
-- flat biome/climate view;
-- Globe view at both poles;
-- opposite seasonal dates;
-- land-dominant pole;
-- ocean-dominant pole;
-- warm and cold edge cases.
-
-Reject symmetric painted caps, salt-and-pepper ice, equatorial leakage, or ice that appears only in presentation but not authoritative layers.
-
-## Promotion rule
-
-Promote the Experimental climate candidate into Detailed only after:
-
-- fixed-seed integration tests pass;
-- full repository validation passes;
-- manual visual QA accepts the polar behavior;
-- no system-generation regression is observed;
-- the global target remains interpretable;
-- issue #111 records the evidence and decision.
-
-The finer profiling may land independently because it is output-neutral.
-
-## Explicitly deferred
-
-- physical-distance moisture fetch;
-- source-water width and the 2,000 km inland carry rule;
+- physical-distance moisture fetch and source-water width;
 - preliminary lake generation before climate;
-- runoff semantics beyond current compatibility behavior;
-- latent parameter correlations;
-- the full stage-aware target-versus-achieved ledger;
-- performance changes based on the new profiling evidence.
-
-Those changes begin only after this increment produces reliable measurements and an accepted polar climate candidate.
+- parameter correlations;
+- the complete target-versus-achieved ledger;
+- geographic drilldown work.
