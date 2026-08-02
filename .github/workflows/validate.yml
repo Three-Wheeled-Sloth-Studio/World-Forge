@@ -32,3 +32,6 @@ jobs:
 
       - name: Smoke production page harness
         run: npm run smoke:production-page-harness
+
+      - name: Smoke production attribution rerank
+        run: npm run smoke:production-rerank
