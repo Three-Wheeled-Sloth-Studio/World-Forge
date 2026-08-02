@@ -18,95 +18,103 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: agent/promote-polar-profile-performance-bottlenecks
-      - name: Apply exact patches
+      - name: Apply asserted patches
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one {label}, found {count}')
+              return text.replace(old, new, 1)
+
           pipeline_path = Path('packages/generator-core/src/deepTimePipeline.ts')
           pipeline = pipeline_path.read_text()
-          old = """  onProgress?.({ phase: 'reconciling', progress: 0.93, message: 'Reclassifying final biomes and projecting aged topology' });
-          const topologyBiomeCorrections = classifyTopologyBiomes(mutable);
-          const projectedCellsRefreshed = traceGenerationPerformance(
-            'topology-to-raster-final-projection',
-            {
-              topologyCells: topology.cellCount,
-              activeCells: mutable.primaryWorld.layers.elevation.length,
-              fullTopologyPasses: 0,
-              allocatedBufferBytes: 0
-            },
-            () => projectFinalTopology(mutable, topology)
-          );
-          applyBasinAwareCirculation(mutable);
-          mutable.primaryWorld.rivers = projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers);
-          const consistency = refreshMetrics(mutable);
-          """
-          new = """  onProgress?.({ phase: 'reconciling', progress: 0.93, message: 'Reclassifying final biomes and projecting aged topology' });
-          const topologyBiomeCorrections = traceGenerationPerformance(
-            'deep-time.final.biome-classification',
-            {
-              topologyCells: topology.cellCount,
-              activeCells: topology.cellCount,
-              fullTopologyPasses: 1,
-              allocatedBufferBytes: 0
-            },
-            () => classifyTopologyBiomes(mutable)
-          );
-          const projectedCellsRefreshed = traceGenerationPerformance(
-            'topology-to-raster-final-projection',
-            {
-              topologyCells: topology.cellCount,
-              activeCells: mutable.primaryWorld.layers.elevation.length,
-              fullTopologyPasses: 0,
-              allocatedBufferBytes: 0
-            },
-            () => projectFinalTopology(mutable, topology)
-          );
-          traceGenerationPerformance(
-            'deep-time.final.basin-circulation',
-            {
-              topologyCells: topology.cellCount,
-              activeCells: mutable.primaryWorld.layers.elevation.length,
-              fullTopologyPasses: 0,
-              allocatedBufferBytes: 0
-            },
-            () => applyBasinAwareCirculation(mutable)
-          );
-          mutable.primaryWorld.rivers = traceGenerationPerformance(
-            'deep-time.final.river-path-projection',
-            {
-              topologyCells: topology.cellCount,
-              activeCells: mutable.primaryWorld.rivers.length,
-              fullTopologyPasses: 0,
-              allocatedBufferBytes: 0
-            },
-            () => projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers)
-          );
-          const consistency = traceGenerationPerformance(
-            'deep-time.final.metrics-validation',
-            {
-              topologyCells: topology.cellCount,
-              activeCells: mutable.primaryWorld.layers.elevation.length,
-              fullTopologyPasses: 1,
-              allocatedBufferBytes: 0
-            },
-            () => refreshMetrics(mutable)
-          );
-          """
-          if pipeline.count(old) != 1:
-              raise SystemExit(f'Expected one finalization block, found {pipeline.count(old)}')
-          pipeline_path.write_text(pipeline.replace(old, new, 1))
+          pipeline = replace_once(
+              pipeline,
+              "  const topologyBiomeCorrections = classifyTopologyBiomes(mutable);",
+              "  const topologyBiomeCorrections = traceGenerationPerformance(\n"
+              "    'deep-time.final.biome-classification',\n"
+              "    {\n"
+              "      topologyCells: topology.cellCount,\n"
+              "      activeCells: topology.cellCount,\n"
+              "      fullTopologyPasses: 1,\n"
+              "      allocatedBufferBytes: 0\n"
+              "    },\n"
+              "    () => classifyTopologyBiomes(mutable)\n"
+              "  );",
+              'biome classification call'
+          )
+          pipeline = replace_once(
+              pipeline,
+              "  applyBasinAwareCirculation(mutable);",
+              "  traceGenerationPerformance(\n"
+              "    'deep-time.final.basin-circulation',\n"
+              "    {\n"
+              "      topologyCells: topology.cellCount,\n"
+              "      activeCells: mutable.primaryWorld.layers.elevation.length,\n"
+              "      fullTopologyPasses: 0,\n"
+              "      allocatedBufferBytes: 0\n"
+              "    },\n"
+              "    () => applyBasinAwareCirculation(mutable)\n"
+              "  );",
+              'basin circulation call'
+          )
+          pipeline = replace_once(
+              pipeline,
+              "  mutable.primaryWorld.rivers = projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers);",
+              "  mutable.primaryWorld.rivers = traceGenerationPerformance(\n"
+              "    'deep-time.final.river-path-projection',\n"
+              "    {\n"
+              "      topologyCells: topology.cellCount,\n"
+              "      activeCells: mutable.primaryWorld.rivers.length,\n"
+              "      fullTopologyPasses: 0,\n"
+              "      allocatedBufferBytes: 0\n"
+              "    },\n"
+              "    () => projectRiverPaths(mutable, topology, mutable.primaryWorld.rivers)\n"
+              "  );",
+              'river path projection call'
+          )
+          pipeline = replace_once(
+              pipeline,
+              "  const consistency = refreshMetrics(mutable);",
+              "  const consistency = traceGenerationPerformance(\n"
+              "    'deep-time.final.metrics-validation',\n"
+              "    {\n"
+              "      topologyCells: topology.cellCount,\n"
+              "      activeCells: mutable.primaryWorld.layers.elevation.length,\n"
+              "      fullTopologyPasses: 1,\n"
+              "      allocatedBufferBytes: 0\n"
+              "    },\n"
+              "    () => refreshMetrics(mutable)\n"
+              "  );",
+              'metrics validation call'
+          )
+          pipeline_path.write_text(pipeline)
 
           notes_path = Path('apps/desktop/src/release/ReleaseNotesModal.tsx')
           notes = notes_path.read_text()
           marker = '        <div className="release-notes-body">\n          <section>\n'
-          release = '''        <div className="release-notes-body">\n          <section>\n            <p className="release-kicker">Release 0.3.55</p>\n            <h3>The poles passed inspection. The profiler did not.</h3>\n            <ul>\n              <li>The accepted mean-centered polar climate profile is now promoted into World Generation (Detailed), with Experimental realigned for the next isolated candidate.</li>\n              <li>Legacy and developer controls retain the prior latitude behavior for rollback and attribution.</li>\n              <li>Current-generation profiling ranks fine foundation phases and production-resolution scaling before another optimization is selected.</li>\n              <li>A future climate version may modulate the latitude gradient with axial tilt and orbital eccentricity while preserving the global-mean contract.</li>\n            </ul>\n          </section>\n          <section>\n'''
+          release = (
+              '        <div className="release-notes-body">\n'
+              '          <section>\n'
+              '            <p className="release-kicker">Release 0.3.55</p>\n'
+              '            <h3>The poles passed inspection. The profiler did not.</h3>\n'
+              '            <ul>\n'
+              '              <li>The accepted mean-centered polar climate profile is now promoted into World Generation (Detailed), with Experimental realigned for the next isolated candidate.</li>\n'
+              '              <li>Legacy and developer controls retain the prior latitude behavior for rollback and attribution.</li>\n'
+              '              <li>Current-generation profiling ranks fine foundation phases and production-resolution scaling before another optimization is selected.</li>\n'
+              '              <li>A future climate version may modulate the latitude gradient with axial tilt and orbital eccentricity while preserving the global-mean contract.</li>\n'
+              '            </ul>\n'
+              '          </section>\n'
+              '          <section>\n'
+          )
           if 'Release 0.3.55' in notes:
               raise SystemExit('Release 0.3.55 already present')
-          if notes.count(marker) != 1:
-              raise SystemExit(f'Expected one release body marker, found {notes.count(marker)}')
-          notes_path.write_text(notes.replace(marker, release, 1))
+          notes = replace_once(notes, marker, release, 'release body marker')
+          notes_path.write_text(notes)
           PY
       - name: Commit patches
         shell: bash
