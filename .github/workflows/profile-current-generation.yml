@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   profile:
@@ -35,12 +35,24 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ github.sha }}
         run: npm run profile:generation -- --workflow=core.performance-foundation --resolution=1024x512 --seeds=1001001,3141592 --scenarios=earthlike-standard --runs=1 --source-commit=${{ github.sha }}
-      - name: Upload profiling reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: current-generation-profiles
-          path: |
-            refs/testing/current-generation-profile-*.json
-            refs/testing/current-generation-profile-*.md
-          if-no-files-found: error
-          retention-days: 7
+      - name: Normalize evidence paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          standard_json=$(ls -1t refs/testing/current-generation-profile-512x256-*.json | head -1)
+          standard_md=$(ls -1t refs/testing/current-generation-profile-512x256-*.md | head -1)
+          scaling_json=$(ls -1t refs/testing/current-generation-profile-1024x512-*.json | head -1)
+          scaling_md=$(ls -1t refs/testing/current-generation-profile-1024x512-*.md | head -1)
+          mv "$standard_json" refs/testing/current-generation-profile-512x256.json
+          mv "$standard_md" refs/testing/current-generation-profile-512x256.md
+          mv "$scaling_json" refs/testing/current-generation-profile-1024x512.json
+          mv "$scaling_md" refs/testing/current-generation-profile-1024x512.md
+      - name: Commit profiling evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add refs/testing/current-generation-profile-512x256.json refs/testing/current-generation-profile-512x256.md refs/testing/current-generation-profile-1024x512.json refs/testing/current-generation-profile-1024x512.md
+          git commit -m "Record current generation bottleneck profile"
+          git push origin HEAD:agent/promote-polar-profile-performance-bottlenecks
