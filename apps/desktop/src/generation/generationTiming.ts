@@ -201,7 +201,7 @@ export function stableGenerationConfigurationHash(config: GenerationConfig): str
 }
 
 function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   if (ArrayBuffer.isView(value)) return `{"typedArray":"${value.constructor.name}","byteLength":${value.byteLength}}`;
   const entries = Object.entries(value as Record<string, unknown>)
@@ -387,6 +387,7 @@ export function generationTimingRecordMarkdown(record: ProductionGenerationTimin
   const rows = [
     `# Production generation timing`,
     ``,
+    `- Evidence layer: Instrumented app path`,
     `- Status: ${record.status}`,
     `- Completed: ${record.completedAt}`,
     `- App: ${record.identity.visibleVersion} (${record.identity.sourceCommit})`,
@@ -408,7 +409,9 @@ export function generationTimingRecordMarkdown(record: ProductionGenerationTimin
     ...record.nativeStages.map((stage) => `- ${stage.label}: ${formatGenerationDuration(stage.elapsedMs)}`)
   ];
   if (record.graphNodes.length) {
-    rows.push('', '## Graph nodes', ...record.graphNodes.map((stage) => `- ${stage.label}: ${formatGenerationDuration(stage.elapsedMs)}`));
+    rows.push('', '## Graph nodes and measured child operations', ...record.graphNodes.map((stage) => (
+      `- ${stage.label}: ${formatGenerationDuration(stage.elapsedMs)}${stage.parentStageId ? ` (child of ${stage.parentStageId})` : ''}`
+    )));
   }
   if (record.instrumentationGaps.length) {
     rows.push('', '## Instrumentation gaps', ...record.instrumentationGaps.map((gap) => `- ${gap}`));
