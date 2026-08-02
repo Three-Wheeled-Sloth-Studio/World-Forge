@@ -25,7 +25,7 @@ type GenerateRequest = {
   timing?: GenerationWorkerRequestTiming;
 };
 type GenerateResponse =
-  | { type: 'progress'; id: string; preview: GenerationPreviewFrame; timing: GenerationPreviewMessageTiming }
+  | { type: 'progress'; id: string; preview: GenerationPreviewFrame; previewTiming: GenerationPreviewMessageTiming }
   | { type: 'stage'; id: string; stage: GenerationStageTelemetryDetail }
   | { type: 'complete'; id: string; project: WorldProject; timing: GenerationWorkerTiming }
   | { type: 'error'; id: string; message: string; timing: GenerationWorkerTiming };
@@ -135,12 +135,12 @@ self.onmessage = (event: MessageEvent<GenerateRequest>) => {
         previewCount += 1;
         const bytes = preview.rgba.byteLength;
         previewBytesEmitted += bytes;
-        const timing: GenerationPreviewMessageTiming = {
+        const previewTiming: GenerationPreviewMessageTiming = {
           sequence: previewCount,
           emittedAtMs: crossContextTimestampMs(),
           bytes
         };
-        messenger.postMessage({ type: 'progress', id: taskId, preview, timing } satisfies GenerateResponse, [preview.rgba.buffer]);
+        messenger.postMessage({ type: 'progress', id: taskId, preview, previewTiming } satisfies GenerateResponse, [preview.rgba.buffer]);
         previewCallbackMs += Math.max(0, monotonicNowMs() - callbackStartedAt);
       },
       onStageEvent: (stageEvent) => {
