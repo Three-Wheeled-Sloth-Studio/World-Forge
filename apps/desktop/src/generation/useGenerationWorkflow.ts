@@ -34,7 +34,6 @@ import {
   estimateWorldProjectTransferBytes,
   loadProductionGenerationTimingHistory,
   retainProductionGenerationTimingRecord,
-  type GenerationPreviewMessageTiming,
   type GenerationRunSummary,
   type GenerationStageTiming,
   type GenerationWorkerRequestTiming,
@@ -51,7 +50,6 @@ type GenerationWorkerMessage = {
   type: 'progress' | 'stage' | 'complete' | 'error';
   id: string;
   preview?: GenerationPreviewFrame;
-  previewTiming?: GenerationPreviewMessageTiming;
   timing?: GenerationWorkerTiming;
   stage?: GenerationStageTelemetryDetail;
   project?: WorldProject;
@@ -155,6 +153,17 @@ function desktopGraphNodeEvent(taskId: string, event: GenerationGraphNodeRunEven
   };
 }
 
+function diagnosticParentStageId(name: string): string | undefined {
+  if (name.startsWith('foundation.') || name.startsWith('projection.')) return 'world.initial-terrain';
+  if (name.startsWith('biomes.')) return 'world.biomes-features';
+  if (name.includes('deep-time') || name.includes('aging') || name.includes('epoch')) return 'world.deep-time-aging';
+  if (name.includes('climate') || name.includes('moisture')) return 'world.present-climate';
+  if (name.includes('hydrology') || name.includes('river') || name.includes('drainage')) return 'world.hydrology';
+  if (name.includes('water') || name.includes('sea-level')) return 'world.final-water';
+  if (name.includes('validation') || name.includes('metrics') || name.includes('outputs')) return 'world.outputs-validation';
+  return undefined;
+}
+
 export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGenerated }: UseGenerationWorkflowOptions) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -178,9 +187,7 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
   const generationWorkflowRef = useRef(generationWorkflowDescriptor(undefined));
   const workerRef = useRef<Worker | null>(null);
   const generationPreviewRef = useRef<GenerationPreviewFrame | null>(null);
-  const generationPreviewTimingRef = useRef<GenerationPreviewMessageTiming | null>(null);
   const generationPreviewFrameRef = useRef(0);
-  const renderFallbackTimerRef = useRef(0);
   const pendingProductionTimingRef = useRef<PendingProductionTiming | null>(null);
   const previousProjectRef = useRef(previousProject);
   const onProjectGeneratedRef = useRef(onProjectGenerated);
@@ -228,6 +235,17 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       const timing = generationGraphTimingsRef.current.get(node.id);
       return timing ? [timing] : [];
     });
+    const diagnosticIds = new Set(graphNodes.map((timing) => timing.stageId));
+    for (const phase of pending.project?.diagnostics?.phases ?? []) {
+      if (!Number.isFinite(phase.ms) || phase.ms < 0 || diagnosticIds.has(phase.name)) continue;
+      diagnosticIds.add(phase.name);
+      graphNodes.push({
+        stageId: phase.name,
+        label: phase.name,
+        elapsedMs: phase.ms,
+        parentStageId: diagnosticParentStageId(phase.name)
+      });
+    }
     const record = buildProductionGenerationTimingRecord({
       taskId: pending.taskId,
       status,
@@ -281,10 +299,6 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       productionRecord: record
     }));
     pendingProductionTimingRef.current = null;
-    if (renderFallbackTimerRef.current) {
-      window.clearTimeout(renderFallbackTimerRef.current);
-      renderFallbackTimerRef.current = 0;
-    }
   }, []);
 
   const markGenerationRenderCommitted = useCallback((projectId: string) => {
@@ -298,6 +312,11 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       finalizePendingProductionTiming('completed');
     });
   }, [finalizePendingProductionTiming]);
+
+  useEffect(() => {
+    if (!previousProject) return;
+    markGenerationRenderCommitted(previousProject.projectId);
+  }, [markGenerationRenderCommitted, previousProject]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -411,7 +430,6 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       }
       if (event.data.type === 'progress' && event.data.preview) {
         generationPreviewRef.current = event.data.preview;
-        generationPreviewTimingRef.current = event.data.previewTiming ?? null;
         emitGenerationTelemetry({
           phase: 'progress', taskId: event.data.id, progress: event.data.preview.progress, label: event.data.preview.label,
           seed: generationSeedRef.current, startNodeId: generationStartNodeIdRef.current,
@@ -422,7 +440,6 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
       }
       if (event.data.type === 'complete' && event.data.project) {
         generationPreviewRef.current = null;
-        generationPreviewTimingRef.current = null;
         const pending = pendingProductionTimingRef.current;
         if (pending) {
           pending.worker = event.data.timing;
@@ -442,18 +459,6 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
           startedAt: generationStartedAtRef.current, timestamp: performance.now(), project: completedProject
         });
         finishGeneration();
-        renderFallbackTimerRef.current = window.setTimeout(() => {
-          const current = pendingProductionTimingRef.current;
-          if (!current || current.taskId !== event.data.id || current.firstCommittedRenderAtMs !== undefined) return;
-          current.instrumentationGaps.push('The explicit render-commit signal was not observed; the fallback used a delayed animation frame.');
-          current.firstCommittedRenderAtMs = crossContextTimestampMs();
-          window.requestAnimationFrame(() => {
-            const latest = pendingProductionTimingRef.current;
-            if (!latest || latest.taskId !== event.data.id) return;
-            latest.firstInteractivePaintAtMs = crossContextTimestampMs();
-            finalizePendingProductionTiming('completed');
-          });
-        }, 1500);
         return;
       }
       if (event.data.type === 'error') {
@@ -499,7 +504,6 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     };
     return () => {
       if (generationPreviewFrameRef.current) window.cancelAnimationFrame(generationPreviewFrameRef.current);
-      if (renderFallbackTimerRef.current) window.clearTimeout(renderFallbackTimerRef.current);
       worker.terminate();
       if (workerRef.current === worker) workerRef.current = null;
     };
@@ -550,7 +554,6 @@ export function useGenerationWorkflow({ canvasRef, previousProject, onProjectGen
     setGenerationStageElapsedMs(0);
     generationEstimateRef.current = Math.max(3000, previousProjectRef.current?.diagnostics?.totalMs ?? generationEstimateRef.current);
     generationPreviewRef.current = null;
-    generationPreviewTimingRef.current = null;
     setGenerationStage(source === 'replay' ? 'Starting exact replay...' : 'Starting generation...');
     setGenerationProgress(0.02);
     setGenerationNodeProgress(initialNodeProgress());
