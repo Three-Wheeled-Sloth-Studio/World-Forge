@@ -3,7 +3,12 @@ import { createDefaultConfig, generateProject } from './index';
 import { applyDeepTimeFoundation } from './deepTimePipeline';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from './systemOrbitPreset';
 import type { NumericDistribution } from './numericDistribution';
-import { distributionTargetAndSpread, worldParameterKeys, type WorldParameterKey } from './worldParameterPresets';
+import {
+  distributionTargetAndSpread,
+  worldParameterDistributionsForPreset,
+  worldParameterKeys,
+  type WorldParameterKey
+} from './worldParameterPresets';
 import { buildCubedSphereTopology, cubedSphereCellForLonLat, type GenerationConfig } from '@world-forge/shared';
 
 type ExtendedGenerationConfig = GenerationConfig & {
@@ -26,18 +31,36 @@ function mean(values: Float32Array): number {
 }
 
 describe('preset-driven system and orbit reconciliation', () => {
-  it('samples every world parameter from the preset distribution contract', () => {
+  it('samples every world parameter without persisting inherited preset distributions as overrides', () => {
     const config = createDefaultConfig('distribution-seed', { width: 64, height: 32 }) as ExtendedGenerationConfig;
     config.worldPresetId = 'Earthlike';
     config.seeds = { star: 'distribution-star', world: 'distribution-seed' };
     const prepared = prepareSystemOrbitConfig(config) as ExtendedGenerationConfig;
-    expect(Object.keys(prepared.parameterDistributions ?? {}).sort()).toEqual([...worldParameterKeys].sort());
+    expect(prepared.parameterDistributions).toBeUndefined();
     for (const key of worldParameterKeys) {
       const value = prepared.selectedValues?.[key];
       const range = prepared.parameterRanges[key];
       expect(value).toBeGreaterThanOrEqual(range.min);
       expect(value).toBeLessThanOrEqual(range.max);
     }
+  });
+
+  it('preserves only explicit distribution overrides', () => {
+    const config = createDefaultConfig('distribution-override-seed', { width: 64, height: 32 }) as ExtendedGenerationConfig;
+    config.worldPresetId = 'Earthlike';
+    config.parameterDistributions = {
+      oceanPercentage: {
+        kind: 'normal',
+        median: 72,
+        standardDeviation: 3,
+        hardMin: 50,
+        hardMax: 90
+      }
+    };
+    const prepared = prepareSystemOrbitConfig(config) as ExtendedGenerationConfig;
+    expect(prepared.parameterDistributions).toEqual(config.parameterDistributions);
+    expect(Object.keys(prepared.parameterDistributions ?? {})).toEqual(['oceanPercentage']);
+    expect(prepared.parameterRanges.oceanPercentage).toMatchObject({ min: 50, max: 90 });
   });
 
   it('preserves explicit selected-value overrides above sampled distributions', () => {
@@ -55,19 +78,11 @@ describe('preset-driven system and orbit reconciliation', () => {
   });
 
   it('keeps Habitable centered on Earthlike while using wider parameter bands', () => {
-    const earthConfig = createDefaultConfig('earth-distribution') as ExtendedGenerationConfig;
-    earthConfig.worldPresetId = 'Earthlike';
-    const habitableConfig = createDefaultConfig('habitable-distribution') as ExtendedGenerationConfig;
-    habitableConfig.worldPresetId = 'Habitable World';
-    const earth = prepareSystemOrbitConfig(earthConfig) as ExtendedGenerationConfig;
-    const habitable = prepareSystemOrbitConfig(habitableConfig) as ExtendedGenerationConfig;
+    const earth = worldParameterDistributionsForPreset('Earthlike');
+    const habitable = worldParameterDistributionsForPreset('Habitable World');
     for (const key of worldParameterKeys) {
-      const earthDistribution = earth.parameterDistributions?.[key];
-      const habitableDistribution = habitable.parameterDistributions?.[key];
-      expect(earthDistribution).toBeDefined();
-      expect(habitableDistribution).toBeDefined();
-      const earthEditable = distributionTargetAndSpread(earthDistribution!);
-      const habitableEditable = distributionTargetAndSpread(habitableDistribution!);
+      const earthEditable = distributionTargetAndSpread(earth[key]);
+      const habitableEditable = distributionTargetAndSpread(habitable[key]);
       expect(habitableEditable.target).toBe(earthEditable.target);
       expect(habitableEditable.spread).toBeGreaterThanOrEqual(earthEditable.spread);
     }
