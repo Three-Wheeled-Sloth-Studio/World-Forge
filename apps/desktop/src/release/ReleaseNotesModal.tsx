@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.55</p>
+            <h3>The poles passed inspection. The profiler did not.</h3>
+            <ul>
+              <li>The accepted mean-centered polar climate profile is now promoted into World Generation (Detailed), with Experimental realigned for the next isolated candidate.</li>
+              <li>Legacy and developer controls retain the prior latitude behavior for rollback and attribution.</li>
+              <li>Current-generation profiling ranks fine foundation phases and production-resolution scaling before another optimization is selected.</li>
+              <li>A future climate version may modulate the latitude gradient with axial tilt and orbital eccentricity while preserving the global-mean contract.</li>
+            </ul>
+          </section>
+          <section>
             <p className="release-kicker">Release 0.3.54</p>
             <h3>The poles remembered they are poles</h3>
             <ul>
