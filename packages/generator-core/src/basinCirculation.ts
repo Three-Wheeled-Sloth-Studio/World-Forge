@@ -1,4 +1,5 @@
 import { clamp, type WorldProject } from '@world-forge/shared';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 export type PackedGyreDiagnostic = {
   id: number;
@@ -309,11 +310,38 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
       if (speed < 0.16) stagnantWind += 1;
     }
   }
-  const { ids: basinIds, basins } = labelBasins(layers.water, width, height);
-  const coastDistance = basinInteriorDistance(layers.water, basinIds, basins, width, height);
+  const { ids: basinIds, basins } = traceGenerationPerformance(
+    'basin-circulation.label-basins',
+    {
+      topologyCells: world.topology.cellCount,
+      activeCells: layers.water.length,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: layers.water.length * Int32Array.BYTES_PER_ELEMENT
+    },
+    () => labelBasins(layers.water, width, height)
+  );
+  const coastDistance = traceGenerationPerformance(
+    'basin-circulation.coast-distance',
+    {
+      topologyCells: world.topology.cellCount,
+      activeCells: layers.water.length,
+      fullTopologyPasses: 2,
+      allocatedBufferBytes: layers.water.length * Float32Array.BYTES_PER_ELEMENT
+    },
+    () => basinInteriorDistance(layers.water, basinIds, basins, width, height)
+  );
   const marineCells = basins.reduce((sum, basin) => sum + basin.size, 0);
   const largestBasinShare = basins.length ? Math.max(...basins.map((basin) => basin.size)) / Math.max(1, marineCells) : 0;
-  const { gyres, owner } = packGyres(layers.water, basinIds, basins, coastDistance, layers.windX, layers.windY, width, height);
+  const { gyres, owner } = traceGenerationPerformance(
+    'basin-circulation.pack-gyres',
+    {
+      topologyCells: world.topology.cellCount,
+      activeCells: layers.water.length,
+      fullTopologyPasses: 14,
+      allocatedBufferBytes: layers.water.length * Int16Array.BYTES_PER_ELEMENT
+    },
+    () => packGyres(layers.water, basinIds, basins, coastDistance, layers.windX, layers.windY, width, height)
+  );
   const currentX = new Float32Array(width * height);
   const currentY = new Float32Array(width * height);
   let coastalCells = 0;
