@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   setGenerationPerformanceTraceSink,
+  subscribeGenerationPerformanceTrace,
   traceGenerationPerformance
 } from './generationPerformanceTrace';
 
@@ -28,5 +29,19 @@ describe('generation performance tracing', () => {
       activeCells: 2
     });
     expect((records[0] as { elapsedMs: number }).elapsedMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('supports temporary subscribers without replacing the primary sink', () => {
+    const primary: string[] = [];
+    const subscribed: string[] = [];
+    setGenerationPerformanceTraceSink((record) => primary.push(record.name));
+    const unsubscribe = subscribeGenerationPerformanceTrace((record) => subscribed.push(record.name));
+
+    traceGenerationPerformance('first', {}, () => 1);
+    unsubscribe();
+    traceGenerationPerformance('second', {}, () => 2);
+
+    expect(primary).toEqual(['first', 'second']);
+    expect(subscribed).toEqual(['first']);
   });
 });
