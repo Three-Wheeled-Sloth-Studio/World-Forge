@@ -1,8 +1,8 @@
 import { GenerationPreviewFrame } from '@world-forge/generator-core';
 import {
-  generateProjectWithNativeStages,
-  type NativeGenerationStageEvent
-} from '@world-forge/generator-core/nativeStagePipeline';
+  generateProjectWithProductionAttribution
+} from '@world-forge/generator-core/productionStagePipeline';
+import type { NativeGenerationStageEvent } from '@world-forge/generator-core/nativeStagePipeline';
 import type { GenerationGraphNodeRunEvent } from '@world-forge/generator-core/graph/types';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '@world-forge/generator-core/systemOrbitPreset';
 import { coreGenerationGraph, generationGraphNodeForStageId } from '@world-forge/generation-runtime/graph/generationGraph';
@@ -126,7 +126,7 @@ self.onmessage = (event: MessageEvent<GenerateRequest>) => {
     const previewWidth = Math.min(1024, Math.max(256, Math.round(config.outputResolution.width / 2)));
     const previewHeight = Math.min(512, Math.max(128, Math.round(config.outputResolution.height / 2)));
     generationStartedAtMs = crossContextTimestampMs();
-    const generatedProject = generateProjectWithNativeStages(config, {
+    const generatedProject = generateProjectWithProductionAttribution(config, {
       appVersion: APP_VERSION,
       sourceCommit: APP_SOURCE_COMMIT,
       previewResolution: { width: previewWidth, height: previewHeight },
