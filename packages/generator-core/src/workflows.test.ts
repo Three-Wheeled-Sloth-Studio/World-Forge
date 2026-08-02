@@ -25,7 +25,7 @@ describe('generation workflow contracts', () => {
     });
   });
 
-  it('promotes cached present-climate traversal into Detailed', () => {
+  it('promotes the accepted polar climate profile into Detailed', () => {
     expect(defaultGenerationWorkflowId).toBe('core.performance-foundation');
     expect(generationWorkflowDeepTimeFeatures('core.performance-foundation')).toEqual({
       reusePresentClimateDerivedFields: true,
@@ -33,7 +33,7 @@ describe('generation workflow contracts', () => {
       optimizePresentClimateTraversal: true
     });
     expect(generationWorkflowDescriptor('core.performance-foundation')).toMatchObject({
-      version: '1.1.0',
+      version: '1.2.0',
       label: 'World Generation (Detailed)',
       status: 'production',
       seedStrategy: 'semantic-node',
@@ -50,14 +50,14 @@ describe('generation workflow contracts', () => {
     });
   });
 
-  it('isolates the polar climate candidate in Experimental', () => {
+  it('realigns Experimental with Detailed for the next isolated candidate', () => {
     expect(generationWorkflowDeepTimeFeatures('core.world-generation-experimental')).toEqual({
       reusePresentClimateDerivedFields: true,
       optimizeHydrologyTraversal: true,
       optimizePresentClimateTraversal: true
     });
     expect(generationWorkflowDescriptor('core.world-generation-experimental')).toMatchObject({
-      version: '0.5.0',
+      version: '0.6.0',
       label: 'World Generation (Experimental)',
       status: 'experimental',
       seedStrategy: 'semantic-node',
