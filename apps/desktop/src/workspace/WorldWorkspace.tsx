@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type ReactNode } from 'react';
+import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Cloud, CloudRain, Globe2, Hexagon, Layers, Map, Maximize2, Orbit, Search, Waves, Waypoints } from 'lucide-react';
 import type { CoastlineTreatment, MapMode, RenderMode } from '@world-forge/renderer';
 import {
@@ -84,6 +84,7 @@ export function WorldWorkspace({
   renderMode,
   mapMode,
   coastlineTreatment,
+  globeDebugMode,
   viewZoom,
   onViewZoomChange,
   displayActions,
@@ -102,7 +103,8 @@ export function WorldWorkspace({
   onShowWeatherChange,
   onRenderModeChange,
   onMapModeChange,
-  onCoastlineTreatmentChange
+  onCoastlineTreatmentChange,
+  onGlobeDebugModeChange
 }: WorldWorkspaceProps) {
   const isDeveloperMode = developerMode || projectName === 'Developer workspace';
   const [zoomMenuPosition, setZoomMenuPosition] = useState({ x: 8, y: 8 });
@@ -111,10 +113,48 @@ export function WorldWorkspace({
   const zoomStops = [0.35, 0.5, 0.75, 1, 1.5, 2.25, 4, 5.5, 8];
   const visibleMapMode = normalizeUserFacingMapMode(mapMode);
   const activeWorkspaceMode = workspaceModeOptions.find((option) => option.id === workspaceMode) ?? workspaceModeOptions[0];
+  const analyticalGlobeActiveRef = useRef(false);
+  const naturalGlobeLayersRef = useRef({ shells: showGlobeShells, clouds: showClouds, weather: showWeather });
 
   useEffect(() => {
     if (!isDeveloperMode && visibleMapMode !== mapMode) onMapModeChange(visibleMapMode);
   }, [isDeveloperMode, mapMode, onMapModeChange, visibleMapMode]);
+
+  useEffect(() => {
+    if (isDeveloperMode || viewMode !== 'globe') return;
+    const analytical = visibleMapMode !== 'biomes';
+    if (analytical) {
+      if (!analyticalGlobeActiveRef.current) {
+        naturalGlobeLayersRef.current = { shells: showGlobeShells, clouds: showClouds, weather: showWeather };
+        analyticalGlobeActiveRef.current = true;
+      }
+      if (globeDebugMode !== 'albedo') onGlobeDebugModeChange('albedo');
+      if (showGlobeShells) onToggleGlobeShells();
+      if (showClouds) onShowCloudsChange(false);
+      if (showWeather) onShowWeatherChange(false);
+      return;
+    }
+
+    if (globeDebugMode === 'albedo') onGlobeDebugModeChange('final');
+    if (!analyticalGlobeActiveRef.current) return;
+    const natural = naturalGlobeLayersRef.current;
+    analyticalGlobeActiveRef.current = false;
+    if (showGlobeShells !== natural.shells) onToggleGlobeShells();
+    if (showClouds !== natural.clouds) onShowCloudsChange(natural.clouds);
+    if (showWeather !== natural.weather) onShowWeatherChange(natural.weather);
+  }, [
+    globeDebugMode,
+    isDeveloperMode,
+    onGlobeDebugModeChange,
+    onShowCloudsChange,
+    onShowWeatherChange,
+    onToggleGlobeShells,
+    showClouds,
+    showGlobeShells,
+    showWeather,
+    viewMode,
+    visibleMapMode
+  ]);
 
   useEffect(() => {
     if (workspaceMode === 'explore') return;
