@@ -8,8 +8,6 @@ Pull request: #112
 
 Validated implementation head: `ed79b227e75dff5d2256645ce7e4384219e80f20`
 
-Validation evidence commit: `d62ed212d203fe9ad5113db9beb1c7426d86de9f`
-
 ## Result
 
 Full repository validation passed on Ubuntu 24.04 / Node 22:
