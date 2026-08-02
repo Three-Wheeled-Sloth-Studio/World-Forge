@@ -16,7 +16,6 @@ import { traceGenerationPerformance } from './generationPerformanceTrace';
 import {
   distributionHardBounds,
   integerWorldParameterKeys,
-  plateCountDistributionsByPreset,
   worldParameterDistributionsForPreset,
   worldParameterKeys,
   type WorldParameterKey
@@ -59,15 +58,20 @@ function round(value: number, digits = 3): number {
 }
 
 function inferWorldPreset(config: ExtendedGenerationConfig): string {
-  if (config.worldPresetId) return config.worldPresetId;
   const ranges = config.parameterRanges;
   const ocean = ranges.oceanPercentage;
+  if (
+    ocean.min <= 5
+    && ocean.max >= 95
+    && ranges.averageTemperatureC.min <= -25
+    && ranges.averageTemperatureC.max >= 45
+  ) return 'Random World';
   if (ranges.continentCount.max <= 2 || ranges.continentScale.min >= 0.78) return 'Pangea';
   if (ranges.islandDensity.min >= 0.7 || (ranges.continentCount.min >= 5 && ranges.continentScale.max <= 0.35)) return 'Archipelago';
   if (ocean.min >= 78) return 'Waterworld';
   if (ranges.aridity.min >= 0.68) return 'Desert World';
   if (ocean.min >= 58 && ocean.max <= 72) return 'Earthlike';
-  return 'Habitable World';
+  return config.worldPresetId ?? 'Habitable World';
 }
 
 function chooseHabitableClass(rng: RandomSource): 'F' | 'G' | 'K' {
@@ -190,7 +194,8 @@ export function prepareSystemOrbitConfig(input: GenerationConfig): GenerationCon
       ...input.selectedValues,
       oceanTolerancePercentagePoints: input.selectedValues?.oceanTolerancePercentagePoints ?? (preset === 'Random World' ? 12 : 5)
     },
-    parameterDistributions: distributions
+    parameterDistributions: distributions,
+    worldPresetId: preset
   } as GenerationConfig;
 }
 
