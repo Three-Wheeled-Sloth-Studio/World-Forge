@@ -6,6 +6,7 @@ Related:
 
 - Issue #14
 - `refs/planning/production-performance-instrumentation-plan.md`
+- `refs/planning/generation-resolution-semantics.md`
 - `refs/planning/durable-production-performance-audit.md`
 - `scripts/profile-production-page-runner.ts`
 - `scripts/profile-production-page.ts`
@@ -93,6 +94,27 @@ Use `--help` for the complete option list.
 - The harness builds before testing unless `--skip-build` or `--base-url` is supplied.
 - The production page's own timing record remains authoritative. Harness stopwatch timing is intentionally not used as a competing metric.
 - Parent native-stage timings and child diagnostic-operation timings must not be added together.
+
+## Resolution semantics
+
+The resolution argument selects a combined generation-quality tier. Under the current architecture it changes both:
+
+- the projected equirectangular output dimensions;
+- the authoritative cubed-sphere topology resolution used for geography, geology, hydrology, climate, and related world generation.
+
+It is therefore not equivalent to choosing only a larger or smaller final image.
+
+For deterministic and performance comparisons:
+
+- repeated runs at the same resolution, workflow, resolved settings, and seed are expected to produce identical authoritative results;
+- the same seed at different resolutions is expected to produce a recognizably similar world with legitimate local differences;
+- cross-resolution runs must not be compared for exact output signatures;
+- cross-resolution scaling results include both increased simulation work and increased projection, transfer, and rendering work;
+- before/after optimization claims must use a matched resolution unless the stated purpose is scaling analysis.
+
+Expected cross-resolution differences include coastline detail, small islands, local relief, drainage boundaries, river paths, local climate and biome boundaries, and other threshold-sensitive features. Broad preset intent, land-versus-ocean character, continental or archipelago character, climate character, and seed provenance should remain recognizable.
+
+The complete current contract and future direction for separating simulation detail from export resolution are defined in `refs/planning/generation-resolution-semantics.md`.
 
 ## Output
 
