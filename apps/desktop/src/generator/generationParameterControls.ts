@@ -2,19 +2,30 @@ import {
   parameterControlBounds,
   topologyResolutionForOutput,
   type GenerationConfig,
-  type NumericRange,
   type ParameterRanges,
   type Resolution
 } from '@world-forge/shared';
+import type { NumericDistribution } from '@world-forge/generator-core/numericDistribution';
+import {
+  distributionTargetAndSpread,
+  updateDistributionTargetAndSpread,
+  worldParameterDistributionsForPreset,
+  type WorldParameterKey
+} from '@world-forge/generator-core/worldParameterPresets';
 
 export type GenerationRangeKey = keyof ParameterRanges;
-export type GenerationRangeBound = keyof Pick<NumericRange, 'min' | 'max'>;
+export type GenerationDistributionField = 'target' | 'spread';
+
+type ExtendedGenerationConfig = GenerationConfig & {
+  parameterDistributions?: Partial<Record<WorldParameterKey, NumericDistribution>>;
+};
 
 export type GenerationParameterControl = {
   key: GenerationRangeKey;
   label: string;
   description: string;
   step: number;
+  spreadStep?: number;
 };
 
 export type GenerationParameterGroup = {
@@ -35,7 +46,7 @@ export const generationParameterLabels: Record<GenerationRangeKey, string> = {
   moonCount: 'Moon count',
   impactFrequency: 'Impact frequency',
   plateCount: 'Plate count',
-  riverDensity: 'River density',
+  riverDensity: 'Runoff and river-network target',
   continentCount: 'Continent count',
   continentScale: 'Continent size and cohesion',
   islandDensity: 'Island density'
@@ -45,91 +56,91 @@ const controls: Record<GenerationRangeKey, GenerationParameterControl> = {
   systemAgeGy: {
     key: 'systemAgeGy',
     label: generationParameterLabels.systemAgeGy,
-    description: 'Age range used for impact history, weathering, and long-term terrain evolution.',
+    description: 'Target system age and variation used for impact history, weathering, and long-term terrain evolution.',
     step: 0.1
   },
   oceanPercentage: {
     key: 'oceanPercentage',
     label: generationParameterLabels.oceanPercentage,
-    description: 'Target share of the projected world covered by ocean.',
+    description: 'Target share of the projected world covered by ocean, with seed-to-seed variation around that target.',
     step: 1
   },
   averageTemperatureC: {
     key: 'averageTemperatureC',
     label: generationParameterLabels.averageTemperatureC,
-    description: 'Planet-wide average temperature range before local climate variation.',
+    description: 'Planet-wide average temperature target before local climate variation.',
     step: 1
   },
   aridity: {
     key: 'aridity',
     label: generationParameterLabels.aridity,
-    description: 'Higher values favor drier climate and reduce broad moisture availability.',
+    description: 'Higher targets favor drier climate and reduce broad moisture availability.',
     step: 0.05
   },
   seaLevel: {
     key: 'seaLevel',
     label: generationParameterLabels.seaLevel,
-    description: 'Bias applied to the generated elevation field before final ocean targeting.',
+    description: 'Target bias applied to the generated elevation field before final ocean targeting.',
     step: 0.01
   },
   axialTiltDeg: {
     key: 'axialTiltDeg',
     label: generationParameterLabels.axialTiltDeg,
-    description: 'Axial tilt range controlling seasonal contrast.',
+    description: 'Axial tilt target controlling seasonal contrast.',
     step: 1
   },
   orbitalEccentricity: {
     key: 'orbitalEccentricity',
     label: generationParameterLabels.orbitalEccentricity,
-    description: 'Orbital eccentricity range controlling distance-driven seasonal variation.',
+    description: 'Orbital eccentricity target controlling distance-driven seasonal variation.',
     step: 0.01
   },
   sizeClass: {
     key: 'sizeClass',
     label: generationParameterLabels.sizeClass,
-    description: 'Planet radius range relative to Earth.',
+    description: 'Planet radius target relative to Earth.',
     step: 0.05
   },
   moonCount: {
     key: 'moonCount',
     label: generationParameterLabels.moonCount,
-    description: 'Range for major generated moons.',
+    description: 'Target number of major generated moons. Sampled values are rounded to whole moons.',
     step: 1
   },
   impactFrequency: {
     key: 'impactFrequency',
     label: generationParameterLabels.impactFrequency,
-    description: 'Relative impact activity applied during deep-time terrain evolution.',
+    description: 'Relative impact-activity target applied during deep-time terrain evolution.',
     step: 0.1
   },
   plateCount: {
     key: 'plateCount',
     label: generationParameterLabels.plateCount,
-    description: 'Requested tectonic plate count range.',
+    description: 'Target tectonic plate count. Sampled values are rounded to whole plates.',
     step: 1
   },
   riverDensity: {
     key: 'riverDensity',
     label: generationParameterLabels.riverDensity,
-    description: 'Relative river-network density after terrain and climate generation.',
+    description: 'Runoff and drainage-network pressure. The generator adjusts channel thresholds and accepted paths rather than promising a literal river count.',
     step: 0.1
   },
   continentCount: {
     key: 'continentCount',
     label: generationParameterLabels.continentCount,
-    description: 'Requested number of primary continental regions.',
+    description: 'Target number of primary continental regions. Sampled values are rounded to whole regions.',
     step: 1
   },
   continentScale: {
     key: 'continentScale',
     label: generationParameterLabels.continentScale,
-    description: 'Higher values produce broader landmasses with fewer major cuts and rifts.',
+    description: 'Higher targets produce broader landmasses with fewer major cuts and rifts.',
     step: 0.05
   },
   islandDensity: {
     key: 'islandDensity',
     label: generationParameterLabels.islandDensity,
-    description: 'Higher values increase island frequency and island contribution to land.',
+    description: 'Higher targets increase island frequency and island contribution to land.',
     step: 0.05
   }
 };
@@ -193,25 +204,45 @@ export function generationConfigForQuality(
   };
 }
 
-export function updateGenerationParameterRange(
+export function generationParameterDistribution(
   config: GenerationConfig,
+  preset: string,
+  key: GenerationRangeKey
+): NumericDistribution {
+  const extended = config as ExtendedGenerationConfig;
+  return extended.parameterDistributions?.[key]
+    ?? worldParameterDistributionsForPreset(preset)[key];
+}
+
+export function updateGenerationParameterDistribution(
+  config: GenerationConfig,
+  preset: string,
   key: GenerationRangeKey,
-  bound: GenerationRangeBound,
+  field: GenerationDistributionField,
   rawValue: number
 ): GenerationConfig {
-  const current = config.parameterRanges[key];
+  const extended = config as ExtendedGenerationConfig;
+  const current = generationParameterDistribution(config, preset, key);
+  const editable = distributionTargetAndSpread(current);
   const allowed = parameterControlBounds[key];
-  const fallback = current[bound];
+  const fallback = editable[field];
   const value = Number.isFinite(rawValue) ? rawValue : fallback;
-  const clamped = Math.max(allowed.min, Math.min(allowed.max, value));
+  const target = field === 'target'
+    ? Math.max(allowed.min, Math.min(allowed.max, value))
+    : editable.target;
+  const spread = field === 'spread'
+    ? Math.max(0, Math.min(allowed.max - allowed.min, value))
+    : editable.spread;
+  const nextDistribution = updateDistributionTargetAndSpread(current, target, spread);
+  const selectedValues = { ...(config.selectedValues ?? {}) };
+  delete selectedValues[key];
+
   return {
     ...config,
-    parameterRanges: {
-      ...config.parameterRanges,
-      [key]: {
-        ...current,
-        [bound]: clamped
-      }
+    selectedValues,
+    parameterDistributions: {
+      ...extended.parameterDistributions,
+      [key]: nextDistribution
     }
-  };
+  } as GenerationConfig;
 }

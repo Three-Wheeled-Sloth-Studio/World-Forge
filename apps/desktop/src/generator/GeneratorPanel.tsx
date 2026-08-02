@@ -5,16 +5,23 @@ import {
   generationWorkflowDescriptors,
   type GenerationWorkflowId
 } from '@world-forge/generator-core/workflows';
-import { parameterControlBounds, type GenerationConfig, type NumericRange } from '@world-forge/shared';
+import type { NumericDistribution } from '@world-forge/generator-core/numericDistribution';
+import {
+  distributionHardBounds,
+  distributionTargetAndSpread,
+  type WorldParameterKey
+} from '@world-forge/generator-core/worldParameterPresets';
+import { parameterControlBounds, type GenerationConfig } from '@world-forge/shared';
 import type { WorkspaceMode } from '../workspace/workspaceModes';
 import { formatGenerationDuration, type GenerationRunSummary } from '../generation/generationTiming';
 import { GenerationStageTimeChart } from './GenerationStageTimeChart';
 import {
   generationActionLabel,
+  generationParameterDistribution,
   generationParameterGroups,
-  updateGenerationParameterRange,
-  type GenerationParameterControl,
-  type GenerationRangeBound
+  updateGenerationParameterDistribution,
+  type GenerationDistributionField,
+  type GenerationParameterControl
 } from './generationParameterControls';
 import './generatorPanel.css';
 
@@ -25,6 +32,7 @@ type ExtendedGenerationConfig = GenerationConfig & {
   starPresetId?: StarPresetId;
   worldPresetId?: string;
   seeds?: { star?: string; world?: string };
+  parameterDistributions?: Partial<Record<WorldParameterKey, NumericDistribution>>;
 };
 
 export type ResolutionOption = { label: string; width: number; height: number };
@@ -73,48 +81,51 @@ function selectedValuesForNewSeed(config: GenerationConfig): GenerationConfig['s
   };
 }
 
-function ParameterRangeEditor({
+function ParameterDistributionEditor({
   control,
-  range,
+  distribution,
   disabled,
   onChange
 }: {
   control: GenerationParameterControl;
-  range: NumericRange;
+  distribution: NumericDistribution;
   disabled: boolean;
-  onChange: (bound: GenerationRangeBound, value: number) => void;
+  onChange: (field: GenerationDistributionField, value: number) => void;
 }) {
   const allowed = parameterControlBounds[control.key];
-  const unit = range.unit ?? allowed.unit;
+  const unit = allowed.unit;
+  const editable = distributionTargetAndSpread(distribution);
+  const hardBounds = distributionHardBounds(distribution);
   return (
-    <div className="parameter-range-control">
+    <div className="parameter-range-control parameter-distribution-control">
       <div className="parameter-range-label">
         <strong>{control.label}</strong>
         <span>{control.description}</span>
+        <small>Hard limits: {hardBounds.min} to {hardBounds.max}{unit ? ` ${unit}` : ''}</small>
       </div>
       <div className="parameter-range-inputs">
         <label>
-          <span>Min{unit ? ` (${unit})` : ''}</span>
+          <span>Target{unit ? ` (${unit})` : ''}</span>
           <input
             type="number"
             min={allowed.min}
             max={allowed.max}
             step={control.step}
-            value={range.min}
+            value={editable.target}
             disabled={disabled}
-            onChange={(event) => onChange('min', event.currentTarget.valueAsNumber)}
+            onChange={(event) => onChange('target', event.currentTarget.valueAsNumber)}
           />
         </label>
         <label>
-          <span>Max{unit ? ` (${unit})` : ''}</span>
+          <span>Standard deviation{unit ? ` (${unit})` : ''}</span>
           <input
             type="number"
-            min={allowed.min}
-            max={allowed.max}
-            step={control.step}
-            value={range.max}
+            min={0}
+            max={allowed.max - allowed.min}
+            step={control.spreadStep ?? control.step}
+            value={editable.spread}
             disabled={disabled}
-            onChange={(event) => onChange('max', event.currentTarget.valueAsNumber)}
+            onChange={(event) => onChange('spread', event.currentTarget.valueAsNumber)}
           />
         </label>
       </div>
@@ -178,11 +189,11 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
     } as GenerationConfig);
   };
 
-  const updateRange = (
+  const updateDistribution = (
     control: GenerationParameterControl,
-    bound: GenerationRangeBound,
+    field: GenerationDistributionField,
     value: number
-  ) => onConfigChange(updateGenerationParameterRange(config, control.key, bound, value));
+  ) => onConfigChange(updateGenerationParameterDistribution(config, selectedPreset, control.key, field, value));
 
   return (
     <div className="generator-panel simplified-generator" role="tabpanel" aria-label="World generator" data-workspace-mode={workspaceMode}>
@@ -302,7 +313,7 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
           </section>
         )}
         {hasCurrentProject && <p className="replacement-note">The current world stays visible until its replacement finishes successfully.</p>}
-        {invalidRanges.length > 0 && <div className="validation">Invalid advanced ranges: {invalidRanges.join(', ')}</div>}
+        {invalidRanges.length > 0 && <div className="validation">Invalid advanced settings: {invalidRanges.join(', ')}</div>}
       </section>
 
       <details className="advanced-generator-settings">
@@ -332,12 +343,12 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
               <h4 id={`generation-${group.id}-heading`}>{group.label}</h4>
               <div className="parameter-range-grid">
                 {group.controls.map((control) => (
-                  <ParameterRangeEditor
+                  <ParameterDistributionEditor
                     key={control.key}
                     control={control}
-                    range={config.parameterRanges[control.key]}
+                    distribution={generationParameterDistribution(config, selectedPreset, control.key)}
                     disabled={isGenerating}
-                    onChange={(bound, value) => updateRange(control, bound, value)}
+                    onChange={(field, value) => updateDistribution(control, field, value)}
                   />
                 ))}
                 {group.id === 'world-shape' && (

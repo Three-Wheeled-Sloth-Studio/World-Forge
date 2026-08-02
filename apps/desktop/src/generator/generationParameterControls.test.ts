@@ -1,23 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, topologyResolutionForOutput } from '@world-forge/shared';
+import { distributionTargetAndSpread } from '@world-forge/generator-core/worldParameterPresets';
 import {
   generationActionLabel,
   generationConfigForQuality,
+  generationParameterDistribution,
   generationParameterGroups,
   generationParameterLabels,
-  updateGenerationParameterRange
+  updateGenerationParameterDistribution
 } from './generationParameterControls';
 
 describe('generation parameter controls', () => {
-  it('groups every generation range exactly once', () => {
+  it('groups every generation parameter exactly once', () => {
     const keys = generationParameterGroups.flatMap((group) => group.controls.map((control) => control.key));
     expect(keys).toHaveLength(new Set(keys).size);
     expect(new Set(keys)).toEqual(new Set(Object.keys(generationParameterLabels)));
   });
 
-  it('uses accurate continent terminology', () => {
+  it('uses accurate continent and runoff terminology', () => {
     expect(generationParameterLabels.continentCount).toBe('Continent count');
     expect(generationParameterLabels.continentScale).toBe('Continent size and cohesion');
+    expect(generationParameterLabels.riverDensity).toBe('Runoff and river-network target');
     expect(Object.values(generationParameterLabels)).not.toContain('Regions');
     expect(Object.values(generationParameterLabels)).not.toContain('Continents');
   });
@@ -29,11 +32,24 @@ describe('generation parameter controls', () => {
     expect(next.topologyResolution).toBe(topologyResolutionForOutput(next.outputResolution));
   });
 
-  it('clamps edited range values to the supported control bounds', () => {
-    const config = createDefaultConfig('range-test');
-    const next = updateGenerationParameterRange(config, 'continentCount', 'max', 99);
-    expect(next.parameterRanges.continentCount.max).toBe(12);
-    expect(config.parameterRanges.continentCount.max).toBe(7);
+  it('inherits world-type distributions until a target or spread is explicitly overridden', () => {
+    const config = createDefaultConfig('distribution-test');
+    const earthlike = distributionTargetAndSpread(generationParameterDistribution(config, 'Earthlike', 'oceanPercentage'));
+    const habitable = distributionTargetAndSpread(generationParameterDistribution(config, 'Habitable World', 'oceanPercentage'));
+    expect(habitable.target).toBe(earthlike.target);
+    expect(habitable.spread).toBeGreaterThan(earthlike.spread);
+
+    const next = updateGenerationParameterDistribution(config, 'Earthlike', 'oceanPercentage', 'spread', 9);
+    const overridden = distributionTargetAndSpread(generationParameterDistribution(next, 'Earthlike', 'oceanPercentage'));
+    expect(overridden.target).toBe(earthlike.target);
+    expect(overridden.spread).toBe(9);
+  });
+
+  it('clamps edited targets to the selected preset hard bounds', () => {
+    const config = createDefaultConfig('target-test');
+    const next = updateGenerationParameterDistribution(config, 'Earthlike', 'continentCount', 'target', 99);
+    const edited = distributionTargetAndSpread(generationParameterDistribution(next, 'Earthlike', 'continentCount'));
+    expect(edited.target).toBe(10);
   });
 
   it('labels generation and replacement actions distinctly', () => {

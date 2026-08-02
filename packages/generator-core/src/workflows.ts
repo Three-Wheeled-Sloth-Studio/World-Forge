@@ -32,9 +32,9 @@ export const defaultGenerationWorkflowId: GenerationWorkflowId = 'core.performan
 export const generationWorkflowDescriptors: readonly GenerationWorkflowDescriptor[] = [
   {
     id: 'core.performance-foundation',
-    version: '1.0.0',
+    version: '1.1.0',
     label: 'World Generation (Detailed)',
-    description: 'Primary production workflow with bounded aging, climate-field reuse, optimized hydrology, and High-resolution terrain continuity.',
+    description: 'Primary production workflow with bounded aging, climate-field reuse, optimized hydrology, cached present-climate traversal, and High-resolution terrain continuity.',
     status: 'production',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true
@@ -50,9 +50,9 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
   },
   {
     id: 'core.world-generation-experimental',
-    version: '0.3.0',
+    version: '0.4.0',
     label: 'World Generation (Experimental)',
-    description: 'Development workflow testing capability-resolved graph composition, explicit conditional skips, and cached present-climate traversal while Detailed remains the comparison baseline.',
+    description: 'Development workflow for capability-resolved graph composition and the next isolated generation changes after cached present-climate traversal was promoted to Detailed.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true
@@ -79,7 +79,7 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
     id: 'core.performance-foundation-derived-control',
     version: '0.1.0',
     label: 'Derived climate control',
-    description: 'Developer-only A/B control using bounded aging and climate-field reuse without optimized hydrology traversal.',
+    description: 'Developer-only A/B control using bounded aging and climate-field reuse without optimized hydrology or present-climate traversal.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: false
@@ -106,6 +106,6 @@ export function generationWorkflowDeepTimeFeatures(
   return {
     reusePresentClimateDerivedFields,
     optimizeHydrologyTraversal: optimizedWorkflow,
-    optimizePresentClimateTraversal: workflowId === 'core.world-generation-experimental'
+    optimizePresentClimateTraversal: optimizedWorkflow
   };
 }

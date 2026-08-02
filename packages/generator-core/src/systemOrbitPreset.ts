@@ -6,13 +6,22 @@ import {
   codeToBiome,
   cubedSphereCellForLonLat,
   type GenerationConfig,
-  type ParameterRanges,
+  type SelectedValues,
   type WorldProject
 } from '@world-forge/shared';
 import type { DeepTimeProject, PlanetaryDynamicsModel, StellarActivityClass, StellarModel } from './deepTimePipeline';
 import { sampleNumericDistribution, type NumericDistribution, type RandomSource } from './numericDistribution';
 import { classifyPermanentIce } from './permanentIce';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
+import {
+  distributionHardBounds,
+  integerWorldParameterKeys,
+  worldParameterDistributionsForPreset,
+  worldParameterKeys,
+  type WorldParameterKey
+} from './worldParameterPresets';
+
+export { plateCountDistributionsByPreset } from './worldParameterPresets';
 
 type StarPresetId = 'sol-like' | 'habitable' | 'exotic';
 type ExtendedGenerationConfig = GenerationConfig & {
@@ -20,35 +29,7 @@ type ExtendedGenerationConfig = GenerationConfig & {
   worldPresetId?: string;
   seeds?: { star?: string; world?: string };
   randomWorldArchetype?: string;
-  parameterDistributions?: Record<string, NumericDistribution>;
-};
-
-const randomWorldRanges: ParameterRanges = {
-  systemAgeGy: { min: 0.8, max: 10.5, unit: 'Gy' },
-  oceanPercentage: { min: 5, max: 95, unit: '%' },
-  averageTemperatureC: { min: -25, max: 45, unit: 'C' },
-  aridity: { min: 0.05, max: 0.95 },
-  seaLevel: { min: -0.2, max: 0.2 },
-  axialTiltDeg: { min: 0, max: 70, unit: 'deg' },
-  orbitalEccentricity: { min: 0, max: 0.28 },
-  sizeClass: { min: 0.45, max: 2.2 },
-  moonCount: { min: 0, max: 5 },
-  impactFrequency: { min: 0.2, max: 2.5 },
-  plateCount: { min: 3, max: 68 },
-  riverDensity: { min: 0.1, max: 3.5 },
-  continentCount: { min: 1, max: 10 },
-  continentScale: { min: 0.15, max: 1 },
-  islandDensity: { min: 0, max: 1 }
-};
-
-export const plateCountDistributionsByPreset: Record<string, NumericDistribution> = {
-  Earthlike: { kind: 'normal', median: 23, standardDeviation: 7, hardMin: 6, hardMax: 64 },
-  'Habitable World': { kind: 'normal', median: 19, standardDeviation: 6, hardMin: 4, hardMax: 64 },
-  Waterworld: { kind: 'normal', median: 25, standardDeviation: 5, hardMin: 4, hardMax: 64 },
-  Archipelago: { kind: 'normal', median: 31, standardDeviation: 5, hardMin: 4, hardMax: 68 },
-  'Desert World': { kind: 'normal', median: 18, standardDeviation: 5, hardMin: 4, hardMax: 60 },
-  Pangea: { kind: 'normal', median: 9, standardDeviation: 3, hardMin: 2, hardMax: 48 },
-  'Random World': { kind: 'uniform', min: 3, max: 68 }
+  parameterDistributions?: Partial<Record<WorldParameterKey, NumericDistribution>>;
 };
 
 function hashSeed(seed: string): number {
@@ -77,15 +58,20 @@ function round(value: number, digits = 3): number {
 }
 
 function inferWorldPreset(config: ExtendedGenerationConfig): string {
-  if (config.worldPresetId) return config.worldPresetId;
   const ranges = config.parameterRanges;
   const ocean = ranges.oceanPercentage;
+  if (
+    ocean.min <= 5
+    && ocean.max >= 95
+    && ranges.averageTemperatureC.min <= -25
+    && ranges.averageTemperatureC.max >= 45
+  ) return 'Random World';
   if (ranges.continentCount.max <= 2 || ranges.continentScale.min >= 0.78) return 'Pangea';
   if (ranges.islandDensity.min >= 0.7 || (ranges.continentCount.min >= 5 && ranges.continentScale.max <= 0.35)) return 'Archipelago';
   if (ocean.min >= 78) return 'Waterworld';
   if (ranges.aridity.min >= 0.68) return 'Desert World';
   if (ocean.min >= 58 && ocean.max <= 72) return 'Earthlike';
-  return 'Habitable World';
+  return config.worldPresetId ?? 'Habitable World';
 }
 
 function chooseHabitableClass(rng: RandomSource): 'F' | 'G' | 'K' {
@@ -171,28 +157,45 @@ function classifyRandomArchetype(project: WorldProject): string {
 export function prepareSystemOrbitConfig(input: GenerationConfig): GenerationConfig {
   const config = input as ExtendedGenerationConfig;
   const preset = inferWorldPreset(config);
-  const baseRanges = preset === 'Random World' ? randomWorldRanges : input.parameterRanges;
-  const distribution = config.parameterDistributions?.plateCount ?? plateCountDistributionsByPreset[preset] ?? plateCountDistributionsByPreset.Earthlike;
+  const presetDistributions = worldParameterDistributionsForPreset(preset);
+  const distributions = {
+    ...presetDistributions,
+    ...config.parameterDistributions
+  };
   const worldSeed = config.seeds?.world || input.seed;
-  const distributionRng = randomSource(`${worldSeed}:${preset}:plate-count-distribution-v1`);
-  const sampledPlateCount = input.selectedValues?.plateCount ?? Math.round(sampleNumericDistribution(distribution, distributionRng));
+  const sampledValues: Partial<SelectedValues> = {};
+
+  for (const key of worldParameterKeys) {
+    const explicit = input.selectedValues?.[key];
+    if (explicit !== undefined) {
+      sampledValues[key] = explicit;
+      continue;
+    }
+    const distribution = distributions[key];
+    const distributionRng = randomSource(`${worldSeed}:${preset}:${key}:distribution-v2`);
+    const sampled = sampleNumericDistribution(distribution, distributionRng);
+    sampledValues[key] = integerWorldParameterKeys.has(key) ? Math.round(sampled) : sampled;
+  }
+
+  const parameterRanges = Object.fromEntries(worldParameterKeys.map((key) => {
+    const bounds = distributionHardBounds(distributions[key]);
+    return [key, {
+      min: bounds.min,
+      max: bounds.max,
+      unit: input.parameterRanges[key]?.unit
+    }];
+  })) as GenerationConfig['parameterRanges'];
+
   return {
     ...input,
-    parameterRanges: {
-      ...baseRanges,
-      plateCount: distribution.kind === 'uniform'
-        ? { min: distribution.min, max: distribution.max }
-        : { min: distribution.hardMin, max: distribution.hardMax }
-    },
+    parameterRanges,
     selectedValues: {
+      ...sampledValues,
       ...input.selectedValues,
-      plateCount: sampledPlateCount,
       oceanTolerancePercentagePoints: input.selectedValues?.oceanTolerancePercentagePoints ?? (preset === 'Random World' ? 12 : 5)
     },
-    parameterDistributions: {
-      ...config.parameterDistributions,
-      plateCount: distribution
-    }
+    parameterDistributions: distributions,
+    worldPresetId: preset
   } as GenerationConfig;
 }
 
