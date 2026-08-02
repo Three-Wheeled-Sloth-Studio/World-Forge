@@ -12,7 +12,9 @@
     "profile:generation": "tsx --tsconfig tsconfig.scripts.json scripts/profile-current-generation.ts",
     "profile:production-page": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page-runner.ts",
     "profile:production-page:inner": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page.ts",
+    "profile:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts",
     "test:production-page-harness": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page-runner.ts --self-test && npm run profile:production-page:inner -- --self-test",
+    "test:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts --self-test",
     "smoke:production-page-harness": "npm run profile:production-page -- --skip-build --browser chrome --headless --resolution 256x128 --runs 1 --warmup 0 --timeout-minutes 5 --output .local/performance/production-page-ci-smoke",
     "evaluate:regions": "tsx --tsconfig tsconfig.scripts.json scripts/evaluate-geographic-regions.ts",
     "investigate:map-lines-polar-ice": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-map-lines-polar-ice.ts",
@@ -22,7 +24,7 @@
     "workflow:legacy": "tsx --tsconfig tsconfig.scripts.json scripts/run-generation-workflow.ts",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "validate": "npm run typecheck && npm test && npm run test:production-page-harness",
+    "validate": "npm run typecheck && npm test && npm run test:production-page-harness && npm run test:production-rerank",
     "verify": "npm run validate && npm run build"
   },
   "dependencies": {
