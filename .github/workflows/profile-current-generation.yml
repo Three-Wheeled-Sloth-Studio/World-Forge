@@ -1,0 +1,46 @@
+name: Profile current generation
+
+on:
+  push:
+    branches:
+      - agent/promote-polar-profile-performance-bottlenecks
+    paths:
+      - .github/workflows/profile-current-generation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out profiling branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/promote-polar-profile-performance-bottlenecks
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Profile standard matrix
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: npm run profile:generation -- --workflow=core.performance-foundation --resolution=512x256 --seeds=1001001,3141592,8675309 --scenarios=earthlike-standard,archipelago-standard,geology-glacial-stress --runs=1 --source-commit=${{ github.sha }}
+      - name: Profile production scaling probe
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: npm run profile:generation -- --workflow=core.performance-foundation --resolution=1024x512 --seeds=1001001,3141592 --scenarios=earthlike-standard --runs=1 --source-commit=${{ github.sha }}
+      - name: Upload profiling reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-generation-profiles
+          path: |
+            refs/testing/current-generation-profile-*.json
+            refs/testing/current-generation-profile-*.md
+          if-no-files-found: error
+          retention-days: 7
