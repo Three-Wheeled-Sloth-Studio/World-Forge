@@ -26,24 +26,19 @@ describe('generation graph workflows', () => {
     expect(experimental.status).toBe('experimental');
   });
 
-  it('isolates the Experimental present-climate implementation from Detailed', () => {
+  it('aligns Detailed and Experimental on the promoted present-climate implementation', () => {
     const detailed = generationGraphWorkflow('core.performance-foundation');
     const experimental = generationGraphWorkflow('core.world-generation-experimental');
-    const detailedById = new Map(detailed.nodes.map((node) => [node.id, node]));
-
-    for (const node of experimental.nodes) {
-      const baseline = detailedById.get(node.id);
-      expect(baseline).toBeDefined();
-      if (node.id === 'world.deep-time-aging') {
-        expect(node.implementationId).toBe('core.world.deep-time-aging.present-climate-traversal-v1');
-        expect(node.implementationId).not.toBe(baseline?.implementationId);
-      } else {
-        expect(node.implementationId).toBe(baseline?.implementationId);
-      }
-    }
+    expect(experimental.nodes.map((node) => [node.id, node.implementationId, node.version])).toEqual(
+      detailed.nodes.map((node) => [node.id, node.implementationId, node.version])
+    );
+    expect(detailed.nodes.find((node) => node.id === 'world.deep-time-aging')).toMatchObject({
+      implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1',
+      version: '4'
+    });
   });
 
-  it('isolates hydrology traversal from the derived-field control contract', () => {
+  it('isolates hydrology and climate traversal from the derived-field control contract', () => {
     const control = generationGraphWorkflow('core.performance-foundation-derived-control');
     const candidate = generationGraphWorkflow('core.performance-foundation');
     const controlById = new Map(control.nodes.map((node) => [node.id, node]));
