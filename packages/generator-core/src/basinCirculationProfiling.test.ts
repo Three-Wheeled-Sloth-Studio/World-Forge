@@ -10,7 +10,7 @@ import {
 type ExtendedConfig = GenerationConfig & { workflowId?: string };
 
 describe('basin circulation profiling', () => {
-  it('separates basin labeling, coast distance, and gyre packing', () => {
+  it('separates pressure construction, projected forcing, gyre construction, and field evaluation', () => {
     const config = createDefaultConfig('basin-circulation-profile', { width: 64, height: 32 }) as ExtendedConfig;
     config.topologyResolution = 16;
     config.workflowId = 'core.performance-foundation';
@@ -24,9 +24,11 @@ describe('basin circulation profiling', () => {
 
     const phases = records.filter((record) => !record.parent).map((record) => record.name);
     expect(phases).toEqual(expect.arrayContaining([
-      'basin-circulation.label-basins',
-      'basin-circulation.coast-distance',
-      'basin-circulation.pack-gyres'
+      'climatological-pressure.build-reference-model',
+      'climatological-pressure.apply-fields',
+      'basin-circulation.build-large-scale-gyres',
+      'basin-circulation.evaluate-large-scale-field'
     ]));
+    expect(phases).not.toContain('basin-circulation.pack-gyres');
   });
 });
