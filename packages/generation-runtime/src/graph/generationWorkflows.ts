@@ -41,15 +41,12 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
       ? { ...node, implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-control', version: '3-control' }
       : node);
   }
-  if (workflowId === 'core.world-generation-experimental') {
+  if (workflowId === 'core.performance-foundation' || workflowId === 'core.world-generation-experimental') {
     return nodes.map((node) => node.id === 'world.deep-time-aging'
-      ? { ...node, implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1', version: '4-experimental' }
+      ? { ...node, implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1', version: '4' }
       : node);
   }
-  if (workflowId !== 'core.performance-foundation') return nodes;
-  return nodes.map((node) => node.id === 'world.deep-time-aging'
-    ? { ...node, implementationId: 'core.world.deep-time-aging.bounded-three-era-derived-climate-v1', version: '3' }
-    : node);
+  return nodes;
 }
 
 export const generationGraphWorkflows: readonly GenerationGraphWorkflow[] = generationWorkflowDescriptors.map((workflow) => ({
