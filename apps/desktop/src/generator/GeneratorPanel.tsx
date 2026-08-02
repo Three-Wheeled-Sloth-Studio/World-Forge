@@ -8,6 +8,7 @@ import {
 import { parameterControlBounds, type GenerationConfig, type NumericRange } from '@world-forge/shared';
 import type { WorkspaceMode } from '../workspace/workspaceModes';
 import { formatGenerationDuration, type GenerationRunSummary } from '../generation/generationTiming';
+import { GenerationStageTimeChart } from './GenerationStageTimeChart';
 import {
   generationActionLabel,
   generationParameterGroups,
@@ -297,6 +298,7 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
                 </span>
               ))}
             </div>
+            <GenerationStageTimeChart stages={lastGenerationRun.stages} />
           </section>
         )}
         {hasCurrentProject && <p className="replacement-note">The current world stays visible until its replacement finishes successfully.</p>}

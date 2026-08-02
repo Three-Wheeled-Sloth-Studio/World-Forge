@@ -28,6 +28,15 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.52</p>
+            <h3>The bottleneck stopped hiding in a table</h3>
+            <ul>
+              <li>Last Generation now includes an interactive pie chart of measured native-stage time.</li>
+              <li>Hovering or focusing a slice or legend row shows the stage duration and its percentage of measured stage time.</li>
+              <li>Every native stage remains visible in the legend, including zero-time stages, without changing generator behavior.</li>
+            </ul>
+          </section>
+          <section>
             <p className="release-kicker">Release 0.3.51</p>
             <h3>The planet has seasons now</h3>
             <ul>

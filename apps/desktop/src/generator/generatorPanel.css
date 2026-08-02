@@ -375,3 +375,149 @@
     grid-template-columns: 1fr;
   }
 }
+
+.stage-time-chart {
+  background: rgba(255, 252, 244, 0.58);
+  border: 1px solid rgba(112, 136, 117, 0.34);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+}
+
+.stage-time-chart h4 {
+  color: #3b3025;
+  font-size: 11px;
+  margin: 0;
+}
+
+.stage-time-chart-body {
+  align-items: start;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: 132px minmax(0, 1fr);
+}
+
+.stage-time-chart-visual {
+  min-width: 0;
+  position: relative;
+}
+
+.stage-time-chart-visual svg {
+  aspect-ratio: 1;
+  display: block;
+  overflow: visible;
+  width: 100%;
+}
+
+.stage-time-chart-slice {
+  cursor: pointer;
+  stroke: rgba(255, 252, 244, 0.94);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: filter 100ms ease, transform 100ms ease;
+}
+
+.stage-time-chart-slice:hover,
+.stage-time-chart-slice:focus,
+.stage-time-chart-slice.active {
+  filter: brightness(1.08) drop-shadow(0 1px 2px rgba(34, 43, 35, 0.28));
+  outline: none;
+  transform: scale(1.025);
+}
+
+.stage-time-chart-tooltip {
+  background: rgba(34, 36, 33, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  box-shadow: 0 3px 10px rgba(31, 32, 29, 0.28);
+  color: #fffdf6;
+  display: grid;
+  font-size: 8px;
+  gap: 1px;
+  left: 45%;
+  line-height: 1.25;
+  max-width: 96px;
+  padding: 5px 6px;
+  pointer-events: none;
+  position: absolute;
+  top: 46%;
+  z-index: 2;
+}
+
+.stage-time-chart-tooltip strong {
+  font-size: 8.5px;
+}
+
+.stage-time-chart-legend {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.stage-time-chart-legend-item {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 5px;
+  grid-template-columns: 7px minmax(0, 1fr);
+  min-width: 0;
+  padding: 2px 3px;
+  text-align: left;
+}
+
+.stage-time-chart-legend-item:hover,
+.stage-time-chart-legend-item:focus,
+.stage-time-chart-legend-item.active {
+  background: rgba(94, 128, 103, 0.1);
+  outline: 1px solid rgba(94, 128, 103, 0.24);
+}
+
+.stage-time-chart-legend-item > i {
+  border-radius: 50%;
+  display: block;
+  height: 7px;
+  width: 7px;
+}
+
+.stage-time-chart-legend-item > span {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.stage-time-chart-legend-item small {
+  color: var(--pm-muted);
+  font-size: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage-time-chart-legend-item output {
+  color: #31513a;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .stage-time-chart-body {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-time-chart-visual {
+    margin: 0 auto;
+    max-width: 170px;
+  }
+}
+
