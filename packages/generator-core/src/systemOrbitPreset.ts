@@ -194,7 +194,6 @@ export function prepareSystemOrbitConfig(input: GenerationConfig): GenerationCon
       ...input.selectedValues,
       oceanTolerancePercentagePoints: input.selectedValues?.oceanTolerancePercentagePoints ?? (preset === 'Random World' ? 12 : 5)
     },
-    parameterDistributions: distributions,
     worldPresetId: preset
   } as GenerationConfig;
 }
