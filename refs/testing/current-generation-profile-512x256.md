@@ -1,7 +1,7 @@
 # Current Generation Performance Profile
 
-Generated: 2026-08-02T15:19:06.337Z
-Source commit: 9d6ea21a3493fab351b55df5c7ad8dc145ee9663
+Generated: 2026-08-02T15:20:40.958Z
+Source commit: 7153aa3ec73718ce3ee30f7e86186203009ca979
 Workflow: core.performance-foundation@1.2.0
 Environment: v22.23.1 on linux/x64
 Matrix: 3 seeds x 3 scenarios x 1 run(s), 512x256
@@ -10,64 +10,64 @@ Matrix: 3 seeds x 3 scenarios x 1 run(s), 512x256
 
 | Rank | Phase | Samples | Average ms | Median ms | P90 ms | Average total share | ns/topology cell | Active share | Full passes | Buffer MB |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | foundation.climate.wetness-traversal | 9 | 269.0 | 265.0 | 282.7 | 5.19% | 2736.5 | 1.0000 | 1.00 | 0.00 |
-| 2 | foundation.climate.moisture-candidate-traversal | 9 | 146.9 | 146.6 | 167.7 | 2.83% | 1494.8 | 1.0000 | 1.00 | 0.00 |
-| 3 | foundation.climate.atmospheric-flow | 9 | 82.5 | 76.7 | 91.9 | 1.58% | 839.2 | 1.0000 | 2.00 | 0.75 |
-| 4 | foundation.climate.ocean-currents | 9 | 74.8 | 65.0 | 84.6 | 1.42% | 760.8 | 1.0000 | 2.00 | 0.75 |
-| 5 | foundation.hydrology.drainage-surface | 9 | 62.5 | 59.8 | 68.0 | 1.20% | 636.2 | 1.0000 | 1.00 | 0.38 |
-| 6 | foundation.hydrology.water-distance | 9 | 51.4 | 51.7 | 53.3 | 0.99% | 522.8 | 1.0000 | 48.00 | 0.38 |
-| 7 | topology-to-raster-final-projection | 9 | 41.6 | 39.9 | 45.6 | 0.80% | 422.8 | 1.3333 | 0.00 | 0.00 |
-| 8 | permanent-ice-classification | 9 | 40.7 | 38.0 | 50.0 | 0.78% | 413.7 | 1.0000 | 4.00 | 0.56 |
-| 9 | foundation.hydrology.elevation-ordering | 9 | 34.0 | 33.7 | 34.9 | 0.66% | 346.2 | 1.0000 | 0.00 | 0.75 |
-| 10 | foundation.climate.moisture-candidate-water-distance | 9 | 26.5 | 26.2 | 27.1 | 0.51% | 270.0 | 1.0000 | 24.00 | 0.38 |
-| 11 | foundation.climate.water-distance | 9 | 21.5 | 19.6 | 20.2 | 0.41% | 219.2 | 1.0000 | 18.00 | 0.38 |
-| 12 | foundation.terrain.impacts | 9 | 16.5 | 19.1 | 22.4 | 0.31% | 168.1 | 1.0000 | 0.00 | 0.00 |
-| 13 | foundation.climate.temperature-field | 9 | 14.8 | 15.2 | 16.1 | 0.29% | 150.6 | 1.0000 | 1.00 | 0.00 |
-| 14 | reference-scale-field-reduction | 9 | 14.0 | 14.7 | 15.6 | 0.27% | 142.9 | 0.1711 | 0.00 | 0.12 |
-| 15 | vacated-fragment-corridor-repair | 9 | 12.5 | 11.6 | 17.1 | 0.24% | 127.4 | 0.0786 | 1.00 | 0.03 |
-| 16 | foundation.terrain.coastal-shelves | 9 | 10.4 | 10.7 | 16.1 | 0.20% | 105.6 | 1.0000 | 3.33 | 0.38 |
-| 17 | masked-topology-field-expansion-and-blend | 9 | 10.2 | 10.5 | 12.3 | 0.20% | 103.6 | 0.1711 | 0.00 | 0.06 |
-| 18 | foundation.climate.moisture-candidate-land-distance | 9 | 9.2 | 9.0 | 9.1 | 0.18% | 93.7 | 1.0000 | 8.00 | 0.38 |
-| 19 | foundation.terrain.hydraulic-erosion | 9 | 7.3 | 6.6 | 10.1 | 0.14% | 73.8 | 1.0000 | 3.00 | 0.38 |
-| 20 | foundation.projection.scalar-copy | 9 | 6.8 | 6.7 | 8.6 | 0.13% | 69.3 | 1.3333 | 0.00 | 0.00 |
-| 21 | foundation.terrain.thermal-weathering | 9 | 6.3 | 5.7 | 9.2 | 0.12% | 64.2 | 1.0000 | 3.67 | 0.38 |
-| 22 | foundation.hydrology.channel-marking | 9 | 5.7 | 6.1 | 8.0 | 0.11% | 57.6 | 1.0000 | 1.00 | 0.00 |
-| 23 | foundation.hydrology.receiver-flow-initialization | 9 | 5.6 | 5.7 | 7.1 | 0.11% | 57.0 | 1.0000 | 1.00 | 0.75 |
-| 24 | foundation.climate.moisture-candidate-smoothing | 9 | 4.8 | 4.4 | 6.1 | 0.09% | 49.2 | 1.0000 | 2.00 | 0.75 |
-| 25 | foundation.hydrology.source-ordering | 9 | 4.5 | 4.1 | 6.7 | 0.09% | 45.6 | 1.0000 | 0.00 | 0.75 |
-| 26 | foundation.hydrology.flow-accumulation | 9 | 4.3 | 3.7 | 5.6 | 0.08% | 43.9 | 1.0000 | 1.00 | 0.00 |
-| 27 | authoritative-topology-signal-expansion | 18 | 4.1 | 3.5 | 5.1 | 0.08% | 41.9 | 0.0383 | 1.00 | 0.38 |
-| 28 | foundation.projection.vector-copy | 9 | 3.2 | 3.3 | 3.7 | 0.06% | 32.2 | 1.3333 | 0.00 | 0.00 |
-| 29 | reference-scale-signal-smoothing | 18 | 2.5 | 2.0 | 2.1 | 0.05% | 102.4 | 0.1534 | 7.00 | 0.66 |
-| 30 | authoritative-topology-post-expansion-smoothing | 18 | 2.4 | 2.4 | 2.5 | 0.05% | 24.4 | 0.0383 | 2.00 | 0.75 |
+| 1 | foundation.climate.wetness-traversal | 9 | 145.8 | 147.2 | 151.2 | 5.43% | 1483.4 | 1.0000 | 1.00 | 0.00 |
+| 2 | foundation.climate.moisture-candidate-traversal | 9 | 79.2 | 77.9 | 92.8 | 2.95% | 805.9 | 1.0000 | 1.00 | 0.00 |
+| 3 | foundation.climate.atmospheric-flow | 9 | 44.1 | 41.4 | 48.9 | 1.63% | 449.1 | 1.0000 | 2.00 | 0.75 |
+| 4 | foundation.climate.ocean-currents | 9 | 38.5 | 34.2 | 46.9 | 1.41% | 392.0 | 1.0000 | 2.00 | 0.75 |
+| 5 | foundation.hydrology.drainage-surface | 9 | 32.7 | 34.4 | 37.6 | 1.21% | 332.5 | 1.0000 | 1.00 | 0.38 |
+| 6 | foundation.hydrology.water-distance | 9 | 25.6 | 25.7 | 26.5 | 0.95% | 260.0 | 1.0000 | 48.00 | 0.38 |
+| 7 | foundation.hydrology.elevation-ordering | 9 | 21.3 | 20.5 | 23.8 | 0.79% | 216.3 | 1.0000 | 0.00 | 0.75 |
+| 8 | topology-to-raster-final-projection | 9 | 20.6 | 21.1 | 22.6 | 0.77% | 209.9 | 1.3333 | 0.00 | 0.00 |
+| 9 | permanent-ice-classification | 9 | 19.8 | 18.6 | 23.5 | 0.73% | 201.8 | 1.0000 | 4.00 | 0.56 |
+| 10 | foundation.climate.moisture-candidate-water-distance | 9 | 12.9 | 12.9 | 13.1 | 0.48% | 131.1 | 1.0000 | 24.00 | 0.38 |
+| 11 | foundation.climate.water-distance | 9 | 10.2 | 9.7 | 10.0 | 0.38% | 103.8 | 1.0000 | 18.00 | 0.38 |
+| 12 | foundation.terrain.impacts | 9 | 7.9 | 9.7 | 10.2 | 0.29% | 80.1 | 1.0000 | 0.00 | 0.00 |
+| 13 | foundation.climate.temperature-field | 9 | 7.7 | 7.8 | 8.0 | 0.29% | 78.4 | 1.0000 | 1.00 | 0.00 |
+| 14 | reference-scale-field-reduction | 9 | 6.9 | 6.9 | 8.3 | 0.26% | 70.5 | 0.1711 | 0.00 | 0.12 |
+| 15 | foundation.terrain.coastal-shelves | 9 | 5.3 | 4.7 | 8.1 | 0.19% | 54.0 | 1.0000 | 3.33 | 0.38 |
+| 16 | vacated-fragment-corridor-repair | 9 | 5.2 | 4.1 | 7.9 | 0.20% | 53.1 | 0.0786 | 1.00 | 0.03 |
+| 17 | foundation.projection.scalar-copy | 9 | 4.9 | 4.9 | 6.0 | 0.18% | 50.1 | 1.3333 | 0.00 | 0.00 |
+| 18 | masked-topology-field-expansion-and-blend | 9 | 4.8 | 5.0 | 5.3 | 0.18% | 49.3 | 0.1711 | 0.00 | 0.06 |
+| 19 | foundation.climate.moisture-candidate-land-distance | 9 | 4.5 | 4.3 | 4.4 | 0.17% | 45.7 | 1.0000 | 8.00 | 0.38 |
+| 20 | foundation.terrain.hydraulic-erosion | 9 | 4.0 | 3.6 | 5.8 | 0.15% | 40.9 | 1.0000 | 3.00 | 0.38 |
+| 21 | foundation.hydrology.receiver-flow-initialization | 9 | 3.8 | 3.5 | 4.5 | 0.14% | 39.0 | 1.0000 | 1.00 | 0.75 |
+| 22 | foundation.terrain.thermal-weathering | 9 | 3.1 | 2.6 | 4.9 | 0.11% | 31.9 | 1.0000 | 3.67 | 0.38 |
+| 23 | foundation.hydrology.source-ordering | 9 | 3.0 | 2.8 | 2.9 | 0.11% | 30.5 | 1.0000 | 0.00 | 0.75 |
+| 24 | foundation.hydrology.channel-marking | 9 | 2.9 | 2.5 | 4.7 | 0.11% | 29.6 | 1.0000 | 1.00 | 0.00 |
+| 25 | foundation.climate.moisture-candidate-smoothing | 9 | 2.7 | 3.0 | 3.1 | 0.10% | 27.5 | 1.0000 | 2.00 | 0.75 |
+| 26 | foundation.hydrology.flow-accumulation | 9 | 2.7 | 2.3 | 3.9 | 0.10% | 27.8 | 1.0000 | 1.00 | 0.00 |
+| 27 | foundation.projection.vector-copy | 9 | 2.6 | 2.6 | 3.0 | 0.09% | 26.0 | 1.3333 | 0.00 | 0.00 |
+| 28 | authoritative-topology-signal-expansion | 18 | 1.6 | 1.3 | 2.5 | 0.06% | 16.7 | 0.0383 | 1.00 | 0.38 |
+| 29 | reference-scale-signal-smoothing | 18 | 1.2 | 0.9 | 0.9 | 0.04% | 47.2 | 0.1534 | 7.00 | 0.66 |
+| 30 | reference-scale-corridor-propagation | 9 | 1.1 | 0.5 | 2.9 | 0.04% | 46.6 | 0.6843 | 4.00 | 0.38 |
 
 ## Deep-time substage ranking
 
 | Rank | Substage | Samples | Average ms | Median ms | P90 ms | Average total share |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | surface-aging | 9 | 693.3 | 701.2 | 744.3 | 13.37% |
-| 2 | climate-rebuild | 9 | 691.4 | 716.8 | 752.7 | 13.30% |
-| 3 | biome-projection-validation | 9 | 638.3 | 705.9 | 748.6 | 12.26% |
-| 4 | hydrology-rebuild | 9 | 356.3 | 369.6 | 395.0 | 6.86% |
-| 5 | ledger-and-unattributed | 9 | 182.9 | 175.5 | 204.8 | 3.52% |
-| 6 | fragment-placement | 9 | 158.8 | 157.1 | 188.7 | 3.07% |
-| 7 | water-reconciliation | 9 | 131.4 | 129.1 | 135.8 | 2.54% |
-| 8 | fragment-history | 9 | 112.5 | 103.9 | 135.0 | 2.16% |
-| 9 | setup-models | 9 | 29.3 | 27.8 | 39.3 | 0.56% |
+| 1 | biome-projection-validation | 9 | 349.6 | 373.3 | 428.2 | 12.88% |
+| 2 | climate-rebuild | 9 | 328.1 | 341.9 | 359.0 | 12.17% |
+| 3 | surface-aging | 9 | 322.3 | 334.1 | 346.4 | 11.97% |
+| 4 | hydrology-rebuild | 9 | 181.3 | 191.3 | 193.5 | 6.72% |
+| 5 | ledger-and-unattributed | 9 | 110.5 | 109.9 | 124.6 | 4.08% |
+| 6 | fragment-placement | 9 | 89.9 | 86.0 | 104.2 | 3.33% |
+| 7 | water-reconciliation | 9 | 68.3 | 66.4 | 73.3 | 2.53% |
+| 8 | fragment-history | 9 | 61.1 | 64.1 | 76.2 | 2.25% |
+| 9 | setup-models | 9 | 15.8 | 12.6 | 21.8 | 0.58% |
 
 ## Runs
 
 | Run | Total ms | Wall ms | Deep-time ms | Ocean % | Ice % | Rivers |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| earthlike-standard-1001001-512x256-run1 | 5967.8 | 5968.5 | 3320.5 | 75.21 | 1.38 | 80 |
-| earthlike-standard-3141592-512x256-run1 | 5336.5 | 5336.7 | 3150.7 | 73.99 | 2.74 | 80 |
-| earthlike-standard-8675309-512x256-run1 | 5467.8 | 5468.0 | 3183.6 | 74.04 | 2.11 | 80 |
-| archipelago-standard-1001001-512x256-run1 | 4709.9 | 4710.1 | 2670.2 | 68.92 | 9.94 | 55 |
-| archipelago-standard-3141592-512x256-run1 | 4964.2 | 4964.4 | 2866.9 | 73.85 | 5.39 | 55 |
-| archipelago-standard-8675309-512x256-run1 | 4941.0 | 4941.3 | 2927.3 | 80.32 | 0.00 | 55 |
-| geology-glacial-stress-1001001-512x256-run1 | 4931.6 | 4931.8 | 2758.6 | 60.46 | 17.83 | 118 |
-| geology-glacial-stress-3141592-512x256-run1 | 5218.6 | 5218.8 | 3025.2 | 68.07 | 7.61 | 118 |
-| geology-glacial-stress-8675309-512x256-run1 | 5240.8 | 5241.2 | 3044.8 | 71.78 | 2.66 | 118 |
+| earthlike-standard-1001001-512x256-run1 | 3079.2 | 3079.7 | 1709.3 | 75.21 | 1.38 | 80 |
+| earthlike-standard-3141592-512x256-run1 | 2858.9 | 2859.1 | 1684.9 | 73.99 | 2.74 | 80 |
+| earthlike-standard-8675309-512x256-run1 | 2935.0 | 2935.2 | 1697.3 | 74.04 | 2.11 | 80 |
+| archipelago-standard-1001001-512x256-run1 | 2440.5 | 2440.7 | 1337.2 | 68.92 | 9.94 | 55 |
+| archipelago-standard-3141592-512x256-run1 | 2618.5 | 2618.7 | 1497.4 | 73.85 | 5.39 | 55 |
+| archipelago-standard-8675309-512x256-run1 | 2537.5 | 2537.7 | 1460.3 | 80.32 | 0.00 | 55 |
+| geology-glacial-stress-1001001-512x256-run1 | 2524.5 | 2524.7 | 1371.3 | 60.46 | 17.83 | 118 |
+| geology-glacial-stress-3141592-512x256-run1 | 2646.8 | 2647.0 | 1491.4 | 68.07 | 7.61 | 118 |
+| geology-glacial-stress-8675309-512x256-run1 | 2655.1 | 2655.4 | 1492.3 | 71.78 | 2.66 | 118 |
 
 ## Interpretation rule
 
