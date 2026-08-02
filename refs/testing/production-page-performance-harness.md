@@ -1,0 +1,153 @@
+# Production Page Performance Harness
+
+Updated: 2026-08-02
+
+Related:
+
+- Issue #14
+- `refs/planning/production-performance-instrumentation-plan.md`
+- `scripts/profile-production-page.ts`
+- `refs/testing/production-page-performance-plan.example.json`
+
+## Purpose
+
+Run repeatable generation-performance tests through the actual World Forge page instead of calling generator functions directly.
+
+The harness:
+
+1. resolves the current Git commit;
+2. builds the production Vite bundle with that commit embedded as provenance;
+3. starts the production preview server;
+4. launches a real Chromium or Google Chrome browser through Playwright;
+5. uses the visible Generator controls to select the preset, star preset, workflow, resolution, and seeds;
+6. clicks the page's real Generate button;
+7. waits for the page's versioned production timing record;
+8. rejects runs that bypass the production worker or do not match the requested configuration;
+9. writes the complete timing JSON, page-generated Markdown report, CSV run table, and aggregate summary.
+
+This is a browser-driven parity and evidence harness. It exercises the production page bundle, React state path, generation worker, structured-clone handoff, project acceptance, render commit, and first interactive paint. It does not substitute a lower-level Node generation call.
+
+## Installation
+
+Install repository dependencies normally:
+
+```bash
+npm ci
+```
+
+If Playwright Chromium is not already installed:
+
+```bash
+npx playwright install chromium
+```
+
+Google Chrome can be used instead with `--browser chrome`.
+
+## Standard use
+
+Single matched case:
+
+```bash
+npm run profile:production-page -- --seed 1001001 --preset Earthlike --workflow core.performance-foundation --resolution 2048x1024 --runs 3 --warmup 1
+```
+
+Cartesian matrix from repeated or comma-separated values:
+
+```bash
+npm run profile:production-page -- --seed 1001001,3141592,8675309 --preset Earthlike,Archipelago --resolution 1024x512,2048x1024,4096x2048 --runs 3 --warmup 1
+```
+
+Exact plan file:
+
+```bash
+npm run profile:production-page -- --plan refs/testing/production-page-performance-plan.example.json
+```
+
+Drive an already running page without building or starting Vite:
+
+```bash
+npm run profile:production-page -- --base-url http://127.0.0.1:4173 --seed 1001001 --resolution 2048x1024
+```
+
+Use `--help` for the complete option list.
+
+## Defaults and measurement semantics
+
+- Headed browser mode is the default because the primary metric is user-visible page behavior.
+- One fresh browser context is created per test case.
+- Warmup and measured runs share the same page by default. This preserves JavaScript JIT and page-state warming within the case.
+- Warmup records are retained but excluded from aggregate statistics.
+- `--reload-between-runs` reloads and reconfigures the real page before every run. It is not equivalent to restarting the browser process or operating system.
+- The harness builds before testing unless `--skip-build` or `--base-url` is supplied.
+- The production page's own timing record remains authoritative. Harness stopwatch timing is intentionally not used as a competing metric.
+- Parent native-stage timings and child diagnostic-operation timings must not be added together.
+
+## Output
+
+The default output folder is:
+
+```text
+.local/performance/production-page/<timestamp>/
+```
+
+Each case receives:
+
+- `warmup-NN.json`
+- `warmup-NN.md`
+- `run-NN.json`
+- `run-NN.md`
+- optional `*-harness.json` files containing warnings or validation failures
+- a failure screenshot when the page can still be captured
+
+The root folder receives:
+
+- `summary.json`
+- `summary.md`
+- `runs.csv`
+
+The aggregate summary reports median and range for:
+
+- user-visible wall time;
+- worker generation time;
+- completed-project handoff;
+- UI acceptance through interactive paint;
+- slowest native stage by median duration.
+
+## Validation rules
+
+A measured run is invalid when:
+
+- generation did not complete;
+- the page record identifies a non-generator launch source;
+- workflow, seed, or resolution differs from the requested case;
+- worker receipt or worker generation timing is missing;
+- the same-window fallback was used instead of the production worker.
+
+Page visibility, focus state, browser console errors, and declared instrumentation gaps are retained as warnings in the evidence.
+
+## Plan format
+
+```json
+{
+  "runs": 3,
+  "warmupRuns": 1,
+  "reloadBetweenRuns": false,
+  "cases": [
+    {
+      "id": "earthlike-default",
+      "seed": "1001001",
+      "starSeed": "1001001",
+      "preset": "Earthlike",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "2048x1024"
+    }
+  ]
+}
+```
+
+`runs`, `warmupRuns`, and `reloadBetweenRuns` may also be overridden per case.
+
+## Boundary
+
+This harness runs the real production web page and worker bundle. It does not yet launch the Tauri desktop shell itself. That distinction must remain explicit in reports. Shell startup, native webview differences, and operating-system packaging overhead require a separate Tauri-driven harness if they become material.

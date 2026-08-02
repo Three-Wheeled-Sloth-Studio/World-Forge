@@ -1,0 +1,61 @@
+{
+  "runs": 3,
+  "warmupRuns": 1,
+  "reloadBetweenRuns": false,
+  "cases": [
+    {
+      "id": "earthlike-1024x512",
+      "seed": "1001001",
+      "starSeed": "1001001",
+      "preset": "Earthlike",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "1024x512"
+    },
+    {
+      "id": "earthlike-2048x1024",
+      "seed": "1001001",
+      "starSeed": "1001001",
+      "preset": "Earthlike",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "2048x1024"
+    },
+    {
+      "id": "earthlike-4096x2048",
+      "seed": "1001001",
+      "starSeed": "1001001",
+      "preset": "Earthlike",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "4096x2048"
+    },
+    {
+      "id": "archipelago-1024x512",
+      "seed": "3141592",
+      "starSeed": "3141592",
+      "preset": "Archipelago",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "1024x512"
+    },
+    {
+      "id": "archipelago-2048x1024",
+      "seed": "3141592",
+      "starSeed": "3141592",
+      "preset": "Archipelago",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "2048x1024"
+    },
+    {
+      "id": "archipelago-4096x2048",
+      "seed": "3141592",
+      "starSeed": "3141592",
+      "preset": "Archipelago",
+      "starPreset": "sol-like",
+      "workflow": "core.performance-foundation",
+      "resolution": "4096x2048"
+    }
+  ]
+}

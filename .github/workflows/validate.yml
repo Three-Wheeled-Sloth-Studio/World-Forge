@@ -29,3 +29,6 @@ jobs:
 
       - name: Validate
         run: npm run verify
+
+      - name: Smoke production page harness
+        run: npm run smoke:production-page-harness
