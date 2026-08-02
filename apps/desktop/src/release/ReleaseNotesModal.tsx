@@ -28,6 +28,16 @@ export function ReleaseNotesModal({ version, onClose }: { version: string; onClo
 
         <div className="release-notes-body">
           <section>
+            <p className="release-kicker">Release 0.3.54</p>
+            <h3>The poles remembered they are poles</h3>
+            <ul>
+              <li>Experimental now tests a mean-centered 52 C power-profile equator-to-pole contrast through both initial and deep-time climate while preserving the selected global temperature target.</li>
+              <li>Climate diagnostics report hemisphere-specific high-latitude temperatures and permanent land and sea ice.</li>
+              <li>Initial world foundation profiling now separates climate, hydrology, terrain-aging, and projection hot paths without changing Detailed output.</li>
+              <li>Detailed remains the production baseline until the new polar climate behavior passes the fixed-seed and visual QA matrix.</li>
+            </ul>
+          </section>
+          <section>
             <p className="release-kicker">Release 0.3.52</p>
             <h3>The bottleneck stopped hiding in a table</h3>
             <ul>

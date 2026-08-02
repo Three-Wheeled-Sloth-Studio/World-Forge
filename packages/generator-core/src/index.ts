@@ -38,6 +38,8 @@ import { runGenerationFoundation } from './graph/run-generation-foundation';
 import type { GenerationGraphNodeRunEvent } from './graph/types';
 import { orchestratePrimaryWorld } from './primary-world-orchestrator';
 import { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
+import { traceGenerationPerformance } from './generationPerformanceTrace';
+import { latitudeTemperatureOffsetC, legacyLatitudeTemperatureProfile, type LatitudeTemperatureProfile } from './latitudeTemperatureProfile';
 import type { TerrainDiagnosticBypasses, TerrainDiagnosticSnapshotCallback } from './terrainDiagnostics';
 
 export { SeededRandom, createDefaultConfig, defaultParameterRanges };
@@ -410,7 +412,7 @@ function generatePrimaryWorldLegacy(
   diagnostics.measure('topology.volcanism', () => assignTopologyVolcanism(topologyVolcanism, topologyElevation, topologyPlates, topologyPlateData, topology, seaLevel));
   emitTopologyPreview(options, 'water', 'Sea level and basins', 0.62, topology, topologyElevation, topologyWater, seaLevel);
   diagnostics.measure('topology.climate', () =>
-    generateTopologyClimate(topologyTemperature, topologyWetness, topologyWindX, topologyWindY, topologyCurrentX, topologyCurrentY, topologyElevation, topologyWater, topology, values, tideInfluence)
+    generateTopologyClimate(topologyTemperature, topologyWetness, topologyWindX, topologyWindY, topologyCurrentX, topologyCurrentY, topologyElevation, topologyWater, topology, values, tideInfluence, legacyLatitudeTemperatureProfile)
   );
   diagnostics.measure('topology.climate.moisture-candidate', () =>
     generateTopologyClimateMoistureCandidate(
@@ -1495,22 +1497,32 @@ function projectTopologyToEquirectangular(
   width: number,
   height: number
 ): void {
-  const lookup = equirectangularTopologyLookup(topology, width, height);
-  for (let index = 0; index < lookup.length; index += 1) {
-      const topologyCell = lookup[index];
-      elevation[index] = topologyElevation[topologyCell];
-      plates[index] = topologyPlates[topologyCell];
-      water[index] = topologyWater[topologyCell];
-      temperature[index] = topologyTemperature[topologyCell];
-      wetness[index] = topologyWetness[topologyCell];
-      climateMoisture[index] = topologyClimateMoisture[topologyCell];
-      climatePrecipitation[index] = topologyClimatePrecipitation[topologyCell];
-      climateWetnessDelta[index] = topologyClimateWetnessDelta[topologyCell];
-      biomes[index] = topologyBiomes[topologyCell];
-      ice[index] = topologyIce[topologyCell];
-      river[index] = topologyRiver[topologyCell];
-      lakes[index] = topologyLakes[topologyCell];
-  }
+  const lookup = traceGenerationPerformance(
+    'foundation.projection.scalar-lookup',
+    { topologyCells: topology.cellCount, activeCells: width * height, fullTopologyPasses: 0, allocatedBufferBytes: 0 },
+    () => equirectangularTopologyLookup(topology, width, height)
+  );
+  traceGenerationPerformance(
+    'foundation.projection.scalar-copy',
+    { topologyCells: topology.cellCount, activeCells: lookup.length, fullTopologyPasses: 0, allocatedBufferBytes: 0 },
+    () => {
+      for (let index = 0; index < lookup.length; index += 1) {
+        const topologyCell = lookup[index];
+        elevation[index] = topologyElevation[topologyCell];
+        plates[index] = topologyPlates[topologyCell];
+        water[index] = topologyWater[topologyCell];
+        temperature[index] = topologyTemperature[topologyCell];
+        wetness[index] = topologyWetness[topologyCell];
+        climateMoisture[index] = topologyClimateMoisture[topologyCell];
+        climatePrecipitation[index] = topologyClimatePrecipitation[topologyCell];
+        climateWetnessDelta[index] = topologyClimateWetnessDelta[topologyCell];
+        biomes[index] = topologyBiomes[topologyCell];
+        ice[index] = topologyIce[topologyCell];
+        river[index] = topologyRiver[topologyCell];
+        lakes[index] = topologyLakes[topologyCell];
+      }
+    }
+  );
 }
 
 function projectTopologyFlowToEquirectangular(
@@ -1526,14 +1538,24 @@ function projectTopologyFlowToEquirectangular(
   width: number,
   height: number
 ): void {
-  const lookup = equirectangularTopologyLookup(topology, width, height);
-  for (let index = 0; index < lookup.length; index += 1) {
-      const topologyCell = lookup[index];
-      windX[index] = topologyWindX[topologyCell];
-      windY[index] = topologyWindY[topologyCell];
-      currentX[index] = topologyCurrentX[topologyCell];
-      currentY[index] = topologyCurrentY[topologyCell];
-  }
+  const lookup = traceGenerationPerformance(
+    'foundation.projection.vector-lookup',
+    { topologyCells: topology.cellCount, activeCells: width * height, fullTopologyPasses: 0, allocatedBufferBytes: 0 },
+    () => equirectangularTopologyLookup(topology, width, height)
+  );
+  traceGenerationPerformance(
+    'foundation.projection.vector-copy',
+    { topologyCells: topology.cellCount, activeCells: lookup.length, fullTopologyPasses: 0, allocatedBufferBytes: 0 },
+    () => {
+      for (let index = 0; index < lookup.length; index += 1) {
+        const topologyCell = lookup[index];
+        windX[index] = topologyWindX[topologyCell];
+        windY[index] = topologyWindY[topologyCell];
+        currentX[index] = topologyCurrentX[topologyCell];
+        currentY[index] = topologyCurrentY[topologyCell];
+      }
+    }
+  );
 }
 
 function findTopologySeaLevelForOceanTarget(elevation: Float32Array, _areaWeights: Float32Array, oceanTarget: number, adjustment: number): number {
@@ -1575,10 +1597,26 @@ function applyTopologyTerrainAging(
   diagnostics: DiagnosticsRecorder
 ): void {
   const age01 = clamp(ageGy / 10);
-  diagnostics.measure('topology.terrain.aging.impacts', () => applyTopologyImpacts(elevation, topology, age01, impactFrequency, seaLevel, rng));
-  diagnostics.measure('topology.terrain.aging.weathering', () => applyTopologyThermalWeathering(elevation, topology, age01));
-  diagnostics.measure('topology.terrain.aging.hydraulic', () => applyTopologyHydraulicErosion(elevation, topology, age01));
-  diagnostics.measure('topology.terrain.aging.coasts', () => shapeTopologyCoastalShelves(elevation, topology, seaLevel, age01));
+  diagnostics.measure('topology.terrain.aging.impacts', () => traceGenerationPerformance(
+    'foundation.terrain.impacts',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 0, allocatedBufferBytes: 0 },
+    () => applyTopologyImpacts(elevation, topology, age01, impactFrequency, seaLevel, rng)
+  ));
+  diagnostics.measure('topology.terrain.aging.weathering', () => traceGenerationPerformance(
+    'foundation.terrain.thermal-weathering',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: Math.max(1, Math.round(lerp(1, 5, age01))), allocatedBufferBytes: elevation.byteLength },
+    () => applyTopologyThermalWeathering(elevation, topology, age01)
+  ));
+  diagnostics.measure('topology.terrain.aging.hydraulic', () => traceGenerationPerformance(
+    'foundation.terrain.hydraulic-erosion',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: Math.max(1, Math.round(lerp(1, 4, age01))), allocatedBufferBytes: elevation.byteLength },
+    () => applyTopologyHydraulicErosion(elevation, topology, age01)
+  ));
+  diagnostics.measure('topology.terrain.aging.coasts', () => traceGenerationPerformance(
+    'foundation.terrain.coastal-shelves',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: Math.max(2, Math.round(lerp(2, 4, age01))), allocatedBufferBytes: elevation.byteLength },
+    () => shapeTopologyCoastalShelves(elevation, topology, seaLevel, age01)
+  ));
 }
 
 function applyTopologyImpacts(elevation: Float32Array, topology: CubedSphereTopology, age01: number, impactFrequency: number, seaLevel: number, rng: SeededRandom): void {
@@ -1761,34 +1799,66 @@ function generateTopologyClimate(
   water: Uint8Array,
   topology: CubedSphereTopology,
   values: SelectedValues,
-  tideInfluence: number
+  tideInfluence: number,
+  latitudeTemperatureProfile: LatitudeTemperatureProfile
 ): void {
-  const oceanInfluence = computeTopologyWaterInfluence(water, topology, 18);
-  for (let cell = 0; cell < topology.cellCount; cell += 1) {
-    const lat01 = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
-    const latitudeHeat = 1 - lat01;
-    const elev = elevation[cell];
-    const x = topology.positions[cell * 3];
-    const y = topology.positions[cell * 3 + 1];
-    const z = topology.positions[cell * 3 + 2];
-    temperature[cell] = values.averageTemperatureC + latitudeHeat * 28 - 14 - Math.max(0, elev) * 26 - values.orbitalEccentricity * 16 + sphericalNoise(x * 6, y * 6, z * 6) * 2.2;
-  }
+  const oceanInfluence = traceGenerationPerformance(
+    'foundation.climate.water-distance',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 18, allocatedBufferBytes: water.length * Float32Array.BYTES_PER_ELEMENT },
+    () => computeTopologyWaterInfluence(water, topology, 18)
+  );
+  traceGenerationPerformance(
+    'foundation.climate.temperature-field',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: 0 },
+    () => {
+      for (let cell = 0; cell < topology.cellCount; cell += 1) {
+        const polarLatitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
+        const elev = elevation[cell];
+        const x = topology.positions[cell * 3];
+        const y = topology.positions[cell * 3 + 1];
+        const z = topology.positions[cell * 3 + 2];
+        temperature[cell] = values.averageTemperatureC
+          + latitudeTemperatureOffsetC(polarLatitude, latitudeTemperatureProfile)
+          - Math.max(0, elev) * 26
+          - values.orbitalEccentricity * 16
+          + sphericalNoise(x * 6, y * 6, z * 6) * 2.2;
+      }
+    }
+  );
 
-  generateTopologyAtmosphericFlow(windX, windY, elevation, temperature, topology, values);
-  generateTopologyOceanCurrents(currentX, currentY, windX, windY, elevation, water, topology);
+  traceGenerationPerformance(
+    'foundation.climate.atmospheric-flow',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 2, allocatedBufferBytes: topology.cellCount * Float32Array.BYTES_PER_ELEMENT * 2 },
+    () => generateTopologyAtmosphericFlow(windX, windY, elevation, temperature, topology, values)
+  );
+  traceGenerationPerformance(
+    'foundation.climate.ocean-currents',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 2, allocatedBufferBytes: topology.cellCount * Float32Array.BYTES_PER_ELEMENT * 2 },
+    () => generateTopologyOceanCurrents(currentX, currentY, windX, windY, elevation, water, topology)
+  );
 
-  for (let cell = 0; cell < topology.cellCount; cell += 1) {
-    const x = topology.positions[cell * 3];
-    const y = topology.positions[cell * 3 + 1];
-    const z = topology.positions[cell * 3 + 2];
-    const latitude = topology.latitudes[cell];
-    const convergenceBand = Math.max(0, Math.cos(latitude * 2.9)) * 0.08 + Math.max(0, Math.sin(latitude * 6)) * 0.1;
-    const moisture = topologyMoistureFetch(elevation, water, topology, cell, windX[cell], windY[cell], oceanInfluence[cell]);
-    const orographic = topologyOrographicEffect(elevation, topology, cell, windX[cell], windY[cell]);
-    const wetBase = moisture * 0.66 + (1 - values.aridity) * 0.36 + convergenceBand + tideInfluence * 0.04;
-    wetness[cell] = clamp((wetBase + orographic.lift * 0.58 - orographic.shadow * 1.18 + sphericalNoise(x * 9, y * 9, z * 9) * 0.12 - 0.43) * 1.32 + 0.5);
-  }
-  smoothTopologyLayer(wetness, topology, 1, 0.22);
+  traceGenerationPerformance(
+    'foundation.climate.wetness-traversal',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: 0 },
+    () => {
+      for (let cell = 0; cell < topology.cellCount; cell += 1) {
+        const x = topology.positions[cell * 3];
+        const y = topology.positions[cell * 3 + 1];
+        const z = topology.positions[cell * 3 + 2];
+        const latitude = topology.latitudes[cell];
+        const convergenceBand = Math.max(0, Math.cos(latitude * 2.9)) * 0.08 + Math.max(0, Math.sin(latitude * 6)) * 0.1;
+        const moisture = topologyMoistureFetch(elevation, water, topology, cell, windX[cell], windY[cell], oceanInfluence[cell]);
+        const orographic = topologyOrographicEffect(elevation, topology, cell, windX[cell], windY[cell]);
+        const wetBase = moisture * 0.66 + (1 - values.aridity) * 0.36 + convergenceBand + tideInfluence * 0.04;
+        wetness[cell] = clamp((wetBase + orographic.lift * 0.58 - orographic.shadow * 1.18 + sphericalNoise(x * 9, y * 9, z * 9) * 0.12 - 0.43) * 1.32 + 0.5);
+      }
+    }
+  );
+  traceGenerationPerformance(
+    'foundation.climate.wetness-smoothing',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: wetness.length * Float32Array.BYTES_PER_ELEMENT },
+    () => smoothTopologyLayer(wetness, topology, 1, 0.22)
+  );
 }
 
 function generateTopologyClimateMoistureCandidate(
@@ -1807,35 +1877,55 @@ function generateTopologyClimateMoistureCandidate(
   values: SelectedValues,
   seaLevel: number
 ): void {
-  const oceanInfluence = computeTopologyWaterInfluence(water, topology, 24);
-  const landInfluence = computeTopologyLandInfluence(water, topology, 8);
-  for (let cell = 0; cell < topology.cellCount; cell += 1) {
-    if (water[cell] === 1) {
-      const evaporation = clamp(normalizeValue(temperature[cell], -4, 32) * 0.72 + Math.hypot(currentX[cell], currentY[cell]) * 0.2);
-      climatePrecipitation[cell] = evaporation;
-      climateMoisture[cell] = 1;
-      climateWetnessDelta[cell] = 0;
-      continue;
+  const oceanInfluence = traceGenerationPerformance(
+    'foundation.climate.moisture-candidate-water-distance',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 24, allocatedBufferBytes: water.length * Float32Array.BYTES_PER_ELEMENT },
+    () => computeTopologyWaterInfluence(water, topology, 24)
+  );
+  const landInfluence = traceGenerationPerformance(
+    'foundation.climate.moisture-candidate-land-distance',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 8, allocatedBufferBytes: water.length * Float32Array.BYTES_PER_ELEMENT },
+    () => computeTopologyLandInfluence(water, topology, 8)
+  );
+  traceGenerationPerformance(
+    'foundation.climate.moisture-candidate-traversal',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: 0 },
+    () => {
+      for (let cell = 0; cell < topology.cellCount; cell += 1) {
+        if (water[cell] === 1) {
+          const evaporation = clamp(normalizeValue(temperature[cell], -4, 32) * 0.72 + Math.hypot(currentX[cell], currentY[cell]) * 0.2);
+          climatePrecipitation[cell] = evaporation;
+          climateMoisture[cell] = 1;
+          climateWetnessDelta[cell] = 0;
+          continue;
+        }
+        const latitude = topology.latitudes[cell];
+        const absLat = Math.abs(latitude);
+        const itcz = Math.exp(-(latitude * latitude) / 0.08) * 0.24;
+        const stormTrack = Math.exp(-((absLat - 0.72) ** 2) / 0.045) * 0.18;
+        const subtropicalDry = Math.exp(-((absLat - 0.52) ** 2) / 0.035) * 0.16;
+        const fetch = topologyMoistureFetch(elevation, water, topology, cell, windX[cell], windY[cell], oceanInfluence[cell]);
+        const orographic = topologyOrographicEffect(elevation, topology, cell, windX[cell], windY[cell]);
+        const warmCurrentBoost = coastalWarmCurrentMoistureBoost(water, temperature, currentX, currentY, topology, cell, landInfluence[cell]);
+        const altitudeDrying = Math.max(0, elevation[cell] - seaLevel - 0.24) * 0.22;
+        const thermalMoisture = normalizeValue(temperature[cell], -8, 28) * 0.09;
+        const base = fetch * 0.56 + (1 - values.aridity) * 0.28 + itcz + stormTrack + warmCurrentBoost + thermalMoisture;
+        const precipitation = clamp(base + orographic.lift * 0.52 - orographic.shadow * 0.86 - subtropicalDry - altitudeDrying);
+        climatePrecipitation[cell] = precipitation;
+        climateMoisture[cell] = clamp(precipitation * 0.82 + oceanInfluence[cell] * 0.16 + Math.max(0, existingWetness[cell] - 0.52) * 0.08);
+        climateWetnessDelta[cell] = clamp(climateMoisture[cell] - existingWetness[cell], -1, 1);
+      }
     }
-    const latitude = topology.latitudes[cell];
-    const absLat = Math.abs(latitude);
-    const itcz = Math.exp(-(latitude * latitude) / 0.08) * 0.24;
-    const stormTrack = Math.exp(-((absLat - 0.72) ** 2) / 0.045) * 0.18;
-    const subtropicalDry = Math.exp(-((absLat - 0.52) ** 2) / 0.035) * 0.16;
-    const fetch = topologyMoistureFetch(elevation, water, topology, cell, windX[cell], windY[cell], oceanInfluence[cell]);
-    const orographic = topologyOrographicEffect(elevation, topology, cell, windX[cell], windY[cell]);
-    const warmCurrentBoost = coastalWarmCurrentMoistureBoost(water, temperature, currentX, currentY, topology, cell, landInfluence[cell]);
-    const altitudeDrying = Math.max(0, elevation[cell] - seaLevel - 0.24) * 0.22;
-    const thermalMoisture = normalizeValue(temperature[cell], -8, 28) * 0.09;
-    const base = fetch * 0.56 + (1 - values.aridity) * 0.28 + itcz + stormTrack + warmCurrentBoost + thermalMoisture;
-    const precipitation = clamp(base + orographic.lift * 0.52 - orographic.shadow * 0.86 - subtropicalDry - altitudeDrying);
-    climatePrecipitation[cell] = precipitation;
-    climateMoisture[cell] = clamp(precipitation * 0.82 + oceanInfluence[cell] * 0.16 + Math.max(0, existingWetness[cell] - 0.52) * 0.08);
-    climateWetnessDelta[cell] = clamp(climateMoisture[cell] - existingWetness[cell], -1, 1);
-  }
-  smoothTopologyLayer(climateMoisture, topology, 1, 0.18);
-  smoothTopologyLayer(climatePrecipitation, topology, 1, 0.14);
-  for (let cell = 0; cell < topology.cellCount; cell += 1) climateWetnessDelta[cell] = clamp(climateMoisture[cell] - existingWetness[cell], -1, 1);
+  );
+  traceGenerationPerformance(
+    'foundation.climate.moisture-candidate-smoothing',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 2, allocatedBufferBytes: topology.cellCount * Float32Array.BYTES_PER_ELEMENT * 2 },
+    () => {
+      smoothTopologyLayer(climateMoisture, topology, 1, 0.18);
+      smoothTopologyLayer(climatePrecipitation, topology, 1, 0.14);
+      for (let cell = 0; cell < topology.cellCount; cell += 1) climateWetnessDelta[cell] = clamp(climateMoisture[cell] - existingWetness[cell], -1, 1);
+    }
+  );
 }
 
 function coastalWarmCurrentMoistureBoost(
@@ -2321,68 +2411,110 @@ function generateTopologyHydrology(
 ): TopologyRiverPath[] {
   river.fill(0);
   lakes.fill(0);
-  const oceanInfluence = computeTopologyWaterInfluence(water, topology, 48);
-  const drainageElevation = computeTopologyDrainageSurface(elevation, water, topology);
+  const oceanInfluence = traceGenerationPerformance(
+    'foundation.hydrology.water-distance',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 48, allocatedBufferBytes: water.length * Float32Array.BYTES_PER_ELEMENT },
+    () => computeTopologyWaterInfluence(water, topology, 48)
+  );
+  const drainageElevation = traceGenerationPerformance(
+    'foundation.hydrology.drainage-surface',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: elevation.length * Float32Array.BYTES_PER_ELEMENT },
+    () => computeTopologyDrainageSurface(elevation, water, topology)
+  );
   const flow = new Float32Array(elevation.length);
   const receiver = new Int32Array(elevation.length);
-  const order = Array.from(elevation.keys()).sort((a, b) => drainageElevation[b] - drainageElevation[a]);
-  for (let cell = 0; cell < elevation.length; cell += 1) {
-    receiver[cell] = hydrologyReceiver(elevation, drainageElevation, water, topology, cell);
-    flow[cell] = water[cell] === 1 ? 0 : Math.max(0.02, wetness[cell] * Math.max(0.05, elevation[cell] - seaLevel + 0.08));
-    if (water[cell] === 0 && drainageElevation[cell] > elevation[cell] + 0.014) lakes[cell] = 1;
-  }
-  for (const cell of order) {
-    if (water[cell] === 1) continue;
-    const next = receiver[cell];
-    if (next === cell) {
-      markTopologyLakeBasin(lakes, elevation, topology, cell, drainageElevation[cell] + 0.004, 2);
-      continue;
+  const order = traceGenerationPerformance(
+    'foundation.hydrology.elevation-ordering',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 0, allocatedBufferBytes: elevation.length * 8 },
+    () => Array.from(elevation.keys()).sort((a, b) => drainageElevation[b] - drainageElevation[a])
+  );
+  traceGenerationPerformance(
+    'foundation.hydrology.receiver-flow-initialization',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: flow.byteLength + receiver.byteLength },
+    () => {
+      for (let cell = 0; cell < elevation.length; cell += 1) {
+        receiver[cell] = hydrologyReceiver(elevation, drainageElevation, water, topology, cell);
+        flow[cell] = water[cell] === 1 ? 0 : Math.max(0.02, wetness[cell] * Math.max(0.05, elevation[cell] - seaLevel + 0.08));
+        if (water[cell] === 0 && drainageElevation[cell] > elevation[cell] + 0.014) lakes[cell] = 1;
+      }
     }
-    flow[next] += flow[cell] * 0.92;
-  }
-  const channelThreshold = positiveFloatLayerPercentile(flow, clamp(0.91 - riverDensity * 0.032, 0.68, 0.91));
-  for (let cell = 0; cell < flow.length; cell += 1) {
-    if (water[cell] === 1 || flow[cell] <= channelThreshold) continue;
-    river[cell] += clamp((flow[cell] - channelThreshold) / Math.max(0.0001, channelThreshold * 2.4));
-  }
-  const threshold = positiveFloatLayerPercentile(flow, clamp(0.94 - riverDensity * 0.024, 0.78, 0.94));
-  const sourceCandidates = order
-    .filter((cell) => water[cell] === 0 && flow[cell] > threshold && elevation[cell] > seaLevel + 0.09)
-    .sort((a, b) => riverSourceScore(flow, elevation, oceanInfluence, seaLevel, b) - riverSourceScore(flow, elevation, oceanInfluence, seaLevel, a));
+  );
+  traceGenerationPerformance(
+    'foundation.hydrology.flow-accumulation',
+    { topologyCells: topology.cellCount, activeCells: order.length, fullTopologyPasses: 1, allocatedBufferBytes: 0 },
+    () => {
+      for (const cell of order) {
+        if (water[cell] === 1) continue;
+        const next = receiver[cell];
+        if (next === cell) {
+          markTopologyLakeBasin(lakes, elevation, topology, cell, drainageElevation[cell] + 0.004, 2);
+          continue;
+        }
+        flow[next] += flow[cell] * 0.92;
+      }
+    }
+  );
+  traceGenerationPerformance(
+    'foundation.hydrology.channel-marking',
+    { topologyCells: topology.cellCount, activeCells: topology.cellCount, fullTopologyPasses: 1, allocatedBufferBytes: 0 },
+    () => {
+      const channelThreshold = positiveFloatLayerPercentile(flow, clamp(0.91 - riverDensity * 0.032, 0.68, 0.91));
+      for (let cell = 0; cell < flow.length; cell += 1) {
+        if (water[cell] === 1 || flow[cell] <= channelThreshold) continue;
+        river[cell] += clamp((flow[cell] - channelThreshold) / Math.max(0.0001, channelThreshold * 2.4));
+      }
+    }
+  );
+  const sourceCandidates = traceGenerationPerformance(
+    'foundation.hydrology.source-ordering',
+    { topologyCells: topology.cellCount, activeCells: order.length, fullTopologyPasses: 0, allocatedBufferBytes: order.length * 8 },
+    () => {
+      const threshold = positiveFloatLayerPercentile(flow, clamp(0.94 - riverDensity * 0.024, 0.78, 0.94));
+      return order
+        .filter((cell) => water[cell] === 0 && flow[cell] > threshold && elevation[cell] > seaLevel + 0.09)
+        .sort((a, b) => riverSourceScore(flow, elevation, oceanInfluence, seaLevel, b) - riverSourceScore(flow, elevation, oceanInfluence, seaLevel, a));
+    }
+  );
   const paths: TopologyRiverPath[] = [];
   const maxPaths = Math.max(18, Math.min(180, Math.round(riverDensity * 36)));
   const minNamedPathLength = Math.max(4, Math.round(topology.resolution / 64));
-  for (const source of sourceCandidates) {
-    if (paths.length >= maxPaths) break;
-    if (river[source] > 0.4) continue;
-    const path: number[] = [];
-    const seen = new Set<number>();
-    let current = source;
-    let terminus: River['terminus'] = 'basin';
-    for (let step = 0; step < 800; step += 1) {
-      if (seen.has(current)) {
-        markTopologyLakeBasin(lakes, elevation, topology, current, drainageElevation[current] + 0.004, 2);
-        terminus = 'lake';
-        break;
+  traceGenerationPerformance(
+    'foundation.hydrology.river-path-tracing',
+    { topologyCells: topology.cellCount, activeCells: sourceCandidates.length, fullTopologyPasses: 0, allocatedBufferBytes: 0 },
+    () => {
+      for (const source of sourceCandidates) {
+        if (paths.length >= maxPaths) break;
+        if (river[source] > 0.4) continue;
+        const path: number[] = [];
+        const seen = new Set<number>();
+        let current = source;
+        let terminus: River['terminus'] = 'basin';
+        for (let step = 0; step < 800; step += 1) {
+          if (seen.has(current)) {
+            markTopologyLakeBasin(lakes, elevation, topology, current, drainageElevation[current] + 0.004, 2);
+            terminus = 'lake';
+            break;
+          }
+          seen.add(current);
+          path.push(current);
+          if (water[current] === 1) {
+            terminus = 'ocean';
+            break;
+          }
+          const next = receiver[current];
+          if (next === current) {
+            markTopologyLakeBasin(lakes, elevation, topology, current, drainageElevation[current] + 0.004, 3);
+            terminus = 'lake';
+            break;
+          }
+          current = next;
+        }
+        if (path.length < minNamedPathLength) continue;
+        for (let i = 0; i < path.length; i += 1) river[path[i]] += lerp(0.28, 1.3, i / path.length);
+        paths.push({ path, terminus });
       }
-      seen.add(current);
-      path.push(current);
-      if (water[current] === 1) {
-        terminus = 'ocean';
-        break;
-      }
-      const next = receiver[current];
-      if (next === current) {
-        markTopologyLakeBasin(lakes, elevation, topology, current, drainageElevation[current] + 0.004, 3);
-        terminus = 'lake';
-        break;
-      }
-      current = next;
     }
-    if (path.length < minNamedPathLength) continue;
-    for (let i = 0; i < path.length; i += 1) river[path[i]] += lerp(0.28, 1.3, i / path.length);
-    paths.push({ path, terminus });
-  }
+  );
   return paths;
 }
 

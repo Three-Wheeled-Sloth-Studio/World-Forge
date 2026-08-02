@@ -168,6 +168,12 @@ const performanceFoundationWorkflowNodes: readonly RegisteredNode[] = [
   projectionAssemblyNode
 ];
 
+const experimentalFoundationWorkflowNodes: readonly RegisteredNode[] = performanceFoundationWorkflowNodes.map((node) =>
+  node.id === climateGlaciationNodeId
+    ? { ...node, version: '2-mean-centered-latitude' }
+    : node
+);
+
 const experimentalCapabilityRules: Readonly<Record<string, GenerationNodeCapabilityRule>> = {
   [topologyConstructionNodeId]: { requiredAll: ['projected-surface'] },
   [primordialTerrainNodeId]: { requiredAll: ['solid-surface'] },
@@ -182,6 +188,7 @@ const experimentalCapabilityRules: Readonly<Record<string, GenerationNodeCapabil
 };
 
 function workflowNodes(workflowId: GenerationWorkflowId): readonly RegisteredNode[] {
+  if (workflowId === 'core.world-generation-experimental') return experimentalFoundationWorkflowNodes;
   return generationWorkflowDescriptor(workflowId).seedStrategy === 'semantic-node'
     ? performanceFoundationWorkflowNodes
     : liveWorkflowNodes;
@@ -193,7 +200,7 @@ function resolveWorkflowNodes(
 ): CapabilityGraphResolution<RegisteredNode> | null {
   if (workflowId !== 'core.world-generation-experimental') return null;
   return resolveCapabilityGraph(
-    performanceFoundationWorkflowNodes,
+    experimentalFoundationWorkflowNodes,
     bodyProfileId,
     experimentalCapabilityRules
   );

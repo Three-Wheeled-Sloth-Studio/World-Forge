@@ -159,6 +159,18 @@ export type ClimatePipelineOutput = {
     oceanSeasonalSwingC: number;
     axialTiltSeasonalityC: number;
     meanIceAlbedoCoolingC: number;
+    polarClimate?: {
+      latitudeProfileId: 'legacy-linear-v1' | 'mean-centered-power-v1';
+      equatorToPoleContrastC: number;
+      meanTemperatureC: number;
+      equatorialMeanTemperatureC: number;
+      northHighLatitudeMeanTemperatureC: number;
+      southHighLatitudeMeanTemperatureC: number;
+      northPermanentIceShare: number;
+      southPermanentIceShare: number;
+      landIceCells: number;
+      waterIceCells: number;
+    };
   };
   notes: string[];
 };

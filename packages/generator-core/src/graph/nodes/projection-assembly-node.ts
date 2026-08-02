@@ -172,8 +172,10 @@ export const projectionAssemblyNode: GenerationNode<ProjectionAssemblyInput, Pro
         height
       )
     );
-    const rivers = hydrology.topologyRivers.map((river, index) =>
-      input.operations.projectTopologyRiver(river, topologyOutput.topology, width, height, index)
+    const rivers = input.diagnostics.measure('projection.rivers', () =>
+      hydrology.topologyRivers.map((river, index) =>
+        input.operations.projectTopologyRiver(river, topologyOutput.topology, width, height, index)
+      )
     );
 
     return { layers, rivers };

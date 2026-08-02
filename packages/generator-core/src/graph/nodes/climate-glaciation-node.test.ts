@@ -10,6 +10,7 @@ import { terrainFinalizationNode, terrainFinalizationNodeId } from './terrain-fi
 import { topologyConstructionNode, topologyConstructionNodeId } from './topology-construction-node';
 import { topologyElevationNode, topologyElevationNodeId } from './topology-elevation-node';
 import { waterGeologyNode, waterGeologyNodeId } from './water-geology-node';
+import { legacyLatitudeTemperatureProfile } from '../../latitudeTemperatureProfile';
 
 const values = {
   systemAgeGy: 4.6,
@@ -83,6 +84,7 @@ function run(seed: string) {
         config,
         values,
         tideInfluence: 0.4,
+        latitudeTemperatureProfile: legacyLatitudeTemperatureProfile,
         diagnostics,
         operations: {
           generateTopologyClimate(temperature: Float32Array, wetness: Float32Array, windX: Float32Array, windY: Float32Array, currentX: Float32Array, currentY: Float32Array) {

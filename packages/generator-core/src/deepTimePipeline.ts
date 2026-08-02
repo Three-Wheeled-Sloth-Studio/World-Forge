@@ -29,7 +29,8 @@ import {
   type TopologyDirectionGeometry
 } from './presentClimateTraversal';
 import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
-import { generationWorkflowDeepTimeFeatures } from './workflows';
+import { generationWorkflowDeepTimeFeatures, type GenerationWorkflowId } from './workflows';
+import { latitudeTemperatureOffsetC, latitudeTemperatureProfileForWorkflow } from './latitudeTemperatureProfile';
 import { classifyPermanentIce } from './permanentIce';
 import { projectTopologyRiverPath } from './riverPathProjection';
 import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleField';
@@ -2243,15 +2244,19 @@ function refreshTopologyClimate(
   const moisture = new Float32Array(count);
   const orographicLift = captureDerivedFields ? new Float32Array(count) : undefined;
   const orographicShadow = captureDerivedFields ? new Float32Array(count) : undefined;
+  const workflowId = (project.config as GenerationConfig & { workflowId?: GenerationWorkflowId }).workflowId;
+  const latitudeTemperatureProfile = latitudeTemperatureProfileForWorkflow(workflowId);
 
   for (let cell = 0; cell < count; cell += 1) {
     const latitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
     const altitude = Math.max(0, layers.elevation[cell] - world.seaLevel);
     const ocean = layers.water[cell] === 1;
-    const latitudeCooling = Math.pow(latitude, 1.3) * 38;
+    const latitudeOffset = latitudeTemperatureProfile.id === 'legacy-linear-v1'
+      ? 10 - Math.pow(latitude, 1.3) * 38
+      : latitudeTemperatureOffsetC(latitude, latitudeTemperatureProfile);
     const altitudeCooling = altitude * 20;
     const oceanModeration = ocean ? 2.5 * (1 - latitude * 0.4) : 0;
-    layers.temperature[cell] = world.averageTemperatureC + 10 - latitudeCooling - altitudeCooling + oceanModeration;
+    layers.temperature[cell] = world.averageTemperatureC + latitudeOffset - altitudeCooling + oceanModeration;
 
     let fetch: number;
     let orographic: { lift: number; shadow: number };

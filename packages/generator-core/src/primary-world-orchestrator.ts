@@ -7,6 +7,7 @@ import {
   clamp
 } from '@world-forge/shared';
 import { runGenerationFoundation } from './graph/run-generation-foundation';
+import { latitudeTemperatureProfileForWorkflow } from './latitudeTemperatureProfile';
 import { SeededRandom } from './random';
 import type { GenerateProjectOptions } from './index';
 import type { GenerationWorkflowId } from './workflows';
@@ -90,6 +91,7 @@ export function orchestratePrimaryWorld(
       config,
       values,
       tideInfluence,
+      latitudeTemperatureProfile: latitudeTemperatureProfileForWorkflow(workflowId),
       diagnostics,
       operations: {
         generateTopologyClimate: operations.generateTopologyClimate,
