@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "benchmark:generation": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark-generation.ts",
     "benchmark:workflows": "tsx --tsconfig tsconfig.scripts.json scripts/compare-generation-workflows.ts",
+    "profile:generation": "tsx --tsconfig tsconfig.scripts.json scripts/profile-current-generation.ts",
     "evaluate:regions": "tsx --tsconfig tsconfig.scripts.json scripts/evaluate-geographic-regions.ts",
     "investigate:map-lines-polar-ice": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-map-lines-polar-ice.ts",
     "investigate:striping": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-vertical-striping.ts",
