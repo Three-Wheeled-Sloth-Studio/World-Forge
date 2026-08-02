@@ -6,6 +6,8 @@ Related:
 
 - Issue #14
 - `refs/planning/production-performance-instrumentation-plan.md`
+- `refs/planning/durable-production-performance-audit.md`
+- `scripts/profile-production-page-runner.ts`
 - `scripts/profile-production-page.ts`
 - `refs/testing/production-page-performance-plan.example.json`
 
@@ -26,6 +28,16 @@ The harness:
 9. writes the complete timing JSON, page-generated Markdown report, CSV run table, and aggregate summary.
 
 This is a browser-driven parity and evidence harness. It exercises the production page bundle, React state path, generation worker, structured-clone handoff, project acceptance, render commit, and first interactive paint. It does not substitute a lower-level Node generation call.
+
+The public npm command first runs `scripts/profile-production-page-runner.ts`. That runner invokes npm through the active Node/npm CLI rather than spawning `npm.cmd` directly, so build and preview orchestration work on Windows paths as well as Linux/macOS. The inner browser harness remains `scripts/profile-production-page.ts`.
+
+## Evidence durability
+
+The browser page's bounded `localStorage` history is a telemetry buffer. It is not a durable audit log and is not centrally accessible.
+
+The command-line harness writes durable local evidence under `.local/performance/production-page/`. These files survive the browser session and are the current authoritative evidence for a commanded baseline run, but they are still local to the machine unless uploaded or committed.
+
+A centralized PostgreSQL audit pipeline is not yet implemented. Its required shape is specified in `refs/planning/durable-production-performance-audit.md`. Until that work lands, reports must not imply that page timing records were written to a shared audit table.
 
 ## Installation
 
