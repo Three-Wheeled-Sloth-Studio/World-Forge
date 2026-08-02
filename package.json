@@ -10,6 +10,8 @@
     "benchmark:generation": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark-generation.ts",
     "benchmark:workflows": "tsx --tsconfig tsconfig.scripts.json scripts/compare-generation-workflows.ts",
     "profile:generation": "tsx --tsconfig tsconfig.scripts.json scripts/profile-current-generation.ts",
+    "profile:production-page": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page.ts",
+    "test:production-page-harness": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page.ts --self-test",
     "evaluate:regions": "tsx --tsconfig tsconfig.scripts.json scripts/evaluate-geographic-regions.ts",
     "investigate:map-lines-polar-ice": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-map-lines-polar-ice.ts",
     "investigate:striping": "tsx --tsconfig tsconfig.scripts.json scripts/investigate-vertical-striping.ts",
@@ -18,7 +20,7 @@
     "workflow:legacy": "tsx --tsconfig tsconfig.scripts.json scripts/run-generation-workflow.ts",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "validate": "npm run typecheck && npm test",
+    "validate": "npm run typecheck && npm test && npm run test:production-page-harness",
     "verify": "npm run validate && npm run build"
   },
   "dependencies": {
