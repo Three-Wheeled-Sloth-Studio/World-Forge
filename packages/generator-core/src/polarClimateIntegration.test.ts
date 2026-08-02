@@ -38,8 +38,8 @@ function polarSummary(project: ReturnType<typeof generate>) {
   return summary!;
 }
 
-describe('Experimental polar climate integration', () => {
-  it('isolates the polar climate candidate without changing system generation', () => {
+describe('promoted polar climate integration', () => {
+  it('keeps Detailed and Experimental aligned after promotion', () => {
     const detailed = generate('1001001', 'core.performance-foundation');
     const experimental = generate('1001001', 'core.world-generation-experimental');
     expect(experimental.selectedValues).toEqual(detailed.selectedValues);
@@ -48,16 +48,18 @@ describe('Experimental polar climate integration', () => {
 
     const detailedPolar = polarSummary(detailed);
     const experimentalPolar = polarSummary(experimental);
-    expect(detailedPolar.latitudeProfileId).toBe('legacy-linear-v1');
-    expect(experimentalPolar.latitudeProfileId).toBe('mean-centered-power-v1');
-    expect(experimentalPolar.northHighLatitudeMeanTemperatureC).toBeLessThan(detailedPolar.northHighLatitudeMeanTemperatureC - 2);
-    expect(experimentalPolar.southHighLatitudeMeanTemperatureC).toBeLessThan(detailedPolar.southHighLatitudeMeanTemperatureC - 2);
-    expect(experimental.metrics.icePercentage).toBeGreaterThanOrEqual(detailed.metrics.icePercentage);
+    expect(detailedPolar.latitudeProfileId).toBe('mean-centered-power-v1');
+    expect(experimentalPolar).toEqual(detailedPolar);
+    expect(experimental.metrics).toEqual(detailed.metrics);
+    expect(Array.from(experimental.primaryWorld.topologyLayers.temperature))
+      .toEqual(Array.from(detailed.primaryWorld.topologyLayers.temperature));
+    expect(Array.from(experimental.primaryWorld.topologyLayers.ice))
+      .toEqual(Array.from(detailed.primaryWorld.topologyLayers.ice));
   });
 
   it('allows warm worlds to remain ice-poor and cold worlds to expand permanent ice', () => {
-    const warm = generate('3141592', 'core.world-generation-experimental', 34);
-    const cold = generate('3141592', 'core.world-generation-experimental', 2);
+    const warm = generate('3141592', 'core.performance-foundation', 34);
+    const cold = generate('3141592', 'core.performance-foundation', 2);
     expect(cold.metrics.icePercentage).toBeGreaterThan(warm.metrics.icePercentage);
     const warmPolar = polarSummary(warm);
     const coldPolar = polarSummary(cold);
@@ -65,9 +67,9 @@ describe('Experimental polar climate integration', () => {
       .toBeGreaterThan(warmPolar.northPermanentIceShare + warmPolar.southPermanentIceShare);
   });
 
-  it('remains deterministic under the Experimental workflow', () => {
-    const first = generate('8675309', 'core.world-generation-experimental');
-    const second = generate('8675309', 'core.world-generation-experimental');
+  it('remains deterministic under the Detailed workflow', () => {
+    const first = generate('8675309', 'core.performance-foundation');
+    const second = generate('8675309', 'core.performance-foundation');
     expect(first.primaryWorld.climate?.diagnostics.polarClimate)
       .toEqual(second.primaryWorld.climate?.diagnostics.polarClimate);
     expect(Array.from(first.primaryWorld.topologyLayers.temperature))
