@@ -149,7 +149,7 @@ function runSelfTest(): void {
   requireCondition(windowsViaNpmCli.command.endsWith('node.exe'), 'Windows should execute the npm CLI through Node.');
   requireCondition(windowsViaNpmCli.args[0]?.endsWith('npm-cli.js'), 'Windows npm CLI path should be preserved as one argument.');
 
-  const windowsFallback = npmCommand(['run', 'build'], 'win32', 'node.exe', undefined, 'C:\\Windows\\System32\\cmd.exe');
+  const windowsFallback = npmCommand(['run', 'build'], 'win32', 'node.exe', '', 'C:\\Windows\\System32\\cmd.exe');
   requireCondition(windowsFallback.command.endsWith('cmd.exe'), 'Windows fallback should use ComSpec.');
   requireCondition(windowsFallback.args[3] === 'npm.cmd run build', 'Windows fallback command should remain executable by cmd.exe.');
 
