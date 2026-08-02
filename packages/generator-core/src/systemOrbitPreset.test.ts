@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from './index';
 import { applyDeepTimeFoundation } from './deepTimePipeline';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from './systemOrbitPreset';
+import type { NumericDistribution } from './numericDistribution';
+import { distributionTargetAndSpread, worldParameterKeys, type WorldParameterKey } from './worldParameterPresets';
 import { buildCubedSphereTopology, cubedSphereCellForLonLat, type GenerationConfig } from '@world-forge/shared';
 
 type ExtendedGenerationConfig = GenerationConfig & {
@@ -9,6 +11,7 @@ type ExtendedGenerationConfig = GenerationConfig & {
   worldPresetId?: string;
   seeds?: { star?: string; world?: string };
   randomWorldArchetype?: string;
+  parameterDistributions?: Partial<Record<WorldParameterKey, NumericDistribution>>;
 };
 
 function generate(config: ExtendedGenerationConfig) {
@@ -23,6 +26,53 @@ function mean(values: Float32Array): number {
 }
 
 describe('preset-driven system and orbit reconciliation', () => {
+  it('samples every world parameter from the preset distribution contract', () => {
+    const config = createDefaultConfig('distribution-seed', { width: 64, height: 32 }) as ExtendedGenerationConfig;
+    config.worldPresetId = 'Earthlike';
+    config.seeds = { star: 'distribution-star', world: 'distribution-seed' };
+    const prepared = prepareSystemOrbitConfig(config) as ExtendedGenerationConfig;
+    expect(Object.keys(prepared.parameterDistributions ?? {}).sort()).toEqual([...worldParameterKeys].sort());
+    for (const key of worldParameterKeys) {
+      const value = prepared.selectedValues?.[key];
+      const range = prepared.parameterRanges[key];
+      expect(value).toBeGreaterThanOrEqual(range.min);
+      expect(value).toBeLessThanOrEqual(range.max);
+    }
+  });
+
+  it('preserves explicit selected-value overrides above sampled distributions', () => {
+    const config = createDefaultConfig('override-seed', { width: 64, height: 32 }) as ExtendedGenerationConfig;
+    config.worldPresetId = 'Earthlike';
+    config.selectedValues = {
+      oceanPercentage: 61,
+      riverDensity: 2.7,
+      oceanTolerancePercentagePoints: 4
+    };
+    const prepared = prepareSystemOrbitConfig(config);
+    expect(prepared.selectedValues?.oceanPercentage).toBe(61);
+    expect(prepared.selectedValues?.riverDensity).toBe(2.7);
+    expect(prepared.selectedValues?.oceanTolerancePercentagePoints).toBe(4);
+  });
+
+  it('keeps Habitable centered on Earthlike while using wider parameter bands', () => {
+    const earthConfig = createDefaultConfig('earth-distribution') as ExtendedGenerationConfig;
+    earthConfig.worldPresetId = 'Earthlike';
+    const habitableConfig = createDefaultConfig('habitable-distribution') as ExtendedGenerationConfig;
+    habitableConfig.worldPresetId = 'Habitable World';
+    const earth = prepareSystemOrbitConfig(earthConfig) as ExtendedGenerationConfig;
+    const habitable = prepareSystemOrbitConfig(habitableConfig) as ExtendedGenerationConfig;
+    for (const key of worldParameterKeys) {
+      const earthDistribution = earth.parameterDistributions?.[key];
+      const habitableDistribution = habitable.parameterDistributions?.[key];
+      expect(earthDistribution).toBeDefined();
+      expect(habitableDistribution).toBeDefined();
+      const earthEditable = distributionTargetAndSpread(earthDistribution!);
+      const habitableEditable = distributionTargetAndSpread(habitableDistribution!);
+      expect(habitableEditable.target).toBe(earthEditable.target);
+      expect(habitableEditable.spread).toBeGreaterThanOrEqual(earthEditable.spread);
+    }
+  });
+
   it('keeps the default Sol-like Earthlike year near an Earth baseline', () => {
     const config = createDefaultConfig('1001001', { width: 64, height: 32 }) as ExtendedGenerationConfig;
     config.topologyResolution = 16;
@@ -81,6 +131,7 @@ describe('preset-driven system and orbit reconciliation', () => {
     config.seeds = { star: '1234567', world: '7654321' };
     const first = generate(config);
     const second = generate(config);
+    expect(first.selectedValues).toEqual(second.selectedValues);
     expect(first.solarSystem.stellarModel).toEqual(second.solarSystem.stellarModel);
     expect(first.primaryWorld.planetaryDynamics).toEqual(second.primaryWorld.planetaryDynamics);
     expect(Array.from(first.primaryWorld.layers.temperature)).toEqual(Array.from(second.primaryWorld.layers.temperature));
