@@ -2,33 +2,27 @@
 
 Updated: 2026-08-02
 
-Status: active measurement plan
+Status: measurement complete; gyre-packing candidate selected
 
 Related:
 
 - Issue #14: Generation performance foundation PI
 - Issue #111: Restore coherent Earthlike polar temperature gradients and permanent ice
 - PR #112: Experimental polar climate and fine foundation profiling
+- PR #113: Polar promotion and current bottleneck measurement
 - `refs/planning/pi-generation-performance-foundation.md`
 - `refs/planning/polar-climate-and-foundation-profiling.md`
+- `refs/testing/current-generation-bottleneck-ranking.md`
 
 ## Decision context
 
-Manual visual QA accepted the `mean-centered-power-v1` polar climate profile. That profile is promoted from Experimental into World Generation (Detailed) before performance work continues. Experimental is then realigned with Detailed and reserved for the next isolated optimization candidate.
+Manual visual QA accepted `mean-centered-power-v1`. This increment promotes that profile into World Generation (Detailed), realigns Experimental with Detailed, and records axial-tilt/eccentricity modulation as a separate future climate-calibration item.
 
-The visual approval also records one deferred scientific refinement: the equator-to-pole gradient should eventually respond to axial tilt and orbital eccentricity. That future calibration must preserve the global-mean contract and receive its own workflow version, deterministic tests, and visual QA. It is not part of this performance increment.
+Performance work then proceeds measurement-first. No optimization is included in the same increment that defines and validates the current bottleneck ranking.
 
-## Goal
+## Authoritative measurement workflow
 
-Use the fine-grained Initial world foundation traces introduced in version 0.3.54 to identify the current dominant CPU costs after all previously promoted optimizations.
-
-This increment is measurement and candidate selection first. It must not smuggle an optimization into the same change that defines how the bottleneck is measured.
-
-## Authoritative workflow
-
-Profile `core.performance-foundation`, the current Detailed production workflow, after polar-climate promotion.
-
-The workflow contract for this measurement includes:
+The profile uses `core.performance-foundation@1.2.0`, including:
 
 - semantic-node seeds;
 - bounded three-era surface aging;
@@ -38,95 +32,87 @@ The workflow contract for this measurement includes:
 - high-resolution terrain continuity;
 - `mean-centered-power-v1` polar climate.
 
-Experimental must match this contract until a measured candidate is selected.
+Experimental remains behavior-aligned with this workflow until the selected optimization candidate begins.
 
-## Benchmark matrix
+## Benchmark matrix completed
 
-Primary matrix:
+Standard matrix:
 
 - resolution: 512 x 256;
 - seeds: `1001001`, `3141592`, `8675309`;
-- scenarios:
-  - Earthlike standard activity;
-  - Archipelago standard activity;
-  - high-age geological and glacial stress;
-- at least one run per pair for initial attribution;
-- repeat the selected hot-path comparison with multiple runs before promotion.
+- scenarios: Earthlike standard, Archipelago standard, and geological/glacial stress;
+- nine runs.
 
-Scaling probe:
+Production scaling probe:
 
 - resolution: 1024 x 512;
-- Earthlike standard activity;
-- at least two fixed seeds where runner capacity permits.
+- Earthlike standard;
+- seeds: `1001001`, `3141592`;
+- two runs.
 
-The scaling probe is evidence about cost growth, not a substitute for the broader scenario matrix.
+Durable raw evidence:
 
-## Measurement contract
+- `refs/testing/current-generation-profile-512x256.json`
+- `refs/testing/current-generation-profile-512x256.md`
+- `refs/testing/current-generation-profile-1024x512.json`
+- `refs/testing/current-generation-profile-1024x512.md`
 
-Use `npm run profile:generation`.
+The reusable command is:
 
-The report must retain:
+```text
+npm run profile:generation
+```
 
-- exact source commit;
-- workflow ID and version;
-- scenario, seed, resolution, and run index;
-- total and measured wall time;
-- broad deep-time substage timings;
-- non-parent performance trace records;
-- average, median, and p90 phase durations;
-- average share of total generation time;
-- topology-cell cost where available;
-- active-cell share, full-topology-pass count, and allocation size where available;
-- output metrics needed to catch obviously invalid runs.
+## Result
 
-The report ranks phases but does not automatically declare an optimization target.
+The dominant operation is final basin-aware circulation, specifically `packGyres`.
 
-## Candidate selection rules
+At 512 x 256:
 
-A phase is a valid next target only when it is:
+- basin circulation: 385.3 ms average, 11.58 percent of total;
+- gyre packing: 291.2 ms, 8.78 percent of total and 75.6 percent of its parent.
 
-1. consistently expensive across seeds and scenarios;
-2. materially expensive at production-like resolution;
-3. attributable to an inspectable operation or work shape;
-4. isolated behind a versioned workflow or implementation boundary;
-5. addressable without changing unrelated climate, hydrology, terrain, system, or presentation behavior;
-6. testable with deterministic and quality gates.
+At 1024 x 512:
 
-Prefer removal of redundant full-topology passes, repeated sorting, repeated distance fields, repeated geometry construction, or avoidable allocation before approximate algorithms.
+- basin circulation: 2,219.1 ms average, 16.45 percent of total;
+- gyre packing: 1,978.6 ms, 14.66 percent of total and 89.2 percent of its parent.
 
-## Expected candidate families
+Four times as many pixels produce approximately 6.8 times the gyre-packing cost. Basin labeling and coast-distance construction remain small and close to linear.
 
-The profiler should resolve the current ranking among, at minimum:
+The detailed ranking, work-shape analysis, candidate architecture, and promotion gates are authoritative in:
 
-- initial climate distance-field construction and traversal;
-- initial hydrology drainage fill, elevation ordering, accumulation, and river tracing;
-- terrain aging impacts, weathering, hydraulic erosion, and coast shaping;
-- scalar and vector topology-to-raster lookup/copy;
-- projected river-object assembly;
-- remaining deep-time climate, hydrology, and biome/projection work.
+`refs/testing/current-generation-bottleneck-ranking.md`
 
-These are hypotheses, not conclusions.
+## Selected next implementation slice
 
-## Output and decision artifact
+Create an Experimental-only, output-equivalent `basin-circulation.pack-gyres-v2` candidate.
 
-Commit a durable report under `refs/testing/` containing:
+The intended rewrite:
 
-- the measured matrix;
-- the top fine phases;
-- the broad substage ranking;
-- scaling observations;
-- the selected next candidate;
-- rejected or deferred candidates and why;
-- the proposed control/candidate workflow boundary;
-- validation and promotion gates.
+- builds the immutable candidate list once;
+- replaces per-candidate directional walks with exact row/column span sweeps per placement iteration;
+- maintains nearest placed-gyre clearance incrementally;
+- rolls back only territory cells touched by a rejected candidate;
+- preserves score math, scan order, tie-breaking, wrap behavior, ownership, diagnostics, and final current fields.
 
-Update issue #14 with the resulting ranking and next implementation slice.
+Detailed `1.2.0` remains the control. Promotion requires exact output equality plus minimum performance gains documented in the ranking report.
+
+## Next queued candidate
+
+Initial foundation climate traversal is second:
+
+- wetness traversal;
+- moisture-candidate traversal;
+- atmospheric flow;
+- ocean currents.
+
+The likely candidate ports cached topology direction geometry and terrain-gradient reuse into the initial climate path. It remains separate from gyre packing so attribution and rollback stay clean.
 
 ## Guardrails
 
 - No optimization is promoted from a single seed.
-- Do not merge parent and child timings into one percentage total.
+- Parent and child timings are not added together as independent percentages.
 - Profiling must not alter authoritative generation output.
-- Detailed remains usable throughout measurement.
-- Keep geographic drilldown work outside this PI.
-- Do not bundle physical moisture fetch, parameter correlations, or the target-achievement ledger into the selected performance slice.
+- Detailed remains usable throughout candidate work.
+- Keep geographic drilldown outside this PI.
+- Do not bundle physical moisture fetch, lake-width carry, parameter correlations, target-achievement auditing, or climate tilt/eccentricity calibration into the gyre-packing slice.
