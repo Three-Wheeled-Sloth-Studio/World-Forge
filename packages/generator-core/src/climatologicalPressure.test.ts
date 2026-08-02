@@ -1,3 +1,4 @@
+import { biomeToCode } from '@world-forge/shared';
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from './index';
 import { applyBasinAwareCirculation } from './basinCirculation';
@@ -64,6 +65,18 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(layerHasSignal(project.primaryWorld.layers.windY)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.currentX)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.currentY)).toBe(true);
+  }, 20_000);
+
+  it('preserves terrain-defined mountain biomes during projected climate reconciliation', () => {
+    const project = generateProject(createDefaultConfig('pressure-mountain-preservation-001', { width: 256, height: 128 }));
+    const layers = project.primaryWorld.layers;
+    const mountainCell = layers.water.findIndex((water) => water === 0);
+    expect(mountainCell).toBeGreaterThanOrEqual(0);
+    layers.biomes[mountainCell] = biomeToCode('mountain');
+
+    applyBasinAwareCirculation(project);
+
+    expect(layers.biomes[mountainCell]).toBe(biomeToCode('mountain'));
   }, 20_000);
 
   it('keeps pressure and current outputs deterministic for the same project', () => {
