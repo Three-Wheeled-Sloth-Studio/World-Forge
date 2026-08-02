@@ -105,7 +105,7 @@ export const climateGlaciationNode: GenerationNode<ClimateGlaciationInput, Clima
     if (!terrain) throw new Error(`Missing dependency output: ${terrainFinalizationNodeId}`);
     if (!waterGeology) throw new Error(`Missing dependency output: ${waterGeologyNodeId}`);
 
-    const latitudeTemperatureProfile = latitudeTemperatureProfile ?? legacyLatitudeTemperatureProfile;
+    const latitudeTemperatureProfile = input.latitudeTemperatureProfile ?? legacyLatitudeTemperatureProfile;
     const cellCount = topologyOutput.topology.cellCount;
     const temperature = new Float32Array(cellCount);
     const wetness = new Float32Array(cellCount);
@@ -223,4 +223,3 @@ function validateClimateGlaciation(output: ClimateGlaciationOutput): NodeValidat
   if (!output.climate?.pipelineVersion) issues.push({ severity: 'error', message: 'Climate pipeline output is missing.' });
   return { valid: !issues.some((issue) => issue.severity === 'error'), issues };
 }
-
