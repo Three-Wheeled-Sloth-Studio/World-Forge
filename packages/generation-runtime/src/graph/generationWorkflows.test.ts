@@ -26,12 +26,20 @@ describe('generation graph workflows', () => {
     expect(experimental.status).toBe('experimental');
   });
 
-  it('aligns Detailed and Experimental on the promoted present-climate implementation', () => {
+  it('isolates only the new polar climate implementation from Detailed', () => {
     const detailed = generationGraphWorkflow('core.performance-foundation');
     const experimental = generationGraphWorkflow('core.world-generation-experimental');
-    expect(experimental.nodes.map((node) => [node.id, node.implementationId, node.version])).toEqual(
-      detailed.nodes.map((node) => [node.id, node.implementationId, node.version])
-    );
+    const detailedById = new Map(detailed.nodes.map((node) => [node.id, node]));
+    for (const node of experimental.nodes) {
+      const baseline = detailedById.get(node.id);
+      expect(baseline).toBeDefined();
+      if (node.id === 'climate.glaciation') {
+        expect(node.implementationId).toBe('core.climate.glaciation.mean-centered-latitude-v1');
+        expect(node.implementationId).not.toBe(baseline?.implementationId);
+      } else {
+        expect(node.implementationId).toBe(baseline?.implementationId);
+      }
+    }
     expect(detailed.nodes.find((node) => node.id === 'world.deep-time-aging')).toMatchObject({
       implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1',
       version: '4'

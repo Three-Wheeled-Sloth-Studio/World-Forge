@@ -50,9 +50,9 @@ export const generationWorkflowDescriptors: readonly GenerationWorkflowDescripto
   },
   {
     id: 'core.world-generation-experimental',
-    version: '0.4.0',
+    version: '0.5.0',
     label: 'World Generation (Experimental)',
-    description: 'Development workflow for capability-resolved graph composition and the next isolated generation changes after cached present-climate traversal was promoted to Detailed.',
+    description: 'Development workflow testing a mean-centered latitude-temperature profile and permanent polar ice while Detailed remains the production comparison baseline.',
     status: 'experimental',
     seedStrategy: 'semantic-node',
     selectableInGenerator: true

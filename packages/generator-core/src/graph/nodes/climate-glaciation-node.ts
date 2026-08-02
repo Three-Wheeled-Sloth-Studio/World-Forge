@@ -3,6 +3,7 @@ import { GenerationNode, NodeValidationResult } from '../types';
 import { TerrainFinalizationOutput, terrainFinalizationNodeId } from './terrain-finalization-node';
 import { TopologyConstructionOutput, topologyConstructionNodeId } from './topology-construction-node';
 import { WaterGeologyOutput, waterGeologyNodeId } from './water-geology-node';
+import { summarizePolarClimate, type LatitudeTemperatureProfile } from '../../latitudeTemperatureProfile';
 
 export const climateGlaciationNodeId = 'climate.glaciation';
 
@@ -22,7 +23,8 @@ export type ClimateGlaciationOperations = {
     water: Uint8Array,
     topology: CubedSphereTopology,
     values: SelectedValues,
-    tideInfluence: number
+    tideInfluence: number,
+    latitudeTemperatureProfile: LatitudeTemperatureProfile
   ): void;
   generateTopologyClimateMoistureCandidate(
     climateMoisture: Float32Array,
@@ -72,6 +74,7 @@ export type ClimateGlaciationInput = {
   config: GenerationConfig;
   values: SelectedValues;
   tideInfluence: number;
+  latitudeTemperatureProfile: LatitudeTemperatureProfile;
   diagnostics: ClimateGlaciationDiagnosticsRecorder;
   operations: ClimateGlaciationOperations;
 };
@@ -126,7 +129,8 @@ export const climateGlaciationNode: GenerationNode<ClimateGlaciationInput, Clima
         waterGeology.water,
         topologyOutput.topology,
         input.values,
-        input.tideInfluence
+        input.tideInfluence,
+        input.latitudeTemperatureProfile
       )
     );
     input.diagnostics.measure('topology.climate.moisture-candidate', () =>
@@ -170,6 +174,19 @@ export const climateGlaciationNode: GenerationNode<ClimateGlaciationInput, Clima
         terrain.seaLevel
       )
     );
+
+    const polarClimate = summarizePolarClimate(
+      temperature,
+      ice,
+      waterGeology.water,
+      topologyOutput.topology,
+      input.latitudeTemperatureProfile
+    );
+    climate.diagnostics.polarClimate = polarClimate;
+    climate.notes = [
+      ...climate.notes.filter((note) => !note.startsWith('Latitude-temperature profile')),
+      `Latitude-temperature profile ${polarClimate.latitudeProfileId}: ${polarClimate.equatorToPoleContrastC} C equator-to-pole contrast; high-latitude means ${polarClimate.northHighLatitudeMeanTemperatureC} C north and ${polarClimate.southHighLatitudeMeanTemperatureC} C south.`
+    ];
 
     return { temperature, wetness, climateMoisture, climatePrecipitation, climateWetnessDelta, ice, windX, windY, currentX, currentY, climate };
   },

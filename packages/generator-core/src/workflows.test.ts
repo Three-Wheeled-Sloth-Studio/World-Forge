@@ -50,14 +50,14 @@ describe('generation workflow contracts', () => {
     });
   });
 
-  it('keeps Experimental ready for the next isolated generation changes', () => {
+  it('isolates the polar climate candidate in Experimental', () => {
     expect(generationWorkflowDeepTimeFeatures('core.world-generation-experimental')).toEqual({
       reusePresentClimateDerivedFields: true,
       optimizeHydrologyTraversal: true,
       optimizePresentClimateTraversal: true
     });
     expect(generationWorkflowDescriptor('core.world-generation-experimental')).toMatchObject({
-      version: '0.4.0',
+      version: '0.5.0',
       label: 'World Generation (Experimental)',
       status: 'experimental',
       seedStrategy: 'semantic-node',

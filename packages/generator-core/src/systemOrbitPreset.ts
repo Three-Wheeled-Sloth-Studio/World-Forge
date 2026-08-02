@@ -13,6 +13,8 @@ import type { DeepTimeProject, PlanetaryDynamicsModel, StellarActivityClass, Ste
 import { sampleNumericDistribution, type NumericDistribution, type RandomSource } from './numericDistribution';
 import { classifyPermanentIce } from './permanentIce';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
+import { latitudeTemperatureProfileForWorkflow, summarizePolarClimate } from './latitudeTemperatureProfile';
+import type { GenerationWorkflowId } from './workflows';
 import {
   distributionHardBounds,
   integerWorldParameterKeys,
@@ -30,6 +32,7 @@ type ExtendedGenerationConfig = GenerationConfig & {
   seeds?: { star?: string; world?: string };
   randomWorldArchetype?: string;
   parameterDistributions?: Partial<Record<WorldParameterKey, NumericDistribution>>;
+  workflowId?: GenerationWorkflowId;
 };
 
 function hashSeed(seed: string): number {
@@ -265,8 +268,21 @@ function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarM
   project.metrics.icePercentage = round((iceCount / Math.max(1, world.layers.ice.length)) * 100, 2);
   project.metrics.biomeCounts = biomeCounts as typeof project.metrics.biomeCounts;
   if (world.climate) {
+    const latitudeProfile = latitudeTemperatureProfileForWorkflow(config.workflowId);
+    const polarClimate = summarizePolarClimate(
+      layers.temperature,
+      layers.ice,
+      layers.water,
+      topology,
+      latitudeProfile
+    );
+    world.climate.diagnostics.polarClimate = polarClimate;
     world.climate.notes = [
-      ...world.climate.notes.filter((note) => !note.startsWith('Stellar forcing integrated')),
+      ...world.climate.notes.filter((note) =>
+        !note.startsWith('Stellar forcing integrated')
+        && !note.startsWith('Latitude-temperature profile')
+      ),
+      `Latitude-temperature profile ${polarClimate.latitudeProfileId}: ${polarClimate.equatorToPoleContrastC} C equator-to-pole contrast; final high-latitude means ${polarClimate.northHighLatitudeMeanTemperatureC} C north and ${polarClimate.southHighLatitudeMeanTemperatureC} C south; permanent ice ${(polarClimate.northPermanentIceShare * 100).toFixed(1)}% north and ${(polarClimate.southPermanentIceShare * 100).toFixed(1)}% south.`,
       `Stellar forcing integrated from ${stellar.spectralClass}${stellar.luminosityClass}: relative flux ${round(flux, 3)}, temperature adjustment ${round(fluxTemperatureDelta, 2)} C.`
     ];
   }

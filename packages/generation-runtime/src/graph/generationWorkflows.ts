@@ -25,7 +25,7 @@ function copyGraph(nodes: readonly GenerationGraphNodeDefinition[]): GenerationG
 }
 
 function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNodeDefinition[] {
-  const nodes = copyGraph(coreGenerationGraph);
+  let nodes = copyGraph(coreGenerationGraph);
   if (workflowId === 'core.performance-foundation-control') {
     return nodes.map((node) => node.id === 'world.deep-time-aging'
       ? { ...node, implementationId: 'core.world.deep-time-aging.semantic-seed-control', version: '1-control' }
@@ -42,8 +42,13 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
       : node);
   }
   if (workflowId === 'core.performance-foundation' || workflowId === 'core.world-generation-experimental') {
-    return nodes.map((node) => node.id === 'world.deep-time-aging'
+    nodes = nodes.map((node) => node.id === 'world.deep-time-aging'
       ? { ...node, implementationId: 'core.world.deep-time-aging.present-climate-traversal-v1', version: '4' }
+      : node);
+  }
+  if (workflowId === 'core.world-generation-experimental') {
+    nodes = nodes.map((node) => node.id === 'climate.glaciation'
+      ? { ...node, implementationId: 'core.climate.glaciation.mean-centered-latitude-v1', version: '2' }
       : node);
   }
   return nodes;
