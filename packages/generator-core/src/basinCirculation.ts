@@ -9,6 +9,18 @@ import {
 } from './climatologicalPressure';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
 
+const BIOME_CODE = {
+  ocean: biomeToCode('ocean'),
+  iceCap: biomeToCode('ice_cap'),
+  tundra: biomeToCode('tundra'),
+  desert: biomeToCode('desert'),
+  grassland: biomeToCode('grassland'),
+  forest: biomeToCode('forest'),
+  rainforest: biomeToCode('rainforest'),
+  mountain: biomeToCode('mountain'),
+  wetland: biomeToCode('wetland')
+} as const;
+
 export type PackedGyreDiagnostic = {
   id: number;
   basinId: number;
@@ -134,14 +146,15 @@ function buildLargeScaleGyres(
 function classifyAdjustedBiome(project: WorldProject, index: number): number {
   const world = project.primaryWorld;
   const layers = world.layers;
-  if (layers.water[index]) return biomeToCode('ocean');
-  if (layers.ice[index]) return biomeToCode('ice_cap');
-  if (layers.lakes[index] || (layers.river[index] > 0.5 && layers.wetness[index] > 0.66)) return biomeToCode('wetland');
-  if (layers.temperature[index] <= 1.5) return biomeToCode('tundra');
-  if (layers.wetness[index] < 0.2) return biomeToCode('desert');
-  if (layers.temperature[index] > 20 && layers.wetness[index] > 0.72) return biomeToCode('rainforest');
-  if (layers.wetness[index] > 0.5) return biomeToCode('forest');
-  return biomeToCode('grassland');
+  if (layers.water[index]) return BIOME_CODE.ocean;
+  if (layers.ice[index]) return BIOME_CODE.iceCap;
+  if (layers.lakes[index] || (layers.river[index] > 0.5 && layers.wetness[index] > 0.66)) return BIOME_CODE.wetland;
+  if (layers.biomes[index] === BIOME_CODE.mountain) return BIOME_CODE.mountain;
+  if (layers.temperature[index] <= 1.5) return BIOME_CODE.tundra;
+  if (layers.wetness[index] < 0.2) return BIOME_CODE.desert;
+  if (layers.temperature[index] > 20 && layers.wetness[index] > 0.72) return BIOME_CODE.rainforest;
+  if (layers.wetness[index] > 0.5) return BIOME_CODE.forest;
+  return BIOME_CODE.grassland;
 }
 
 function applyPressureSystems(
