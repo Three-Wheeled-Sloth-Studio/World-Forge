@@ -1,0 +1,61 @@
+caseId,preset,resolution,stageId,label,medianMs,workerShare
+archipelago-1024x512,Archipelago,1024x512,world.biomes-features,Biomes and features,9067.199999988079,0.44039691779917306
+archipelago-1024x512,Archipelago,1024x512,world.deep-time-aging,Deep-time aging,3059.199999988079,0.1485863608311002
+archipelago-1024x512,Archipelago,1024x512,world.final-water,Final sea level and water,0.0,0.0
+archipelago-1024x512,Archipelago,1024x512,world.hydrology,Hydrology,0.0,0.0
+archipelago-1024x512,Archipelago,1024x512,world.initial-terrain,Initial world foundation,5802.599999964237,0.2818342106944913
+archipelago-1024x512,Archipelago,1024x512,world.outputs-validation,Outputs and validation,889.8999999761581,0.043222738788104315
+archipelago-1024x512,Archipelago,1024x512,world.present-climate,Present-day climate,0.0,0.0
+archipelago-1024x512,Archipelago,1024x512,world.primordial-crust,Primordial crust,480.60000002384186,0.023342901745308443
+archipelago-1024x512,Archipelago,1024x512,world.system-orbit,System and orbit,0.8999999761581421,4.371329798834217e-05
+archipelago-1024x512,Archipelago,1024x512,world.tectonics-cratons,Plate and craton structure,1288.0,0.06255858811166409
+archipelago-2048x1024,Archipelago,2048x1024,world.biomes-features,Biomes and features,50608.19999998808,0.474771307504885
+archipelago-2048x1024,Archipelago,2048x1024,world.deep-time-aging,Deep-time aging,13608.200000047684,0.12766276822357123
+archipelago-2048x1024,Archipelago,2048x1024,world.final-water,Final sea level and water,0.0,0.0
+archipelago-2048x1024,Archipelago,2048x1024,world.hydrology,Hydrology,0.0,0.0
+archipelago-2048x1024,Archipelago,2048x1024,world.initial-terrain,Initial world foundation,28429.399999976158,0.26670506774734604
+archipelago-2048x1024,Archipelago,2048x1024,world.outputs-validation,Outputs and validation,4082.900000035763,0.03830295824449656
+archipelago-2048x1024,Archipelago,2048x1024,world.present-climate,Present-day climate,0.0,0.0
+archipelago-2048x1024,Archipelago,2048x1024,world.primordial-crust,Primordial crust,3396.699999988079,0.03186550203715135
+archipelago-2048x1024,Archipelago,2048x1024,world.system-orbit,System and orbit,1.5999999642372131,1.5010098660471025e-05
+archipelago-2048x1024,Archipelago,2048x1024,world.tectonics-cratons,Plate and craton structure,7958.900000035763,0.07466492306224086
+archipelago-4096x2048,Archipelago,4096x2048,world.biomes-features,Biomes and features,263483.60000002384,0.5304557956374392
+archipelago-4096x2048,Archipelago,4096x2048,world.deep-time-aging,Deep-time aging,43640.30000001192,0.08785840962534582
+archipelago-4096x2048,Archipelago,4096x2048,world.final-water,Final sea level and water,0.0,0.0
+archipelago-4096x2048,Archipelago,4096x2048,world.hydrology,Hydrology,0.0,0.0
+archipelago-4096x2048,Archipelago,4096x2048,world.initial-terrain,116315.89999997616,0.23417185464205964
+archipelago-4096x2048,Archipelago,4096x2048,world.outputs-validation,15914.900000035763,0.03204051767172032
+archipelago-4096x2048,Archipelago,4096x2048,world.present-climate,Present-day climate,0.0,0.0
+archipelago-4096x2048,Archipelago,4096x2048,world.primordial-crust,Primordial crust,22961.100000023842,0.04622621130583592
+archipelago-4096x2048,Archipelago,4096x2048,world.system-orbit,System and orbit,1.0999999642372131,2.2145642318176645e-06
+archipelago-4096x2048,Archipelago,4096x2048,world.tectonics-cratons,Plate and craton structure,25697.80000001192,0.05173584596968037
+earthlike-1024x512,Earthlike,1024x512,world.biomes-features,Biomes and features,7130.600000023842,0.4442630740298627
+earthlike-1024x512,Earthlike,1024x512,world.deep-time-aging,Deep-time aging,2461.900000035763,0.15338558634145094
+earthlike-1024x512,Earthlike,1024x512,world.final-water,Final sea level and water,0.0,0.0
+earthlike-1024x512,Earthlike,1024x512,world.hydrology,Hydrology,0.0,0.0
+earthlike-1024x512,Earthlike,1024x512,world.initial-terrain,3891.099999964237,0.24243009667292104
+earthlike-1024x512,Earthlike,1024x512,world.outputs-validation,778.3999999761581,0.048497234007390234
+earthlike-1024x512,Earthlike,1024x512,world.present-climate,Present-day climate,0.0,0.0
+earthlike-1024x512,Earthlike,1024x512,world.primordial-crust,Primordial crust,343.19999998807907,0.021382644798648508
+earthlike-1024x512,Earthlike,1024x512,world.system-orbit,System and orbit,1.100000023841858,6.853411943220374e-05
+earthlike-1024x512,Earthlike,1024x512,world.tectonics-cratons,Plate and craton structure,1139.0,0.07096396394669757
+earthlike-2048x1024,Earthlike,2048x1024,world.biomes-features,Biomes and features,35321.89999997616,0.4362952965064859
+earthlike-2048x1024,Earthlike,2048x1024,world.deep-time-aging,Deep-time aging,11577.699999988079,0.14300748414896566
+earthlike-2048x1024,Earthlike,2048x1024,world.final-water,Final sea level and water,0.0,0.0
+earthlike-2048x1024,Earthlike,2048x1024,world.hydrology,Hydrology,0.0,0.0
+earthlike-2048x1024,Earthlike,2048x1024,world.initial-terrain,23875.299999952316,0.2949071565421885
+earthlike-2048x1024,Earthlike,2048x1024,world.outputs-validation,3468.199999988079,0.04283912664210064
+earthlike-2048x1024,Earthlike,2048x1024,world.present-climate,Present-day climate,0.0,0.0
+earthlike-2048x1024,Earthlike,2048x1024,world.primordial-crust,Primordial crust,2518.399999976158,0.03110721888438259
+earthlike-2048x1024,Earthlike,2048x1024,world.system-orbit,System and orbit,1.0999999642372131,1.3587174261699477e-05
+earthlike-2048x1024,Earthlike,2048x1024,world.tectonics-cratons,Plate and craton structure,6414.300000011921,0.07922928609130998
+earthlike-4096x2048,Earthlike,4096x2048,world.biomes-features,Biomes and features,190599.30000001192,0.453816177053372
+earthlike-4096x2048,Earthlike,4096x2048,world.deep-time-aging,Deep-time aging,54327.59999996424,0.1293538000426392
+earthlike-4096x2048,Earthlike,4096x2048,world.final-water,Final sea level and water,0.0,0.0
+earthlike-4096x2048,Earthlike,4096x2048,world.hydrology,Hydrology,0.0,0.0
+earthlike-4096x2048,Earthlike,4096x2048,world.initial-terrain,115051.90000003576,0.27393811740515217
+earthlike-4096x2048,Earthlike,4096x2048,world.outputs-validation,15805.0,0.03763164229001941
+earthlike-4096x2048,Earthlike,4096x2048,world.present-climate,Present-day climate,0.0,0.0
+earthlike-4096x2048,Earthlike,4096x2048,world.primordial-crust,Primordial crust,19963.599999964237,0.04753325238973019
+earthlike-4096x2048,Earthlike,4096x2048,world.system-orbit,System and orbit,1.199999988079071,2.8571952103397124e-06
+earthlike-4096x2048,Earthlike,4096x2048,world.tectonics-cratons,Plate and craton structure,25529.0,0.060784447707808005
