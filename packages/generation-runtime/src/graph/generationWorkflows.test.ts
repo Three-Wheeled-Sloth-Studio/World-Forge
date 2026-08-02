@@ -34,7 +34,7 @@ describe('generation graph workflows', () => {
       const baseline = detailedById.get(node.id);
       expect(baseline).toBeDefined();
       if (node.id === 'climate.glaciation') {
-        expect(node.implementationId).toBe('core.climate.glaciation.mean-centered-latitude-v1');
+        expect(node.implementationId).toBe('core.climate.glaciation.mean-centered-power-v1');
         expect(node.implementationId).not.toBe(baseline?.implementationId);
       } else {
         expect(node.implementationId).toBe(baseline?.implementationId);

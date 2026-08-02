@@ -1,7 +1,7 @@
 import { clamp, type CubedSphereTopology } from '@world-forge/shared';
 import type { GenerationWorkflowId } from './workflows';
 
-export type LatitudeTemperatureProfileId = 'legacy-linear-v1' | 'mean-centered-linear-v1';
+export type LatitudeTemperatureProfileId = 'legacy-linear-v1' | 'mean-centered-power-v1';
 
 export type LatitudeTemperatureProfile = {
   id: LatitudeTemperatureProfileId;
@@ -21,7 +21,7 @@ export type PolarClimateSummary = {
   waterIceCells: number;
 };
 
-export const sphericalMeanAbsoluteNormalizedLatitude = 1 - 2 / Math.PI;
+export const sphericalMeanPolarLatitudePower13 = 0.29171897123199025;
 
 export const legacyLatitudeTemperatureProfile: LatitudeTemperatureProfile = {
   id: 'legacy-linear-v1',
@@ -29,8 +29,8 @@ export const legacyLatitudeTemperatureProfile: LatitudeTemperatureProfile = {
 };
 
 export const experimentalLatitudeTemperatureProfile: LatitudeTemperatureProfile = {
-  id: 'mean-centered-linear-v1',
-  equatorToPoleContrastC: 40
+  id: 'mean-centered-power-v1',
+  equatorToPoleContrastC: 52
 };
 
 export function latitudeTemperatureProfileForWorkflow(
@@ -49,7 +49,7 @@ export function latitudeTemperatureOffsetC(
   if (profile.id === 'legacy-linear-v1') {
     return (1 - latitude) * profile.equatorToPoleContrastC - profile.equatorToPoleContrastC / 2;
   }
-  return profile.equatorToPoleContrastC * (sphericalMeanAbsoluteNormalizedLatitude - latitude);
+  return profile.equatorToPoleContrastC * (sphericalMeanPolarLatitudePower13 - Math.pow(latitude, 1.3));
 }
 
 export function summarizePolarClimate(

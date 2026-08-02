@@ -48,7 +48,7 @@ function nodesForWorkflow(workflowId: GenerationWorkflowId): GenerationGraphNode
   }
   if (workflowId === 'core.world-generation-experimental') {
     nodes = nodes.map((node) => node.id === 'climate.glaciation'
-      ? { ...node, implementationId: 'core.climate.glaciation.mean-centered-latitude-v1', version: '2' }
+      ? { ...node, implementationId: 'core.climate.glaciation.mean-centered-power-v1', version: '2' }
       : node);
   }
   return nodes;

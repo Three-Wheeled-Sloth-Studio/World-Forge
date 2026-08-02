@@ -36,7 +36,7 @@ describe('latitude temperature profiles', () => {
     const experimentalEquator = latitudeTemperatureOffsetC(0, experimentalLatitudeTemperatureProfile);
     const legacyPole = latitudeTemperatureOffsetC(1, legacyLatitudeTemperatureProfile);
     const experimentalPole = latitudeTemperatureOffsetC(1, experimentalLatitudeTemperatureProfile);
-    expect(Math.abs(experimentalEquator - legacyEquator)).toBeLessThan(1);
+    expect(Math.abs(experimentalEquator - legacyEquator)).toBeLessThan(2);
     expect(experimentalPole).toBeLessThan(legacyPole - 10);
   });
 

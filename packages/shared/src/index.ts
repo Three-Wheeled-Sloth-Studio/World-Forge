@@ -162,7 +162,7 @@ export type ClimatePipelineOutput = {
     axialTiltSeasonalityC: number;
     meanIceAlbedoCoolingC: number;
     polarClimate?: {
-      latitudeProfileId: 'legacy-linear-v1' | 'mean-centered-linear-v1';
+      latitudeProfileId: 'legacy-linear-v1' | 'mean-centered-power-v1';
       equatorToPoleContrastC: number;
       meanTemperatureC: number;
       equatorialMeanTemperatureC: number;

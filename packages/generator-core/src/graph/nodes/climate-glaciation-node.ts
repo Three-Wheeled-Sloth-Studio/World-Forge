@@ -3,7 +3,7 @@ import { GenerationNode, NodeValidationResult } from '../types';
 import { TerrainFinalizationOutput, terrainFinalizationNodeId } from './terrain-finalization-node';
 import { TopologyConstructionOutput, topologyConstructionNodeId } from './topology-construction-node';
 import { WaterGeologyOutput, waterGeologyNodeId } from './water-geology-node';
-import { summarizePolarClimate, type LatitudeTemperatureProfile } from '../../latitudeTemperatureProfile';
+import { legacyLatitudeTemperatureProfile, summarizePolarClimate, type LatitudeTemperatureProfile } from '../../latitudeTemperatureProfile';
 
 export const climateGlaciationNodeId = 'climate.glaciation';
 
@@ -74,7 +74,7 @@ export type ClimateGlaciationInput = {
   config: GenerationConfig;
   values: SelectedValues;
   tideInfluence: number;
-  latitudeTemperatureProfile: LatitudeTemperatureProfile;
+  latitudeTemperatureProfile?: LatitudeTemperatureProfile;
   diagnostics: ClimateGlaciationDiagnosticsRecorder;
   operations: ClimateGlaciationOperations;
 };
@@ -105,6 +105,7 @@ export const climateGlaciationNode: GenerationNode<ClimateGlaciationInput, Clima
     if (!terrain) throw new Error(`Missing dependency output: ${terrainFinalizationNodeId}`);
     if (!waterGeology) throw new Error(`Missing dependency output: ${waterGeologyNodeId}`);
 
+    const latitudeTemperatureProfile = latitudeTemperatureProfile ?? legacyLatitudeTemperatureProfile;
     const cellCount = topologyOutput.topology.cellCount;
     const temperature = new Float32Array(cellCount);
     const wetness = new Float32Array(cellCount);
@@ -130,7 +131,7 @@ export const climateGlaciationNode: GenerationNode<ClimateGlaciationInput, Clima
         topologyOutput.topology,
         input.values,
         input.tideInfluence,
-        input.latitudeTemperatureProfile
+        latitudeTemperatureProfile
       )
     );
     input.diagnostics.measure('topology.climate.moisture-candidate', () =>
@@ -180,7 +181,7 @@ export const climateGlaciationNode: GenerationNode<ClimateGlaciationInput, Clima
       ice,
       waterGeology.water,
       topologyOutput.topology,
-      input.latitudeTemperatureProfile
+      latitudeTemperatureProfile
     );
     climate.diagnostics.polarClimate = polarClimate;
     climate.notes = [

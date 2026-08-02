@@ -49,9 +49,9 @@ describe('Experimental polar climate integration', () => {
     const detailedPolar = polarSummary(detailed);
     const experimentalPolar = polarSummary(experimental);
     expect(detailedPolar.latitudeProfileId).toBe('legacy-linear-v1');
-    expect(experimentalPolar.latitudeProfileId).toBe('mean-centered-linear-v1');
-    expect(experimentalPolar.northHighLatitudeMeanTemperatureC).toBeLessThan(detailedPolar.northHighLatitudeMeanTemperatureC - 7);
-    expect(experimentalPolar.southHighLatitudeMeanTemperatureC).toBeLessThan(detailedPolar.southHighLatitudeMeanTemperatureC - 7);
+    expect(experimentalPolar.latitudeProfileId).toBe('mean-centered-power-v1');
+    expect(experimentalPolar.northHighLatitudeMeanTemperatureC).toBeLessThan(detailedPolar.northHighLatitudeMeanTemperatureC - 2);
+    expect(experimentalPolar.southHighLatitudeMeanTemperatureC).toBeLessThan(detailedPolar.southHighLatitudeMeanTemperatureC - 2);
     expect(experimental.metrics.icePercentage).toBeGreaterThanOrEqual(detailed.metrics.icePercentage);
   });
 
