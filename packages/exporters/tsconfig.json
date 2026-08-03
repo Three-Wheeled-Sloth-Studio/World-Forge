@@ -14,7 +14,7 @@
     "baseUrl": "../..",
     "paths": {
       "@world-forge/shared": ["packages/shared/src/index.ts"],
-      "@world-forge/renderer": ["packages/renderer/src/index.ts"]
+      "@world-forge/renderer": ["packages/renderer/src/presentation.ts"]
     }
   },
   "references": [{ "path": "../shared" }, { "path": "../renderer" }],
