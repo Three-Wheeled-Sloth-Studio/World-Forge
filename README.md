@@ -30,6 +30,10 @@ npm run validate
 npm run build
 ```
 
+## External game integration
+
+See [Integrating World Forge with External Games](refs/reference/external-game-integration.md) for the recommended architecture for full-surface 4X maps, orbital fleet-combat scenarios, local headless generation, Godot and Unity consumers, versioned game packs, and an optional hosted generation service.
+
 ## Roadmap
 
 Near-term work focuses on improving physical plausibility, graph-based surface generation, biome and ocean classification, editing tools, diagnostics, and export reliability. The reusable generation engine and browser tool remain public; private product shell, account, roadmap, and deployment material stay in Parchment Worlds and Portfolio.
