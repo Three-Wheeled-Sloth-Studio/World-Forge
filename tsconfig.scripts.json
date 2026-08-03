@@ -11,7 +11,7 @@
       "@world-forge/generator-core/*": ["packages/generator-core/src/*"],
       "@world-forge/generation-runtime": ["packages/generation-runtime/src/index.ts"],
       "@world-forge/generation-runtime/*": ["packages/generation-runtime/src/*"],
-      "@world-forge/renderer": ["packages/renderer/src/index.ts"],
+      "@world-forge/renderer": ["packages/renderer/src/presentation.ts"],
       "@world-forge/renderer/*": ["packages/renderer/src/*"],
       "@world-forge/exporters": ["packages/exporters/src/index.ts"],
       "@world-forge/exporters/*": ["packages/exporters/src/*"]
