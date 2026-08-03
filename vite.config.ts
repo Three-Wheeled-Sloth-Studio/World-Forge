@@ -21,7 +21,7 @@ export default defineConfig({
       '@world-forge/shared': path.resolve(__dirname, 'packages/shared/src'),
       '@world-forge/generator-core': path.resolve(__dirname, 'packages/generator-core/src'),
       '@world-forge/generation-runtime': path.resolve(__dirname, 'packages/generation-runtime/src'),
-      '@world-forge/renderer': path.resolve(__dirname, 'packages/renderer/src'),
+      '@world-forge/renderer': path.resolve(__dirname, 'packages/renderer/src/presentation.ts'),
       '@world-forge/exporters': path.resolve(__dirname, 'packages/exporters/src')
     }
   },
