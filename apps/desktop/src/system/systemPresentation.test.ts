@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import { WORLD_BODY_CATALOG_SCHEMA } from '@world-forge/shared/worldBodies';
 import {
   buildSystemCatalog,
   systemDisplayOrbitRadius,
@@ -51,7 +52,9 @@ function artifact(): SystemOrbitalContextArtifact {
 
 function project(): WorldProject {
   return {
-    projectName: 'Test World',
+    projectId: 'project-system-names',
+    projectName: 'Test System',
+    primaryWorld: { id: 'world-1', name: 'Terra' },
     solarSystem: {
       star: {
         id: 'star-1', type: 'G2V', massClass: 'solar', luminosityClass: 'V',
@@ -74,24 +77,52 @@ function project(): WorldProject {
           isPrimaryWorld: false, moons: []
         }
       ]
-    }
+    },
+    bodyCatalog: {
+      schema: WORLD_BODY_CATALOG_SCHEMA,
+      primaryBodyId: 'world-1',
+      activeBodyId: 'planet-1',
+      bodies: [
+        {
+          bodyId: 'world-1',
+          name: 'Terra',
+          bodyType: 'rocky',
+          capabilities: { globe: true, map: true, explorer: true, irregularShape: false },
+          dataOrigin: 'imported',
+        },
+        {
+          bodyId: 'world-1:moon-a',
+          name: 'Selene',
+          bodyType: 'moon',
+          parentBodyId: 'world-1',
+          capabilities: { globe: false, map: false, explorer: false, irregularShape: false },
+          dataOrigin: 'imported',
+        },
+        {
+          bodyId: 'planet-1',
+          name: 'Jovia',
+          bodyType: 'gas-giant',
+          capabilities: { globe: false, map: false, explorer: false, irregularShape: false },
+          dataOrigin: 'imported',
+        },
+      ],
+    },
   } as unknown as WorldProject;
 }
 
 describe('System Explore presentation model', () => {
-  it('builds a deterministic star, primary, planet, and moon catalog', () => {
+  it('builds a deterministic star, primary, planet, and moon catalog with authoritative names', () => {
     const first = buildSystemCatalog(project(), artifact());
     const second = buildSystemCatalog(project(), artifact());
     expect(first).toEqual(second);
     expect(first.map((entry) => entry.id)).toEqual(['star-1', 'world-1', 'world-1:moon-a', 'planet-1']);
     expect(first.find((entry) => entry.id === 'star-1')?.generationStatus).toBe('generated');
-    expect(first.find((entry) => entry.id === 'world-1')?.generationStatus).toBe('generated');
-    expect(first.find((entry) => entry.id === 'planet-1')?.generationStatus).toBe('ready');
-    expect(first.find((entry) => entry.id === 'world-1:moon-a')?.generationStatus).toBe('ready');
+    expect(first.find((entry) => entry.id === 'world-1')).toMatchObject({ label: 'Terra', generationStatus: 'generated' });
+    expect(first.find((entry) => entry.id === 'planet-1')).toMatchObject({ label: 'Jovia', generationStatus: 'ready' });
+    expect(first.find((entry) => entry.id === 'world-1:moon-a')).toMatchObject({ label: 'Selene', generationStatus: 'ready' });
     expect(first.find((entry) => entry.id === 'world-1:moon-a')?.generationEligible).toBe(true);
     expect(first.find((entry) => entry.id === 'planet-1')?.generationEligible).toBe(true);
     expect(first.find((entry) => entry.id === 'planet-1')?.generationProfile).toBe('gas-giant-body');
-    expect(first.find((entry) => entry.id === 'world-1:moon-a')?.label).toBe('Selene');
   });
 
   it('produces deterministic system positions and attaches moons to their parent', () => {
