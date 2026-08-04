@@ -152,12 +152,12 @@ describe('world identity bridge', () => {
     const replayManifest = buildWorldReplayManifest(project());
     const replay = {
       type: PARCHMENT_REPLAY_WORLD_MESSAGE,
-      payload: { projectId: 'project_1', requestId: 'request-1', manifest },
+      payload: { projectId: 'project_1', requestId: 'request-1', manifest: replayManifest },
     };
     expect(parseParchmentReplayWorldMessage(replay, 'project_1')).toEqual({
       parentProjectId: 'project_1',
       requestId: 'request-1',
-      manifest,
+      manifest: replayManifest,
     });
     expect(parseParchmentReplayWorldMessage(replay, 'project_2')).toBeNull();
   });
