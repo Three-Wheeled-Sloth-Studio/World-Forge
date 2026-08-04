@@ -14,7 +14,7 @@
     "profile:production-page:inner": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page.ts",
     "profile:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts",
     "reference:prepare-earth": "python tools/reference-etl/prepare_etopo_earth.py",
-    "reference:prepare-jupiter": "tsx --tsconfig tsconfig.scripts.json scripts/prepare-jupiter-reference.ts",
+    "reference:prepare-jupiter": "python tools/reference-etl/prepare_jupiter_reference.py",
     "reference:build-earth": "tsx --tsconfig tsconfig.scripts.json scripts/build-earth-reference.ts",
     "test:production-page-harness": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page-runner.ts --self-test && npm run profile:production-page:inner -- --self-test",
     "test:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts --self-test",
