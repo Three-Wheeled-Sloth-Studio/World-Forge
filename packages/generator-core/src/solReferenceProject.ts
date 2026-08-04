@@ -93,6 +93,7 @@ function solSystemScaffold(): SolarSystem {
       'Reference-system scaffold. Physical and orbital facts are carried by bodyCatalog.',
       'Body detail tiers keep catalog, presentation, reference-surface, geographic, irregular-mesh, and population payloads distinct.',
       'Only bodies with compatible imported or derived detail expose Map and Explorer capabilities.',
+      'Atmospheric presentation profiles remain Globe-disabled until the dedicated body-detail renderer is wired.',
     ],
   };
 }
@@ -106,7 +107,7 @@ function solBodyCatalog(earth: PrimaryWorld): WorldBodyCatalogV1 {
       bodyId: definition.id,
       name: definition.name,
       bodyType: definition.bodyType,
-      capabilities: worldBodyDetailCapabilities(detail),
+      capabilities: solCapabilitiesForDetail(detail),
       dataOrigin: 'imported',
       physical: {
         meanRadiusKm: definition.radiusKm,
@@ -143,6 +144,12 @@ function planetDetail(definition: PlanetDefinition, hasGeographicSurface: boolea
     return giantPresentationDetail(definition.id);
   }
   return catalogDetail({ kind: 'sphere' }, 'imported');
+}
+
+function solCapabilitiesForDetail(detail: WorldBodyDetailV1): WorldBodyRecordV1['capabilities'] {
+  const capabilities = worldBodyDetailCapabilities(detail);
+  if (detail.kind === 'atmospheric-presentation') return { ...capabilities, globe: false };
+  return capabilities;
 }
 
 function giantPresentationDetail(bodyId: string): AtmosphericPresentationDetailV1 {
