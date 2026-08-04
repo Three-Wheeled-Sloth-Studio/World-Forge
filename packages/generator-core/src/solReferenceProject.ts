@@ -8,11 +8,11 @@ import {
   type SolarSystem,
   type SystemBody,
   type WorldMetrics,
-  type WorldProject,
 } from '@world-forge/shared';
 import {
   WORLD_BODY_CATALOG_SCHEMA,
   type MultiBodyWorldProject,
+  type WorldBodyCatalogV1,
   type WorldBodyRecordV1,
 } from '@world-forge/shared/worldBodies';
 
@@ -21,6 +21,7 @@ export const SOL_REFERENCE_SEED = 'sol-reference-v1';
 
 const EARTH_RADIUS_KM = 6371.0088;
 const EARTH_MASS_KG = 5.9722e24;
+const PLANET_ORBITAL_ORDERS = [1, 2, 3, 4, 6, 7, 8, 9] as const;
 
 export function createSolReferenceProject(
   earth: PrimaryWorld,
@@ -33,9 +34,6 @@ export function createSolReferenceProject(
     topologyResolution: earth.topology.resolution,
     selectedValues,
   };
-  const solarSystem = solSystemScaffold();
-  const bodyCatalog = solBodyCatalog(earth);
-
   return {
     projectId: SOL_REFERENCE_PROJECT_ID,
     projectName: 'Sol System',
@@ -47,9 +45,9 @@ export function createSolReferenceProject(
     seed: SOL_REFERENCE_SEED,
     config,
     selectedValues,
-    solarSystem,
+    solarSystem: solSystemScaffold(),
     primaryWorld: earth,
-    bodyCatalog,
+    bodyCatalog: solBodyCatalog(earth),
     metrics: metricsForSurface(earth),
     diagnostics: {
       totalMs: 0,
@@ -63,9 +61,7 @@ export function createSolReferenceProject(
 }
 
 function solSystemScaffold(): SolarSystem {
-  const planets = planetDefinitions.map((definition, index) => systemBody(definition, index + 1));
-  const mainBelt = beltBody('main-asteroid-belt', 5, 2.77, false);
-  const kuiperBelt = beltBody('kuiper-belt', 10, 43, false);
+  const planets = planetDefinitions.map((definition, index) => systemBody(definition, PLANET_ORBITAL_ORDERS[index]));
   return {
     star: {
       id: 'sol',
@@ -78,9 +74,9 @@ function solSystemScaffold(): SolarSystem {
     ageGy: 4.6,
     bodies: [
       ...planets.slice(0, 4),
-      mainBelt,
+      beltBody('main-asteroid-belt', 5, 2.77, false),
       ...planets.slice(4),
-      kuiperBelt,
+      beltBody('kuiper-belt', 10, 43, false),
     ],
     primaryWorldId: 'earth',
     visibleBodiesFromPrimary: ['mercury', 'venus', 'mars', 'jupiter', 'saturn'],
@@ -91,7 +87,7 @@ function solSystemScaffold(): SolarSystem {
   };
 }
 
-function solBodyCatalog(earth: PrimaryWorld) {
+function solBodyCatalog(earth: PrimaryWorld): WorldBodyCatalogV1 {
   const bodies: WorldBodyRecordV1[] = [];
   for (const definition of planetDefinitions) {
     const surface = definition.id === 'earth' ? earth : undefined;
@@ -116,11 +112,11 @@ function solBodyCatalog(earth: PrimaryWorld) {
         semiMajorAxisKm: definition.semiMajorAxisKm,
         periodDays: definition.periodDays,
         eccentricity: definition.eccentricity,
-        direction: definition.rotationPeriodHours < 0 ? 'retrograde' : 'prograde',
+        direction: 'prograde',
       },
       surface,
     });
-    for (const moon of definition.moons) bodies.push(moonRecord(definition.id, moon));
+    for (const moonDefinition of definition.moons) bodies.push(moonRecord(definition.id, moonDefinition));
   }
   bodies.push(
     beltRecord('main-asteroid-belt', 'Main Asteroid Belt', 414_000_000, 1680),
@@ -131,7 +127,7 @@ function solBodyCatalog(earth: PrimaryWorld) {
     primaryBodyId: 'earth',
     activeBodyId: 'earth',
     bodies,
-  } as const;
+  };
 }
 
 function metricsForSurface(world: PrimaryWorld): WorldMetrics {
