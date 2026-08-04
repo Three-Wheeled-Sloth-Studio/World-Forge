@@ -84,7 +84,8 @@ describe('reference System body presentation', () => {
     const sphere = presentation?.object.children[0] as THREE.Mesh;
     const material = sphere.material as THREE.MeshStandardMaterial;
     expect(material.map).toBeInstanceOf(THREE.DataTexture);
-    expect(material.map?.image.width).toBe(2);
-    expect(material.map?.image.height).toBe(1);
+    const image = material.map?.image as { width?: number; height?: number } | undefined;
+    expect(image?.width).toBe(2);
+    expect(image?.height).toBe(1);
   });
 });
