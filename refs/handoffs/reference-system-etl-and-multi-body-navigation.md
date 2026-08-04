@@ -1,12 +1,16 @@
 # Reference-system ETL and multi-body navigation handoff
 
 Updated: 2026-08-04
-Status: Earth, one-system, body-tier, and compact package foundations validated; source-backed Jupiter Tier 1 implementation on `dev` awaits exact-head verification, local source build, package measurement, and browser QA
+Status: One-system package path, Earth Tier 3, Jupiter Tier 1, authoritative System naming, and Parchment body-entry selection passed user browser QA on `dev`; remaining work is body-family coverage, atmospheric geometry correction, hierarchical selection UI, lazy loading, and measured resolution tiers
 
 Authoritative planning:
 
 - `refs/planning/reference-system-etl-and-multi-body-navigation.md`
 - `refs/planning/body-detail-tiers-and-payload-strategy.md`
+
+Related handoffs:
+
+- `refs/handoffs/system-view-body-catalog-alignment.md`
 
 Reference-data notes:
 
@@ -18,290 +22,134 @@ Tracking:
 - Parchment Worlds #22, Sol System reference project
 - World Forge #124, preserve active body across System, Globe, Explorer, and Map
 
-## Product direction
+## Product contract
 
-One World Forge project owns one coherent planetary system. Earth, Luna, Mars, giants, moons, belts, and minor bodies are not separate `.wforge` projects.
+One World Forge project owns one coherent planetary system.
 
-Real reference bodies use actual or best-available source data. Derived and procedural presentation may fill genuine gaps but must remain distinguishable and must not overwrite recognizable imported facts.
+Earth, Jupiter, Mars, Luna, moons, belts, and minor bodies are records inside that project. Parchment may expose each body as its own world asset for navigation, relationships, and content authoring, but those assets map into one nested `.wforge` package and do not create separate systems.
 
-Full scientific provenance remains in repository documentation. Runtime records carry the compact origin, capability, shape, encoding, and asset information required for correct behavior.
+Real bodies use actual or best-available source data. Derived or procedural presentation may fill real gaps, but must remain distinguishable and must not overwrite recognizable imported facts.
 
-## Validated checkpoint
+Full scientific provenance stays in repository references. Runtime records carry only the compact origin, capability, shape, encoding, and asset information needed to behave correctly.
 
-World Forge commit:
+## Current accepted heads
+
+World Forge implementation and browser-QA checkpoint:
 
 ```text
-8f06fa35e37a5d90aa5ee662cc1deb1ebecbd7f7
+5cdce0dd1efb68c18f286b2165482d849971d64d
 ```
 
-User-reported exact-head Windows validation:
+Parchment Worlds package/discovery checkpoint:
 
-- `npm ci`: 208 packages installed; 0 vulnerabilities;
-- TypeScript project build passed;
-- Vitest: 103 test files and 379 tests passed;
-- multi-body package, checksum, local payload, and durable-primary tests passed;
-- production page runner self-test passed;
-- production page harness self-test passed;
-- production rerank harness self-test passed;
-- Vite production build passed.
+```text
+2a3d6ea643e437ada9dd3abf24db51ed428a7d2b
+```
 
-The only build output was the existing Rollup warning for a main client chunk larger than 500 KB. It did not fail verification.
+Documentation commits after these heads do not change runtime behavior.
 
-All commits after that checkpoint require a new exact-head verification run.
+## User-confirmed QA
 
-## Implemented system foundation
+The following behavior has been observed locally through the normal Parchment embed flow:
+
+- the enriched Sol starter builds with the nested World Forge package;
+- Parchment discovers the sibling World Forge reference package automatically;
+- no environment variable is required for normal development;
+- Earth opens in World Forge and is recognizable;
+- Jupiter opens in World Forge through the same system package;
+- Earth and Jupiter select their own active body rather than opening separate systems;
+- System view uses canonical names rather than `Rocky 1`, `Gas Giant 6`, or `Sol System` for Earth;
+- Jupiter's imported atmospheric banding looks good and is recognizable.
+
+Outstanding visual QA from the same pass:
+
+- Jupiter is lumpy and must become smooth;
+- the System body selector must indent moons under their parent bodies;
+- Earth looks good at 512 by 256, but a higher-resolution option should be revisited after broader system coverage.
+
+## Implemented foundation
 
 ### Body catalog and active body
 
 Implemented in:
 
-- `packages/shared/src/worldBodies.ts`;
-- `packages/shared/src/worldBodySession.ts`.
+- `packages/shared/src/worldBodies.ts`
+- `packages/shared/src/worldBodySession.ts`
 
-`world-forge-body-catalog-v1` carries stable body identity, parent relationships, durable primary body, initial active body, body family, view capabilities, physical/orbital facts, origin, optional compact detail, optional canonical surface, and typed runtime asset payloads.
+`world-forge-body-catalog-v1` carries:
 
-Legacy projects receive a compatibility catalog. The primary remains geographic while unsurfaced secondary bodies remain catalog-only.
+- stable body identity;
+- parent relationships;
+- durable primary body;
+- active body session;
+- body family;
+- view capabilities;
+- physical and orbital facts;
+- imported, derived, generated, authored, or edited origin;
+- optional compact detail;
+- optional canonical `PrimaryWorld` surface;
+- typed runtime asset payloads.
 
-### Body detail tiers
+### Detail tiers
 
 Implemented in:
 
-- `packages/shared/src/worldBodyDetails.ts`.
+- `packages/shared/src/worldBodyDetails.ts`
 
-Schema:
-
-- `world-forge-body-detail-v1`.
-
-Variants:
-
-- `catalog`;
-- `atmospheric-presentation`;
-- `raster-surface`;
-- `irregular-mesh`;
-- `geographic-surface`;
-- `population`.
-
-Tiers:
+Supported variants:
 
 - catalog;
-- presentation;
-- reference surface;
-- geographic.
+- atmospheric presentation;
+- raster surface;
+- irregular mesh;
+- geographic surface;
+- population.
 
-This replaces the previous binary choice between metadata-only and a full Earthlike `PrimaryWorld`.
+Supported tiers:
 
-### One-project `.wforge` package
+- Tier 0 catalog;
+- Tier 1 presentation;
+- Tier 2 reference surface;
+- Tier 3 geographic.
+
+The system no longer forces every body into a full Earthlike layer set.
+
+### One-project `.wforge`
 
 Implemented in:
 
-- `packages/exporters/src/multiBodyWforge.ts`;
-- `packages/exporters/src/bodyAssetPackage.ts`;
-- `packages/exporters/src/desktop.ts`;
-- `apps/desktop/src/storage.ts`.
+- `packages/exporters/src/multiBodyWforge.ts`
+- `packages/exporters/src/bodyAssetPackage.ts`
+- `packages/exporters/src/desktop.ts`
+- `apps/desktop/src/storage.ts`
 
-Package layout:
+The package preserves:
 
-```text
-manifest.json
-project.json
-system/body-catalog.json
-bodies/<body-id>/world.json
-bodies/<body-id>/layers/*.json
-bodies/<body-id>/topology-layers/*.json
-bodies/<body-id>/<compact referenced assets>
-```
-
-Supported behavior:
-
-- stable body-local asset references;
-- optional build-time byte resolver;
+- one system catalog;
+- multiple canonical surfaces;
+- compact body-local textures and meshes;
+- byte lengths and SHA-256 checksums;
 - required and optional entries;
-- body-local path enforcement;
-- duplicate ID/path rejection;
-- reserved-path collision rejection;
-- byte-length validation;
-- SHA-256 calculation and validation;
-- import hydration into typed runtime payload storage;
-- local save/reopen without base64 expansion;
-- re-export without losing imported bytes;
-- binary storage size counted once;
-- durable primary preserved while another body is active.
+- local typed payload persistence;
+- imported payload re-export;
+- durable primary preservation while a secondary body is active.
 
-Current `.wforge` import remains eager. Lazy per-body package-entry decoding is still open.
+Current import remains eager. Lazy body-asset loading is still required before the package is filled with many high-resolution rasters and meshes.
 
-### Active-body view behavior
+### Parchment bridge
 
-Implemented across session state, renderer projection, Globe targeting, package import, local serialization, and the Parchment bridge:
+Parchment stores one nested `.wforge` attachment and a body-binding array.
 
-- supported surfaced bodies remain selected across compatible view changes;
-- Map reports unsupported bodies instead of silently returning to Earth;
-- imported canonical secondary surfaces resolve as Globe targets;
-- package/local deserialization rehydrates the durable primary surface into the runtime catalog;
-- saving or re-exporting while a secondary is active does not replace the primary;
-- embedded Parchment systems load and save as one package.
+Each binding maps a Parchment body asset ID to one stable World Forge body ID. Opening a body sends the same package with a different requested active body.
 
-Direct System selection propagation, all Explorer paths, body-specific diagnostics, and complete browser QA remain open under #124.
+The bridge now uses an explicit ready handshake, preventing package transfer before World Forge installs its receiver.
 
-## Earth Tier 3 path
+## Earth Tier 3
 
-Implemented in:
-
-- `packages/generator-core/src/referenceBodyImport.ts`;
-- `tools/reference-etl/prepare_etopo_earth.py`;
-- `scripts/referenceDataBundle.ts`;
-- `scripts/build-earth-reference.ts`.
-
-Commands:
+Current local build path:
 
 ```powershell
 python -m pip install -r tools/reference-etl/requirements.txt
-npm run reference:prepare-earth
-npm run reference:build-earth
-```
-
-Default outputs:
-
-```text
-.local/reference-data/earth-etopo/
-.local/reference-data/sol-earth-reference.wforge
-```
-
-The Python transform passed a synthetic GeoTIFF smoke for reprojection, orientation, binary encoding, water-mask derivation, and manifest statistics.
-
-The real global ETOPO source has not yet been built and browser-validated in the recorded session.
-
-Current Earth fidelity boundary:
-
-- elevation, bathymetry, and coastline geometry can be source-backed;
-- temperature remains derived when absent;
-- wetness, precipitation, and biomes remain derived placeholders;
-- rivers, lakes, wind, and currents remain empty placeholders;
-- real albedo, hydrography, land cover, climate, and ice sources remain open;
-- package size and browser memory remain unmeasured.
-
-Do not describe the current Earth path as finished reference content.
-
-## Jupiter Tier 1 path
-
-Selected source:
-
-- NASA/JPL Cassini cylindrical Jupiter map `PIA07782`;
-- required credit: NASA/JPL/Space Science Institute.
-
-Implemented in:
-
-- `tools/reference-etl/prepare_jupiter_reference.py`;
-- `scripts/referenceImageBundle.ts`;
-- `packages/generator-core/src/referenceAtmosphericPresentation.ts`;
-- `scripts/build-earth-reference.ts`;
-- `packages/renderer/src/bodyAwarePresentation.ts`;
-- `apps/desktop/src/globe/globeBodyTarget.ts`.
-
-Preparation command:
-
-```powershell
-python -m pip install -r tools/reference-etl/requirements.txt
-npm run reference:prepare-jupiter
-```
-
-Optional local source:
-
-```powershell
-npm run reference:prepare-jupiter -- `
-  --input C:\path\to\PIA07782.jpg
-```
-
-Default local bundle:
-
-```text
-.local/reference-data/jupiter-cassini/
-  PIA07782.jpg
-  PIA07782-768x384.rgb565
-  manifest.json
-```
-
-The ETL:
-
-1. downloads or reads the official JPEG;
-2. validates an approximately 2:1 cylindrical source;
-3. preserves the source locally for QA;
-4. resamples to 768 by 384 with Lanczos filtering;
-5. quantizes to little-endian RGB565;
-6. records source/prepared dimensions, byte lengths, checksums, source URLs, credit, and transform metadata.
-
-Prepared payload:
-
-- 768 by 384;
-- little-endian RGB565;
-- 589,824 bytes before `.wforge` compression;
-- asset ID `jupiter-cassini-pia07782-albedo`;
-- logical path `bodies/jupiter/albedo.rgb565`;
-- detail tier `presentation`;
-- origin `imported`;
-- Globe capability only.
-
-The Sol builder includes Jupiter only when the prepared bundle exists. Older JPEG-only local bundles are rejected with an instruction to rerun preparation.
-
-The target resolver requires both the declared asset and hydrated bytes before Jupiter becomes selectable as an imported atmospheric Globe target. Missing bytes fall back rather than advertising broken presentation.
-
-The body-aware renderer:
-
-- keeps Map explicitly unsupported;
-- stages the compact raster only for presentation-only atmospheric bodies;
-- uses Globe's existing read-heavy seam-normalization context request as a one-shot activation boundary;
-- synchronously expands RGB565 into the Globe texture canvas;
-- leaves ordinary Map and export canvas paths on the unsupported state;
-- records source asset/resolution metadata on the rendered texture canvas.
-
-Search confirmed the Globe seam pass is the only current repository caller using `willReadFrequently`, which is the activation signal for this first slice.
-
-Current Jupiter limitations:
-
-- the legacy Globe geometry still uses its near-spherical geographic mesh;
-- the oblate-spheroid shape contract is not yet consumed by Globe geometry;
-- atmospheric-specific status/data attributes in the large Globe component are not yet wired;
-- package-size delta, memory, seam quality, and recognizability are unmeasured;
-- the real source bundle has not yet been prepared in the recorded session;
-- the new Jupiter commits have not passed exact-head verification.
-
-Do not call the Jupiter visual implementation complete until these are addressed.
-
-## Parchment boundary
-
-Parchment supports a package-contained `.wforge` attachment, body bindings, iframe transfer, and edited-system save-back.
-
-Compact body assets travel inside the nested `.wforge`; no additional Parchment storage pointer is required. The current `.pworld` base64 attachment encoding still requires payload-size and peak-memory measurement with the enriched Earth-plus-Jupiter package.
-
-## New automated coverage awaiting verification
-
-Added or expanded tests cover:
-
-- compact atmospheric appearance attachment;
-- RGB565 payload validation;
-- RGB565 decoding into RGBA;
-- atmospheric raster resolution from active-body state;
-- imported atmospheric target selection;
-- missing-payload fallback;
-- reference image manifest, dimension, byte-length, and checksum validation;
-- inclusion of `scripts/**/*.test.ts` in the normal Vitest gate.
-
-These tests are committed but have not yet been observed running on the final Jupiter implementation head.
-
-## Immediate verification and QA sequence
-
-From the World Forge repository:
-
-```powershell
-Get-Process node, esbuild -ErrorAction SilentlyContinue | Stop-Process -Force
-npm ci
-npm run verify
-```
-
-Then prepare reference data:
-
-```powershell
-python -m pip install -r tools/reference-etl/requirements.txt
-npm run reference:prepare-jupiter
 npm run reference:prepare-earth -- `
   --width 512 `
   --height 256 `
@@ -309,58 +157,243 @@ npm run reference:prepare-earth -- `
 npm run reference:build-earth
 ```
 
-Expected package:
+Current known output:
 
 ```text
 .local/reference-data/sol-earth-reference.wforge
 ```
 
-Record:
+Recorded Earth-only baseline:
 
-- source Jupiter dimensions, byte length, and digest;
-- prepared Jupiter dimensions, byte length, and digest;
-- Earth-only `.wforge` size;
-- Earth-plus-Jupiter `.wforge` size;
-- package delta;
-- build time;
+- 22 body records;
+- 512 by 256 Earth map;
+- approximately 3.54 MB package before Jupiter was added;
+- source-backed ETOPO elevation, bathymetry, and coastline geometry;
+- derived placeholder climate and biome fields;
+- no complete real albedo, hydrography, climate, land-cover, or ice stack yet.
+
+User QA assessment:
+
+- current Earth presentation looks great;
+- 512 by 256 is accepted as the current integration baseline;
+- a higher-resolution Earth option is desirable later;
+- other body coverage is a higher priority first.
+
+### Earth resolution follow-up
+
+The ETL already accepts explicit output width, height, and topology resolution. The next resolution study should compare at least:
+
+- 512 by 256, current integration baseline;
+- 1024 by 512, likely high-resolution user option;
+- 2048 by 1024 only if package size, load time, browser memory, and visual improvement justify it.
+
+Measure:
+
+- source processing time;
+- `.wforge` and enriched `.pworld` size;
 - import time;
-- local save/reopen behavior;
-- browser memory where practical.
+- local save/reopen time;
+- browser memory;
+- Globe and Map visual improvement;
+- whether topology resolution must rise with raster resolution.
 
-Browser QA:
+Do not prioritize this study ahead of initial Mars, Venus, Luna, and remaining family coverage.
 
-1. Import the generated Sol `.wforge` directly into World Forge or through the enriched Parchment starter.
-2. Confirm Earth remains the primary body.
-3. Select Jupiter in System and open Globe.
-4. Confirm broad bands and the Great Red Spot are recognizable.
-5. Confirm no conspicuous longitude seam.
-6. Confirm Map reports unsupported rather than showing Earth or treating the appearance raster as terrain.
-7. Save while Jupiter is active.
-8. Reopen and confirm Earth remains primary and Jupiter remains available.
-9. Re-export and verify the Jupiter asset/checksum survive.
-10. Generate/import the enriched Parchment Sol starter and repeat the save/re-import check.
+## Jupiter Tier 1
 
-## Next implementation increments
+Selected source:
 
-1. Correct exact-head failures from the Jupiter batch, if any.
-2. Measure and browser-QA the real Earth-plus-Jupiter package.
-3. Make Globe geometry consume atmospheric oblate-spheroid shape.
-4. Add atmospheric-specific Globe status and diagnostics.
-5. Complete direct System-selection propagation and Explorer audits under #124.
-6. Add lazy package-entry decoding.
-7. Add a compact Luna or Mars Tier 2 surface.
-8. Add a decimated Phobos or Deimos mesh.
-9. Extend source-backed presentation to Saturn, Uranus, and Neptune.
-10. Replace provisional payload budgets with measured limits.
+- NASA/JPL Cassini cylindrical map `PIA07782`;
+- credit: NASA/JPL/Space Science Institute.
+
+Prepared representation:
+
+- 768 by 384;
+- little-endian RGB565;
+- 589,824 bytes before package compression;
+- logical path `bodies/jupiter/albedo.rgb565`;
+- Tier 1 atmospheric presentation;
+- Globe capability only.
+
+User QA assessment:
+
+- banding looks great;
+- Jupiter is recognizable;
+- current geometry is incorrectly lumpy.
+
+### Required Jupiter correction
+
+Gas giants must use dedicated smooth atmospheric geometry:
+
+- smooth sphere or oblate spheroid;
+- no geographic elevation displacement;
+- no terrain bumps;
+- retain source banding;
+- preserve equatorial/polar radius ratio;
+- preserve separate ring geometry for ringed giants.
+
+The likely defect is reuse of the legacy geographic Globe mesh or displacement path. Fix the body-family geometry route, not the texture.
+
+## System view state
+
+Passed QA:
+
+- canonical names;
+- Earth correctly labeled;
+- Parchment-requested body selected and focused;
+- giant presentation visible in System;
+- one package shared by Earth and Jupiter entry assets.
+
+Open UI requirement:
+
+- moons must appear immediately below and visually indented under their parent planet in the body selector;
+- ordering and indentation must derive from catalog parent relationships;
+- stable flat body IDs remain the option values;
+- belts remain peer system entries.
+
+Detailed acceptance is in `refs/handoffs/system-view-body-catalog-alignment.md`.
+
+## Resolution policy for remaining bodies
+
+Initial coverage should favor recognizability and system completeness over Earth-level simulation depth.
+
+Recommended first-pass targets:
+
+- Mars: near the normal 1024 by 512 map default when source and performance permit;
+- Venus: near the normal 1024 by 512 default when source and performance permit, with cloud appearance and radar surface treated as distinct layers or modes;
+- Luna: 512 by 256 or 1024 by 512 based on measured value and payload;
+- major moons: generally 512 by 256 or lower unless a specific body justifies more;
+- gas and ice giants: compact presentation rasters around the Jupiter scale;
+- irregular bodies: decimated meshes rather than forced global rasters;
+- belts: deterministic distributions, never serialized decorative particle inventories.
+
+These are target bands, not promises. Source quality, licensing, recognizability, package size, and browser behavior decide the accepted level.
+
+## Remaining body-family work
+
+### Terrestrial and solid spherical bodies
+
+Build a reusable Tier 2 surface adapter and renderer for:
+
+- Mars;
+- Venus solid surface;
+- Luna;
+- Mercury;
+- Io;
+- Europa;
+- Ganymede;
+- Callisto;
+- Enceladus;
+- Titan;
+- Titania;
+- Oberon;
+- Triton.
+
+The generic path should consume compact albedo, elevation or radial displacement, normal, roughness, material, and feature-catalog assets without constructing a full `PrimaryWorld` unless Map, Explorer, editing, or simulation requires it.
+
+### Venus presentation
+
+Venus needs two honest representations:
+
+- visible cloud-deck appearance for System and Globe;
+- radar-derived surface for solid-surface inspection.
+
+Do not present the cloud image as terrain or the radar surface as the ordinary visible appearance.
+
+### Gas and ice giants
+
+Generalize Jupiter's Tier 1 path to:
+
+- Saturn;
+- Uranus;
+- Neptune.
+
+Add:
+
+- accepted source rasters;
+- shared smooth oblate geometry;
+- Saturn ring texture and geometry;
+- body-family inspector labels;
+- optional derived band motion and haze clearly marked as presentation.
+
+### Irregular bodies
+
+Add accepted decimated meshes for:
+
+- Phobos;
+- Deimos.
+
+These should support direct 3D inspection without requiring a misleading equirectangular Map.
+
+### Belts and populations
+
+Render the Main Asteroid Belt and Kuiper Belt from deterministic compact population records. Do not serialize thousands of individual decorative bodies.
+
+## Required infrastructure before full inventory
+
+### Lazy package loading
+
+Current package import hydrates every referenced body asset.
+
+Before adding all major moons and multiple high-resolution worlds, introduce staged loading:
+
+1. load system catalog and compact inline detail;
+2. load System previews when visible;
+3. load selected body's Globe assets on focus;
+4. load Map layers only when Map opens;
+5. load geographic arrays and editor data only when required;
+6. unload or cache bounded assets according to measured memory policy.
+
+### Capability-complete navigation
+
+Complete #124 across:
+
+- System selection;
+- Globe;
+- Map;
+- Explorer;
+- save/reopen;
+- Parchment export/re-import.
+
+Unsupported views must explain the limitation and never silently switch to Earth.
+
+## Prioritized next increments
+
+1. Fix smooth atmospheric Globe geometry for Jupiter and protect Earth geographic relief.
+2. Indent moons under parent bodies in the System selector.
+3. Measure the current Earth-plus-Jupiter package and browser memory.
+4. Add lazy package-entry loading before broad asset expansion.
+5. Add Mars at near-default reference resolution.
+6. Add Venus cloud appearance plus radar-surface contract at near-default resolution.
+7. Add Luna and the generic Tier 2 solid-body renderer.
+8. Generalize atmospheric presentation to Saturn, Uranus, and Neptune.
+9. Add Phobos/Deimos mesh support.
+10. Populate remaining major moons by source quality and product value.
+11. Add deterministic belt rendering.
+12. Return to optional high-resolution Earth after broader system coverage is stable.
+
+## Validation checklist for each added body
+
+- accepted source and licensing recorded;
+- source/prepared dimensions and hashes recorded;
+- origin and capability flags accurate;
+- recognizable System presentation;
+- correct Globe geometry for body family;
+- Map and Explorer only enabled when meaningful;
+- active body preserved across supported views;
+- package save/reopen and Parchment re-import preserve the body;
+- package-size and memory delta measured;
+- unsupported paths remain explicit;
+- no silent fallback to Earth.
 
 ## Guardrails
 
 - One system remains one project.
+- Parchment body assets are entry nodes, not separate `.wforge` systems.
 - Do not force every body into `PrimaryWorld`.
-- Do not create separate Earth, Mars, Luna, or giant projects to avoid multi-body work.
-- Do not label derived giant palettes, motion, haze, or storms as observed data.
-- Do not describe `PIA07782` as current Jupiter weather.
+- Do not apply geographic displacement to atmospheric giants.
+- Do not label derived motion, haze, storms, or palettes as observed data.
 - Do not expose Map or Explorer solely because a cylindrical appearance raster exists.
 - Do not serialize decorative belt particles.
-- Do not leak source-specific formats into the durable body model beyond explicit asset media/encoding metadata.
-- Do not claim the Jupiter batch passed until `npm run verify` succeeds on its exact final head.
+- Do not let Earth resolution work displace initial coverage of higher-priority bodies.
+- Do not claim a body complete without package, navigation, save/reopen, and browser QA.
