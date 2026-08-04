@@ -51,8 +51,11 @@ export type WorldBodyCatalogV1 = {
   bodies: WorldBodyRecordV1[];
 };
 
+export type WorldBodyAssetPayloads = Record<string, Uint8Array>;
+
 export type MultiBodyWorldProject = WorldProject & {
   bodyCatalog?: WorldBodyCatalogV1;
+  bodyAssetPayloads?: WorldBodyAssetPayloads;
 };
 
 export function readWorldBodyCatalog(project: WorldProject): WorldBodyCatalogV1 {
