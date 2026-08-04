@@ -22,6 +22,7 @@ const rememberedWorldNames = new Map<string, string>();
 export type EmbeddedWorldContext = {
   embedded: boolean;
   projectId: string | null;
+  worldProjectId: string | null;
   worldName: string | null;
 };
 
@@ -91,8 +92,9 @@ export function readEmbeddedWorldContext(search = globalThis.location?.search ??
   const params = new URLSearchParams(search);
   const embedded = params.get('embed') === 'shell';
   const projectId = cleanText(params.get('projectId'));
+  const worldProjectId = cleanText(params.get('worldProjectId'));
   const worldName = cleanText(params.get('worldName'));
-  return { embedded, projectId, worldName };
+  return { embedded, projectId, worldProjectId, worldName };
 }
 
 export function prepareWorldProjectForSave(
