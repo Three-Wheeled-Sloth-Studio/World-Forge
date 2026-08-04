@@ -29,8 +29,14 @@ export type StagedAtmosphericPresentationRaster = {
   bytes: Uint8Array;
 };
 
+type CanvasGetContext = (
+  contextId: string,
+  options?: CanvasRenderingContext2DSettings,
+) => RenderingContext | null;
+
 export type AtmosphericPresentationCanvas = HTMLCanvasElement & {
   __worldForgeAtmosphericRaster?: StagedAtmosphericPresentationRaster;
+  __worldForgeOriginalGetContext?: CanvasGetContext;
 };
 
 export function renderWorldToCanvas(
@@ -40,7 +46,7 @@ export function renderWorldToCanvas(
   visible: FlowRenderOptions = { rivers: true, plates: false, heightmap: false },
 ): void {
   const presentationCanvas = canvas as AtmosphericPresentationCanvas;
-  delete presentationCanvas.__worldForgeAtmosphericRaster;
+  resetAtmosphericRasterGlobeHook(presentationCanvas);
   const activeProject = mapProjectForActiveBody(project);
   if (!activeProject) {
     renderUnsupportedBodyMap(canvas, project, visible.targetResolution);
@@ -122,11 +128,9 @@ function installAtmosphericRasterGlobeHook(
   canvas: AtmosphericPresentationCanvas,
   raster: StagedAtmosphericPresentationRaster,
 ): void {
+  const originalGetContext = canvas.getContext.bind(canvas) as CanvasGetContext;
   canvas.__worldForgeAtmosphericRaster = raster;
-  const originalGetContext = canvas.getContext.bind(canvas) as (
-    contextId: string,
-    options?: CanvasRenderingContext2DSettings,
-  ) => RenderingContext | null;
+  canvas.__worldForgeOriginalGetContext = originalGetContext;
 
   Object.defineProperty(canvas, 'getContext', {
     configurable: true,
@@ -134,19 +138,33 @@ function installAtmosphericRasterGlobeHook(
       const context = originalGetContext(contextId, options);
       if (contextId === '2d'
         && options?.willReadFrequently === true
-        && context instanceof CanvasRenderingContext2D
+        && isCanvas2dContext(context)
         && canvas.__worldForgeAtmosphericRaster) {
         drawAtmosphericRaster(canvas, context, canvas.__worldForgeAtmosphericRaster);
-        delete canvas.__worldForgeAtmosphericRaster;
-        Object.defineProperty(canvas, 'getContext', {
-          configurable: true,
-          writable: true,
-          value: originalGetContext,
-        });
+        resetAtmosphericRasterGlobeHook(canvas);
       }
       return context;
     },
   });
+}
+
+function resetAtmosphericRasterGlobeHook(canvas: AtmosphericPresentationCanvas): void {
+  const originalGetContext = canvas.__worldForgeOriginalGetContext;
+  if (originalGetContext) {
+    Object.defineProperty(canvas, 'getContext', {
+      configurable: true,
+      writable: true,
+      value: originalGetContext,
+    });
+  }
+  delete canvas.__worldForgeAtmosphericRaster;
+  delete canvas.__worldForgeOriginalGetContext;
+}
+
+function isCanvas2dContext(context: RenderingContext | null): context is CanvasRenderingContext2D {
+  return Boolean(context)
+    && typeof (context as CanvasRenderingContext2D).putImageData === 'function'
+    && typeof (context as CanvasRenderingContext2D).drawImage === 'function';
 }
 
 function drawAtmosphericRaster(
