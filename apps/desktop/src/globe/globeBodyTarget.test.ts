@@ -38,7 +38,7 @@ function orbitalContext(): SystemOrbitalContextArtifact {
   } as unknown as SystemOrbitalContextArtifact;
 }
 
-function project(status: 'ready' | 'generated'): WorldProject {
+function project(status: 'ready' | 'generated', importedMoon = false): WorldProject {
   return {
     projectId: 'project-test-system',
     projectName: 'Test World',
@@ -64,8 +64,9 @@ function project(status: 'ready' | 'generated'): WorldProject {
           name: 'Selene',
           bodyType: 'moon',
           parentBodyId: primary.id,
-          capabilities: { globe: true, map: false, explorer: false, irregularShape: false },
-          dataOrigin: 'generated',
+          capabilities: { globe: true, map: importedMoon, explorer: importedMoon, irregularShape: false },
+          dataOrigin: importedMoon ? 'imported' : 'generated',
+          surface: importedMoon ? { id: moon.id, name: 'Selene' } : undefined,
         },
         {
           bodyId: belt.id,
@@ -93,6 +94,7 @@ describe('Globe body target resolution', () => {
     const target = resolveGlobeBodyTarget(source, orbitalContext(), '');
     expect(target?.bodyId).toBe(primary.id);
     expect(target?.mode).toBe('primary-world');
+    expect(target?.surfaceProject?.primaryWorld.id).toBe(primary.id);
     expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
   });
 
@@ -105,18 +107,35 @@ describe('Globe body target resolution', () => {
     expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
   });
 
+  it('opens an imported canonical surface without a generated replay artifact', () => {
+    const source = project('ready', true);
+    const lookup = vi.fn();
+    const target = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, lookup);
+
+    expect(target).toMatchObject({
+      bodyId: moon.id,
+      label: 'Selene',
+      mode: 'canonical-surface-body',
+      artifact: null,
+    });
+    expect(target?.surfaceProject?.projectId).toBe(source.projectId);
+    expect(target?.surfaceProject?.primaryWorld.id).toBe(moon.id);
+    expect(lookup).not.toHaveBeenCalled();
+    expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
+  });
+
   it('opens any generated body artifact and shares that body with Map', () => {
     const source = project('generated');
     const moonArtifact = { bodyId: moon.id, bodyProfile: 'airless-rocky-body', artifactSignature: 'moon-artifact' } as GeneratedSystemBodyArtifact;
     const moonLookup = vi.fn(() => moonArtifact);
     const moonTarget = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, moonLookup);
-    expect(moonTarget).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-system-body', artifact: moonArtifact });
+    expect(moonTarget).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-system-body', artifact: moonArtifact, surfaceProject: null });
     expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
 
     const beltArtifact = { bodyId: belt.id, bodyProfile: 'debris-belt', artifactSignature: 'belt-artifact' } as GeneratedSystemBodyArtifact;
     const beltLookup = vi.fn(() => beltArtifact);
     const beltTarget = resolveGlobeBodyTarget(source, orbitalContext(), belt.id, beltLookup);
-    expect(beltTarget).toMatchObject({ bodyId: belt.id, mode: 'generated-system-body', artifact: beltArtifact });
+    expect(beltTarget).toMatchObject({ bodyId: belt.id, mode: 'generated-system-body', artifact: beltArtifact, surfaceProject: null });
     expect(beltLookup).toHaveBeenCalledWith(expect.anything(), expect.anything(), belt.id, 'preview');
     expect(sessionActiveWorldBodyId(source)).toBe(belt.id);
   });
