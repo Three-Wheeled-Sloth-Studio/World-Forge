@@ -29,18 +29,19 @@ function solProject() {
 }
 
 describe('reference atmospheric appearance', () => {
-  it('attaches source-backed imagery and exposes only the supported Globe capability', () => {
-    const source = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
+  it('attaches a compact source-backed raster and exposes only the supported Globe capability', () => {
+    const source = Uint8Array.from([0x00, 0xf8, 0x1f, 0x00]);
     const project = attachReferenceAtmosphericAppearance(solProject(), {
       schema: REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
       bodyId: 'jupiter',
       assetId: 'jupiter-cassini-pia07782-albedo',
-      logicalPath: 'bodies/jupiter/albedo.jpg',
-      mediaType: 'image/jpeg',
+      logicalPath: 'bodies/jupiter/albedo.rgb565',
+      mediaType: 'application/vnd.world-forge.rgb565',
+      encoding: 'rgb565-le',
       bytes: source,
-      resolution: { width: 3600, height: 1800 },
+      resolution: { width: 2, height: 1 },
     });
-    source[0] = 0;
+    source[0] = 0xff;
 
     const jupiter = readWorldBodyCatalog(project).bodies.find((body) => body.bodyId === 'jupiter');
     expect(jupiter?.capabilities).toEqual({ globe: true, map: false, explorer: false, irregularShape: false });
@@ -50,15 +51,16 @@ describe('reference atmospheric appearance', () => {
     expect(jupiter?.detail?.assets?.[0]).toMatchObject({
       assetId: 'jupiter-cassini-pia07782-albedo',
       role: 'albedo',
-      logicalPath: 'bodies/jupiter/albedo.jpg',
-      mediaType: 'image/jpeg',
+      logicalPath: 'bodies/jupiter/albedo.rgb565',
+      mediaType: 'application/vnd.world-forge.rgb565',
+      encoding: 'rgb565-le',
       byteLength: 4,
     });
     expect((project as MultiBodyWorldProject).bodyAssetPayloads?.['jupiter-cassini-pia07782-albedo'])
-      .toEqual(Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]));
+      .toEqual(Uint8Array.from([0x00, 0xf8, 0x1f, 0x00]));
   });
 
-  it('rejects non-atmospheric targets, unsafe paths, and non-equirectangular resolutions', () => {
+  it('rejects non-atmospheric targets, unsafe paths, non-equirectangular resolutions, and malformed compact payloads', () => {
     const base = solProject();
     const common = {
       schema: REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
@@ -85,5 +87,16 @@ describe('reference atmospheric appearance', () => {
       logicalPath: 'bodies/jupiter/albedo.jpg',
       resolution: { width: 1024, height: 1024 },
     })).toThrow('approximately 2:1');
+
+    expect(() => attachReferenceAtmosphericAppearance(base, {
+      schema: REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
+      bodyId: 'jupiter',
+      assetId: 'bad-rgb565',
+      logicalPath: 'bodies/jupiter/albedo.rgb565',
+      mediaType: 'application/vnd.world-forge.rgb565',
+      encoding: 'rgb565-le',
+      bytes: Uint8Array.from([1, 2, 3]),
+      resolution: { width: 2, height: 1 },
+    })).toThrow('supported image or RGB565 payload');
   });
 });
