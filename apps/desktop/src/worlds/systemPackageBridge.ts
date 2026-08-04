@@ -104,7 +104,9 @@ function postToParchment<
     if (values?.length) globalThis.parent?.postMessage(value, targetOrigin, values);
     else globalThis.parent?.postMessage(value, targetOrigin);
   });
-  postMessage(message, options.targetOrigin ?? expectedParentOrigin(), transfer);
+  const targetOrigin = options.targetOrigin ?? expectedParentOrigin();
+  if (transfer?.length) postMessage(message, targetOrigin, transfer);
+  else postMessage(message, targetOrigin);
 }
 
 function cleanText(value: unknown): string | null {
