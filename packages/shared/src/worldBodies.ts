@@ -124,11 +124,6 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
         irregularShape: false,
       },
       dataOrigin: primary ? 'generated' : 'derived',
-      orbit: {
-        semiMajorAxisKm: body.orbitalDistanceClass,
-        periodDays: Math.max(0.001, Math.pow(Math.max(0.001, body.orbitalDistanceClass), 1.5) * 365.256),
-        eccentricity: body.eccentricity,
-      },
       surface: primary ? project.primaryWorld : undefined,
     });
     for (const moon of body.moons) {
@@ -152,11 +147,6 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
       physical: {
         meanRadiusKm: project.primaryWorld.sizeClass * 6371.0088,
         axialTiltDeg: project.primaryWorld.axialTiltDeg,
-      },
-      orbit: {
-        semiMajorAxisKm: 149_597_870.7,
-        periodDays: 365.256,
-        eccentricity: project.primaryWorld.orbitalEccentricity,
       },
       surface: project.primaryWorld,
     });
