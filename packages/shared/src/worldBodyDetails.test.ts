@@ -32,7 +32,7 @@ describe('world body detail contracts', () => {
   });
 
   it('requires package assets for compact raster and irregular-mesh surfaces', () => {
-    const raster = {
+    const raster: WorldBodyDetailV1 = {
       schema: WORLD_BODY_DETAIL_SCHEMA,
       kind: 'raster-surface',
       tier: 'reference-surface',
@@ -49,7 +49,7 @@ describe('world body detail contracts', () => {
         resolution: { width: 512, height: 256 },
       }],
     };
-    const mesh = {
+    const mesh: WorldBodyDetailV1 = {
       schema: WORLD_BODY_DETAIL_SCHEMA,
       kind: 'irregular-mesh',
       tier: 'reference-surface',
@@ -64,9 +64,9 @@ describe('world body detail contracts', () => {
     };
 
     expect(isWorldBodyDetail(raster)).toBe(true);
-    expect(worldBodyDetailCapabilities(raster as WorldBodyDetailV1).map).toBe(true);
+    expect(worldBodyDetailCapabilities(raster).map).toBe(true);
     expect(isWorldBodyDetail(mesh)).toBe(true);
-    expect(worldBodyDetailCapabilities(mesh as WorldBodyDetailV1).irregularShape).toBe(true);
+    expect(worldBodyDetailCapabilities(mesh).irregularShape).toBe(true);
     expect(isWorldBodyDetail({ ...mesh, assets: [] })).toBe(false);
   });
 
