@@ -32,6 +32,10 @@ import {
   parseParchmentSystemPackageMessage,
   type WorldForgeSystemPackageRequest,
 } from './systemPackageBridge';
+import {
+  isParchmentSystemPackageReadyRequest,
+  notifyParchmentSystemPackageReady,
+} from './systemPackageReadyBridge';
 import { assessWorldReplayCompatibility } from './worldReplayManifest';
 
 type UseWorldLibraryCommandsOptions = {
@@ -168,6 +172,11 @@ export function useWorldLibraryCommands({
       const parentOrigin = expectedParentOrigin();
       if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
 
+      if (isParchmentSystemPackageReadyRequest(event.data, embeddedContext.projectId)) {
+        notifyParchmentSystemPackageReady();
+        return;
+      }
+
       const systemPackage = parseParchmentSystemPackageMessage(event.data, embeddedContext.projectId);
       if (systemPackage) {
         void loadSystemPackage(systemPackage);
@@ -207,6 +216,7 @@ export function useWorldLibraryCommands({
 
     globalThis.addEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest as EventListener);
     globalThis.addEventListener('message', onParentMessage);
+    notifyParchmentSystemPackageReady();
     return () => {
       globalThis.removeEventListener(WORLD_FORGE_RENAME_REQUEST_EVENT, onRenameRequest as EventListener);
       globalThis.removeEventListener('message', onParentMessage);
