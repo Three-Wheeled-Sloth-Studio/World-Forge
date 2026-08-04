@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import JSZip from 'jszip';
-import { exportHexGridSvg, exportHexTileMapJson, exportSvg, exportVttGridSvg, exportVttMetadata, projectToJson } from '@world-forge/exporters';
-import { exportMultiBodyWforge } from '@world-forge/exporters/multiBodyWforge';
+import { exportHexGridSvg, exportHexTileMapJson, exportSvg, exportVttGridSvg, exportVttMetadata, exportWforge, projectToJson } from '@world-forge/exporters';
 import { renderWorldToCanvas, type CoastlineTreatment, type MapMode, type MapTheme, type RenderMode } from '@world-forge/renderer';
 import { civ7StyleHexTileProfile, type HexTileFeature, type WorldProject } from '@world-forge/shared';
 import { notifyParchmentWorldIdentity, prepareWorldProjectForSave } from '../worlds/worldIdentityBridge';
@@ -152,7 +151,7 @@ export function useExportCommands(args: UseExportCommandsArgs) {
     if (!project) return;
     const projectToSave = prepareWorldProjectForSave(project);
     await runExport('wforge', 'Preparing .wforge...', async (progress) => {
-      const blob = await exportMultiBodyWforge(projectToSave, { compressionLevel: 1, onProgress: progress });
+      const blob = await exportWforge(projectToSave, { compressionLevel: 1, onProgress: progress });
       downloadBlob(blob, projectToSave.projectName + '.wforge');
       notifyParchmentWorldIdentity({ ...projectToSave, updatedAt: new Date().toISOString() }, 'saved');
     });
