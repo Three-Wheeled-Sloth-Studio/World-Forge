@@ -16,6 +16,13 @@ import {
   type WorldBodyRecordV1,
 } from '@world-forge/shared/worldBodies';
 import {
+  readWorldBodyAssetEntries,
+  writeWorldBodyAssetEntries,
+  type BodyAssetPackageSummary,
+  type PackagedWorldBodyRecord,
+  type WorldBodyAssetResolver,
+} from './bodyAssetPackage';
+import {
   deserializeProject as deserializeBaseProject,
   exportWforge as exportBaseWforge,
   importWforge as importBaseWforge,
@@ -25,12 +32,8 @@ import {
 export const MULTI_BODY_WFORGE_EXTENSION = 'world-forge-multi-body-v1';
 const CATALOG_PATH = 'system/body-catalog.json';
 
-type PackagedBodyRecord = Omit<WorldBodyRecordV1, 'surface'> & {
-  surfacePath?: string;
-};
-
 type PackagedBodyCatalog = Omit<WorldBodyCatalogV1, 'bodies'> & {
-  bodies: PackagedBodyRecord[];
+  bodies: PackagedWorldBodyRecord[];
 };
 
 type SerializedBodyRecord = Omit<WorldBodyRecordV1, 'surface'> & {
@@ -46,9 +49,15 @@ type SerializedPrimaryWorld = Omit<PrimaryWorld, 'layers' | 'topologyLayers'> & 
   topologyLayers: SerializableTopologyLayer[];
 };
 
+export type MultiBodyWforgeExportOptions = {
+  compressionLevel?: number;
+  onProgress?: (percent: number) => void;
+  resolveBodyAsset?: WorldBodyAssetResolver;
+};
+
 export async function exportMultiBodyWforge(
   project: WorldProject,
-  options: { compressionLevel?: number; onProgress?: (percent: number) => void } = {},
+  options: MultiBodyWforgeExportOptions = {},
 ): Promise<Blob> {
   const baseBlob = await exportBaseWforge(stripBodyCatalog(project), {
     compressionLevel: options.compressionLevel,
@@ -56,10 +65,12 @@ export async function exportMultiBodyWforge(
   });
   const zip = await JSZip.loadAsync(await baseBlob.arrayBuffer());
   const catalog = readWorldBodyCatalog(project);
-  const packagedBodies: PackagedBodyRecord[] = [];
+  const packagedBodies: PackagedWorldBodyRecord[] = [];
 
   for (const body of catalog.bodies) {
-    const surface = body.bodyId === catalog.primaryBodyId ? project.primaryWorld : body.surface;
+    const surface = body.bodyId === catalog.primaryBodyId
+      ? body.surface ?? project.primaryWorld
+      : body.surface;
     if (!surface || body.bodyId === catalog.primaryBodyId) {
       packagedBodies.push(stripSurface(body));
       continue;
@@ -69,14 +80,20 @@ export async function exportMultiBodyWforge(
     packagedBodies.push({ ...stripSurface(body), surfacePath });
   }
 
+  const assetPackage = await writeWorldBodyAssetEntries(
+    zip,
+    project,
+    packagedBodies,
+    options.resolveBodyAsset,
+  );
   const packagedCatalog: PackagedBodyCatalog = {
     schema: catalog.schema,
     primaryBodyId: catalog.primaryBodyId,
     activeBodyId: catalog.activeBodyId,
-    bodies: packagedBodies,
+    bodies: assetPackage.bodies,
   };
   zip.file(CATALOG_PATH, JSON.stringify(packagedCatalog));
-  await extendManifest(zip, packagedCatalog);
+  await extendManifest(zip, packagedCatalog, assetPackage.summary);
 
   return zip.generateAsync({
     type: 'blob',
@@ -101,14 +118,19 @@ export async function importMultiBodyWforge(file: File): Promise<WorldProject> {
   };
   if (!isWorldBodyCatalog(candidate)) throw new Error('Invalid .wforge package: malformed multi-body catalog.');
 
+  const assetPackage = await readWorldBodyAssetEntries(zip, packaged.bodies);
   const bodies: WorldBodyRecordV1[] = [];
-  for (const packagedBody of packaged.bodies) {
+  for (const packagedBody of assetPackage.bodies) {
     const { surfacePath, ...body } = packagedBody;
     const surface = surfacePath ? await readSurface(zip, surfacePath) : undefined;
     bodies.push({ ...body, surface });
   }
 
-  return { ...base, bodyCatalog: { ...candidate, bodies } } as MultiBodyWorldProject;
+  return {
+    ...base,
+    bodyCatalog: { ...candidate, bodies },
+    bodyAssetPayloads: assetPackage.payloads,
+  } as MultiBodyWorldProject;
 }
 
 export function serializeMultiBodyProject(
@@ -174,7 +196,11 @@ async function readSurface(zip: JSZip, root: string): Promise<PrimaryWorld> {
   return deserializeSurface({ ...metadata, layers, topologyLayers });
 }
 
-async function extendManifest(zip: JSZip, catalog: PackagedBodyCatalog): Promise<void> {
+async function extendManifest(
+  zip: JSZip,
+  catalog: PackagedBodyCatalog,
+  assetSummary: BodyAssetPackageSummary,
+): Promise<void> {
   const manifestFile = zip.file('manifest.json');
   const manifest = manifestFile ? JSON.parse(await manifestFile.async('string')) as Record<string, unknown> : {};
   zip.file('manifest.json', JSON.stringify({
@@ -186,6 +212,9 @@ async function extendManifest(zip: JSZip, catalog: PackagedBodyCatalog): Promise
         catalogFile: CATALOG_PATH,
         bodyCount: catalog.bodies.length,
         surfacedBodyCount: 1 + catalog.bodies.filter((body) => body.surfacePath).length,
+        bodyAssetCount: assetSummary.includedAssetCount,
+        bodyAssetBytes: assetSummary.includedAssetBytes,
+        missingOptionalBodyAssetCount: assetSummary.missingOptionalAssetCount,
       },
     },
   }, null, 2));
@@ -284,8 +313,15 @@ function rangeFor(data: ArrayLike<number>): { minValue: number; maxValue: number
 }
 
 function stripBodyCatalog(project: WorldProject): WorldProject {
-  const { bodyCatalog: _bodyCatalog, ...base } = project as MultiBodyWorldProject;
-  return base as WorldProject;
+  const catalog = readWorldBodyCatalog(project);
+  const primarySurface = catalog.bodies.find((body) => body.bodyId === catalog.primaryBodyId)?.surface
+    ?? project.primaryWorld;
+  const {
+    bodyCatalog: _bodyCatalog,
+    bodyAssetPayloads: _bodyAssetPayloads,
+    ...base
+  } = project as MultiBodyWorldProject;
+  return { ...base, primaryWorld: primarySurface } as WorldProject;
 }
 
 function stripSurface(body: WorldBodyRecordV1): Omit<WorldBodyRecordV1, 'surface'> {
