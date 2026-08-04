@@ -37,6 +37,29 @@ type ArtifactLookup = (
   requestedFidelity: BodyGenerationFidelity
 ) => GeneratedSystemBodyArtifact | null;
 
+export function canOpenGlobeBodyTarget(
+  project: WorldProject,
+  orbitalContext: SystemOrbitalContextArtifact,
+  requestedBodyId: string,
+  artifactLookup: ArtifactLookup = bodyArtifactForBody,
+): boolean {
+  const primaryBodyId = orbitalContext.payload.primaryBodyId;
+  if (requestedBodyId === primaryBodyId) return true;
+  const requested = orbitalContext.payload.bodies.find((body) => body.id === requestedBodyId);
+  if (!requested) return false;
+  if (projectForWorldBody(project, requestedBodyId)) return true;
+  if (importedAtmosphericPresentation(project, requestedBodyId)) return true;
+
+  const record = project.bodyGeneration?.records[requestedBodyId];
+  if (record?.status !== 'generated') return false;
+  return Boolean(artifactLookup(
+    project,
+    orbitalContext,
+    requestedBodyId,
+    record.requestedFidelity ?? 'preview',
+  ));
+}
+
 export function resolveGlobeBodyTarget(
   project: WorldProject,
   orbitalContext: SystemOrbitalContextArtifact,
@@ -76,19 +99,12 @@ export function resolveGlobeBodyTarget(
     };
   }
 
-  const bodyRecord = worldBodyRecord(project, requestedBodyId);
-  const atmosphericDetail = bodyRecord?.detail?.kind === 'atmospheric-presentation'
-    ? bodyRecord.detail
-    : null;
-  const appearanceAsset = atmosphericDetail?.assets?.find((asset) => asset.role === 'albedo' || asset.role === 'clouds');
-  const appearanceBytes = appearanceAsset
-    ? (project as MultiBodyWorldProject).bodyAssetPayloads?.[appearanceAsset.assetId]
-    : undefined;
-  if (bodyRecord?.capabilities.globe && atmosphericDetail && appearanceAsset && appearanceBytes?.byteLength) {
+  const atmosphericDetail = importedAtmosphericPresentation(project, requestedBodyId);
+  if (atmosphericDetail) {
     rememberSessionActiveWorldBody(project, requested.id);
     return {
       bodyId: requested.id,
-      label: bodyRecord.name,
+      label: worldBodyRecord(project, requested.id)?.name ?? bodyLabel(project, requested),
       mode: 'atmospheric-presentation-body',
       body: requested,
       artifact: null,
@@ -105,13 +121,30 @@ export function resolveGlobeBodyTarget(
   rememberSessionActiveWorldBody(project, requested.id);
   return {
     bodyId: requested.id,
-    label: bodyRecord?.name ?? bodyLabel(project, requested),
+    label: worldBodyRecord(project, requested.id)?.name ?? bodyLabel(project, requested),
     mode: 'generated-system-body',
     body: requested,
     artifact,
     surfaceProject: null,
     atmosphericDetail: null,
   };
+}
+
+function importedAtmosphericPresentation(
+  project: WorldProject,
+  bodyId: string,
+): AtmosphericPresentationDetailV1 | null {
+  const bodyRecord = worldBodyRecord(project, bodyId);
+  const atmosphericDetail = bodyRecord?.detail?.kind === 'atmospheric-presentation'
+    ? bodyRecord.detail
+    : null;
+  const appearanceAsset = atmosphericDetail?.assets?.find((asset) => asset.role === 'albedo' || asset.role === 'clouds');
+  const appearanceBytes = appearanceAsset
+    ? (project as MultiBodyWorldProject).bodyAssetPayloads?.[appearanceAsset.assetId]
+    : undefined;
+  return bodyRecord?.capabilities.globe && atmosphericDetail && appearanceAsset && appearanceBytes?.byteLength
+    ? atmosphericDetail
+    : null;
 }
 
 function bodyLabel(project: WorldProject, body: OrbitalPresentationBody): string {
