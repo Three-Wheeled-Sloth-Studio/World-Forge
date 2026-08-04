@@ -47,6 +47,8 @@ describe('world body detail contracts', () => {
         logicalPath: 'bodies/luna/albedo.webp',
         mediaType: 'image/webp',
         resolution: { width: 512, height: 256 },
+        byteLength: 128,
+        sha256: `sha256:${'a'.repeat(64)}`,
       }],
     };
     const mesh: WorldBodyDetailV1 = {
@@ -68,6 +70,10 @@ describe('world body detail contracts', () => {
     expect(isWorldBodyDetail(mesh)).toBe(true);
     expect(worldBodyDetailCapabilities(mesh).irregularShape).toBe(true);
     expect(isWorldBodyDetail({ ...mesh, assets: [] })).toBe(false);
+    expect(isWorldBodyDetail({
+      ...raster,
+      assets: [{ ...raster.assets![0], sha256: 'sha256:not-a-real-digest' }],
+    })).toBe(false);
   });
 
   it('rejects unsafe package paths and invalid population bounds', () => {
