@@ -1,9 +1,5 @@
 import { deserializeProject, serializeProject } from '@world-forge/exporters';
 import { WorldProject } from '@world-forge/shared';
-import {
-  type MultiBodyWorldProject,
-  type WorldBodyAssetPayloads,
-} from '@world-forge/shared/worldBodies';
 import { SavedMapRecord } from './sync';
 import { buildWorldReplayManifest, type WorldReplayManifestV1 } from './worlds/worldReplayManifest';
 
@@ -35,7 +31,6 @@ export type SavedWorldStorageRecord = ReplayReadySavedMapRecord & {
   createdAt: string;
   sizeBytes: number;
   project: unknown;
-  bodyAssetPayloads?: WorldBodyAssetPayloads;
 };
 
 export interface WorldStorageProvider {
@@ -98,7 +93,7 @@ export class IndexedDbWorldStorageProvider implements WorldStorageProvider {
     const db = await openWorldLibraryDb();
     const record = await idbRequest<SavedWorldStorageRecord | undefined>(db.transaction(worldLibraryStore, 'readonly').objectStore(worldLibraryStore).get(projectId));
     db.close();
-    return record?.project ? projectFromStoredWorldRecord(record) : null;
+    return record?.project ? deserializeProject(record.project) : null;
   }
 
   async deleteWorld(projectId: string): Promise<void> {
@@ -173,9 +168,8 @@ export function compactSavedWorldRecord(record: SavedWorldStorageRecord): Replay
   };
 }
 
-export function storedWorldRecordForProject(project: WorldProject): SavedWorldStorageRecord {
+function storedWorldRecordForProject(project: WorldProject): SavedWorldStorageRecord {
   const projectPayload = serializeProject(project, { includeLayerData: true });
-  const bodyAssetPayloads = cloneBodyAssetPayloads((project as MultiBodyWorldProject).bodyAssetPayloads);
   return {
     ...savedMapRecordForProject(project),
     storageSchemaVersion: 1,
@@ -183,22 +177,12 @@ export function storedWorldRecordForProject(project: WorldProject): SavedWorldSt
     appVersion: project.appVersion,
     generatorVersion: project.generatorVersion,
     createdAt: project.createdAt,
-    sizeBytes: roughJsonBytes(projectPayload) + bodyAssetPayloadBytes(bodyAssetPayloads),
-    project: projectPayload,
-    bodyAssetPayloads: Object.keys(bodyAssetPayloads).length ? bodyAssetPayloads : undefined,
+    sizeBytes: roughStructuredProjectBytes(projectPayload),
+    project: projectPayload
   };
 }
 
-export function projectFromStoredWorldRecord(record: SavedWorldStorageRecord): WorldProject {
-  const project = deserializeProject(record.project);
-  const bodyAssetPayloads = cloneBodyAssetPayloads(record.bodyAssetPayloads);
-  return Object.keys(bodyAssetPayloads).length
-    ? { ...project, bodyAssetPayloads } as MultiBodyWorldProject
-    : project;
-}
-
 function normalizeStoredWorldRecord(record: Partial<SavedWorldStorageRecord>): SavedWorldStorageRecord {
-  const bodyAssetPayloads = cloneBodyAssetPayloads(record.bodyAssetPayloads);
   return {
     storageSchemaVersion: 1,
     projectSchemaVersion: 1,
@@ -209,37 +193,31 @@ function normalizeStoredWorldRecord(record: Partial<SavedWorldStorageRecord>): S
     updatedAt: String(record.updatedAt || record.createdAt || new Date(0).toISOString()),
     appVersion: String(record.appVersion || ''),
     generatorVersion: String(record.generatorVersion || ''),
-    sizeBytes: Number(record.sizeBytes || roughJsonBytes(record.project) + bodyAssetPayloadBytes(bodyAssetPayloads)),
+    sizeBytes: Number(record.sizeBytes || roughStructuredProjectBytes(record.project)),
     replayManifest: record.replayManifest,
-    project: record.project,
-    bodyAssetPayloads: Object.keys(bodyAssetPayloads).length ? bodyAssetPayloads : undefined,
+    project: record.project
   };
 }
 
-function cloneBodyAssetPayloads(value: unknown): WorldBodyAssetPayloads {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
-  const payloads: WorldBodyAssetPayloads = {};
-  for (const [assetId, payload] of Object.entries(value)) {
-    const bytes = cloneBytes(payload);
-    if (assetId.trim() && bytes) payloads[assetId] = bytes;
-  }
-  return payloads;
+function roughStructuredProjectBytes(value: unknown): number {
+  if (!isRecord(value)) return roughJsonBytes(value);
+  const { bodyAssetPayloads, ...jsonPayload } = value;
+  return roughJsonBytes(jsonPayload) + binaryPayloadBytes(bodyAssetPayloads);
 }
 
-function cloneBytes(value: unknown): Uint8Array | null {
-  if (value instanceof Uint8Array) return Uint8Array.from(value);
-  if (value instanceof ArrayBuffer) return new Uint8Array(value.slice(0));
-  if (ArrayBuffer.isView(value)) {
-    return Uint8Array.from(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+function binaryPayloadBytes(value: unknown): number {
+  if (!isRecord(value)) return 0;
+  let total = 0;
+  for (const payload of Object.values(value)) {
+    if (payload instanceof ArrayBuffer) {
+      total += payload.byteLength;
+    } else if (ArrayBuffer.isView(payload)) {
+      total += payload.byteLength;
+    } else if (Array.isArray(payload)) {
+      total += payload.length;
+    }
   }
-  if (Array.isArray(value) && value.every((entry) => Number.isInteger(entry) && Number(entry) >= 0 && Number(entry) <= 255)) {
-    return Uint8Array.from(value as number[]);
-  }
-  return null;
-}
-
-function bodyAssetPayloadBytes(payloads: WorldBodyAssetPayloads): number {
-  return Object.values(payloads).reduce((sum, payload) => sum + payload.byteLength, 0);
+  return total;
 }
 
 function openWorldLibraryDb(): Promise<IDBDatabase> {
@@ -271,4 +249,8 @@ function roughJsonBytes(value: unknown): number {
   } catch {
     return 0;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
