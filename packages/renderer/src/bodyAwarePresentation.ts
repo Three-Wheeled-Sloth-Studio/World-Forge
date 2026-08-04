@@ -178,7 +178,9 @@ function drawAtmosphericRaster(
   const sourceContext = sourceCanvas.getContext('2d');
   if (!sourceContext) return;
   const rgba = decodeRgb565ToRgba(raster.bytes, raster.width, raster.height);
-  sourceContext.putImageData(new ImageData(rgba, raster.width, raster.height), 0, 0);
+  const sourceImage = sourceContext.createImageData(raster.width, raster.height);
+  sourceImage.data.set(rgba);
+  sourceContext.putImageData(sourceImage, 0, 0);
   context.save();
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.imageSmoothingEnabled = true;
