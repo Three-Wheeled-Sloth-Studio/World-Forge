@@ -5,6 +5,7 @@ import type {
   SystemOrbitalContextArtifact,
   WorldProject
 } from '@world-forge/shared';
+import { worldBodyRecord } from '@world-forge/shared/worldBodies';
 import { orbitalPositionAtDays, type OrbitalPoint } from '../globe/orbitalPresentation';
 
 export type SystemScaleMode = 'compressed' | 'relative';
@@ -34,7 +35,9 @@ export function buildSystemCatalog(
 ): SystemCatalogEntry[] {
   const entries: SystemCatalogEntry[] = [{
     id: artifact.payload.star.id,
-    label: `${project.solarSystem.star.type} star`,
+    label: artifact.payload.star.id.toLowerCase() === 'sol'
+      ? 'Sol'
+      : `${project.solarSystem.star.type} star`,
     kind: 'star',
     parentBodyId: null,
     generationStatus: 'generated',
@@ -166,11 +169,12 @@ function catalogEntryForBody(
 ): SystemCatalogEntry {
   const isPrimary = body.id === artifact.payload.primaryBodyId;
   const lifecycleRecord = project.bodyGeneration?.records[body.id];
+  const bodyRecord = worldBodyRecord(project, body.id);
   const eligibleByScaffold = !isPrimary;
   const fallbackProfile: BodyGenerationProfile | null = eligibleByScaffold ? profileForBodyKind(body.kind) : null;
   return {
     id: body.id,
-    label: isPrimary ? project.projectName : bodyLabel(project, body),
+    label: bodyRecord?.name ?? (isPrimary ? project.primaryWorld.name : bodyLabel(project, body)),
     kind: body.kind,
     parentBodyId: body.parentBodyId,
     generationStatus: lifecycleRecord?.status ?? (isPrimary ? 'generated' : 'ready'),
