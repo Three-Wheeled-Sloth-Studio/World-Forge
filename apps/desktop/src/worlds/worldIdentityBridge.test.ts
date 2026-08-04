@@ -66,7 +66,19 @@ describe('world identity bridge', () => {
     expect(readEmbeddedWorldContext('?embed=shell&projectId=project_1&projectName=Campaign')).toEqual({
       embedded: true,
       projectId: 'project_1',
+      worldProjectId: null,
       worldName: null,
+    });
+  });
+
+  it('reads the linked World Forge project selected by Parchment', () => {
+    expect(readEmbeddedWorldContext(
+      '?embed=shell&projectId=project_1&worldProjectId=world-project-1&worldName=Ashfall',
+    )).toEqual({
+      embedded: true,
+      projectId: 'project_1',
+      worldProjectId: 'world-project-1',
+      worldName: 'Ashfall',
     });
   });
 
@@ -137,7 +149,7 @@ describe('world identity bridge', () => {
       payload: { projectId: 'project_1' },
     }, 'project_1')).toBe(true);
 
-    const manifest = buildWorldReplayManifest(project());
+    const replayManifest = buildWorldReplayManifest(project());
     const replay = {
       type: PARCHMENT_REPLAY_WORLD_MESSAGE,
       payload: { projectId: 'project_1', requestId: 'request-1', manifest },
