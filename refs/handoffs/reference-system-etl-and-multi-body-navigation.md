@@ -1,7 +1,7 @@
 # Reference-system ETL and multi-body navigation handoff
 
 Updated: 2026-08-04
-Status: Earth and one-system foundations implemented on `dev`; exact-head verification, real ETOPO build, browser QA, and source-backed secondary-body assets remain open
+Status: Earth, one-system, body-tier, and compact asset-package foundations implemented on `dev`; exact-head verification, real ETOPO build, browser QA, lazy decoding, and source-backed secondary-body assets remain open
 
 Authoritative planning:
 
@@ -44,7 +44,8 @@ Implemented in:
 - physical and orbital facts;
 - imported, derived, generated, authored, or edited origin;
 - optional compact body detail;
-- optional canonical `PrimaryWorld` surface.
+- optional canonical `PrimaryWorld` surface;
+- runtime binary payloads keyed by stable body-asset ID.
 
 Legacy projects receive an in-memory compatibility catalog. Their primary world is treated as geographic while unsurfaced secondary bodies remain catalog-only.
 
@@ -76,7 +77,7 @@ Accepted tiers:
 
 This closes the previous binary model where a body had either metadata or a full Earthlike `PrimaryWorld`.
 
-Large assets remain optional package-entry references with stable IDs, semantic roles, safe relative paths, media types, optional encodings, resolutions, and byte counts. The current contract validates paths but the exporter does not yet copy referenced binary assets into `.wforge`; that is the next package increment.
+Large assets remain package-entry references with stable IDs, semantic roles, safe body-local paths, media types, optional encodings, resolutions, byte counts, SHA-256 digests, and optionality.
 
 ### Sol tier assignment
 
@@ -95,11 +96,14 @@ Current scaffold:
 
 The giant palettes, ring profiles, and belt distributions are derived presentation scaffolds. They are not substitutes for later accepted source imagery and shape data.
 
+Atmospheric detail is intentionally still Globe-disabled in the Sol capability record until the dedicated atmospheric-detail renderer consumes the new contract. This avoids advertising a view that would currently fall back to a generated artifact or the primary world.
+
 ### One-project `.wforge` serialization
 
 Implemented in:
 
 - `packages/exporters/src/multiBodyWforge.ts`
+- `packages/exporters/src/bodyAssetPackage.ts`
 - `packages/exporters/src/desktop.ts`
 
 The package preserves one system and multiple canonical surfaces:
@@ -111,11 +115,25 @@ system/body-catalog.json
 bodies/<body-id>/world.json
 bodies/<body-id>/layers/*.json
 bodies/<body-id>/topology-layers/*.json
+bodies/<body-id>/<compact referenced assets>
 ```
 
 Compact body detail records round-trip inline with the catalog. Existing single-world packages remain accepted.
 
-Referenced albedo, mesh, compact raster, cloud, ring, and other binary body assets are not yet copied or checksum-validated by the exporter.
+Referenced albedo, compact raster, cloud, ring, mesh, material, normal, roughness, and feature-catalog assets now support:
+
+- runtime payloads stored by stable asset ID;
+- an optional build-time resolver when bytes are not already loaded;
+- required and optional entries;
+- body-local package-path enforcement;
+- reserved-path collision rejection;
+- duplicate ID and path rejection;
+- byte-length validation;
+- SHA-256 calculation and validation;
+- import hydration back into runtime payload storage;
+- re-export without losing imported bytes.
+
+Local World Forge serialization now preserves typed body-asset payloads through IndexedDB-style structured cloning and accepts numeric byte arrays from older or JSON-mediated records.
 
 ### Normalized reference-body raster import
 
@@ -163,9 +181,9 @@ Direct System selection, all Explorer paths, and every diagnostic panel still re
 
 ### Parchment package bridge
 
-The Parchment side now supports package-contained `.wforge` attachments, body bindings, iframe transfer, and edited-system save-back. The Sol project no longer needs pre-existing World Forge browser storage.
+The Parchment side supports package-contained `.wforge` attachments, body bindings, iframe transfer, and edited-system save-back. The Sol project no longer needs pre-existing World Forge browser storage.
 
-The current `.pworld` attachment encoding is a functional initial path and still requires payload-size and memory measurement for high-resolution data.
+Because compact body assets now live inside the nested `.wforge`, they follow the existing Parchment attachment round trip automatically. The current `.pworld` attachment encoding still requires payload-size and memory measurement for high-resolution data.
 
 ## Automated coverage added
 
@@ -174,15 +192,20 @@ Committed tests cover:
 - legacy compatibility catalogs;
 - body identity and active-body selection;
 - compact body-detail validation and safe package paths;
+- checksum syntax validation;
 - detail-derived view capabilities;
 - Sol detail-tier assignments;
 - multi-surface `.wforge` round trips;
 - body-detail round trips through the catalog;
+- required and optional body assets;
+- asset checksum tampering rejection;
+- imported asset re-export;
+- local typed-payload save and reopen;
 - normalized raster validation and layer origin;
 - active-body renderer and Globe resolution;
 - Parchment package attachment and bridge behavior.
 
-The new body-detail commits have not yet been observed running on the exact final `dev` head. Do not claim the repository verification suite passed for this increment until it is run after pulling the latest head.
+The new body-detail and asset-package commits have not yet been observed running on the exact final `dev` head. Do not claim the repository verification suite passed for this increment until it is run after pulling the latest head.
 
 ## Current fidelity boundary
 
@@ -202,14 +225,14 @@ Do not describe the current Earth as finished reference content.
 ## Immediate resume sequence
 
 1. Pull the final World Forge `dev` head and run `npm ci` and `npm run verify`.
-2. Correct any type or focused-test failure from the body-detail contract before adding assets.
+2. Correct any type or focused-test failure from the body-detail and body-asset contracts before adding source assets.
 3. Prepare a real ETOPO bundle at `512 x 256` and build the Earth-backed Sol `.wforge`.
-4. Record `.wforge` size, build time, load time, and peak browser behavior.
+4. Record `.wforge` size, build time, load time, local-save size accounting, and peak browser behavior.
 5. Generate the enriched Parchment Sol starter from that `.wforge`.
 6. Import through the normal Parchment UI and verify no dependency on device-local World Forge storage.
 7. Perform Earth recognition QA in System, Globe, Map, and Explorer.
-8. Extend `.wforge` export and import to copy and checksum referenced compact body assets.
-9. Prove one Tier 1 giant using accepted imported appearance imagery.
+8. Add lazy package-entry decoding so selecting System view does not materialize every compact body asset.
+9. Prove one Tier 1 giant using accepted imported appearance imagery and the dedicated atmospheric-detail renderer.
 10. Prove one Tier 2 solid body and one irregular mesh before expanding through the remaining Sol inventory.
 
 ## Guardrails
