@@ -12,6 +12,7 @@ import {
   isWorldBodyCatalog,
   readWorldBodyCatalog,
   type MultiBodyWorldProject,
+  type WorldBodyAssetPayloads,
   type WorldBodyCatalogV1,
   type WorldBodyRecordV1,
 } from '@world-forge/shared/worldBodies';
@@ -47,6 +48,11 @@ type SerializedBodyCatalog = Omit<WorldBodyCatalogV1, 'bodies'> & {
 type SerializedPrimaryWorld = Omit<PrimaryWorld, 'layers' | 'topologyLayers'> & {
   layers: SerializableLayer[];
   topologyLayers: SerializableTopologyLayer[];
+};
+
+type SerializedMultiBodyProject = ReturnType<typeof serializeBaseProject> & {
+  bodyCatalog: SerializedBodyCatalog;
+  bodyAssetPayloads?: WorldBodyAssetPayloads;
 };
 
 export type MultiBodyWforgeExportOptions = {
@@ -136,10 +142,11 @@ export async function importMultiBodyWforge(file: File): Promise<WorldProject> {
 export function serializeMultiBodyProject(
   project: WorldProject,
   options: { includeLayerData?: boolean } = {},
-): ReturnType<typeof serializeBaseProject> & { bodyCatalog: SerializedBodyCatalog } {
+): SerializedMultiBodyProject {
   const includeLayerData = options.includeLayerData ?? true;
   const base = serializeBaseProject(stripBodyCatalog(project), options);
   const catalog = readWorldBodyCatalog(project);
+  const bodyAssetPayloads = cloneBodyAssetPayloads((project as MultiBodyWorldProject).bodyAssetPayloads);
   return {
     ...base,
     bodyCatalog: {
@@ -153,6 +160,7 @@ export function serializeMultiBodyProject(
           : serializeSurface(body.surface, includeLayerData),
       })),
     },
+    bodyAssetPayloads: Object.keys(bodyAssetPayloads).length ? bodyAssetPayloads : undefined,
   };
 }
 
@@ -173,7 +181,12 @@ export function deserializeMultiBodyProject(value: unknown): WorldProject {
     ...body,
     surface: body.surface ? deserializeSurface(body.surface) : undefined,
   }));
-  return { ...base, bodyCatalog: { ...candidate, bodies } } as MultiBodyWorldProject;
+  const bodyAssetPayloads = deserializeBodyAssetPayloads(value.bodyAssetPayloads);
+  return {
+    ...base,
+    bodyCatalog: { ...candidate, bodies },
+    bodyAssetPayloads: Object.keys(bodyAssetPayloads).length ? bodyAssetPayloads : undefined,
+  } as MultiBodyWorldProject;
 }
 
 function writeSurface(zip: JSZip, root: string, surface: PrimaryWorld): void {
@@ -310,6 +323,36 @@ function rangeFor(data: ArrayLike<number>): { minValue: number; maxValue: number
     if (value > maxValue) maxValue = value;
   }
   return { minValue, maxValue };
+}
+
+function cloneBodyAssetPayloads(payloads: WorldBodyAssetPayloads | undefined): WorldBodyAssetPayloads {
+  if (!payloads) return {};
+  return Object.fromEntries(
+    Object.entries(payloads).map(([assetId, bytes]) => [assetId, Uint8Array.from(bytes)]),
+  );
+}
+
+function deserializeBodyAssetPayloads(value: unknown): WorldBodyAssetPayloads {
+  if (!isRecord(value)) return {};
+  const payloads: WorldBodyAssetPayloads = {};
+  for (const [assetId, raw] of Object.entries(value)) {
+    if (raw instanceof Uint8Array) {
+      payloads[assetId] = Uint8Array.from(raw);
+      continue;
+    }
+    if (raw instanceof ArrayBuffer) {
+      payloads[assetId] = new Uint8Array(raw.slice(0));
+      continue;
+    }
+    if (Array.isArray(raw) && raw.every(isByte)) {
+      payloads[assetId] = Uint8Array.from(raw as number[]);
+    }
+  }
+  return payloads;
+}
+
+function isByte(value: unknown): boolean {
+  return Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 255;
 }
 
 function stripBodyCatalog(project: WorldProject): WorldProject {
