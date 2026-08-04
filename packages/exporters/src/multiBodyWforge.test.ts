@@ -12,7 +12,7 @@ import {
 import { exportMultiBodyWforge, importMultiBodyWforge, MULTI_BODY_WFORGE_EXTENSION } from './multiBodyWforge';
 
 describe('multi-body .wforge packages', () => {
-  it('roundtrips secondary body surfaces and detail contracts inside one system project', async () => {
+  it('roundtrips secondary body surfaces and preserves the durable primary while another body is active', async () => {
     const generated = generateProject(createDefaultConfig('sol-earth-reference', { width: 64, height: 32 }));
     const marsSurface = structuredClone(generated.primaryWorld);
     marsSurface.id = 'mars-surface';
@@ -46,14 +46,26 @@ describe('multi-body .wforge packages', () => {
     expect(zip.file('system/body-catalog.json')).not.toBeNull();
 
     const loaded = await importMultiBodyWforge(new File([blob], 'sol-reference.wforge'));
+    const loadedCatalog = readWorldBodyCatalog(loaded);
     const loadedMars = projectForWorldBody(loaded, 'mars');
-    const loadedMarsRecord = readWorldBodyCatalog(loaded).bodies.find((body) => body.bodyId === 'mars');
+    const loadedMarsRecord = loadedCatalog.bodies.find((body) => body.bodyId === 'mars');
     expect(loaded.projectId).toBe(generated.projectId);
+    expect(loadedCatalog.bodies.find((body) => body.bodyId === loadedCatalog.primaryBodyId)?.surface?.id)
+      .toBe(generated.primaryWorld.id);
     expect(loadedMars?.primaryWorld.name).toBe('Mars');
     expect(loadedMars?.primaryWorld.layers.elevation).toEqual(marsSurface.layers.elevation);
     expect(loadedMarsRecord?.dataOrigin).toBe('imported');
     expect(loadedMarsRecord?.detail?.kind).toBe('geographic-surface');
     expect(loadedMarsRecord?.detail?.tier).toBe('geographic');
+
+    const savedWhileMarsActive = await exportMultiBodyWforge(loadedMars!);
+    const reopened = await importMultiBodyWforge(new File([savedWhileMarsActive], 'mars-active.wforge'));
+    const reopenedCatalog = readWorldBodyCatalog(reopened);
+    expect(reopened.primaryWorld.id).toBe(generated.primaryWorld.id);
+    expect(reopenedCatalog.activeBodyId).toBe('mars');
+    expect(reopenedCatalog.bodies.find((body) => body.bodyId === reopenedCatalog.primaryBodyId)?.surface?.id)
+      .toBe(generated.primaryWorld.id);
+    expect(projectForWorldBody(reopened, 'mars')?.primaryWorld.id).toBe(marsSurface.id);
   });
 
   it('packages checksum-protected body assets and preserves them through import and re-export', async () => {
