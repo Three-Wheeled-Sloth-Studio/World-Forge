@@ -2,7 +2,13 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from '@world-forge/generator-core';
 import { WORLD_BODY_DETAIL_SCHEMA } from '@world-forge/shared/worldBodyDetails';
-import { projectForWorldBody, readWorldBodyCatalog, withWorldBodySurface } from '@world-forge/shared/worldBodies';
+import {
+  projectForWorldBody,
+  readWorldBodyCatalog,
+  withWorldBodyDetail,
+  withWorldBodySurface,
+  type MultiBodyWorldProject,
+} from '@world-forge/shared/worldBodies';
 import { exportMultiBodyWforge, importMultiBodyWforge, MULTI_BODY_WFORGE_EXTENSION } from './multiBodyWforge';
 
 describe('multi-body .wforge packages', () => {
@@ -48,6 +54,130 @@ describe('multi-body .wforge packages', () => {
     expect(loadedMarsRecord?.dataOrigin).toBe('imported');
     expect(loadedMarsRecord?.detail?.kind).toBe('geographic-surface');
     expect(loadedMarsRecord?.detail?.tier).toBe('geographic');
+  });
+
+  it('packages checksum-protected body assets and preserves them through import and re-export', async () => {
+    const generated = generateProject(createDefaultConfig('body-assets', { width: 64, height: 32 }));
+    const catalog = readWorldBodyCatalog(generated);
+    const targetBody = catalog.bodies.find((body) => body.bodyId !== catalog.primaryBodyId)!;
+    const assetId = `${targetBody.bodyId}-albedo`;
+    const logicalPath = `bodies/${targetBody.bodyId}/albedo.webp`;
+    const payload = Uint8Array.from([82, 73, 70, 70, 4, 3, 2, 1]);
+    const detailed = withWorldBodyDetail(generated, targetBody.bodyId, {
+      schema: WORLD_BODY_DETAIL_SCHEMA,
+      kind: 'raster-surface',
+      tier: 'reference-surface',
+      origin: 'imported',
+      shape: { kind: 'sphere' },
+      projection: 'equirectangular',
+      resolution: { width: 2, height: 1 },
+      layerRoles: ['albedo'],
+      assets: [{ assetId, role: 'albedo', logicalPath, mediaType: 'image/webp' }],
+    });
+    const project: MultiBodyWorldProject = {
+      ...detailed,
+      bodyAssetPayloads: { [assetId]: payload },
+    };
+
+    const blob = await exportMultiBodyWforge(project);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const manifest = JSON.parse(await zip.file('manifest.json')!.async('string'));
+    const packagedCatalog = JSON.parse(await zip.file('system/body-catalog.json')!.async('string'));
+    const packagedAsset = packagedCatalog.bodies
+      .find((body: { bodyId: string }) => body.bodyId === targetBody.bodyId)
+      .detail.assets[0];
+
+    expect(await zip.file(logicalPath)!.async('uint8array')).toEqual(payload);
+    expect(packagedAsset.byteLength).toBe(payload.byteLength);
+    expect(packagedAsset.sha256).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(manifest.extensions.multiBody.bodyAssetCount).toBe(1);
+    expect(manifest.extensions.multiBody.bodyAssetBytes).toBe(payload.byteLength);
+
+    const loaded = await importMultiBodyWforge(new File([blob], 'body-assets.wforge')) as MultiBodyWorldProject;
+    expect(loaded.bodyAssetPayloads?.[assetId]).toEqual(payload);
+    expect(readWorldBodyCatalog(loaded).bodies
+      .find((body) => body.bodyId === targetBody.bodyId)
+      ?.detail?.assets?.[0].sha256).toBe(packagedAsset.sha256);
+
+    const reexported = await exportMultiBodyWforge(loaded);
+    const reexportedZip = await JSZip.loadAsync(await reexported.arrayBuffer());
+    expect(await reexportedZip.file(logicalPath)!.async('uint8array')).toEqual(payload);
+  });
+
+  it('rejects missing required body assets while allowing declared optional omissions', async () => {
+    const generated = generateProject(createDefaultConfig('missing-body-assets', { width: 64, height: 32 }));
+    const catalog = readWorldBodyCatalog(generated);
+    const targetBody = catalog.bodies.find((body) => body.bodyId !== catalog.primaryBodyId)!;
+    const requiredAssetId = `${targetBody.bodyId}-required`;
+    const required = withWorldBodyDetail(generated, targetBody.bodyId, {
+      schema: WORLD_BODY_DETAIL_SCHEMA,
+      kind: 'raster-surface',
+      tier: 'reference-surface',
+      origin: 'imported',
+      shape: { kind: 'sphere' },
+      projection: 'equirectangular',
+      resolution: { width: 2, height: 1 },
+      layerRoles: ['albedo'],
+      assets: [{
+        assetId: requiredAssetId,
+        role: 'albedo',
+        logicalPath: `bodies/${targetBody.bodyId}/required.webp`,
+        mediaType: 'image/webp',
+      }],
+    });
+
+    await expect(exportMultiBodyWforge(required)).rejects.toThrow(`required body asset "${requiredAssetId}"`);
+
+    const optional = withWorldBodyDetail(generated, targetBody.bodyId, {
+      schema: WORLD_BODY_DETAIL_SCHEMA,
+      kind: 'raster-surface',
+      tier: 'reference-surface',
+      origin: 'imported',
+      shape: { kind: 'sphere' },
+      projection: 'equirectangular',
+      resolution: { width: 2, height: 1 },
+      layerRoles: ['albedo'],
+      assets: [{
+        assetId: `${targetBody.bodyId}-optional`,
+        role: 'albedo',
+        logicalPath: `bodies/${targetBody.bodyId}/optional.webp`,
+        mediaType: 'image/webp',
+        optional: true,
+      }],
+    });
+    const optionalBlob = await exportMultiBodyWforge(optional);
+    const optionalZip = await JSZip.loadAsync(await optionalBlob.arrayBuffer());
+    const optionalManifest = JSON.parse(await optionalZip.file('manifest.json')!.async('string'));
+    expect(optionalManifest.extensions.multiBody.bodyAssetCount).toBe(0);
+    expect(optionalManifest.extensions.multiBody.missingOptionalBodyAssetCount).toBe(1);
+    await expect(importMultiBodyWforge(new File([optionalBlob], 'optional-assets.wforge'))).resolves.toBeTruthy();
+  });
+
+  it('rejects body asset bytes that do not match the packaged checksum', async () => {
+    const generated = generateProject(createDefaultConfig('tampered-body-asset', { width: 64, height: 32 }));
+    const catalog = readWorldBodyCatalog(generated);
+    const targetBody = catalog.bodies.find((body) => body.bodyId !== catalog.primaryBodyId)!;
+    const assetId = `${targetBody.bodyId}-mesh`;
+    const logicalPath = `bodies/${targetBody.bodyId}/shape.glb`;
+    const detailed = withWorldBodyDetail(generated, targetBody.bodyId, {
+      schema: WORLD_BODY_DETAIL_SCHEMA,
+      kind: 'irregular-mesh',
+      tier: 'reference-surface',
+      origin: 'imported',
+      shape: { kind: 'irregular-mesh' },
+      assets: [{ assetId, role: 'mesh', logicalPath, mediaType: 'model/gltf-binary' }],
+    });
+    const project: MultiBodyWorldProject = {
+      ...detailed,
+      bodyAssetPayloads: { [assetId]: Uint8Array.from([1, 2, 3, 4]) },
+    };
+    const blob = await exportMultiBodyWforge(project);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    zip.file(logicalPath, Uint8Array.from([4, 3, 2, 1]));
+    const tampered = await zip.generateAsync({ type: 'blob' });
+
+    await expect(importMultiBodyWforge(new File([tampered], 'tampered.wforge')))
+      .rejects.toThrow(`checksum mismatch for body asset "${assetId}"`);
   });
 
   it('keeps legacy single-world packages compatible through the base importer', async () => {
