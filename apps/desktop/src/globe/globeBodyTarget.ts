@@ -5,10 +5,11 @@ import type {
   SystemOrbitalContextArtifact,
   WorldProject
 } from '@world-forge/shared';
+import { projectForWorldBody, worldBodyRecord } from '@world-forge/shared/worldBodies';
 import { rememberSessionActiveWorldBody } from '@world-forge/shared/worldBodySession';
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 
-export type GlobeBodyTargetMode = 'primary-world' | 'generated-system-body';
+export type GlobeBodyTargetMode = 'primary-world' | 'canonical-surface-body' | 'generated-system-body';
 
 export type GlobeBodyTarget = {
   bodyId: string;
@@ -16,6 +17,7 @@ export type GlobeBodyTarget = {
   mode: GlobeBodyTargetMode;
   body: OrbitalPresentationBody;
   artifact: GeneratedSystemBodyArtifact | null;
+  surfaceProject: WorldProject | null;
 };
 
 type ArtifactLookup = (
@@ -37,27 +39,44 @@ export function resolveGlobeBodyTarget(
     rememberSessionActiveWorldBody(project, primary.id);
     return {
       bodyId: primary.id,
-      label: project.projectName,
+      label: worldBodyRecord(project, primary.id)?.name ?? project.primaryWorld.name,
       mode: 'primary-world',
       body: primary,
-      artifact: null
+      artifact: null,
+      surfaceProject: project,
     };
   };
   if (!requestedBodyId || requestedBodyId === primary.id) return primaryTarget();
 
   const requested = orbitalContext.payload.bodies.find((body) => body.id === requestedBodyId);
+  if (!requested) return primaryTarget();
+
+  const surfaceProject = projectForWorldBody(project, requestedBodyId);
+  if (surfaceProject) {
+    rememberSessionActiveWorldBody(project, requested.id);
+    return {
+      bodyId: requested.id,
+      label: worldBodyRecord(project, requested.id)?.name ?? bodyLabel(project, requested),
+      mode: 'canonical-surface-body',
+      body: requested,
+      artifact: null,
+      surfaceProject,
+    };
+  }
+
   const record = project.bodyGeneration?.records[requestedBodyId];
-  if (!requested || record?.status !== 'generated') return primaryTarget();
+  if (record?.status !== 'generated') return primaryTarget();
   const fidelity = record.requestedFidelity ?? 'preview';
   const artifact = artifactLookup(project, orbitalContext, requestedBodyId, fidelity);
   if (!artifact) return primaryTarget();
   rememberSessionActiveWorldBody(project, requested.id);
   return {
     bodyId: requested.id,
-    label: bodyLabel(project, requested),
+    label: worldBodyRecord(project, requested.id)?.name ?? bodyLabel(project, requested),
     mode: 'generated-system-body',
     body: requested,
-    artifact
+    artifact,
+    surfaceProject: null,
   };
 }
 
