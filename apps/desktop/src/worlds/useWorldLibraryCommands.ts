@@ -1,8 +1,8 @@
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
-import { importWforge } from '@world-forge/exporters';
+import { exportWforge, importWforge } from '@world-forge/exporters';
 import { WorldProject } from '@world-forge/shared';
 import { readWorldBodyCatalog, withActiveWorldBody } from '@world-forge/shared/worldBodies';
-import { rememberSessionActiveWorldBody } from '@world-forge/shared/worldBodySession';
+import { rememberSessionActiveWorldBody, sessionActiveWorldBodyId } from '@world-forge/shared/worldBodySession';
 import { SavedMapRecord } from '../sync';
 import {
   defaultWorldStorageProvider,
@@ -28,7 +28,9 @@ import {
 } from './worldIdentityBridge';
 import {
   notifyParchmentSystemPackageResult,
+  notifyParchmentSystemPackageSaved,
   parseParchmentSystemPackageMessage,
+  type WorldForgeSystemPackageRequest,
 } from './systemPackageBridge';
 import { assessWorldReplayCompatibility } from './worldReplayManifest';
 
@@ -49,6 +51,7 @@ export function useWorldLibraryCommands({
 }: UseWorldLibraryCommandsOptions) {
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
   const onWorldLoadedRef = useRef(onWorldLoaded);
+  const embeddedSystemPackageRef = useRef<WorldForgeSystemPackageRequest | null>(null);
   onWorldLoadedRef.current = onWorldLoaded;
 
   const publishInventory = async () => {
@@ -105,13 +108,13 @@ export function useWorldLibraryCommands({
       }
       rememberWorldName(renamed.projectId, renamed.projectName);
       if (project?.projectId === projectId) setProject(renamed);
-      if (notifyParent && project?.projectId === projectId) {
+      if (notifyParent && project?.projectId === projectId && !embeddedSystemPackageRef.current) {
         notifyParchmentWorldIdentity(renamed, 'renamed');
       }
       setWorldLibraryStatus(`Renamed world to ${renamed.projectName}`);
     };
 
-    const loadSystemPackage = async (request: ReturnType<typeof parseParchmentSystemPackageMessage> & object) => {
+    const loadSystemPackage = async (request: WorldForgeSystemPackageRequest) => {
       setWorldLibraryStatus(`Loading ${request.projectName}...`);
       try {
         const loaded = await importWforge(new File(
@@ -130,6 +133,7 @@ export function useWorldLibraryCommands({
           throw new Error(`The embedded system does not contain body ${request.activeBodyId}.`);
         }
         const selected = withActiveWorldBody(remapped, request.activeBodyId);
+        embeddedSystemPackageRef.current = request;
         rememberSessionActiveWorldBody(selected, request.activeBodyId);
         rememberWorldName(selected.projectId, selected.projectName);
         onWorldLoadedRef.current(selected);
@@ -141,6 +145,7 @@ export function useWorldLibraryCommands({
           activeBodyId: request.activeBodyId,
         });
       } catch (error) {
+        embeddedSystemPackageRef.current = null;
         const message = error instanceof Error ? error.message : 'The embedded World Forge system could not be loaded.';
         setWorldLibraryStatus(message);
         notifyParchmentSystemPackageResult({
@@ -218,6 +223,21 @@ export function useWorldLibraryCommands({
       rememberWorldName(projectToSave.projectId, projectToSave.projectName);
       setProject(projectToSave);
       setSavedMaps((current) => mergeSavedMapRecords([record], current).slice(0, localWorldStorageLimits.maxSavedWorlds));
+
+      const embeddedPackage = embeddedSystemPackageRef.current;
+      if (embeddedPackage) {
+        const blob = await exportWforge(projectToSave, { compressionLevel: 1 });
+        notifyParchmentSystemPackageSaved({
+          worldForgeProjectId: projectToSave.projectId,
+          activeBodyId: sessionActiveWorldBodyId(projectToSave),
+          fileName: embeddedPackage.fileName,
+          updatedAt: projectToSave.updatedAt,
+          bytes: await blob.arrayBuffer(),
+        });
+        setWorldLibraryStatus(`Saved ${projectToSave.projectName} to Parchment Worlds`);
+        return;
+      }
+
       notifyParchmentWorldIdentity(projectToSave, 'saved');
       await publishInventory();
       setWorldLibraryStatus(`Saved ${projectToSave.projectName}`);
@@ -236,6 +256,7 @@ export function useWorldLibraryCommands({
         setWorldLibraryStatus('Saved world data is not available on this machine.');
         return;
       }
+      embeddedSystemPackageRef.current = null;
       rememberWorldName(loaded.projectId, loaded.projectName);
       onWorldLoaded(loaded);
       notifyParchmentWorldIdentity(loaded, 'saved');
