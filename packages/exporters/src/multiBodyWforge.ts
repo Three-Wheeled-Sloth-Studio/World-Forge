@@ -15,7 +15,12 @@ import {
   type WorldBodyCatalogV1,
   type WorldBodyRecordV1,
 } from '@world-forge/shared/worldBodies';
-import { exportWforge, importWforge } from './index';
+import {
+  deserializeProject as deserializeBaseProject,
+  exportWforge as exportBaseWforge,
+  importWforge as importBaseWforge,
+  serializeProject as serializeBaseProject,
+} from './index';
 
 export const MULTI_BODY_WFORGE_EXTENSION = 'world-forge-multi-body-v1';
 const CATALOG_PATH = 'system/body-catalog.json';
@@ -28,11 +33,24 @@ type PackagedBodyCatalog = Omit<WorldBodyCatalogV1, 'bodies'> & {
   bodies: PackagedBodyRecord[];
 };
 
+type SerializedBodyRecord = Omit<WorldBodyRecordV1, 'surface'> & {
+  surface?: SerializedPrimaryWorld;
+};
+
+type SerializedBodyCatalog = Omit<WorldBodyCatalogV1, 'bodies'> & {
+  bodies: SerializedBodyRecord[];
+};
+
+type SerializedPrimaryWorld = Omit<PrimaryWorld, 'layers' | 'topologyLayers'> & {
+  layers: SerializableLayer[];
+  topologyLayers: SerializableTopologyLayer[];
+};
+
 export async function exportMultiBodyWforge(
   project: WorldProject,
   options: { compressionLevel?: number; onProgress?: (percent: number) => void } = {},
 ): Promise<Blob> {
-  const baseBlob = await exportWforge(stripBodyCatalog(project), {
+  const baseBlob = await exportBaseWforge(stripBodyCatalog(project), {
     compressionLevel: options.compressionLevel,
     onProgress: (progress) => options.onProgress?.(progress * 0.35),
   });
@@ -41,9 +59,7 @@ export async function exportMultiBodyWforge(
   const packagedBodies: PackagedBodyRecord[] = [];
 
   for (const body of catalog.bodies) {
-    const surface = body.bodyId === catalog.primaryBodyId
-      ? project.primaryWorld
-      : body.surface;
+    const surface = body.bodyId === catalog.primaryBodyId ? project.primaryWorld : body.surface;
     if (!surface || body.bodyId === catalog.primaryBodyId) {
       packagedBodies.push(stripSurface(body));
       continue;
@@ -71,7 +87,7 @@ export async function exportMultiBodyWforge(
 
 export async function importMultiBodyWforge(file: File): Promise<WorldProject> {
   const bytes = await file.arrayBuffer();
-  const base = await importWforge(new File([bytes], file.name, { type: file.type }));
+  const base = await importBaseWforge(new File([bytes], file.name, { type: file.type }));
   const zip = await JSZip.loadAsync(bytes);
   const catalogFile = zip.file(CATALOG_PATH);
   if (!catalogFile) return base;
@@ -83,9 +99,7 @@ export async function importMultiBodyWforge(file: File): Promise<WorldProject> {
     activeBodyId: packaged.activeBodyId,
     bodies: packaged.bodies.map(({ surfacePath: _surfacePath, ...body }) => body),
   };
-  if (!isWorldBodyCatalog(candidate)) {
-    throw new Error('Invalid .wforge package: malformed multi-body catalog.');
-  }
+  if (!isWorldBodyCatalog(candidate)) throw new Error('Invalid .wforge package: malformed multi-body catalog.');
 
   const bodies: WorldBodyRecordV1[] = [];
   for (const packagedBody of packaged.bodies) {
@@ -94,15 +108,55 @@ export async function importMultiBodyWforge(file: File): Promise<WorldProject> {
     bodies.push({ ...body, surface });
   }
 
+  return { ...base, bodyCatalog: { ...candidate, bodies } } as MultiBodyWorldProject;
+}
+
+export function serializeMultiBodyProject(
+  project: WorldProject,
+  options: { includeLayerData?: boolean } = {},
+): ReturnType<typeof serializeBaseProject> & { bodyCatalog: SerializedBodyCatalog } {
+  const includeLayerData = options.includeLayerData ?? true;
+  const base = serializeBaseProject(stripBodyCatalog(project), options);
+  const catalog = readWorldBodyCatalog(project);
   return {
     ...base,
-    bodyCatalog: { ...candidate, bodies },
-  } as MultiBodyWorldProject;
+    bodyCatalog: {
+      schema: catalog.schema,
+      primaryBodyId: catalog.primaryBodyId,
+      activeBodyId: catalog.activeBodyId,
+      bodies: catalog.bodies.map((body) => ({
+        ...stripSurface(body),
+        surface: body.bodyId === catalog.primaryBodyId || !body.surface
+          ? undefined
+          : serializeSurface(body.surface, includeLayerData),
+      })),
+    },
+  };
+}
+
+export function deserializeMultiBodyProject(value: unknown): WorldProject {
+  const base = deserializeBaseProject(value);
+  if (!isRecord(value) || !isRecord(value.bodyCatalog)) return base;
+  const serialized = value.bodyCatalog as unknown as SerializedBodyCatalog;
+  const candidate: WorldBodyCatalogV1 = {
+    schema: serialized.schema,
+    primaryBodyId: serialized.primaryBodyId,
+    activeBodyId: serialized.activeBodyId,
+    bodies: Array.isArray(serialized.bodies)
+      ? serialized.bodies.map(({ surface: _surface, ...body }) => body)
+      : [],
+  };
+  if (!isWorldBodyCatalog(candidate)) return base;
+  const bodies = serialized.bodies.map((body) => ({
+    ...body,
+    surface: body.surface ? deserializeSurface(body.surface) : undefined,
+  }));
+  return { ...base, bodyCatalog: { ...candidate, bodies } } as MultiBodyWorldProject;
 }
 
 function writeSurface(zip: JSZip, root: string, surface: PrimaryWorld): void {
-  const { layers: _layers, topologyLayers: _topologyLayers, ...metadata } = surface;
-  zip.file(`${root}/world.json`, JSON.stringify({ ...metadata, layers: [], topologyLayers: [], biomeLegend: biomeNames }));
+  const serialized = serializeSurface(surface, false);
+  zip.file(`${root}/world.json`, JSON.stringify({ ...serialized, layers: [], topologyLayers: [] }));
   for (const layer of serializeLayers(surface.layers, surface.mapModel.resolution, surface.mapModel.projection)) {
     zip.file(`${root}/layers/${layer.layerType}.json`, JSON.stringify(layer));
   }
@@ -114,21 +168,15 @@ function writeSurface(zip: JSZip, root: string, surface: PrimaryWorld): void {
 async function readSurface(zip: JSZip, root: string): Promise<PrimaryWorld> {
   const worldFile = zip.file(`${root}/world.json`);
   if (!worldFile) throw new Error(`Invalid .wforge package: missing ${root}/world.json`);
-  const metadata = JSON.parse(await worldFile.async('string')) as Omit<PrimaryWorld, 'layers' | 'topologyLayers'>;
+  const metadata = JSON.parse(await worldFile.async('string')) as SerializedPrimaryWorld;
   const layers = await readLayers<SerializableLayer>(zip, `${root}/layers`);
   const topologyLayers = await readLayers<SerializableTopologyLayer>(zip, `${root}/topology-layers`);
-  return {
-    ...metadata,
-    layers: deserializeMapLayers(layers),
-    topologyLayers: deserializeTopologyLayers(topologyLayers),
-  } as PrimaryWorld;
+  return deserializeSurface({ ...metadata, layers, topologyLayers });
 }
 
 async function extendManifest(zip: JSZip, catalog: PackagedBodyCatalog): Promise<void> {
   const manifestFile = zip.file('manifest.json');
-  const manifest = manifestFile
-    ? JSON.parse(await manifestFile.async('string')) as Record<string, unknown>
-    : {};
+  const manifest = manifestFile ? JSON.parse(await manifestFile.async('string')) as Record<string, unknown> : {};
   zip.file('manifest.json', JSON.stringify({
     ...manifest,
     extensions: {
@@ -143,37 +191,57 @@ async function extendManifest(zip: JSZip, catalog: PackagedBodyCatalog): Promise
   }, null, 2));
 }
 
+function serializeSurface(surface: PrimaryWorld, includeLayerData: boolean): SerializedPrimaryWorld {
+  const { layers: _layers, topologyLayers: _topologyLayers, ...metadata } = surface;
+  return {
+    ...metadata,
+    layers: includeLayerData
+      ? serializeLayers(surface.layers, surface.mapModel.resolution, surface.mapModel.projection)
+      : [],
+    topologyLayers: includeLayerData
+      ? serializeTopologyLayers(surface.topologyLayers, surface.topology)
+      : [],
+    biomeLegend: biomeNames,
+  } as SerializedPrimaryWorld;
+}
+
+function deserializeSurface(surface: SerializedPrimaryWorld): PrimaryWorld {
+  return {
+    ...surface,
+    layers: deserializeMapLayers(surface.layers),
+    topologyLayers: deserializeTopologyLayers(surface.topologyLayers),
+  } as PrimaryWorld;
+}
+
 function serializeLayers(
   layers: MapLayers,
   resolution: PrimaryWorld['mapModel']['resolution'],
   projection: PrimaryWorld['mapModel']['projection'],
 ): SerializableLayer[] {
-  return (Object.entries(layers) as Array<[keyof MapLayers, MapLayers[keyof MapLayers]]>)
-    .map(([layerType, data]) => ({
-      layerId: `map:${layerType}`,
-      layerType,
-      resolution,
-      projection,
-      dataEncoding: encodingFor(data),
-      ...rangeFor(data),
-      data: Array.from(data),
-    }));
+  return (Object.entries(layers) as Array<[keyof MapLayers, MapLayers[keyof MapLayers]]>).map(([layerType, data]) => ({
+    layerId: `map:${layerType}`,
+    layerType,
+    resolution,
+    projection,
+    dataEncoding: encodingFor(data),
+    ...rangeFor(data),
+    data: Array.from(data),
+  }));
 }
 
 function serializeTopologyLayers(
   layers: TopologyLayers,
   topology: PrimaryWorld['topology'],
 ): SerializableTopologyLayer[] {
-  return (Object.entries(layers) as Array<[keyof TopologyLayers, TopologyLayers[keyof TopologyLayers]]>)
-    .map(([layerType, data]) => ({
-      layerId: `topology:${layerType}`,
-      layerType,
-      topologyKind: topology.kind,
-      topologyResolution: topology.resolution,
-      dataEncoding: encodingFor(data),
-      ...rangeFor(data),
-      data: Array.from(data),
-    }));
+  return (Object.entries(layers) as Array<[keyof TopologyLayers, TopologyLayers[keyof TopologyLayers]]>).map(([layerType, data]) => ({
+    layerId: `topology:${layerType}`,
+    layerType,
+    topologyKind: topology.kind,
+    topologyResolution: topology.resolution,
+    dataEncoding: encodingFor(data),
+    ...rangeFor(data),
+    data: Array.from(data),
+  }));
 }
 
 async function readLayers<T extends { layerType: string }>(zip: JSZip, root: string): Promise<T[]> {
