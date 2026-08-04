@@ -1,5 +1,8 @@
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import { importWforge } from '@world-forge/exporters';
 import { WorldProject } from '@world-forge/shared';
+import { readWorldBodyCatalog, withActiveWorldBody } from '@world-forge/shared/worldBodies';
+import { rememberSessionActiveWorldBody } from '@world-forge/shared/worldBodySession';
 import { SavedMapRecord } from '../sync';
 import {
   defaultWorldStorageProvider,
@@ -23,6 +26,10 @@ import {
   renameWorldProject,
   type WorldRenameRequestDetail,
 } from './worldIdentityBridge';
+import {
+  notifyParchmentSystemPackageResult,
+  parseParchmentSystemPackageMessage,
+} from './systemPackageBridge';
 import { assessWorldReplayCompatibility } from './worldReplayManifest';
 
 type UseWorldLibraryCommandsOptions = {
@@ -104,6 +111,46 @@ export function useWorldLibraryCommands({
       setWorldLibraryStatus(`Renamed world to ${renamed.projectName}`);
     };
 
+    const loadSystemPackage = async (request: ReturnType<typeof parseParchmentSystemPackageMessage> & object) => {
+      setWorldLibraryStatus(`Loading ${request.projectName}...`);
+      try {
+        const loaded = await importWforge(new File(
+          [request.bytes],
+          request.fileName,
+          { type: 'application/vnd.world-forge.package+zip' },
+        ));
+        const remapped = {
+          ...loaded,
+          projectId: request.targetWorldForgeProjectId,
+          projectName: request.projectName,
+          updatedAt: new Date().toISOString(),
+        };
+        const catalog = readWorldBodyCatalog(remapped);
+        if (!catalog.bodies.some((body) => body.bodyId === request.activeBodyId)) {
+          throw new Error(`The embedded system does not contain body ${request.activeBodyId}.`);
+        }
+        const selected = withActiveWorldBody(remapped, request.activeBodyId);
+        rememberSessionActiveWorldBody(selected, request.activeBodyId);
+        rememberWorldName(selected.projectId, selected.projectName);
+        onWorldLoadedRef.current(selected);
+        setWorldLibraryStatus(`Loaded ${selected.projectName}`);
+        notifyParchmentSystemPackageResult({
+          requestId: request.requestId,
+          status: 'loaded',
+          worldForgeProjectId: selected.projectId,
+          activeBodyId: request.activeBodyId,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'The embedded World Forge system could not be loaded.';
+        setWorldLibraryStatus(message);
+        notifyParchmentSystemPackageResult({
+          requestId: request.requestId,
+          status: 'failed',
+          message,
+        });
+      }
+    };
+
     const onRenameRequest = (event: Event) => {
       const detail = (event as CustomEvent<WorldRenameRequestDetail>).detail;
       if (!detail?.projectId || !detail.worldName) return;
@@ -115,6 +162,12 @@ export function useWorldLibraryCommands({
       if (!embeddedContext.embedded || event.source !== globalThis.parent) return;
       const parentOrigin = expectedParentOrigin();
       if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
+
+      const systemPackage = parseParchmentSystemPackageMessage(event.data, embeddedContext.projectId);
+      if (systemPackage) {
+        void loadSystemPackage(systemPackage);
+        return;
+      }
 
       if (isParchmentWorldInventoryRequest(event.data, embeddedContext.projectId)) {
         void publishInventory().catch((error: unknown) => {
