@@ -1,92 +1,211 @@
 # Reference-system ETL and multi-body navigation handoff
 
-Updated: 2026-08-03
-Status: Planning baseline only; no reference-data ingestion implementation has started
+Updated: 2026-08-04
+Status: Foundation implemented on `dev`; real ETOPO package build, browser QA, Explorer integration, and Parchment embedding remain open
 
 Authoritative planning:
 
 - `refs/planning/reference-system-etl-and-multi-body-navigation.md`
+
+Reference-data notes:
+
+- `refs/research/reference-data/earth-reference-data.md`
 
 Tracking:
 
 - Parchment Worlds #22, Sol System reference project
 - World Forge #124, preserve active body across System, Globe, Explorer, and Map
 
-## Resume point
+## Product direction
 
-The next reference-system increment is not additional procedural Sol-like generation and not a set of separate per-body projects.
+The target remains one World Forge project containing one coherent planetary system. Earth, Luna, Mars, and other bodies are not separate `.wforge` projects.
 
-The target is one World Forge project containing one coherent planetary system, with stable body identities and body-specific imported details. Earth is the first ETL fixture and the initial primary body. It is not the only body that Map or Explorer may address.
+`Do not fabricate replay data` means do not invent real-body facts or substitute procedural lookalikes where recognizable source data exists. Procedural and analytical gap filling remains allowed when it is distinguishable and documented.
 
-## Correct interpretation
+Full dataset provenance belongs in repository reference documents. The runtime model carries only the origin and capability distinctions required for correct product behavior.
 
-`Do not fabricate replay data` means:
+## Implemented foundation
 
-- do not invent Earth, Mars, Luna, or other real-body facts;
-- do not substitute a procedural lookalike when recognizable source data exists;
-- do not label generated filler as imported reference data.
+### Multi-body project contract
 
-It does not mean imported reference bodies should remain metadata-only or non-openable.
+Added:
 
-The intended Sol project must eventually show recognizable bodies in their applicable views:
+- `packages/shared/src/worldBodies.ts`
+- `packages/shared/src/worldBodySession.ts`
 
-- System view for the complete system;
-- Globe or 3D view for the selected body;
-- flat Map for bodies with supported projected layers;
-- Explorer and geographic drilldown for bodies with compatible geographic data.
-
-## Product provenance boundary
-
-Full dataset provenance belongs in repository reference documents, not in cell-level runtime records.
-
-The product needs only lightweight distinctions among imported, derived, procedurally filled, and user-edited data, plus capability information needed to select valid views.
-
-## Current World Forge gap
-
-World Forge can select secondary bodies in System and focus them in Globe, but Map still resolves to the primary world. This breaks one-project multi-body navigation and is tracked in #124.
-
-The future contract must separate:
+The optional `world-forge-body-catalog-v1` extension provides:
 
 - durable `primaryBodyId`;
-- current `activeBodyId`;
-- per-body view and layer capabilities.
+- durable initial `activeBodyId`;
+- stable body identity and parent relationship;
+- body family;
+- per-view capability flags;
+- lightweight imported, derived, generated, authored, or edited origin;
+- physical and orbital facts where known;
+- optional canonical body surface data.
 
-Unsupported views should report the capability gap rather than silently switching bodies.
+Legacy projects receive an in-memory compatibility catalog around the existing primary world. Legacy generated orbit classes are not mislabeled as physical kilometers or days.
 
-## First implementation sequence
+### One-project `.wforge` serialization
 
-1. Audit every primary-world-only data access path in `WorldProject`, Map, Explorer, save/load, and `.wforge` serialization.
-2. Select the normalized imported-system and imported-body contract boundary.
-3. Document the initial Earth datasets, licenses, transformations, and target resolution under `refs/`.
-4. Ingest recognizable Earth layers into canonical World Forge data inside one Sol system project.
-5. Prove Map, Globe or 3D, Explorer, save/reopen, and `.wforge` round trip.
-6. Prove Parchment `.pworld` import without relying on existing device-local World Forge storage.
-7. Extend the same model to Luna, Mars, Phobos, and Deimos.
-8. Walk through the remaining planets, moons, and belt structures using body-appropriate fidelity.
+Added:
 
-## Retained work
+- `packages/exporters/src/multiBodyWforge.ts`
+- `packages/exporters/src/desktop.ts`
 
-The existing generated-system and body-enrichment architecture remains useful:
+The normal desktop `.wforge` exporter now preserves one system and multiple surfaced bodies in one package:
 
-- stable system and body scaffolds;
-- System and Globe body selection;
-- capability-resolved body workflows;
-- optional artifacts;
-- `.wforge` serialization of enrichment data;
-- lazy materialization and bounded ordinary primary-world generation.
+```text
+manifest.json
+project.json
+system/body-catalog.json
+bodies/<body-id>/world.json
+bodies/<body-id>/layers/*.json
+bodies/<body-id>/topology-layers/*.json
+```
 
-Reference ingestion must generalize these seams without destabilizing procedural generation.
+The primary surface remains in the established package location. Secondary surfaces are package entries, not unrelated files or saved projects.
+
+Local project serialization also preserves secondary body surfaces, so IndexedDB save and reopen can use the same project model.
+
+Existing single-world packages remain accepted by the base importer path.
+
+### Normalized reference-body raster import
+
+Added:
+
+- `packages/generator-core/src/referenceBodyImport.ts`
+
+The normalized import seam accepts source-neutral equirectangular body layers and produces a canonical `PrimaryWorld`:
+
+- elevation or radial displacement;
+- optional water, temperature, wetness, ice, and biome layers;
+- physical body values;
+- output and topology resolution;
+- lightweight per-layer origin.
+
+Missing canonical layers are derived only when absent. Imported inputs are not replaced by generator output. The import projects the source raster onto the current cubed-sphere topology so existing Map, Globe, and geographic readers can share the same body.
+
+### Sol system builder
+
+Added:
+
+- `packages/generator-core/src/solReferenceProject.ts`
+
+The builder creates one Sol project containing:
+
+- Sol context;
+- the eight planets;
+- Luna, Phobos, Deimos, Io, Europa, Ganymede, Callisto, Enceladus, Titan, Titania, Oberon, and Triton;
+- the Main Asteroid Belt;
+- the Kuiper Belt;
+- rounded physical and orbital facts in the body catalog;
+- Earth as the initial primary and active body.
+
+Only Earth is marked mappable in the first slice. Other bodies remain in the same project and gain Map, Globe, and Explorer capabilities as real body data is imported.
+
+### Earth ETOPO build path
+
+Added:
+
+- `tools/reference-etl/prepare_etopo_earth.py`
+- `tools/reference-etl/requirements.txt`
+- `scripts/referenceDataBundle.ts`
+- `scripts/build-earth-reference.ts`
+
+Commands:
+
+```bash
+python -m pip install -r tools/reference-etl/requirements.txt
+npm run reference:prepare-earth
+npm run reference:build-earth
+```
+
+The first tool downloads or accepts NOAA ETOPO 2022, resamples it to a configurable 2:1 equirectangular raster, and writes a source-neutral binary bundle. The second command imports that bundle, builds the one-system Sol project, and exports a `.wforge` package.
+
+Default local outputs:
+
+- `.local/reference-data/earth-etopo/`
+- `.local/reference-data/sol-earth-reference.wforge`
+
+Large scientific source and derived binaries remain outside Git until redistribution terms, package size, and accepted release resolution are resolved.
+
+### Active-body Map selection
+
+Added:
+
+- `packages/renderer/src/bodyAwarePresentation.ts`
+
+The desktop renderer now resolves Map and point inspection against the session's active body instead of unconditionally reading `project.primaryWorld`.
+
+When the selected body has no projected surface, Map displays an explicit unsupported-state message rather than silently showing Earth.
+
+Globe target resolution now shares its selected body with Map through the session body context. This closes the reported System-to-Globe-to-Map reversion path for supported surfaced bodies and makes unsupported bodies visible as capability gaps.
+
+Direct System-selection-to-Map synchronization and imported secondary-body Globe geometry still require additional UI/view integration under #124.
+
+## Automated coverage added
+
+Focused tests cover:
+
+- legacy project compatibility catalogs;
+- multiple surfaces inside one system project;
+- body identity and active-body selection;
+- multi-body `.wforge` and local serialization round trips;
+- normalized raster validation and layer-origin handling;
+- one-system Sol inventory and belt ordering;
+- renderer projection to the active surfaced body;
+- Globe-to-Map active-body continuity.
+
+These tests are committed but have not yet been observed running on the final exact `dev` head. GitHub exposes no completed status checks for the current commits.
+
+## Current fidelity boundary
+
+The current Earth importer is capable of creating a recognizable elevation and coastline proof from ETOPO.
+
+It does not yet create a complete real Earth:
+
+- temperature is currently derived when no real field is supplied;
+- wetness and precipitation are currently derived placeholders;
+- biomes are currently derived placeholders;
+- rivers, lakes, wind, and currents remain empty placeholders;
+- Blue Marble or another real albedo layer is not yet integrated;
+- no ETOPO source file or built `.wforge` has been committed or browser-validated.
+
+Do not describe the current implementation as a finished Earth reference.
+
+## Parchment package boundary discovered
+
+Parchment's current `.pworld` envelope is JSON and supports attachment and nested-package entry kinds, but its current exporter writes only `project.json`.
+
+A realistic Earth `.wforge` contains high-volume binary-compressible layers. Embedding it as base64 in the current JSON envelope would add size and memory overhead. The next Parchment increment must choose and test one of:
+
+1. a bounded base64 attachment for the initial reference package;
+2. a binary or ZIP `.pworld` container revision that preserves the existing manifest contracts;
+3. another package-contained attachment representation that remains one portable project.
+
+A pointer to unrelated device-local World Forge storage is not acceptable.
+
+## Resume sequence
+
+1. Run the final World Forge typecheck and focused tests on the exact `dev` head; correct any failures before expanding scope.
+2. Prepare an ETOPO bundle and build the first real Earth-backed Sol `.wforge` locally.
+3. Record package sizes, layer compression, load time, and memory behavior at `512 x 256`, `1024 x 512`, and `2048 x 1024` where practical.
+4. Perform Map and Globe recognition QA against major continents, ocean basins, mountain systems, and trenches.
+5. Complete imported-secondary-surface support in Globe and direct System-to-Map active-body synchronization.
+6. Make Explorer consume the active body's compatible surface rather than `primaryWorld` directly.
+7. Implement the Parchment package-contained `.wforge` attachment or container path.
+8. Import through the normal Parchment UI with no dependency on pre-existing World Forge storage.
+9. Add real albedo and hydrography, then select actual climate and biome sources.
+10. Extend the same system project to Luna, Mars, Phobos, and Deimos.
 
 ## Guardrails
 
-- One system is one project.
+- One system remains one project.
 - Do not create Earth, Mars, and Luna as unrelated `.wforge` projects.
-- Do not make Map or Explorer primary-world-only permanently.
+- Do not make Map or Explorer permanently primary-world-only.
 - Do not force gas giants or irregular bodies into Earthlike surface assumptions.
 - Do not require full scientific provenance inside the product.
-- Do not leak source-specific file formats into durable contracts.
-- Do not claim the Sol reference is complete while it contains only astronomy metadata.
-
-## Verification state
-
-No code or automated validation is claimed for this planning increment. The documents and #124 are the durable resume state.
+- Do not leak source-specific ETL formats into durable contracts.
+- Do not label derived placeholder climate as observed Earth data.
+- Do not claim validation passed until it runs on the exact final head.
