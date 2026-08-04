@@ -133,7 +133,9 @@ Referenced albedo, compact raster, cloud, ring, mesh, material, normal, roughnes
 - import hydration back into runtime payload storage;
 - re-export without losing imported bytes.
 
-Local World Forge serialization now preserves typed body-asset payloads through IndexedDB-style structured cloning and accepts numeric byte arrays from older or JSON-mediated records.
+Local World Forge serialization preserves typed body-asset payloads through IndexedDB-style structured cloning and accepts numeric byte arrays from older or JSON-mediated records. Local size accounting excludes those payloads from the JSON estimate and counts their binary byte lengths once.
+
+Package import currently hydrates all referenced body assets eagerly. The accepted staged-loading policy still requires a lazy package-entry abstraction before large Tier 2 and Tier 3 inventories are allowed to expand without measurement.
 
 ### Normalized reference-body raster import
 
@@ -169,12 +171,13 @@ The Python transform passed a synthetic GeoTIFF smoke for reprojection, output o
 
 ### Active-body behavior
 
-Implemented across the body session, renderer projection, Globe targeting, and embedded package bridge:
+Implemented across the body session, renderer projection, Globe targeting, package import, local serialization, and the embedded package bridge:
 
 - supported surfaced bodies can remain selected across view changes;
 - Map reports unsupported bodies rather than silently reverting to Earth;
 - imported canonical secondary surfaces can resolve as Globe targets;
-- the true primary body remains durable for save and export;
+- package and local deserialization rehydrate the root primary surface into the runtime catalog;
+- saving or re-exporting while a secondary body is active cannot replace the durable primary;
 - embedded Parchment systems load and save as one package rather than device-wide inventory records.
 
 Direct System selection, all Explorer paths, and every diagnostic panel still require exact browser validation under #124.
@@ -196,6 +199,7 @@ Committed tests cover:
 - detail-derived view capabilities;
 - Sol detail-tier assignments;
 - multi-surface `.wforge` round trips;
+- durable-primary preservation while a secondary body is active;
 - body-detail round trips through the catalog;
 - required and optional body assets;
 - asset checksum tampering rejection;
