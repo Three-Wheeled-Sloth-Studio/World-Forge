@@ -32,6 +32,7 @@ export type WorldBodyAssetRefV1 = {
   encoding?: string;
   resolution?: Resolution;
   byteLength?: number;
+  sha256?: string;
   optional?: boolean;
 };
 
@@ -192,6 +193,7 @@ function isAssetRef(value: unknown): boolean {
   if (value.encoding !== undefined && !cleanText(value.encoding)) return false;
   if (value.resolution !== undefined && !isResolution(value.resolution)) return false;
   if (value.byteLength !== undefined && !nonNegativeInteger(value.byteLength)) return false;
+  if (value.sha256 !== undefined && !isSha256(value.sha256)) return false;
   return value.optional === undefined || typeof value.optional === 'boolean';
 }
 
@@ -262,6 +264,10 @@ function isOrigin(value: unknown): value is WorldBodyDetailOrigin {
 
 function isHexColor(value: unknown): boolean {
   return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+}
+
+function isSha256(value: unknown): boolean {
+  return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/i.test(value);
 }
 
 function safeLogicalPath(value: unknown): boolean {
