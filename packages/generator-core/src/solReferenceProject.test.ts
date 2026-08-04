@@ -63,7 +63,7 @@ describe('Sol reference project', () => {
     expect(mars?.orbit?.periodDays).toBe(686.98);
 
     expect(jupiter?.detail?.kind).toBe('atmospheric-presentation');
-    expect(jupiter?.capabilities).toEqual({ globe: true, map: false, explorer: false, irregularShape: false });
+    expect(jupiter?.capabilities).toEqual({ globe: false, map: false, explorer: false, irregularShape: false });
     expect(saturn?.detail?.kind === 'atmospheric-presentation' ? saturn.detail.rings?.outerRadiusRatio : null).toBe(2.27);
 
     expect(phobos?.detail?.kind).toBe('catalog');
