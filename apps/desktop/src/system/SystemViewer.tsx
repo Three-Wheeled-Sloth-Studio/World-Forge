@@ -72,8 +72,6 @@ export function SystemViewer({
     () => orbitalContext ? buildSystemCatalog(project, orbitalContext) : [],
     [
       orbitalContext?.artifactSignature,
-      project.bodyAssetPayloads,
-      project.bodyCatalog,
       project.bodyGeneration?.updatedAt,
       project.primaryWorld.name,
       project.projectId,
@@ -355,8 +353,6 @@ export function SystemViewer({
     catalog,
     onZoom,
     orbitalContext?.artifactSignature,
-    project.bodyAssetPayloads,
-    project.bodyCatalog,
     project.bodyGeneration?.updatedAt,
     project.enrichmentArtifacts,
     project.projectId,
