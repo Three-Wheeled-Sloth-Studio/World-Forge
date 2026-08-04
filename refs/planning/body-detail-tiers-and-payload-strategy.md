@@ -1,7 +1,7 @@
 # Body detail tiers and lightweight payload strategy
 
 Updated: 2026-08-04
-Status: Accepted architecture and initial contract implementation
+Status: Accepted architecture; detail contract and package asset persistence implemented on `dev`; exact-head validation pending
 Related work:
 
 - `refs/planning/reference-system-etl-and-multi-body-navigation.md`
@@ -138,6 +138,7 @@ A detail record may reference package entries by:
 - optional encoding;
 - optional resolution;
 - optional byte length;
+- optional `sha256:<hex>` checksum;
 - optionality.
 
 Initial roles include:
@@ -153,7 +154,30 @@ Initial roles include:
 - material map;
 - feature catalog.
 
-Unsafe absolute paths, drive-qualified paths, and upward traversal are invalid.
+Unsafe absolute paths, drive-qualified paths, upward traversal, duplicate IDs, duplicate logical paths, and collisions with reserved body surface entries are invalid.
+
+## Implemented package persistence
+
+Implemented in:
+
+- `packages/exporters/src/bodyAssetPackage.ts`;
+- `packages/exporters/src/multiBodyWforge.ts`;
+- `packages/exporters/src/desktop.ts`;
+- `apps/desktop/src/storage.ts`.
+
+Current behavior:
+
+- Export copies every available referenced binary into its body-local `.wforge` path.
+- Required assets fail export when no runtime payload or resolver result is available.
+- Optional assets may be absent and are counted in package metadata.
+- Export records the actual byte length and SHA-256 digest in the packaged body catalog.
+- Import rejects missing required entries, byte-length mismatches, and checksum mismatches.
+- Imported bytes are restored as typed runtime payloads keyed by stable asset ID.
+- Local structured serialization preserves typed payloads without base64 expansion and storage accounting counts the binary bytes once.
+- Re-export after import preserves referenced bytes and checksums.
+- Loading or saving while a secondary body is active retains the true durable primary surface.
+
+This is the first correct package boundary, not the final loading strategy. Current `.wforge` import eagerly reads all referenced body assets. The staged loading policy below still requires a package-entry abstraction that can defer decoding until a view requests a body.
 
 ## Body-family rules
 
@@ -260,6 +284,8 @@ Viewing Saturn must not materialize Earth's geographic arrays. Opening Earth mus
 - Existing multi-body packages without detail records remain valid.
 - Adding a canonical `PrimaryWorld` surface supplies a default geographic detail record when none is provided.
 - Detail records remain lightweight metadata unless they explicitly reference package assets.
+- Existing local records without body payloads remain valid.
+- Imported package payloads survive local save/reopen and package re-export.
 - Ordinary generated projects do not pay the cost of unused secondary-body assets.
 
 ## Validation
@@ -277,13 +303,12 @@ For each new detail variant or body:
 
 ## Next increments
 
-1. Run the exact-head typecheck and focused tests for the new contract.
-2. Extend `.wforge` export and import to copy referenced body assets, verify checksums, and reject missing required entries.
-3. Add an imported atmospheric texture adapter and prove Jupiter or Saturn end to end.
-4. Add a compact Luna or Mars raster surface and measure Tier 2 package behavior.
-5. Add a decimated Phobos or Deimos mesh and prove irregular-body Globe support.
-6. Add lazy package-entry loading so large geographic and mesh assets are not decoded during ordinary System browsing.
-7. Record measured payload budgets and replace the provisional targets.
+1. Run the exact-head typecheck and focused tests for the detail and asset-package contracts.
+2. Add an imported atmospheric texture adapter and prove Jupiter or Saturn end to end.
+3. Add a compact Luna or Mars raster surface and measure Tier 2 package behavior.
+4. Add a decimated Phobos or Deimos mesh and prove irregular-body Globe support.
+5. Add lazy package-entry loading so large geographic and mesh assets are not decoded during ordinary System browsing.
+6. Record measured payload budgets and replace the provisional targets.
 
 ## Guardrails
 
