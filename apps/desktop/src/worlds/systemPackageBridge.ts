@@ -2,6 +2,7 @@ import { expectedParentOrigin, readEmbeddedWorldContext } from './worldIdentityB
 
 export const PARCHMENT_LOAD_WORLD_FORGE_SYSTEM_PACKAGE_MESSAGE = 'parchment-worlds:load-world-forge-system-package';
 export const WORLD_FORGE_SYSTEM_PACKAGE_RESULT_MESSAGE = 'parchment-worlds:world-forge-system-package-result';
+export const WORLD_FORGE_SYSTEM_PACKAGE_SAVED_MESSAGE = 'parchment-worlds:world-forge-system-package-saved';
 
 export type WorldForgeSystemPackageRequest = {
   parentProjectId: string;
@@ -20,6 +21,15 @@ export type WorldForgeSystemPackageResult = {
   worldForgeProjectId?: string;
   activeBodyId?: string;
   message?: string;
+};
+
+export type WorldForgeSystemPackageSaved = {
+  projectId: string;
+  worldForgeProjectId: string;
+  activeBodyId: string;
+  fileName: string;
+  updatedAt: string;
+  bytes: ArrayBuffer;
 };
 
 export function parseParchmentSystemPackageMessage(
@@ -57,20 +67,44 @@ export function parseParchmentSystemPackageMessage(
 
 export function notifyParchmentSystemPackageResult(
   result: Omit<WorldForgeSystemPackageResult, 'projectId'>,
-  options: {
-    search?: string;
-    postMessage?: (message: { type: typeof WORLD_FORGE_SYSTEM_PACKAGE_RESULT_MESSAGE; payload: WorldForgeSystemPackageResult }, targetOrigin: string) => void;
-    targetOrigin?: string;
-  } = {},
+  options: MessageOptions<WorldForgeSystemPackageResult, typeof WORLD_FORGE_SYSTEM_PACKAGE_RESULT_MESSAGE> = {},
+): void {
+  postToParchment(WORLD_FORGE_SYSTEM_PACKAGE_RESULT_MESSAGE, result, options);
+}
+
+export function notifyParchmentSystemPackageSaved(
+  saved: Omit<WorldForgeSystemPackageSaved, 'projectId'>,
+  options: MessageOptions<WorldForgeSystemPackageSaved, typeof WORLD_FORGE_SYSTEM_PACKAGE_SAVED_MESSAGE> = {},
+): void {
+  postToParchment(WORLD_FORGE_SYSTEM_PACKAGE_SAVED_MESSAGE, saved, options, [saved.bytes]);
+}
+
+type MessageOptions<TPayload extends { projectId: string }, TType extends string> = {
+  search?: string;
+  postMessage?: (message: { type: TType; payload: TPayload }, targetOrigin: string, transfer?: Transferable[]) => void;
+  targetOrigin?: string;
+};
+
+function postToParchment<
+  TPayload extends { projectId: string },
+  TType extends string,
+>(
+  type: TType,
+  payload: Omit<TPayload, 'projectId'>,
+  options: MessageOptions<TPayload, TType>,
+  transfer?: Transferable[],
 ): void {
   const context = readEmbeddedWorldContext(options.search);
   if (!context.embedded || !context.projectId) return;
   const message = {
-    type: WORLD_FORGE_SYSTEM_PACKAGE_RESULT_MESSAGE,
-    payload: { projectId: context.projectId, ...result },
-  } as const;
-  const postMessage = options.postMessage ?? ((value, targetOrigin) => globalThis.parent?.postMessage(value, targetOrigin));
-  postMessage(message, options.targetOrigin ?? expectedParentOrigin());
+    type,
+    payload: { projectId: context.projectId, ...payload } as TPayload,
+  };
+  const postMessage = options.postMessage ?? ((value, targetOrigin, values) => {
+    if (values?.length) globalThis.parent?.postMessage(value, targetOrigin, values);
+    else globalThis.parent?.postMessage(value, targetOrigin);
+  });
+  postMessage(message, options.targetOrigin ?? expectedParentOrigin(), transfer);
 }
 
 function cleanText(value: unknown): string | null {
