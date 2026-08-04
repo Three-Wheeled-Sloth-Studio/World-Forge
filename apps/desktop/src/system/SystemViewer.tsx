@@ -1,16 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { GeneratedSystemBodyArtifact, OrbitalPresentationBody, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import { rememberSessionActiveWorldBody, sessionActiveWorldBodyId } from '@world-forge/shared/worldBodySession';
 import type { StellarSurfaceEnrichmentController } from '../enrichment/useStellarSurfaceEnrichment';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import type { BodyGenerationQueueController } from '../enrichment/useBodyGenerationQueue';
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 import { BodyGenerationPanel } from './BodyGenerationPanel';
 import { StellarSurfacePanel } from './StellarSurfacePanel';
-import { createStellarCoronaMaterial, createStellarCoronaStreamers, createStellarSurfaceMaterial } from './stellarSurfacePresentation';
+import { createStellarCoronaMaterial, createStellarSurfaceMaterial } from './stellarSurfacePresentation';
 import { createGeneratedBodyObject, generatedBodyMaterialMode } from './generatedBodyPresentation';
 import { SystemSimulationControls } from '../globe/SystemSimulationControls';
 import { deterministicStarDirections } from '../globe/orbitalPresentation';
+import { canOpenGlobeBodyTarget } from '../globe/globeBodyTarget';
+import { createReferenceSystemBodyPresentation } from './referenceSystemBodyPresentation';
 import {
   buildSystemCatalog,
   formatSystemBodyKind,
@@ -67,8 +70,17 @@ export function SystemViewer({
   const [focusedBodyId, setFocusedBodyId] = useState('');
   const catalog = useMemo(
     () => orbitalContext ? buildSystemCatalog(project, orbitalContext) : [],
-    [orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.projectId, project.projectName]
+    [
+      orbitalContext?.artifactSignature,
+      project.bodyAssetPayloads,
+      project.bodyCatalog,
+      project.bodyGeneration?.updatedAt,
+      project.primaryWorld.name,
+      project.projectId,
+      project.projectName,
+    ]
   );
+  const requestedActiveBodyId = sessionActiveWorldBodyId(project);
   const selectedEntry = catalog.find((entry) => entry.id === selectedBodyId) ?? null;
 
   useEffect(() => {
@@ -77,17 +89,17 @@ export function SystemViewer({
       setFocusedBodyId('');
       return;
     }
-    setSelectedBodyId((current) => catalog.some((entry) => entry.id === current)
-      ? current
-      : orbitalContext.payload.primaryBodyId);
-    setFocusedBodyId((current) => catalog.some((entry) => entry.id === current)
-      ? current
-      : orbitalContext.payload.primaryBodyId);
-  }, [catalog, orbitalContext?.artifactSignature]);
+    const requested = catalog.some((entry) => entry.id === requestedActiveBodyId)
+      ? requestedActiveBodyId
+      : orbitalContext.payload.primaryBodyId;
+    setSelectedBodyId(requested);
+    setFocusedBodyId(requested);
+  }, [catalog, orbitalContext?.artifactSignature, project.projectId, requestedActiveBodyId]);
 
   useEffect(() => {
     selectedBodyIdRef.current = selectedBodyId;
-  }, [selectedBodyId]);
+    if (selectedBodyId) rememberSessionActiveWorldBody(project, selectedBodyId);
+  }, [project, selectedBodyId]);
 
   useEffect(() => {
     focusedBodyIdRef.current = focusedBodyId;
@@ -159,7 +171,7 @@ export function SystemViewer({
       if (!entry.body) continue;
       const requestedFidelity = project.bodyGeneration?.records[entry.id]?.requestedFidelity ?? 'preview';
       const generatedArtifact = bodyArtifactForBody(project, orbitalContext, entry.id, requestedFidelity);
-      const record = createBodySceneRecord(entry, showLabels, generatedArtifact);
+      const record = createBodySceneRecord(project, entry, showLabels, generatedArtifact);
       scene.add(record.group);
       bodyRecords.set(entry.id, record);
       if (showOrbitPaths) {
@@ -339,7 +351,21 @@ export function SystemViewer({
       host.replaceChildren();
       cameraRef.current = null;
     };
-  }, [catalog, onZoom, orbitalContext?.artifactSignature, project.bodyGeneration?.updatedAt, project.enrichmentArtifacts, project.projectId, scaleMode, showLabels, showOrbitPaths, simulationClock, stellarSurface.artifact?.artifactSignature]);
+  }, [
+    catalog,
+    onZoom,
+    orbitalContext?.artifactSignature,
+    project.bodyAssetPayloads,
+    project.bodyCatalog,
+    project.bodyGeneration?.updatedAt,
+    project.enrichmentArtifacts,
+    project.projectId,
+    scaleMode,
+    showLabels,
+    showOrbitPaths,
+    simulationClock,
+    stellarSurface.artifact?.artifactSignature,
+  ]);
 
   const primaryBodyId = orbitalContext?.payload.primaryBodyId ?? '';
   const starId = orbitalContext?.payload.star.id ?? '';
@@ -350,7 +376,11 @@ export function SystemViewer({
   const selectedGeneratedArtifact = selectedEntry?.body && orbitalContext
     ? bodyArtifactForBody(project, orbitalContext, selectedBodyId, selectedFidelity)
     : null;
-  const canOpenSelectedGlobe = selectedBodyId === primaryBodyId || Boolean(selectedGeneratedArtifact);
+  const canOpenSelectedGlobe = Boolean(
+    orbitalContext
+    && selectedBodyId
+    && canOpenGlobeBodyTarget(project, orbitalContext, selectedBodyId),
+  );
 
   return (
     <div
@@ -455,17 +485,22 @@ export function SystemViewer({
                 type="button"
                 aria-label="Zoom to selected body globe"
                 disabled={!canOpenSelectedGlobe}
-                title={canOpenSelectedGlobe ? 'Open detailed view centered on this generated body.' : 'Generate this body before opening its detailed view.'}
-                onClick={() => onOpenGlobe(selectedBodyId)}
+                title={canOpenSelectedGlobe
+                  ? `Open ${selectedEntry?.label ?? 'this body'} in Globe.`
+                  : `${selectedEntry?.label ?? 'This body'} does not yet have Globe-capable detail.`}
+                onClick={() => {
+                  rememberSessionActiveWorldBody(project, selectedBodyId);
+                  onOpenGlobe(selectedBodyId);
+                }}
               >
                 Zoom to globe
               </button>
               <button
                 type="button"
                 aria-label="Return to primary"
-
                 disabled={focusedBodyId === primaryBodyId}
                 onClick={() => {
+                  rememberSessionActiveWorldBody(project, primaryBodyId);
                   setSelectedBodyId(primaryBodyId);
                   setFocusedBodyId(primaryBodyId);
                 }}
@@ -480,6 +515,7 @@ export function SystemViewer({
               Physical orbital values remain authoritative. Body sizes and display distances are exaggerated for inspection.
             </small>
             {selectedBodyId === starId && <small>The generated star is the system origin for this bounded viewer.</small>}
+            {selectedGeneratedArtifact && <small>Generated detail is available for the selected body.</small>}
           </section>
 
           <SystemSimulationControls clock={simulationClock} artifact={orbitalContext} />
@@ -489,46 +525,56 @@ export function SystemViewer({
   );
 }
 
-function createBodySceneRecord(entry: SystemCatalogEntry, showLabel: boolean, generatedArtifact: GeneratedSystemBodyArtifact | null): BodySceneRecord {
+function createBodySceneRecord(
+  project: WorldProject,
+  entry: SystemCatalogEntry,
+  showLabel: boolean,
+  generatedArtifact: GeneratedSystemBodyArtifact | null,
+): BodySceneRecord {
   const body = entry.body!;
   const group = new THREE.Group();
   group.userData.systemBodyId = entry.id;
   const displaySize = systemDisplayBodySize(body);
-  const color = bodyColor(body.kind, entry.generationStatus);
-  const material = entry.generationStatus === 'generated'
-    ? new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 })
-    : new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: entry.generationStatus === 'generating' ? 0.94 : 0.78 });
+  const referencePresentation = createReferenceSystemBodyPresentation(project, entry, displaySize);
+  let materialMode: string;
 
-  if (generatedArtifact) {
+  if (referencePresentation) {
+    group.add(referencePresentation.object);
+    materialMode = referencePresentation.materialMode;
+  } else if (generatedArtifact) {
     const object = createGeneratedBodyObject(generatedArtifact, displaySize);
     object.userData.systemBodyId = entry.id;
     object.traverse((child) => { child.userData.systemBodyId = entry.id; });
     group.add(object);
-  } else if (body.kind === 'belt') {
-    const belt = new THREE.Mesh(
-      new THREE.TorusGeometry(displaySize * 1.75, Math.max(0.018, displaySize * 0.1), 8, 56),
-      material
-    );
-    belt.userData.systemBodyId = entry.id;
-    group.add(belt);
-    const collider = new THREE.Mesh(
-      new THREE.SphereGeometry(displaySize * 1.45, 16, 8),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-    );
-    collider.userData.systemBodyId = entry.id;
-    group.add(collider);
+    materialMode = generatedBodyMaterialMode(generatedArtifact);
   } else {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(displaySize, 32, 16), material);
-    mesh.userData.systemBodyId = entry.id;
-    group.add(mesh);
+    const color = bodyColor(body.kind, entry.generationStatus);
+    const material = entry.generationStatus === 'generated'
+      ? new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 })
+      : new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: entry.generationStatus === 'generating' ? 0.94 : 0.78 });
+    if (body.kind === 'belt') {
+      const belt = new THREE.Mesh(
+        new THREE.TorusGeometry(displaySize * 1.75, Math.max(0.018, displaySize * 0.1), 8, 56),
+        material
+      );
+      belt.userData.systemBodyId = entry.id;
+      group.add(belt);
+      const collider = new THREE.Mesh(
+        new THREE.SphereGeometry(displaySize * 1.45, 16, 8),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      );
+      collider.userData.systemBodyId = entry.id;
+      group.add(collider);
+    } else {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(displaySize, 32, 16), material);
+      mesh.userData.systemBodyId = entry.id;
+      group.add(mesh);
+    }
+    materialMode = entry.generationStatus === 'generated' ? 'scaffold-solid' : 'placeholder-wireframe';
   }
 
   if (showLabel) group.add(createBodyLabelSprite(entry.label, entry.generationStatus, displaySize + 0.28));
-  return {
-    group,
-    displaySize,
-    materialMode: generatedArtifact ? generatedBodyMaterialMode(generatedArtifact) : entry.generationStatus === 'generated' ? 'scaffold-solid' : 'placeholder-wireframe'
-  };
+  return { group, displaySize, materialMode };
 }
 
 function createOrbitLine(
