@@ -5,6 +5,7 @@ import type {
   SystemOrbitalContextArtifact,
   WorldProject
 } from '@world-forge/shared';
+import { rememberSessionActiveWorldBody } from '@world-forge/shared/worldBodySession';
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 
 export type GlobeBodyTargetMode = 'primary-world' | 'generated-system-body';
@@ -32,13 +33,16 @@ export function resolveGlobeBodyTarget(
 ): GlobeBodyTarget | null {
   const primary = orbitalContext.payload.bodies.find((body) => body.id === orbitalContext.payload.primaryBodyId);
   if (!primary) return null;
-  const primaryTarget = (): GlobeBodyTarget => ({
-    bodyId: primary.id,
-    label: project.projectName,
-    mode: 'primary-world',
-    body: primary,
-    artifact: null
-  });
+  const primaryTarget = (): GlobeBodyTarget => {
+    rememberSessionActiveWorldBody(project, primary.id);
+    return {
+      bodyId: primary.id,
+      label: project.projectName,
+      mode: 'primary-world',
+      body: primary,
+      artifact: null
+    };
+  };
   if (!requestedBodyId || requestedBodyId === primary.id) return primaryTarget();
 
   const requested = orbitalContext.payload.bodies.find((body) => body.id === requestedBodyId);
@@ -47,6 +51,7 @@ export function resolveGlobeBodyTarget(
   const fidelity = record.requestedFidelity ?? 'preview';
   const artifact = artifactLookup(project, orbitalContext, requestedBodyId, fidelity);
   if (!artifact) return primaryTarget();
+  rememberSessionActiveWorldBody(project, requested.id);
   return {
     bodyId: requested.id,
     label: bodyLabel(project, requested),
