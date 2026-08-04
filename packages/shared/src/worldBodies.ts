@@ -11,6 +11,20 @@ export type WorldBodyCapabilities = {
   irregularShape: boolean;
 };
 
+export type WorldBodyPhysicalFacts = {
+  meanRadiusKm: number;
+  massKg?: number;
+  axialTiltDeg?: number;
+  rotationPeriodHours?: number;
+};
+
+export type WorldBodyOrbitFacts = {
+  semiMajorAxisKm: number;
+  periodDays: number;
+  eccentricity?: number;
+  direction?: 'prograde' | 'retrograde';
+};
+
 export type WorldBodyRecordV1 = {
   bodyId: string;
   name: string;
@@ -18,6 +32,8 @@ export type WorldBodyRecordV1 = {
   parentBodyId?: string;
   capabilities: WorldBodyCapabilities;
   dataOrigin: WorldBodyDataOrigin;
+  physical?: WorldBodyPhysicalFacts;
+  orbit?: WorldBodyOrbitFacts;
   surface?: PrimaryWorld;
 };
 
@@ -108,6 +124,11 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
         irregularShape: false,
       },
       dataOrigin: primary ? 'generated' : 'derived',
+      orbit: {
+        semiMajorAxisKm: body.orbitalDistanceClass,
+        periodDays: Math.max(0.001, Math.pow(Math.max(0.001, body.orbitalDistanceClass), 1.5) * 365.256),
+        eccentricity: body.eccentricity,
+      },
       surface: primary ? project.primaryWorld : undefined,
     });
     for (const moon of body.moons) {
@@ -128,6 +149,15 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
       bodyType: 'rocky',
       capabilities: { globe: true, map: true, explorer: true, irregularShape: false },
       dataOrigin: 'generated',
+      physical: {
+        meanRadiusKm: project.primaryWorld.sizeClass * 6371.0088,
+        axialTiltDeg: project.primaryWorld.axialTiltDeg,
+      },
+      orbit: {
+        semiMajorAxisKm: 149_597_870.7,
+        periodDays: 365.256,
+        eccentricity: project.primaryWorld.orbitalEccentricity,
+      },
       surface: project.primaryWorld,
     });
   }
@@ -138,12 +168,35 @@ function isWorldBodyRecord(value: unknown): value is WorldBodyRecordV1 {
   if (!isRecord(value) || !cleanText(value.bodyId) || !cleanText(value.name)) return false;
   if (!['rocky', 'gas-giant', 'ice-giant', 'dwarf', 'belt', 'moon'].includes(String(value.bodyType))) return false;
   if (!['imported', 'derived', 'generated', 'authored', 'edited'].includes(String(value.dataOrigin))) return false;
+  if (value.physical !== undefined && !isPhysicalFacts(value.physical)) return false;
+  if (value.orbit !== undefined && !isOrbitFacts(value.orbit)) return false;
   const capabilities = value.capabilities;
   return isRecord(capabilities)
     && typeof capabilities.globe === 'boolean'
     && typeof capabilities.map === 'boolean'
     && typeof capabilities.explorer === 'boolean'
     && typeof capabilities.irregularShape === 'boolean';
+}
+
+function isPhysicalFacts(value: unknown): boolean {
+  if (!isRecord(value) || !positiveNumber(value.meanRadiusKm)) return false;
+  return optionalFinite(value.massKg)
+    && optionalFinite(value.axialTiltDeg)
+    && optionalFinite(value.rotationPeriodHours);
+}
+
+function isOrbitFacts(value: unknown): boolean {
+  if (!isRecord(value) || !positiveNumber(value.semiMajorAxisKm) || !positiveNumber(value.periodDays)) return false;
+  if (!optionalFinite(value.eccentricity)) return false;
+  return value.direction === undefined || value.direction === 'prograde' || value.direction === 'retrograde';
+}
+
+function positiveNumber(value: unknown): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function optionalFinite(value: unknown): boolean {
+  return value === undefined || (typeof value === 'number' && Number.isFinite(value));
 }
 
 function cleanText(value: unknown): string | null {
