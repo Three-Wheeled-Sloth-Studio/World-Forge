@@ -1,11 +1,12 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from '@world-forge/generator-core';
+import { WORLD_BODY_DETAIL_SCHEMA } from '@world-forge/shared/worldBodyDetails';
 import { projectForWorldBody, readWorldBodyCatalog, withWorldBodySurface } from '@world-forge/shared/worldBodies';
 import { exportMultiBodyWforge, importMultiBodyWforge, MULTI_BODY_WFORGE_EXTENSION } from './multiBodyWforge';
 
 describe('multi-body .wforge packages', () => {
-  it('roundtrips secondary body surfaces inside one system project', async () => {
+  it('roundtrips secondary body surfaces and detail contracts inside one system project', async () => {
     const generated = generateProject(createDefaultConfig('sol-earth-reference', { width: 64, height: 32 }));
     const marsSurface = structuredClone(generated.primaryWorld);
     marsSurface.id = 'mars-surface';
@@ -20,6 +21,14 @@ describe('multi-body .wforge packages', () => {
       bodyType: 'rocky',
       capabilities: { globe: true, map: true, explorer: true, irregularShape: false },
       dataOrigin: 'imported',
+      detail: {
+        schema: WORLD_BODY_DETAIL_SCHEMA,
+        kind: 'geographic-surface',
+        tier: 'geographic',
+        origin: 'imported',
+        shape: { kind: 'sphere' },
+        surfaceContract: 'PrimaryWorld',
+      },
       surface: marsSurface,
     });
 
@@ -32,10 +41,13 @@ describe('multi-body .wforge packages', () => {
 
     const loaded = await importMultiBodyWforge(new File([blob], 'sol-reference.wforge'));
     const loadedMars = projectForWorldBody(loaded, 'mars');
+    const loadedMarsRecord = readWorldBodyCatalog(loaded).bodies.find((body) => body.bodyId === 'mars');
     expect(loaded.projectId).toBe(generated.projectId);
     expect(loadedMars?.primaryWorld.name).toBe('Mars');
     expect(loadedMars?.primaryWorld.layers.elevation).toEqual(marsSurface.layers.elevation);
-    expect(readWorldBodyCatalog(loaded).bodies.find((body) => body.bodyId === 'mars')?.dataOrigin).toBe('imported');
+    expect(loadedMarsRecord?.dataOrigin).toBe('imported');
+    expect(loadedMarsRecord?.detail?.kind).toBe('geographic-surface');
+    expect(loadedMarsRecord?.detail?.tier).toBe('geographic');
   });
 
   it('keeps legacy single-world packages compatible through the base importer', async () => {
@@ -43,5 +55,6 @@ describe('multi-body .wforge packages', () => {
     const blob = await exportMultiBodyWforge(generated);
     const loaded = await importMultiBodyWforge(new File([blob], 'legacy-package.wforge'));
     expect(projectForWorldBody(loaded, loaded.solarSystem.primaryWorldId)?.primaryWorld.id).toBe(generated.primaryWorld.id);
+    expect(readWorldBodyCatalog(loaded).bodies.find((body) => body.bodyId === loaded.solarSystem.primaryWorldId)?.detail?.tier).toBe('geographic');
   });
 });
