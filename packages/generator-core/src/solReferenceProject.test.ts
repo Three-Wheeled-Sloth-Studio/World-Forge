@@ -43,17 +43,36 @@ describe('Sol reference project', () => {
     expect(catalog.bodies.some((body) => body.bodyId === 'main-asteroid-belt' && body.bodyType === 'belt')).toBe(true);
   });
 
-  it('exposes only Earth as mappable until other real surfaces are imported', () => {
+  it('uses body-appropriate detail tiers without making every body geographic', () => {
     const catalog = readWorldBodyCatalog(createSolReferenceProject(earthSurface()));
     const earth = catalog.bodies.find((body) => body.bodyId === 'earth');
     const mars = catalog.bodies.find((body) => body.bodyId === 'mars');
+    const jupiter = catalog.bodies.find((body) => body.bodyId === 'jupiter');
+    const saturn = catalog.bodies.find((body) => body.bodyId === 'saturn');
+    const phobos = catalog.bodies.find((body) => body.bodyId === 'phobos');
+    const belt = catalog.bodies.find((body) => body.bodyId === 'main-asteroid-belt');
 
     expect(earth?.capabilities).toEqual({ globe: true, map: true, explorer: true, irregularShape: false });
     expect(earth?.surface?.name).toBe('Earth');
+    expect(earth?.detail?.kind).toBe('geographic-surface');
+
     expect(mars?.capabilities.map).toBe(false);
     expect(mars?.surface).toBeUndefined();
+    expect(mars?.detail?.tier).toBe('catalog');
     expect(mars?.physical?.meanRadiusKm).toBe(3389.5);
     expect(mars?.orbit?.periodDays).toBe(686.98);
+
+    expect(jupiter?.detail?.kind).toBe('atmospheric-presentation');
+    expect(jupiter?.capabilities).toEqual({ globe: true, map: false, explorer: false, irregularShape: false });
+    expect(saturn?.detail?.kind === 'atmospheric-presentation' ? saturn.detail.rings?.outerRadiusRatio : null).toBe(2.27);
+
+    expect(phobos?.detail?.kind).toBe('catalog');
+    expect(phobos?.capabilities.irregularShape).toBe(true);
+    expect(phobos?.capabilities.globe).toBe(false);
+
+    expect(belt?.detail?.kind).toBe('population');
+    expect(belt?.detail?.tier).toBe('presentation');
+    expect(belt?.capabilities.globe).toBe(false);
   });
 
   it('keeps orbital ordering distinct around the main belt', () => {
