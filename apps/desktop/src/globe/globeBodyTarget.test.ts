@@ -3,7 +3,7 @@ import type { GeneratedSystemBodyArtifact, SystemOrbitalContextArtifact, WorldPr
 import { WORLD_BODY_DETAIL_SCHEMA } from '@world-forge/shared/worldBodyDetails';
 import { WORLD_BODY_CATALOG_SCHEMA } from '@world-forge/shared/worldBodies';
 import { resetSessionActiveWorldBody, sessionActiveWorldBodyId } from '@world-forge/shared/worldBodySession';
-import { resolveGlobeBodyTarget } from './globeBodyTarget';
+import { canOpenGlobeBodyTarget, resolveGlobeBodyTarget } from './globeBodyTarget';
 
 const primary = {
   id: 'world-1', parentBodyId: 'star-1', kind: 'rocky', orbitalOrder: 2,
@@ -139,7 +139,9 @@ describe('Globe body target resolution', () => {
 
   it('defaults to the generated primary world', () => {
     const source = project('ready');
-    const target = resolveGlobeBodyTarget(source, orbitalContext(), '');
+    const context = orbitalContext();
+    expect(canOpenGlobeBodyTarget(source, context, primary.id)).toBe(true);
+    const target = resolveGlobeBodyTarget(source, context, '');
     expect(target?.bodyId).toBe(primary.id);
     expect(target?.mode).toBe('primary-world');
     expect(target?.surfaceProject?.primaryWorld.id).toBe(primary.id);
@@ -148,8 +150,10 @@ describe('Globe body target resolution', () => {
 
   it('falls back to primary for an unresolved body', () => {
     const source = project('ready');
+    const context = orbitalContext();
     const lookup = vi.fn();
-    const target = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, lookup);
+    expect(canOpenGlobeBodyTarget(source, context, moon.id, lookup)).toBe(false);
+    const target = resolveGlobeBodyTarget(source, context, moon.id, lookup);
     expect(target?.bodyId).toBe(primary.id);
     expect(lookup).not.toHaveBeenCalled();
     expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
@@ -157,8 +161,10 @@ describe('Globe body target resolution', () => {
 
   it('opens an imported canonical surface without a generated replay artifact', () => {
     const source = project('ready', true);
+    const context = orbitalContext();
     const lookup = vi.fn();
-    const target = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, lookup);
+    expect(canOpenGlobeBodyTarget(source, context, moon.id, lookup)).toBe(true);
+    const target = resolveGlobeBodyTarget(source, context, moon.id, lookup);
 
     expect(target).toMatchObject({
       bodyId: moon.id,
@@ -175,8 +181,10 @@ describe('Globe body target resolution', () => {
 
   it('opens an imported atmospheric body only when its package payload is hydrated', () => {
     const source = project('ready', false, true, true);
+    const context = orbitalContext();
     const lookup = vi.fn();
-    const target = resolveGlobeBodyTarget(source, orbitalContext(), giant.id, lookup);
+    expect(canOpenGlobeBodyTarget(source, context, giant.id, lookup)).toBe(true);
+    const target = resolveGlobeBodyTarget(source, context, giant.id, lookup);
 
     expect(target).toMatchObject({
       bodyId: giant.id,
@@ -193,8 +201,10 @@ describe('Globe body target resolution', () => {
 
   it('does not advertise an imported atmospheric target when its bytes are missing', () => {
     const source = project('ready', false, true, false);
+    const context = orbitalContext();
     const lookup = vi.fn();
-    const target = resolveGlobeBodyTarget(source, orbitalContext(), giant.id, lookup);
+    expect(canOpenGlobeBodyTarget(source, context, giant.id, lookup)).toBe(false);
+    const target = resolveGlobeBodyTarget(source, context, giant.id, lookup);
 
     expect(target?.bodyId).toBe(primary.id);
     expect(target?.mode).toBe('primary-world');
@@ -204,15 +214,18 @@ describe('Globe body target resolution', () => {
 
   it('opens any generated body artifact and shares that body with Map', () => {
     const source = project('generated');
+    const context = orbitalContext();
     const moonArtifact = { bodyId: moon.id, bodyProfile: 'airless-rocky-body', artifactSignature: 'moon-artifact' } as GeneratedSystemBodyArtifact;
     const moonLookup = vi.fn(() => moonArtifact);
-    const moonTarget = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, moonLookup);
+    expect(canOpenGlobeBodyTarget(source, context, moon.id, moonLookup)).toBe(true);
+    const moonTarget = resolveGlobeBodyTarget(source, context, moon.id, moonLookup);
     expect(moonTarget).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-system-body', artifact: moonArtifact, surfaceProject: null });
     expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
 
     const beltArtifact = { bodyId: belt.id, bodyProfile: 'debris-belt', artifactSignature: 'belt-artifact' } as GeneratedSystemBodyArtifact;
     const beltLookup = vi.fn(() => beltArtifact);
-    const beltTarget = resolveGlobeBodyTarget(source, orbitalContext(), belt.id, beltLookup);
+    expect(canOpenGlobeBodyTarget(source, context, belt.id, beltLookup)).toBe(true);
+    const beltTarget = resolveGlobeBodyTarget(source, context, belt.id, beltLookup);
     expect(beltTarget).toMatchObject({ bodyId: belt.id, mode: 'generated-system-body', artifact: beltArtifact, surfaceProject: null });
     expect(beltLookup).toHaveBeenCalledWith(expect.anything(), expect.anything(), belt.id, 'preview');
     expect(sessionActiveWorldBodyId(source)).toBe(belt.id);
