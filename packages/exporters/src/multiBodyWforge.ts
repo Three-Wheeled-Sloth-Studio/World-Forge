@@ -128,7 +128,11 @@ export async function importMultiBodyWforge(file: File): Promise<WorldProject> {
   const bodies: WorldBodyRecordV1[] = [];
   for (const packagedBody of assetPackage.bodies) {
     const { surfacePath, ...body } = packagedBody;
-    const surface = surfacePath ? await readSurface(zip, surfacePath) : undefined;
+    const surface = body.bodyId === candidate.primaryBodyId
+      ? base.primaryWorld
+      : surfacePath
+        ? await readSurface(zip, surfacePath)
+        : undefined;
     bodies.push({ ...body, surface });
   }
 
@@ -179,7 +183,11 @@ export function deserializeMultiBodyProject(value: unknown): WorldProject {
   if (!isWorldBodyCatalog(candidate)) return base;
   const bodies = serialized.bodies.map((body) => ({
     ...body,
-    surface: body.surface ? deserializeSurface(body.surface) : undefined,
+    surface: body.bodyId === candidate.primaryBodyId
+      ? base.primaryWorld
+      : body.surface
+        ? deserializeSurface(body.surface)
+        : undefined,
   }));
   const bodyAssetPayloads = deserializeBodyAssetPayloads(value.bodyAssetPayloads);
   return {
@@ -342,6 +350,10 @@ function deserializeBodyAssetPayloads(value: unknown): WorldBodyAssetPayloads {
     }
     if (raw instanceof ArrayBuffer) {
       payloads[assetId] = new Uint8Array(raw.slice(0));
+      continue;
+    }
+    if (ArrayBuffer.isView(raw)) {
+      payloads[assetId] = Uint8Array.from(new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength));
       continue;
     }
     if (Array.isArray(raw) && raw.every(isByte)) {
