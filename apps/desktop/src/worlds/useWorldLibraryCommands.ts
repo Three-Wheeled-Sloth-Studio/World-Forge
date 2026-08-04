@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { WorldProject } from '@world-forge/shared';
 import { SavedMapRecord } from '../sync';
 import {
@@ -41,6 +41,8 @@ export function useWorldLibraryCommands({
   onWorldLoaded
 }: UseWorldLibraryCommandsOptions) {
   const [worldLibraryStatus, setWorldLibraryStatus] = useState('');
+  const onWorldLoadedRef = useRef(onWorldLoaded);
+  onWorldLoadedRef.current = onWorldLoaded;
 
   const publishInventory = async () => {
     const stored = await defaultWorldStorageProvider.listWorlds();
@@ -49,6 +51,30 @@ export function useWorldLibraryCommands({
     for (const record of stored) byId.set(record.projectId, record);
     notifyParchmentWorldInventory([...byId.values()]);
   };
+
+  useEffect(() => {
+    const context = readEmbeddedWorldContext();
+    if (!context.embedded || !context.worldProjectId) return undefined;
+    let active = true;
+    setWorldLibraryStatus(`Loading ${context.worldName ?? 'linked world'}...`);
+    void defaultWorldStorageProvider.loadWorld(context.worldProjectId)
+      .then((loaded) => {
+        if (!active) return;
+        if (!loaded) {
+          setWorldLibraryStatus('The linked World Forge map is not available on this device.');
+          return;
+        }
+        rememberWorldName(loaded.projectId, loaded.projectName);
+        onWorldLoadedRef.current(loaded);
+        setWorldLibraryStatus(`Loaded ${loaded.projectName}`);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setWorldLibraryStatus(error instanceof Error ? error.message : 'The linked world could not be loaded.');
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     void publishInventory().catch(() => undefined);
