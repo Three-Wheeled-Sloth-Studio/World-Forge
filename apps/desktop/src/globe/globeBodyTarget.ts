@@ -5,11 +5,20 @@ import type {
   SystemOrbitalContextArtifact,
   WorldProject
 } from '@world-forge/shared';
-import { projectForWorldBody, worldBodyRecord } from '@world-forge/shared/worldBodies';
+import type { AtmosphericPresentationDetailV1 } from '@world-forge/shared/worldBodyDetails';
+import {
+  projectForWorldBody,
+  worldBodyRecord,
+  type MultiBodyWorldProject,
+} from '@world-forge/shared/worldBodies';
 import { rememberSessionActiveWorldBody } from '@world-forge/shared/worldBodySession';
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 
-export type GlobeBodyTargetMode = 'primary-world' | 'canonical-surface-body' | 'generated-system-body';
+export type GlobeBodyTargetMode =
+  | 'primary-world'
+  | 'canonical-surface-body'
+  | 'atmospheric-presentation-body'
+  | 'generated-system-body';
 
 export type GlobeBodyTarget = {
   bodyId: string;
@@ -18,6 +27,7 @@ export type GlobeBodyTarget = {
   body: OrbitalPresentationBody;
   artifact: GeneratedSystemBodyArtifact | null;
   surfaceProject: WorldProject | null;
+  atmosphericDetail: AtmosphericPresentationDetailV1 | null;
 };
 
 type ArtifactLookup = (
@@ -44,6 +54,7 @@ export function resolveGlobeBodyTarget(
       body: primary,
       artifact: null,
       surfaceProject: project,
+      atmosphericDetail: null,
     };
   };
   if (!requestedBodyId || requestedBodyId === primary.id) return primaryTarget();
@@ -61,6 +72,28 @@ export function resolveGlobeBodyTarget(
       body: requested,
       artifact: null,
       surfaceProject,
+      atmosphericDetail: null,
+    };
+  }
+
+  const bodyRecord = worldBodyRecord(project, requestedBodyId);
+  const atmosphericDetail = bodyRecord?.detail?.kind === 'atmospheric-presentation'
+    ? bodyRecord.detail
+    : null;
+  const appearanceAsset = atmosphericDetail?.assets?.find((asset) => asset.role === 'albedo' || asset.role === 'clouds');
+  const appearanceBytes = appearanceAsset
+    ? (project as MultiBodyWorldProject).bodyAssetPayloads?.[appearanceAsset.assetId]
+    : undefined;
+  if (bodyRecord?.capabilities.globe && atmosphericDetail && appearanceAsset && appearanceBytes?.byteLength) {
+    rememberSessionActiveWorldBody(project, requested.id);
+    return {
+      bodyId: requested.id,
+      label: bodyRecord.name,
+      mode: 'atmospheric-presentation-body',
+      body: requested,
+      artifact: null,
+      surfaceProject: null,
+      atmosphericDetail,
     };
   }
 
@@ -72,11 +105,12 @@ export function resolveGlobeBodyTarget(
   rememberSessionActiveWorldBody(project, requested.id);
   return {
     bodyId: requested.id,
-    label: worldBodyRecord(project, requested.id)?.name ?? bodyLabel(project, requested),
+    label: bodyRecord?.name ?? bodyLabel(project, requested),
     mode: 'generated-system-body',
     body: requested,
     artifact,
     surfaceProject: null,
+    atmosphericDetail: null,
   };
 }
 
