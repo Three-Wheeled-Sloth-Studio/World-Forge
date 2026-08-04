@@ -1,9 +1,15 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { exportMultiBodyWforge } from '../packages/exporters/src/multiBodyWforge';
+import {
+  attachReferenceAtmosphericAppearance,
+  REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
+} from '../packages/generator-core/src/referenceAtmosphericPresentation';
 import { importReferenceBodyRaster } from '../packages/generator-core/src/referenceBodyImport';
 import { createSolReferenceProject } from '../packages/generator-core/src/solReferenceProject';
+import type { MultiBodyWorldProject } from '../packages/shared/src/worldBodies';
+import { loadReferenceImageBundle } from './referenceImageBundle';
 import { loadReferenceRasterBundle } from './referenceDataBundle';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -14,16 +20,38 @@ async function main(): Promise<void> {
     ?? path.join(repositoryRoot, '.local', 'reference-data', 'earth-etopo');
   const outputFile = resolveArgument('--output')
     ?? path.join(repositoryRoot, '.local', 'reference-data', 'sol-earth-reference.wforge');
+  const explicitJupiterDirectory = resolveArgument('--jupiter-input');
+  const jupiterDirectory = explicitJupiterDirectory
+    ?? path.join(repositoryRoot, '.local', 'reference-data', 'jupiter-cassini');
 
   const normalized = await loadReferenceRasterBundle(inputDirectory);
   if (normalized.bodyId !== 'earth') {
     throw new Error(`The Earth reference build expected bodyId "earth", received "${normalized.bodyId}".`);
   }
   const earth = importReferenceBodyRaster(normalized);
-  const project = createSolReferenceProject(earth, {
+  let project: MultiBodyWorldProject = createSolReferenceProject(earth, {
     appVersion: 'reference-etl-v1',
     sourceCommit: process.env.WORLD_FORGE_SOURCE_COMMIT?.trim() || undefined,
   });
+
+  let jupiterResolution: { width: number; height: number } | null = null;
+  if (explicitJupiterDirectory || await fileExists(path.join(jupiterDirectory, 'manifest.json'))) {
+    const jupiter = await loadReferenceImageBundle(jupiterDirectory);
+    if (jupiter.bodyId !== 'jupiter') {
+      throw new Error(`The Jupiter reference build expected bodyId "jupiter", received "${jupiter.bodyId}".`);
+    }
+    project = attachReferenceAtmosphericAppearance(project, {
+      schema: REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
+      bodyId: 'jupiter',
+      assetId: 'jupiter-cassini-pia07782-albedo',
+      logicalPath: 'bodies/jupiter/albedo.jpg',
+      mediaType: jupiter.mediaType,
+      bytes: jupiter.bytes,
+      resolution: jupiter.resolution,
+    });
+    jupiterResolution = jupiter.resolution;
+  }
+
   const packageBlob = await exportMultiBodyWforge(project, {
     compressionLevel: 1,
     onProgress: (progress) => {
@@ -38,6 +66,18 @@ async function main(): Promise<void> {
   console.log(`Built ${outputFile}`);
   console.log(`Bodies: ${project.bodyCatalog?.bodies.length ?? 0}`);
   console.log(`Earth map: ${earth.mapModel.resolution.width} x ${earth.mapModel.resolution.height}`);
+  console.log(jupiterResolution
+    ? `Jupiter appearance: ${jupiterResolution.width} x ${jupiterResolution.height}`
+    : 'Jupiter appearance: not included; run npm run reference:prepare-jupiter first.');
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function resolveArgument(name: string): string | null {
