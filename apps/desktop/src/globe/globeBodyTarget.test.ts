@@ -1,5 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GeneratedSystemBodyArtifact, SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
+import { WORLD_BODY_CATALOG_SCHEMA } from '@world-forge/shared/worldBodies';
+import { resetSessionActiveWorldBody, sessionActiveWorldBodyId } from '@world-forge/shared/worldBodySession';
 import { resolveGlobeBodyTarget } from './globeBodyTarget';
 
 const primary = {
@@ -38,9 +40,41 @@ function orbitalContext(): SystemOrbitalContextArtifact {
 
 function project(status: 'ready' | 'generated'): WorldProject {
   return {
+    projectId: 'project-test-system',
     projectName: 'Test World',
+    primaryWorld: { id: primary.id, name: 'Test World' },
     solarSystem: {
-      bodies: [{ id: 'world-1', moons: [{ id: 'moon-a', name: 'Selene' }] }]
+      primaryWorldId: primary.id,
+      bodies: [{ id: 'world-1', bodyType: 'rocky', isPrimaryWorld: true, moons: [{ id: 'moon-a', name: 'Selene' }] }]
+    },
+    bodyCatalog: {
+      schema: WORLD_BODY_CATALOG_SCHEMA,
+      primaryBodyId: primary.id,
+      activeBodyId: primary.id,
+      bodies: [
+        {
+          bodyId: primary.id,
+          name: 'Test World',
+          bodyType: 'rocky',
+          capabilities: { globe: true, map: true, explorer: true, irregularShape: false },
+          dataOrigin: 'generated',
+        },
+        {
+          bodyId: moon.id,
+          name: 'Selene',
+          bodyType: 'moon',
+          parentBodyId: primary.id,
+          capabilities: { globe: true, map: false, explorer: false, irregularShape: false },
+          dataOrigin: 'generated',
+        },
+        {
+          bodyId: belt.id,
+          name: 'Belt',
+          bodyType: 'belt',
+          capabilities: { globe: true, map: false, explorer: false, irregularShape: false },
+          dataOrigin: 'generated',
+        },
+      ],
     },
     bodyGeneration: {
       records: {
@@ -52,29 +86,38 @@ function project(status: 'ready' | 'generated'): WorldProject {
 }
 
 describe('Globe body target resolution', () => {
+  beforeEach(() => resetSessionActiveWorldBody());
+
   it('defaults to the generated primary world', () => {
-    const target = resolveGlobeBodyTarget(project('ready'), orbitalContext(), '');
+    const source = project('ready');
+    const target = resolveGlobeBodyTarget(source, orbitalContext(), '');
     expect(target?.bodyId).toBe(primary.id);
     expect(target?.mode).toBe('primary-world');
+    expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
   });
 
   it('falls back to primary for an unresolved body', () => {
+    const source = project('ready');
     const lookup = vi.fn();
-    const target = resolveGlobeBodyTarget(project('ready'), orbitalContext(), moon.id, lookup);
+    const target = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, lookup);
     expect(target?.bodyId).toBe(primary.id);
     expect(lookup).not.toHaveBeenCalled();
+    expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
   });
 
-  it('opens any generated body artifact as a detailed target', () => {
+  it('opens any generated body artifact and shares that body with Map', () => {
+    const source = project('generated');
     const moonArtifact = { bodyId: moon.id, bodyProfile: 'airless-rocky-body', artifactSignature: 'moon-artifact' } as GeneratedSystemBodyArtifact;
     const moonLookup = vi.fn(() => moonArtifact);
-    const moonTarget = resolveGlobeBodyTarget(project('generated'), orbitalContext(), moon.id, moonLookup);
+    const moonTarget = resolveGlobeBodyTarget(source, orbitalContext(), moon.id, moonLookup);
     expect(moonTarget).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-system-body', artifact: moonArtifact });
+    expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
 
     const beltArtifact = { bodyId: belt.id, bodyProfile: 'debris-belt', artifactSignature: 'belt-artifact' } as GeneratedSystemBodyArtifact;
     const beltLookup = vi.fn(() => beltArtifact);
-    const beltTarget = resolveGlobeBodyTarget(project('generated'), orbitalContext(), belt.id, beltLookup);
+    const beltTarget = resolveGlobeBodyTarget(source, orbitalContext(), belt.id, beltLookup);
     expect(beltTarget).toMatchObject({ bodyId: belt.id, mode: 'generated-system-body', artifact: beltArtifact });
     expect(beltLookup).toHaveBeenCalledWith(expect.anything(), expect.anything(), belt.id, 'preview');
+    expect(sessionActiveWorldBodyId(source)).toBe(belt.id);
   });
 });
