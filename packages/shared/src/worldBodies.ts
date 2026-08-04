@@ -1,4 +1,10 @@
 import type { PrimaryWorld, SystemBody, WorldProject } from './index';
+import {
+  WORLD_BODY_DETAIL_SCHEMA,
+  isWorldBodyDetail,
+  type GeographicSurfaceDetailV1,
+  type WorldBodyDetailV1,
+} from './worldBodyDetails';
 
 export const WORLD_BODY_CATALOG_SCHEMA = 'world-forge-body-catalog-v1' as const;
 
@@ -34,6 +40,7 @@ export type WorldBodyRecordV1 = {
   dataOrigin: WorldBodyDataOrigin;
   physical?: WorldBodyPhysicalFacts;
   orbit?: WorldBodyOrbitFacts;
+  detail?: WorldBodyDetailV1;
   surface?: PrimaryWorld;
 };
 
@@ -65,6 +72,10 @@ export function worldBodyRecord(project: WorldProject, bodyId: string): WorldBod
   return readWorldBodyCatalog(project).bodies.find((body) => body.bodyId === bodyId) ?? null;
 }
 
+export function worldBodyDetailForBody(project: WorldProject, bodyId: string): WorldBodyDetailV1 | null {
+  return worldBodyRecord(project, bodyId)?.detail ?? null;
+}
+
 export function worldSurfaceForBody(project: WorldProject, bodyId: string): PrimaryWorld | null {
   const catalog = readWorldBodyCatalog(project);
   const record = catalog.bodies.find((body) => body.bodyId === bodyId);
@@ -89,13 +100,27 @@ export function withActiveWorldBody(project: WorldProject, bodyId: string): Mult
   return { ...project, bodyCatalog: { ...catalog, activeBodyId: bodyId } };
 }
 
+export function withWorldBodyDetail(
+  project: WorldProject,
+  bodyId: string,
+  detail: WorldBodyDetailV1,
+): MultiBodyWorldProject {
+  const catalog = readWorldBodyCatalog(project);
+  if (!catalog.bodies.some((body) => body.bodyId === bodyId)) return project as MultiBodyWorldProject;
+  const bodies = catalog.bodies.map((body) => body.bodyId === bodyId ? { ...body, detail } : body);
+  return { ...project, bodyCatalog: { ...catalog, bodies } };
+}
+
 export function withWorldBodySurface(
   project: WorldProject,
   input: Omit<WorldBodyRecordV1, 'surface'> & { surface: PrimaryWorld },
 ): MultiBodyWorldProject {
   const catalog = readWorldBodyCatalog(project);
   const existingIndex = catalog.bodies.findIndex((body) => body.bodyId === input.bodyId);
-  const record: WorldBodyRecordV1 = { ...input };
+  const record: WorldBodyRecordV1 = {
+    ...input,
+    detail: input.detail ?? geographicDetail(input.dataOrigin),
+  };
   const bodies = existingIndex < 0
     ? [...catalog.bodies, record]
     : catalog.bodies.map((body, index) => index === existingIndex ? record : body);
@@ -124,6 +149,15 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
         irregularShape: false,
       },
       dataOrigin: primary ? 'generated' : 'derived',
+      detail: primary
+        ? geographicDetail('generated')
+        : {
+            schema: WORLD_BODY_DETAIL_SCHEMA,
+            kind: 'catalog',
+            tier: 'catalog',
+            origin: 'derived',
+            shape: { kind: 'sphere' },
+          },
       surface: primary ? project.primaryWorld : undefined,
     });
     for (const moon of body.moons) {
@@ -134,6 +168,13 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
         parentBodyId: body.id,
         capabilities: { globe: false, map: false, explorer: false, irregularShape: false },
         dataOrigin: 'derived',
+        detail: {
+          schema: WORLD_BODY_DETAIL_SCHEMA,
+          kind: 'catalog',
+          tier: 'catalog',
+          origin: 'derived',
+          shape: { kind: 'sphere' },
+        },
       });
     }
   }
@@ -148,10 +189,22 @@ function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {
         meanRadiusKm: project.primaryWorld.sizeClass * 6371.0088,
         axialTiltDeg: project.primaryWorld.axialTiltDeg,
       },
+      detail: geographicDetail('generated'),
       surface: project.primaryWorld,
     });
   }
   return { schema: WORLD_BODY_CATALOG_SCHEMA, primaryBodyId, activeBodyId: primaryBodyId, bodies };
+}
+
+function geographicDetail(origin: WorldBodyDataOrigin): GeographicSurfaceDetailV1 {
+  return {
+    schema: WORLD_BODY_DETAIL_SCHEMA,
+    kind: 'geographic-surface',
+    tier: 'geographic',
+    origin,
+    shape: { kind: 'sphere' },
+    surfaceContract: 'PrimaryWorld',
+  };
 }
 
 function isWorldBodyRecord(value: unknown): value is WorldBodyRecordV1 {
@@ -160,6 +213,7 @@ function isWorldBodyRecord(value: unknown): value is WorldBodyRecordV1 {
   if (!['imported', 'derived', 'generated', 'authored', 'edited'].includes(String(value.dataOrigin))) return false;
   if (value.physical !== undefined && !isPhysicalFacts(value.physical)) return false;
   if (value.orbit !== undefined && !isOrbitFacts(value.orbit)) return false;
+  if (value.detail !== undefined && !isWorldBodyDetail(value.detail)) return false;
   const capabilities = value.capabilities;
   return isRecord(capabilities)
     && typeof capabilities.globe === 'boolean'
