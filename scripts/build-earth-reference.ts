@@ -14,6 +14,8 @@ import { loadReferenceRasterBundle } from './referenceDataBundle';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
+const JUPITER_MEDIA_TYPE = 'application/vnd.world-forge.rgb565';
+const JUPITER_ENCODING = 'rgb565-le';
 
 async function main(): Promise<void> {
   const inputDirectory = resolveArgument('--input')
@@ -39,6 +41,9 @@ async function main(): Promise<void> {
     const jupiter = await loadReferenceImageBundle(jupiterDirectory);
     if (jupiter.bodyId !== 'jupiter') {
       throw new Error(`The Jupiter reference build expected bodyId "jupiter", received "${jupiter.bodyId}".`);
+    }
+    if (jupiter.mediaType !== JUPITER_MEDIA_TYPE || jupiter.encoding !== JUPITER_ENCODING) {
+      throw new Error('The Jupiter reference bundle uses the superseded JPEG contract. Rerun npm run reference:prepare-jupiter.');
     }
     project = attachReferenceAtmosphericAppearance(project, {
       schema: REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
