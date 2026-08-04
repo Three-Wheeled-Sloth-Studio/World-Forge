@@ -1,5 +1,9 @@
 import type { WorldProject } from '@world-forge/shared';
-import { projectForWorldBody, worldBodyRecord } from '@world-forge/shared/worldBodies';
+import {
+  projectForWorldBody,
+  worldBodyRecord,
+  type MultiBodyWorldProject,
+} from '@world-forge/shared/worldBodies';
 import { sessionActiveWorldBodyId } from '@world-forge/shared/worldBodySession';
 import {
   cleanGameMapTheme,
@@ -17,15 +21,31 @@ import type { FlowRenderOptions } from './presentation';
 
 export * from './presentation';
 
+export type StagedAtmosphericPresentationRaster = {
+  assetId: string;
+  encoding: 'rgb565-le';
+  width: number;
+  height: number;
+  bytes: Uint8Array;
+};
+
+export type AtmosphericPresentationCanvas = HTMLCanvasElement & {
+  __worldForgeAtmosphericRaster?: StagedAtmosphericPresentationRaster;
+};
+
 export function renderWorldToCanvas(
   canvas: HTMLCanvasElement,
   project: WorldProject,
   theme: MapTheme = cleanGameMapTheme,
   visible: FlowRenderOptions = { rivers: true, plates: false, heightmap: false },
 ): void {
+  const presentationCanvas = canvas as AtmosphericPresentationCanvas;
+  delete presentationCanvas.__worldForgeAtmosphericRaster;
   const activeProject = mapProjectForActiveBody(project);
   if (!activeProject) {
     renderUnsupportedBodyMap(canvas, project, visible.targetResolution);
+    const atmosphericRaster = atmosphericPresentationRasterForActiveBody(project);
+    if (atmosphericRaster) presentationCanvas.__worldForgeAtmosphericRaster = atmosphericRaster;
     return;
   }
   renderPresentationWorldToCanvas(canvas, activeProject, theme, visible);
@@ -53,6 +73,28 @@ export function mapProjectForActiveBody(project: WorldProject): WorldProject | n
 
 export function activeBodyProject(project: WorldProject): WorldProject {
   return mapProjectForActiveBody(project) ?? project;
+}
+
+export function atmosphericPresentationRasterForActiveBody(
+  project: WorldProject,
+): StagedAtmosphericPresentationRaster | null {
+  const bodyId = sessionActiveWorldBodyId(project);
+  const body = worldBodyRecord(project, bodyId);
+  if (!body?.capabilities.globe || body.capabilities.map || body.detail?.kind !== 'atmospheric-presentation') return null;
+  const asset = body.detail.assets?.find((candidate) => candidate.role === 'albedo'
+    && candidate.encoding === 'rgb565-le'
+    && candidate.resolution);
+  if (!asset?.resolution) return null;
+  const bytes = (project as MultiBodyWorldProject).bodyAssetPayloads?.[asset.assetId];
+  const expectedBytes = asset.resolution.width * asset.resolution.height * 2;
+  if (!bytes || bytes.byteLength !== expectedBytes) return null;
+  return {
+    assetId: asset.assetId,
+    encoding: 'rgb565-le',
+    width: asset.resolution.width,
+    height: asset.resolution.height,
+    bytes,
+  };
 }
 
 function renderUnsupportedBodyMap(
