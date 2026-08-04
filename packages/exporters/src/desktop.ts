@@ -1,5 +1,4 @@
 export {
-  deserializeProject,
   exportHexGridSvg,
   exportHexTileMapJson,
   exportSvg,
@@ -7,12 +6,13 @@ export {
   exportVttMetadata,
   generateHexTileMap,
   projectToJson,
-  serializeProject,
 } from './index';
 
 export {
+  deserializeMultiBodyProject as deserializeProject,
   exportMultiBodyWforge as exportWforge,
   importMultiBodyWforge as importWforge,
+  serializeMultiBodyProject as serializeProject,
 } from './multiBodyWforge';
 
 export type { VttExportConfig, VttGridKind } from './index';
