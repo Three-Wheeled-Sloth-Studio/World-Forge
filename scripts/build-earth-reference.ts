@@ -8,7 +8,7 @@ import {
 } from '../packages/generator-core/src/referenceAtmosphericPresentation';
 import { importReferenceBodyRaster } from '../packages/generator-core/src/referenceBodyImport';
 import { createSolReferenceProject } from '../packages/generator-core/src/solReferenceProject';
-import type { MultiBodyWorldProject } from '../packages/shared/src/worldBodies';
+import type { MultiBodyWorldProject } from '@world-forge/shared/worldBodies';
 import { loadReferenceImageBundle } from './referenceImageBundle';
 import { loadReferenceRasterBundle } from './referenceDataBundle';
 
@@ -44,8 +44,9 @@ async function main(): Promise<void> {
       schema: REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
       bodyId: 'jupiter',
       assetId: 'jupiter-cassini-pia07782-albedo',
-      logicalPath: 'bodies/jupiter/albedo.jpg',
+      logicalPath: 'bodies/jupiter/albedo.rgb565',
       mediaType: jupiter.mediaType,
+      encoding: jupiter.encoding,
       bytes: jupiter.bytes,
       resolution: jupiter.resolution,
     });
@@ -67,7 +68,7 @@ async function main(): Promise<void> {
   console.log(`Bodies: ${project.bodyCatalog?.bodies.length ?? 0}`);
   console.log(`Earth map: ${earth.mapModel.resolution.width} x ${earth.mapModel.resolution.height}`);
   console.log(jupiterResolution
-    ? `Jupiter appearance: ${jupiterResolution.width} x ${jupiterResolution.height}`
+    ? `Jupiter appearance: ${jupiterResolution.width} x ${jupiterResolution.height} RGB565`
     : 'Jupiter appearance: not included; run npm run reference:prepare-jupiter first.');
 }
 
