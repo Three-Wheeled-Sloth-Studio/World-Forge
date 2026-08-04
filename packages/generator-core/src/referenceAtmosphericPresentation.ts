@@ -16,6 +16,7 @@ export type ReferenceAtmosphericAppearanceV1 = {
   assetId: string;
   logicalPath: string;
   mediaType: string;
+  encoding?: string;
   bytes: Uint8Array;
   resolution?: Resolution;
 };
@@ -40,6 +41,7 @@ export function attachReferenceAtmosphericAppearance(
     role: 'albedo',
     logicalPath: appearance.logicalPath,
     mediaType: appearance.mediaType,
+    encoding: appearance.encoding,
     resolution: appearance.resolution,
     byteLength: appearance.bytes.byteLength,
   };
@@ -83,11 +85,8 @@ function validateAppearance(appearance: ReferenceAtmosphericAppearanceV1): void 
   if (!cleanText(appearance.bodyId) || !cleanText(appearance.assetId)) {
     throw new Error('Reference atmospheric appearance requires bodyId and assetId.');
   }
-  if (!cleanText(appearance.mediaType) || !appearance.mediaType.startsWith('image/')) {
-    throw new Error('Reference atmospheric appearance requires an image media type.');
-  }
   if (!(appearance.bytes instanceof Uint8Array) || appearance.bytes.byteLength === 0) {
-    throw new Error('Reference atmospheric appearance requires non-empty binary image bytes.');
+    throw new Error('Reference atmospheric appearance requires non-empty binary appearance bytes.');
   }
   const bodyRoot = `bodies/${safePathSegment(appearance.bodyId)}/`;
   if (!safeLogicalPath(appearance.logicalPath) || !appearance.logicalPath.startsWith(bodyRoot)) {
@@ -101,6 +100,15 @@ function validateAppearance(appearance: ReferenceAtmosphericAppearanceV1): void 
     if (Math.abs(width / height - 2) > 0.02) {
       throw new Error('Reference atmospheric appearance must be approximately 2:1 equirectangular imagery.');
     }
+  }
+
+  const ordinaryImage = cleanText(appearance.mediaType)?.startsWith('image/') && appearance.encoding === undefined;
+  const compactRgb565 = appearance.mediaType === 'application/vnd.world-forge.rgb565'
+    && appearance.encoding === 'rgb565-le'
+    && appearance.resolution !== undefined
+    && appearance.bytes.byteLength === appearance.resolution.width * appearance.resolution.height * 2;
+  if (!ordinaryImage && !compactRgb565) {
+    throw new Error('Reference atmospheric appearance requires a supported image or RGB565 payload contract.');
   }
 }
 
