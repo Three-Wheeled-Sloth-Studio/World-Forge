@@ -10,6 +10,15 @@ import {
   type WorldMetrics,
 } from '@world-forge/shared';
 import {
+  WORLD_BODY_DETAIL_SCHEMA,
+  worldBodyDetailCapabilities,
+  type AtmosphericPresentationDetailV1,
+  type CatalogBodyDetailV1,
+  type GeographicSurfaceDetailV1,
+  type PopulationDetailV1,
+  type WorldBodyDetailV1,
+} from '@world-forge/shared/worldBodyDetails';
+import {
   WORLD_BODY_CATALOG_SCHEMA,
   type MultiBodyWorldProject,
   type WorldBodyCatalogV1,
@@ -82,7 +91,8 @@ function solSystemScaffold(): SolarSystem {
     visibleBodiesFromPrimary: ['mercury', 'venus', 'mars', 'jupiter', 'saturn'],
     generatedNotes: [
       'Reference-system scaffold. Physical and orbital facts are carried by bodyCatalog.',
-      'Only bodies with imported surface data expose Map and Explorer capabilities.',
+      'Body detail tiers keep catalog, presentation, reference-surface, geographic, irregular-mesh, and population payloads distinct.',
+      'Only bodies with compatible imported or derived detail expose Map and Explorer capabilities.',
     ],
   };
 }
@@ -91,16 +101,12 @@ function solBodyCatalog(earth: PrimaryWorld): WorldBodyCatalogV1 {
   const bodies: WorldBodyRecordV1[] = [];
   for (const definition of planetDefinitions) {
     const surface = definition.id === 'earth' ? earth : undefined;
+    const detail = planetDetail(definition, Boolean(surface));
     bodies.push({
       bodyId: definition.id,
       name: definition.name,
       bodyType: definition.bodyType,
-      capabilities: {
-        globe: Boolean(surface),
-        map: Boolean(surface),
-        explorer: Boolean(surface),
-        irregularShape: false,
-      },
+      capabilities: worldBodyDetailCapabilities(detail),
       dataOrigin: 'imported',
       physical: {
         meanRadiusKm: definition.radiusKm,
@@ -114,19 +120,111 @@ function solBodyCatalog(earth: PrimaryWorld): WorldBodyCatalogV1 {
         eccentricity: definition.eccentricity,
         direction: 'prograde',
       },
+      detail,
       surface,
     });
     for (const moonDefinition of definition.moons) bodies.push(moonRecord(definition.id, moonDefinition));
   }
   bodies.push(
-    beltRecord('main-asteroid-belt', 'Main Asteroid Belt', 414_000_000, 1680),
-    beltRecord('kuiper-belt', 'Kuiper Belt', 6_432_000_000, 102_000),
+    beltRecord('main-asteroid-belt', 'Main Asteroid Belt', 414_000_000, 1680, mainBeltDetail()),
+    beltRecord('kuiper-belt', 'Kuiper Belt', 6_432_000_000, 102_000, kuiperBeltDetail()),
   );
   return {
     schema: WORLD_BODY_CATALOG_SCHEMA,
     primaryBodyId: 'earth',
     activeBodyId: 'earth',
     bodies,
+  };
+}
+
+function planetDetail(definition: PlanetDefinition, hasGeographicSurface: boolean): WorldBodyDetailV1 {
+  if (hasGeographicSurface) return geographicDetail('imported');
+  if (definition.bodyType === 'gas-giant' || definition.bodyType === 'ice-giant') {
+    return giantPresentationDetail(definition.id);
+  }
+  return catalogDetail({ kind: 'sphere' }, 'imported');
+}
+
+function giantPresentationDetail(bodyId: string): AtmosphericPresentationDetailV1 {
+  const profile = giantPresentationProfiles[bodyId];
+  if (!profile) throw new Error(`Missing atmospheric presentation profile for ${bodyId}.`);
+  return {
+    schema: WORLD_BODY_DETAIL_SCHEMA,
+    kind: 'atmospheric-presentation',
+    tier: 'presentation',
+    origin: 'derived',
+    shape: {
+      kind: 'oblate-spheroid',
+      equatorialRadiusKm: profile.equatorialRadiusKm,
+      polarRadiusKm: profile.polarRadiusKm,
+    },
+    atmosphere: {
+      paletteHex: [...profile.paletteHex],
+      bandCount: profile.bandCount,
+      bandContrast: profile.bandContrast,
+      hazeStrength: profile.hazeStrength,
+      differentialRotationFraction: profile.differentialRotationFraction,
+    },
+    rings: profile.rings,
+  };
+}
+
+function catalogDetail(shape: CatalogBodyDetailV1['shape'], origin: CatalogBodyDetailV1['origin']): CatalogBodyDetailV1 {
+  return {
+    schema: WORLD_BODY_DETAIL_SCHEMA,
+    kind: 'catalog',
+    tier: 'catalog',
+    origin,
+    shape,
+  };
+}
+
+function geographicDetail(origin: GeographicSurfaceDetailV1['origin']): GeographicSurfaceDetailV1 {
+  return {
+    schema: WORLD_BODY_DETAIL_SCHEMA,
+    kind: 'geographic-surface',
+    tier: 'geographic',
+    origin,
+    shape: { kind: 'sphere' },
+    surfaceContract: 'PrimaryWorld',
+  };
+}
+
+function mainBeltDetail(): PopulationDetailV1 {
+  return populationDetail({
+    innerRadiusKm: 329_000_000,
+    outerRadiusKm: 478_000_000,
+    verticalSpreadKm: 45_000_000,
+    inclinationMeanDeg: 8,
+    eccentricityMean: 0.15,
+    relativeDensity: 1,
+  }, 'sol-main-belt-v1', 2400);
+}
+
+function kuiperBeltDetail(): PopulationDetailV1 {
+  return populationDetail({
+    innerRadiusKm: 4_500_000_000,
+    outerRadiusKm: 7_500_000_000,
+    verticalSpreadKm: 1_200_000_000,
+    inclinationMeanDeg: 12,
+    eccentricityMean: 0.2,
+    relativeDensity: 0.55,
+  }, 'sol-kuiper-belt-v1', 1800);
+}
+
+function populationDetail(
+  distribution: PopulationDetailV1['distribution'],
+  realizationSeed: string,
+  maxPreviewParticles: number,
+): PopulationDetailV1 {
+  return {
+    schema: WORLD_BODY_DETAIL_SCHEMA,
+    kind: 'population',
+    tier: 'presentation',
+    origin: 'derived',
+    distribution,
+    realizationSeed,
+    maxPreviewParticles,
   };
 }
 
@@ -197,6 +295,59 @@ type ReferenceMoon = {
   periodDays: number;
   irregular?: boolean;
   direction?: 'prograde' | 'retrograde';
+};
+
+type GiantPresentationProfile = {
+  equatorialRadiusKm: number;
+  polarRadiusKm: number;
+  paletteHex: readonly string[];
+  bandCount: number;
+  bandContrast: number;
+  hazeStrength: number;
+  differentialRotationFraction: number;
+  rings?: AtmosphericPresentationDetailV1['rings'];
+};
+
+const giantPresentationProfiles: Record<string, GiantPresentationProfile> = {
+  jupiter: {
+    equatorialRadiusKm: 71_492,
+    polarRadiusKm: 66_854,
+    paletteHex: ['#e7d2b4', '#ba865d', '#f2e2c8', '#9b5f3e', '#d8b58e'],
+    bandCount: 12,
+    bandContrast: 0.55,
+    hazeStrength: 0.18,
+    differentialRotationFraction: 0.08,
+  },
+  saturn: {
+    equatorialRadiusKm: 60_268,
+    polarRadiusKm: 54_364,
+    paletteHex: ['#ead9ad', '#c9ad73', '#f3e6c2', '#b89a63'],
+    bandCount: 10,
+    bandContrast: 0.28,
+    hazeStrength: 0.24,
+    differentialRotationFraction: 0.06,
+    rings: { innerRadiusRatio: 1.24, outerRadiusRatio: 2.27, opacity: 0.72, tiltDeg: 26.7 },
+  },
+  uranus: {
+    equatorialRadiusKm: 25_559,
+    polarRadiusKm: 24_973,
+    paletteHex: ['#b8e2e4', '#8fcbd0', '#d0eef0'],
+    bandCount: 5,
+    bandContrast: 0.12,
+    hazeStrength: 0.42,
+    differentialRotationFraction: 0.04,
+    rings: { innerRadiusRatio: 1.64, outerRadiusRatio: 2, opacity: 0.18, tiltDeg: 97.8 },
+  },
+  neptune: {
+    equatorialRadiusKm: 24_764,
+    polarRadiusKm: 24_341,
+    paletteHex: ['#4d77bd', '#3159a4', '#7199d2', '#d8e4f2'],
+    bandCount: 7,
+    bandContrast: 0.32,
+    hazeStrength: 0.3,
+    differentialRotationFraction: 0.09,
+    rings: { innerRadiusRatio: 1.7, outerRadiusRatio: 2.55, opacity: 0.1, tiltDeg: 28.3 },
+  },
 };
 
 const planetDefinitions: PlanetDefinition[] = [
@@ -297,12 +448,16 @@ function beltBody(id: string, orbitalOrder: number, distanceAu: number, visibleF
 }
 
 function moonRecord(parentBodyId: string, definition: ReferenceMoon): WorldBodyRecordV1 {
+  const detail = catalogDetail(
+    definition.irregular ? { kind: 'irregular-mesh' } : { kind: 'sphere' },
+    'imported',
+  );
   return {
     bodyId: definition.id,
     name: definition.name,
     bodyType: 'moon',
     parentBodyId,
-    capabilities: { globe: false, map: false, explorer: false, irregularShape: Boolean(definition.irregular) },
+    capabilities: worldBodyDetailCapabilities(detail),
     dataOrigin: 'imported',
     physical: { meanRadiusKm: definition.radiusKm },
     orbit: {
@@ -310,16 +465,24 @@ function moonRecord(parentBodyId: string, definition: ReferenceMoon): WorldBodyR
       periodDays: definition.periodDays,
       direction: definition.direction ?? 'prograde',
     },
+    detail,
   };
 }
 
-function beltRecord(bodyId: string, name: string, semiMajorAxisKm: number, periodDays: number): WorldBodyRecordV1 {
+function beltRecord(
+  bodyId: string,
+  name: string,
+  semiMajorAxisKm: number,
+  periodDays: number,
+  detail: PopulationDetailV1,
+): WorldBodyRecordV1 {
   return {
     bodyId,
     name,
     bodyType: 'belt',
-    capabilities: { globe: false, map: false, explorer: false, irregularShape: false },
+    capabilities: worldBodyDetailCapabilities(detail),
     dataOrigin: 'imported',
     orbit: { semiMajorAxisKm, periodDays, direction: 'prograde' },
+    detail,
   };
 }
