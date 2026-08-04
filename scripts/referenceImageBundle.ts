@@ -13,10 +13,16 @@ export type ReferenceImageBundleManifestV1 = {
   credit: string;
   file: string;
   mediaType: string;
+  encoding?: string;
   projection: 'equirectangular';
   resolution: { width: number; height: number };
   byteLength: number;
   sha256: string;
+  sourceFile?: string;
+  sourceResolution?: { width: number; height: number };
+  sourceByteLength?: number;
+  sourceSha256?: string;
+  transform?: Record<string, unknown>;
 };
 
 export type LoadedReferenceImageBundle = ReferenceImageBundleManifestV1 & {
@@ -33,10 +39,7 @@ export async function loadReferenceImageBundle(directory: string): Promise<Loade
   if (bytes.byteLength !== manifest.byteLength) {
     throw new Error(`Reference image bundle expected ${manifest.byteLength} bytes but found ${bytes.byteLength}.`);
   }
-  const resolution = readJpegResolution(bytes);
-  if (resolution.width !== manifest.resolution.width || resolution.height !== manifest.resolution.height) {
-    throw new Error(`Reference image bundle expected ${manifest.resolution.width} x ${manifest.resolution.height} but found ${resolution.width} x ${resolution.height}.`);
-  }
+  validatePayloadShape(manifest, bytes);
   const digest = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
   if (digest !== manifest.sha256.toLowerCase()) {
     throw new Error('Reference image bundle checksum does not match its manifest.');
@@ -74,18 +77,51 @@ export function readJpegResolution(bytes: Uint8Array): { width: number; height: 
 export function isReferenceImageBundleManifest(value: unknown): value is ReferenceImageBundleManifestV1 {
   if (!isRecord(value) || value.schema !== REFERENCE_IMAGE_BUNDLE_SCHEMA) return false;
   if (!cleanText(value.bodyId) || !cleanText(value.sourceId) || !cleanText(value.sourcePage) || !cleanText(value.sourceAsset)) return false;
-  if (!cleanText(value.credit) || !cleanText(value.file) || value.mediaType !== 'image/jpeg' || value.projection !== 'equirectangular') return false;
-  if (!isRecord(value.resolution) || !positiveInteger(value.resolution.width) || !positiveInteger(value.resolution.height)) return false;
+  if (!cleanText(value.credit) || !safeFileName(value.file) || !cleanText(value.mediaType) || value.projection !== 'equirectangular') return false;
+  if (value.encoding !== undefined && !cleanText(value.encoding)) return false;
+  if (!isResolution(value.resolution)) return false;
   if (!Number.isInteger(value.byteLength) || Number(value.byteLength) <= 0) return false;
-  return typeof value.sha256 === 'string' && /^sha256:[0-9a-f]{64}$/i.test(value.sha256);
+  if (typeof value.sha256 !== 'string' || !/^sha256:[0-9a-f]{64}$/i.test(value.sha256)) return false;
+  if (value.sourceFile !== undefined && !safeFileName(value.sourceFile)) return false;
+  if (value.sourceResolution !== undefined && !isResolution(value.sourceResolution)) return false;
+  if (value.sourceByteLength !== undefined && (!Number.isInteger(value.sourceByteLength) || Number(value.sourceByteLength) <= 0)) return false;
+  if (value.sourceSha256 !== undefined && (typeof value.sourceSha256 !== 'string' || !/^sha256:[0-9a-f]{64}$/i.test(value.sourceSha256))) return false;
+  return value.transform === undefined || isRecord(value.transform);
+}
+
+function validatePayloadShape(manifest: ReferenceImageBundleManifestV1, bytes: Uint8Array): void {
+  if (manifest.mediaType === 'image/jpeg') {
+    const resolution = readJpegResolution(bytes);
+    if (resolution.width !== manifest.resolution.width || resolution.height !== manifest.resolution.height) {
+      throw new Error(`Reference image bundle expected ${manifest.resolution.width} x ${manifest.resolution.height} but found ${resolution.width} x ${resolution.height}.`);
+    }
+    return;
+  }
+  if (manifest.mediaType === 'application/vnd.world-forge.rgb565' && manifest.encoding === 'rgb565-le') {
+    const expectedBytes = manifest.resolution.width * manifest.resolution.height * 2;
+    if (bytes.byteLength !== expectedBytes) {
+      throw new Error(`Reference RGB565 bundle expected ${expectedBytes} bytes but found ${bytes.byteLength}.`);
+    }
+    return;
+  }
+  throw new Error(`Unsupported reference image payload ${manifest.mediaType}${manifest.encoding ? ` (${manifest.encoding})` : ''}.`);
 }
 
 function isStartOfFrameMarker(marker: number): boolean {
   return [0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker);
 }
 
+function isResolution(value: unknown): value is { width: number; height: number } {
+  return isRecord(value) && positiveInteger(value.width) && positiveInteger(value.height);
+}
+
 function positiveInteger(value: unknown): boolean {
   return Number.isInteger(value) && Number(value) > 0;
+}
+
+function safeFileName(value: unknown): boolean {
+  const text = cleanText(value);
+  return Boolean(text) && !text!.includes('/') && !text!.includes('\\') && text !== '.' && text !== '..';
 }
 
 function cleanText(value: unknown): string | null {
