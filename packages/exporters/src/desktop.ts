@@ -16,3 +16,10 @@ export {
 } from './multiBodyWforge';
 
 export type { VttExportConfig, VttGridKind } from './index';
+export type { MultiBodyWforgeExportOptions } from './multiBodyWforge';
+export type {
+  BodyAssetPackageSummary,
+  PackagedWorldBodyRecord,
+  WorldBodyAssetResolver,
+  WorldBodyAssetSource,
+} from './bodyAssetPackage';
