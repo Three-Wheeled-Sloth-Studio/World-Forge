@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -31,6 +32,14 @@ export async function loadReferenceImageBundle(directory: string): Promise<Loade
   const bytes = Uint8Array.from(await readFile(path.join(directory, manifest.file)));
   if (bytes.byteLength !== manifest.byteLength) {
     throw new Error(`Reference image bundle expected ${manifest.byteLength} bytes but found ${bytes.byteLength}.`);
+  }
+  const resolution = readJpegResolution(bytes);
+  if (resolution.width !== manifest.resolution.width || resolution.height !== manifest.resolution.height) {
+    throw new Error(`Reference image bundle expected ${manifest.resolution.width} x ${manifest.resolution.height} but found ${resolution.width} x ${resolution.height}.`);
+  }
+  const digest = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+  if (digest !== manifest.sha256.toLowerCase()) {
+    throw new Error('Reference image bundle checksum does not match its manifest.');
   }
   return { ...manifest, bytes };
 }
