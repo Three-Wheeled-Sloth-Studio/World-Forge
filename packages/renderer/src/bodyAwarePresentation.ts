@@ -45,7 +45,7 @@ export function renderWorldToCanvas(
   if (!activeProject) {
     renderUnsupportedBodyMap(canvas, project, visible.targetResolution);
     const atmosphericRaster = atmosphericPresentationRasterForActiveBody(project);
-    if (atmosphericRaster) presentationCanvas.__worldForgeAtmosphericRaster = atmosphericRaster;
+    if (atmosphericRaster) installAtmosphericRasterGlobeHook(presentationCanvas, atmosphericRaster);
     return;
   }
   renderPresentationWorldToCanvas(canvas, activeProject, theme, visible);
@@ -95,6 +95,81 @@ export function atmosphericPresentationRasterForActiveBody(
     height: asset.resolution.height,
     bytes,
   };
+}
+
+export function decodeRgb565ToRgba(
+  bytes: Uint8Array,
+  width: number,
+  height: number,
+): Uint8ClampedArray {
+  const expectedBytes = width * height * 2;
+  if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0 || bytes.byteLength !== expectedBytes) {
+    throw new Error(`RGB565 raster expected ${expectedBytes} bytes for ${width} x ${height}, received ${bytes.byteLength}.`);
+  }
+  const rgba = new Uint8ClampedArray(width * height * 4);
+  for (let pixel = 0; pixel < width * height; pixel += 1) {
+    const packed = bytes[pixel * 2] | (bytes[pixel * 2 + 1] << 8);
+    const target = pixel * 4;
+    rgba[target] = Math.round(((packed >> 11) & 0x1f) * 255 / 31);
+    rgba[target + 1] = Math.round(((packed >> 5) & 0x3f) * 255 / 63);
+    rgba[target + 2] = Math.round((packed & 0x1f) * 255 / 31);
+    rgba[target + 3] = 255;
+  }
+  return rgba;
+}
+
+function installAtmosphericRasterGlobeHook(
+  canvas: AtmosphericPresentationCanvas,
+  raster: StagedAtmosphericPresentationRaster,
+): void {
+  canvas.__worldForgeAtmosphericRaster = raster;
+  const originalGetContext = canvas.getContext.bind(canvas) as (
+    contextId: string,
+    options?: CanvasRenderingContext2DSettings,
+  ) => RenderingContext | null;
+
+  Object.defineProperty(canvas, 'getContext', {
+    configurable: true,
+    value: (contextId: string, options?: CanvasRenderingContext2DSettings): RenderingContext | null => {
+      const context = originalGetContext(contextId, options);
+      if (contextId === '2d'
+        && options?.willReadFrequently === true
+        && context instanceof CanvasRenderingContext2D
+        && canvas.__worldForgeAtmosphericRaster) {
+        drawAtmosphericRaster(canvas, context, canvas.__worldForgeAtmosphericRaster);
+        delete canvas.__worldForgeAtmosphericRaster;
+        Object.defineProperty(canvas, 'getContext', {
+          configurable: true,
+          writable: true,
+          value: originalGetContext,
+        });
+      }
+      return context;
+    },
+  });
+}
+
+function drawAtmosphericRaster(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+  raster: StagedAtmosphericPresentationRaster,
+): void {
+  const sourceCanvas = document.createElement('canvas');
+  sourceCanvas.width = raster.width;
+  sourceCanvas.height = raster.height;
+  const sourceContext = sourceCanvas.getContext('2d');
+  if (!sourceContext) return;
+  const rgba = decodeRgb565ToRgba(raster.bytes, raster.width, raster.height);
+  sourceContext.putImageData(new ImageData(rgba, raster.width, raster.height), 0, 0);
+  context.save();
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+  context.restore();
+  canvas.dataset.bodyPresentation = 'imported-atmospheric-rgb565';
+  canvas.dataset.bodyPresentationAssetId = raster.assetId;
+  canvas.dataset.bodyPresentationSourceResolution = `${raster.width}x${raster.height}`;
 }
 
 function renderUnsupportedBodyMap(
