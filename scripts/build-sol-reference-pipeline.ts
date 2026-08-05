@@ -114,10 +114,10 @@ export function parseSolReferencePipelineOptions(
 export function buildSolReferencePipelineCommands(
   options: SolReferencePipelineOptions,
   env: NodeJS.ProcessEnv = process.env,
-  platform = process.platform,
 ): SolReferencePipelineCommand[] {
   const python = cleanText(env.PYTHON) ?? 'python';
-  const npm = platform === 'win32' ? 'npm.cmd' : 'npm';
+  const node = cleanText(env.NODE) ?? process.execPath;
+  const tsxCli = path.join(options.repositoryRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   const commands: SolReferencePipelineCommand[] = [];
 
   if (!options.preparedOnly) {
@@ -142,9 +142,11 @@ export function buildSolReferencePipelineCommands(
 
   commands.push({
     stage: 'build-sol-package',
-    command: npm,
+    command: node,
     args: [
-      'run', 'reference:build-sol', '--',
+      tsxCli,
+      '--tsconfig', path.join(options.repositoryRoot, 'tsconfig.scripts.json'),
+      path.join(options.repositoryRoot, 'scripts', 'build-earth-reference.ts'),
       '--input', options.earthBundleDirectory,
       '--jupiter-input', options.jupiterBundleDirectory,
       '--output', options.outputFile,
