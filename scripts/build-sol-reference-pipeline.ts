@@ -13,6 +13,7 @@ export interface SolReferencePipelineOptions {
   topologyResolution: number;
   earthBundleDirectory: string;
   jupiterBundleDirectory: string;
+  bodyBundleDirectories: string[];
   earthSourceFile: string | null;
   koppenSourceFile: string | null;
   jupiterSourceFile: string | null;
@@ -40,6 +41,7 @@ export function parseSolReferencePipelineOptions(
   let topologyResolution = 64;
   let earthBundleDirectory = path.join(repositoryRoot, '.local', 'reference-data', 'earth-etopo');
   let jupiterBundleDirectory = path.join(repositoryRoot, '.local', 'reference-data', 'jupiter-cassini');
+  const bodyBundleDirectories: string[] = [];
   let earthSourceFile: string | null = null;
   let koppenSourceFile: string | null = null;
   let jupiterSourceFile: string | null = null;
@@ -64,6 +66,9 @@ export function parseSolReferencePipelineOptions(
         break;
       case '--jupiter-bundle':
         jupiterBundleDirectory = path.resolve(cwd, requireValue(argv, ++index, argument));
+        break;
+      case '--body-input':
+        bodyBundleDirectories.push(path.resolve(cwd, requireValue(argv, ++index, argument)));
         break;
       case '--earth-source':
         earthSourceFile = path.resolve(cwd, requireValue(argv, ++index, argument));
@@ -94,6 +99,10 @@ export function parseSolReferencePipelineOptions(
   if (preparedOnly && (earthSourceFile || koppenSourceFile || jupiterSourceFile)) {
     throw new Error('--prepared-only cannot be combined with source-file overrides.');
   }
+  const uniqueBodyBundles = new Set(bodyBundleDirectories.map((directory) => path.normalize(directory)));
+  if (uniqueBodyBundles.size !== bodyBundleDirectories.length) {
+    throw new Error('--body-input directories must be unique.');
+  }
 
   return {
     repositoryRoot: path.resolve(repositoryRoot),
@@ -102,6 +111,7 @@ export function parseSolReferencePipelineOptions(
     topologyResolution,
     earthBundleDirectory,
     jupiterBundleDirectory,
+    bodyBundleDirectories,
     earthSourceFile,
     koppenSourceFile,
     jupiterSourceFile,
@@ -140,17 +150,22 @@ export function buildSolReferencePipelineCommands(
     commands.push({ stage: 'prepare-jupiter', command: python, args: jupiterArgs });
   }
 
+  const packageArgs = [
+    tsxCli,
+    '--tsconfig', path.join(options.repositoryRoot, 'tsconfig.scripts.json'),
+    path.join(options.repositoryRoot, 'scripts', 'build-earth-reference.ts'),
+    '--input', options.earthBundleDirectory,
+    '--jupiter-input', options.jupiterBundleDirectory,
+  ];
+  for (const bodyBundleDirectory of options.bodyBundleDirectories) {
+    packageArgs.push('--body-input', bodyBundleDirectory);
+  }
+  packageArgs.push('--output', options.outputFile);
+
   commands.push({
     stage: 'build-sol-package',
     command: node,
-    args: [
-      tsxCli,
-      '--tsconfig', path.join(options.repositoryRoot, 'tsconfig.scripts.json'),
-      path.join(options.repositoryRoot, 'scripts', 'build-earth-reference.ts'),
-      '--input', options.earthBundleDirectory,
-      '--jupiter-input', options.jupiterBundleDirectory,
-      '--output', options.outputFile,
-    ],
+    args: packageArgs,
   });
   return commands;
 }
@@ -169,13 +184,18 @@ export async function runSolReferencePipeline(
 
   const earthManifestPath = path.join(options.earthBundleDirectory, 'manifest.json');
   const jupiterManifestPath = path.join(options.jupiterBundleDirectory, 'manifest.json');
+  const bodyManifestPaths = options.bodyBundleDirectories.map((directory) => path.join(directory, 'manifest.json'));
   await requireFile(earthManifestPath, 'Prepared Earth manifest');
   await requireFile(jupiterManifestPath, 'Prepared Jupiter manifest');
+  for (const manifestPath of bodyManifestPaths) {
+    await requireFile(manifestPath, 'Prepared body manifest');
+  }
   await requireFile(options.outputFile, 'Sol reference package');
 
-  const [earthManifest, jupiterManifest, packageBytes] = await Promise.all([
+  const [earthManifest, jupiterManifest, bodyManifests, packageBytes] = await Promise.all([
     readFile(earthManifestPath),
     readFile(jupiterManifestPath),
+    Promise.all(bodyManifestPaths.map((manifestPath) => readFile(manifestPath))),
     readFile(options.outputFile),
   ]);
   const completedAt = Date.now();
@@ -194,6 +214,9 @@ export async function runSolReferencePipeline(
     inputs: {
       earthManifest: fileEvidence(earthManifestPath, earthManifest, options.repositoryRoot),
       jupiterManifest: fileEvidence(jupiterManifestPath, jupiterManifest, options.repositoryRoot),
+      bodyManifests: bodyManifestPaths.map((manifestPath, index) => (
+        fileEvidence(manifestPath, bodyManifests[index], options.repositoryRoot)
+      )),
     },
     output: fileEvidence(options.outputFile, packageBytes, options.repositoryRoot),
     stages: commands.map((command) => command.stage),
@@ -205,6 +228,7 @@ export async function runSolReferencePipeline(
   console.log(`\nSol reference package: ${options.outputFile}`);
   console.log(`Package bytes: ${packageBytes.byteLength}`);
   console.log(`Package digest: ${sha256Label(packageBytes)}`);
+  console.log(`Prepared body bundles: ${bodyManifestPaths.length}`);
   console.log(`Pipeline report: ${options.reportFile}`);
 }
 
