@@ -46,17 +46,23 @@ function orbitalContext(): SystemOrbitalContextArtifact {
   } as unknown as SystemOrbitalContextArtifact;
 }
 
-function project(
-  status: 'ready' | 'generated',
-  importedMoon = false,
-  importedGiant = false,
-  includeGiantPayload = true,
-): WorldProject {
+function project({
+  status = 'ready',
+  canonicalMoon = false,
+  basicMoon = false,
+  atmosphericGiant = false,
+}: {
+  status?: 'ready' | 'generated';
+  canonicalMoon?: boolean;
+  basicMoon?: boolean;
+  atmosphericGiant?: boolean;
+} = {}): WorldProject {
   return {
     projectId: 'project-test-system',
     projectName: 'Test World',
     primaryWorld: { id: primary.id, name: 'Test World' },
     solarSystem: {
+      star: { id: 'star-1' },
       primaryWorldId: primary.id,
       bodies: [
         { id: 'world-1', bodyType: 'rocky', isPrimaryWorld: true, moons: [{ id: 'moon-a', name: 'Selene' }] },
@@ -69,6 +75,28 @@ function project(
       activeBodyId: primary.id,
       bodies: [
         {
+          bodyId: 'star-1',
+          name: 'Test Star',
+          bodyType: 'star',
+          capabilities: { globe: true, map: false, explorer: false, irregularShape: false },
+          dataOrigin: 'derived',
+          physical: { meanRadiusKm: 695_700, rotationPeriodHours: 600 },
+          detail: {
+            schema: WORLD_BODY_DETAIL_SCHEMA,
+            kind: 'basic-presentation',
+            tier: 'presentation',
+            origin: 'derived',
+            shape: { kind: 'sphere' },
+            surface: {
+              paletteHex: ['#fff2b0', '#f58b35'],
+              roughness: 0.7,
+              metalness: 0,
+              emissiveHex: '#ffb23f',
+              emissiveIntensity: 1.7,
+            },
+          },
+        },
+        {
           bodyId: primary.id,
           name: 'Test World',
           bodyType: 'rocky',
@@ -80,17 +108,30 @@ function project(
           name: 'Selene',
           bodyType: 'moon',
           parentBodyId: primary.id,
-          capabilities: { globe: true, map: importedMoon, explorer: importedMoon, irregularShape: false },
-          dataOrigin: importedMoon ? 'imported' : 'generated',
-          surface: importedMoon ? { id: moon.id, name: 'Selene' } : undefined,
+          capabilities: {
+            globe: canonicalMoon || basicMoon,
+            map: canonicalMoon,
+            explorer: canonicalMoon,
+            irregularShape: false,
+          },
+          dataOrigin: canonicalMoon || basicMoon ? 'imported' : 'generated',
+          detail: basicMoon ? {
+            schema: WORLD_BODY_DETAIL_SCHEMA,
+            kind: 'basic-presentation',
+            tier: 'presentation',
+            origin: 'derived',
+            shape: { kind: 'sphere' },
+            surface: { paletteHex: ['#aaa69e', '#706d68'], roughness: 0.98, metalness: 0 },
+          } : undefined,
+          surface: canonicalMoon ? { id: moon.id, name: 'Selene' } : undefined,
         },
         {
           bodyId: giant.id,
           name: 'Jovia',
           bodyType: 'gas-giant',
-          capabilities: { globe: importedGiant, map: false, explorer: false, irregularShape: false },
-          dataOrigin: importedGiant ? 'imported' : 'generated',
-          detail: importedGiant ? {
+          capabilities: { globe: atmosphericGiant, map: false, explorer: false, irregularShape: false },
+          dataOrigin: atmosphericGiant ? 'imported' : 'generated',
+          detail: atmosphericGiant ? {
             schema: WORLD_BODY_DETAIL_SCHEMA,
             kind: 'atmospheric-presentation',
             tier: 'presentation',
@@ -102,29 +143,17 @@ function project(
               bandContrast: 0.5,
               hazeStrength: 0.2,
             },
-            assets: [{
-              assetId: 'jovia-rgb565',
-              role: 'albedo',
-              logicalPath: 'bodies/giant-1/albedo.rgb565',
-              mediaType: 'application/vnd.world-forge.rgb565',
-              encoding: 'rgb565-le',
-              resolution: { width: 2, height: 1 },
-              byteLength: 4,
-            }],
           } : undefined,
         },
         {
           bodyId: belt.id,
           name: 'Belt',
           bodyType: 'belt',
-          capabilities: { globe: true, map: false, explorer: false, irregularShape: false },
+          capabilities: { globe: false, map: false, explorer: false, irregularShape: false },
           dataOrigin: 'generated',
         },
       ],
     },
-    bodyAssetPayloads: importedGiant && includeGiantPayload
-      ? { 'jovia-rgb565': Uint8Array.from([0x00, 0xf8, 0x1f, 0x00]) }
-      : undefined,
     bodyGeneration: {
       records: {
         [moon.id]: { status, requestedFidelity: 'preview' },
@@ -138,7 +167,7 @@ describe('Globe body target resolution', () => {
   beforeEach(() => resetSessionActiveWorldBody());
 
   it('defaults to the generated primary world', () => {
-    const source = project('ready');
+    const source = project();
     const context = orbitalContext();
     expect(canOpenGlobeBodyTarget(source, context, primary.id)).toBe(true);
     const target = resolveGlobeBodyTarget(source, context, '');
@@ -149,7 +178,7 @@ describe('Globe body target resolution', () => {
   });
 
   it('falls back to primary for an unresolved body', () => {
-    const source = project('ready');
+    const source = project();
     const context = orbitalContext();
     const lookup = vi.fn();
     expect(canOpenGlobeBodyTarget(source, context, moon.id, lookup)).toBe(false);
@@ -159,8 +188,25 @@ describe('Globe body target resolution', () => {
     expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
   });
 
+  it('opens the canonical star through the generic basic presentation path', () => {
+    const source = project();
+    const context = orbitalContext();
+    expect(canOpenGlobeBodyTarget(source, context, 'star-1')).toBe(true);
+    const target = resolveGlobeBodyTarget(source, context, 'star-1');
+
+    expect(target).toMatchObject({
+      bodyId: 'star-1',
+      label: 'Test Star',
+      mode: 'basic-presentation-body',
+      body: null,
+      artifact: null,
+    });
+    expect(target?.basicDetail?.surface.emissiveHex).toBe('#ffb23f');
+    expect(sessionActiveWorldBodyId(source)).toBe('star-1');
+  });
+
   it('opens an imported canonical surface without a generated replay artifact', () => {
-    const source = project('ready', true);
+    const source = project({ canonicalMoon: true });
     const context = orbitalContext();
     const lookup = vi.fn();
     expect(canOpenGlobeBodyTarget(source, context, moon.id, lookup)).toBe(true);
@@ -172,6 +218,7 @@ describe('Globe body target resolution', () => {
       mode: 'canonical-surface-body',
       artifact: null,
       atmosphericDetail: null,
+      basicDetail: null,
     });
     expect(target?.surfaceProject?.projectId).toBe(source.projectId);
     expect(target?.surfaceProject?.primaryWorld.id).toBe(moon.id);
@@ -179,8 +226,27 @@ describe('Globe body target resolution', () => {
     expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
   });
 
-  it('opens an imported atmospheric body only when its package payload is hydrated', () => {
-    const source = project('ready', false, true, true);
+  it('opens a basic moon presentation without a generated replay artifact', () => {
+    const source = project({ basicMoon: true });
+    const context = orbitalContext();
+    const lookup = vi.fn();
+    expect(canOpenGlobeBodyTarget(source, context, moon.id, lookup)).toBe(true);
+    const target = resolveGlobeBodyTarget(source, context, moon.id, lookup);
+
+    expect(target).toMatchObject({
+      bodyId: moon.id,
+      label: 'Selene',
+      mode: 'basic-presentation-body',
+      artifact: null,
+      surfaceProject: null,
+    });
+    expect(target?.basicDetail?.kind).toBe('basic-presentation');
+    expect(lookup).not.toHaveBeenCalled();
+    expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
+  });
+
+  it('opens a derived atmospheric body without requiring texture bytes', () => {
+    const source = project({ atmosphericGiant: true });
     const context = orbitalContext();
     const lookup = vi.fn();
     expect(canOpenGlobeBodyTarget(source, context, giant.id, lookup)).toBe(true);
@@ -194,26 +260,12 @@ describe('Globe body target resolution', () => {
       surfaceProject: null,
     });
     expect(target?.atmosphericDetail?.kind).toBe('atmospheric-presentation');
-    expect(target?.atmosphericDetail?.assets?.[0].assetId).toBe('jovia-rgb565');
     expect(lookup).not.toHaveBeenCalled();
     expect(sessionActiveWorldBodyId(source)).toBe(giant.id);
   });
 
-  it('does not advertise an imported atmospheric target when its bytes are missing', () => {
-    const source = project('ready', false, true, false);
-    const context = orbitalContext();
-    const lookup = vi.fn();
-    expect(canOpenGlobeBodyTarget(source, context, giant.id, lookup)).toBe(false);
-    const target = resolveGlobeBodyTarget(source, context, giant.id, lookup);
-
-    expect(target?.bodyId).toBe(primary.id);
-    expect(target?.mode).toBe('primary-world');
-    expect(lookup).not.toHaveBeenCalled();
-    expect(sessionActiveWorldBodyId(source)).toBe(primary.id);
-  });
-
-  it('opens any generated body artifact and shares that body with Map', () => {
-    const source = project('generated');
+  it('opens a generated body artifact while leaving belts placeholder-only by default', () => {
+    const source = project({ status: 'generated' });
     const context = orbitalContext();
     const moonArtifact = { bodyId: moon.id, bodyProfile: 'airless-rocky-body', artifactSignature: 'moon-artifact' } as GeneratedSystemBodyArtifact;
     const moonLookup = vi.fn(() => moonArtifact);
@@ -222,12 +274,16 @@ describe('Globe body target resolution', () => {
     expect(moonTarget).toMatchObject({ bodyId: moon.id, label: 'Selene', mode: 'generated-system-body', artifact: moonArtifact, surfaceProject: null });
     expect(sessionActiveWorldBodyId(source)).toBe(moon.id);
 
+    const unavailableSource = project();
+    expect(canOpenGlobeBodyTarget(unavailableSource, context, belt.id)).toBe(false);
+
     const beltArtifact = { bodyId: belt.id, bodyProfile: 'debris-belt', artifactSignature: 'belt-artifact' } as GeneratedSystemBodyArtifact;
     const beltLookup = vi.fn(() => beltArtifact);
     expect(canOpenGlobeBodyTarget(source, context, belt.id, beltLookup)).toBe(true);
-    const beltTarget = resolveGlobeBodyTarget(source, context, belt.id, beltLookup);
-    expect(beltTarget).toMatchObject({ bodyId: belt.id, mode: 'generated-system-body', artifact: beltArtifact, surfaceProject: null });
-    expect(beltLookup).toHaveBeenCalledWith(expect.anything(), expect.anything(), belt.id, 'preview');
-    expect(sessionActiveWorldBodyId(source)).toBe(belt.id);
+    expect(resolveGlobeBodyTarget(source, context, belt.id, beltLookup)).toMatchObject({
+      bodyId: belt.id,
+      mode: 'generated-system-body',
+      artifact: beltArtifact,
+    });
   });
 });
