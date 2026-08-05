@@ -1,38 +1,29 @@
-# Handoff: Mars and Venus reference ingestion readiness
+# Handoff: Mars and Venus reference ingestion
 
-Updated: 2026-08-04
-Status: Definition of Ready draft complete; material implementation must wait for acceptance
-Priority: Active Sol reference-system planning slice
+Updated: 2026-08-05
+Status: Definition of Ready accepted; Mars vertical slice implemented through code validation boundary; real-source build and browser acceptance pending
+Priority: Active Sol reference-system implementation
 
 ## Purpose
 
-Prepare the next source-backed Sol bodies without repeating the Earth mistake of starting significant implementation before the product and technical decisions are ready.
+Extend the accepted Earth-plus-Jupiter Sol package with durable, source-backed solid-body ingestion while building ETL infrastructure that can later be exposed through World Forge.
 
-This handoff defines:
-
-- the recommended source datasets;
-- licensing and attribution boundaries;
-- body-detail and renderer gaps;
-- proposed target fidelity;
-- package-growth expectations;
-- acceptance evidence;
-- the smallest implementation sequence after readiness is accepted.
-
-It does not authorize ETL, schema, renderer, or package implementation by itself.
+The ETL work is product infrastructure, not a set of disposable release scripts. Built-in real-body adapters, command-line conversion, and future user uploads should converge on the same prepared-body contract and normal `.wforge` exporter.
 
 ## Read first
 
-1. `refs/planning/reference-system-etl-and-multi-body-navigation.md`
+1. `refs/decisions/mars-venus-product-direction-2026-08-05.md`
 2. `refs/planning/body-detail-tiers-and-payload-strategy.md`
 3. `refs/research/reference-data/mars-reference-data.md`
 4. `refs/research/reference-data/venus-reference-data.md`
 5. `refs/handoffs/currentHandoff.md`
-6. World Forge issue #124
-7. Parchment Worlds issue #22
+6. `refs/engineering/ci-and-agent-workflow.md`
+7. World Forge issue #124
+8. Parchment Worlds issue #22
 
-## Accepted starting baseline
+## Accepted baseline
 
-The Earth-plus-Jupiter reference package has completed the normal producer and consumer path:
+The Earth-plus-Jupiter reference package completed the normal producer and consumer path:
 
 ```text
 approved source bundles
@@ -50,324 +41,271 @@ Accepted evidence:
 - Jupiter visual acceptance: passed;
 - Parchment import: passed;
 - responsiveness: subjectively instant/snappy;
-- lazy body loading: not currently justified by evidence.
+- lazy body loading: not justified by current evidence.
 
-Mars and Venus should extend this same pipeline. Do not create separate projects or test-only package writers.
+Mars and Venus extend this same one-system path. Do not create separate projects or alternate final package writers.
 
-## Recommended product decisions
+## Accepted product decisions
 
 ### Mars
 
-Use a compact Tier 2 source-backed solid-body surface.
-
-Initial capabilities:
-
-- Globe: yes;
-- Map: yes;
-- Explorer: no;
-- editing: no;
-- climate, biome, water, hydrology, and plates: absent.
-
-Recommended sources:
-
-- MGS MOLA global DEM 463 m for elevation;
-- Viking MDIM 2.1 colorized global mosaic 232 m for recognizable presentation.
-
-Important source caveat:
-
-The Viking color mosaic is artistically colorized and must not be labeled calibrated true-color.
-
-Prepared target:
-
-```text
-1024 x 512 RGB565 appearance
-1024 x 512 numeric elevation
-```
+- Tier 2 `raster-surface`;
+- coarse/default prepared resolution, currently 512 by 256;
+- Globe and Map supported;
+- Explorer and editors deferred until after the complete Sol system;
+- MOLA topography and Viking MDIM 2.1 artistic colorization;
+- no fabricated Earth climate, biome, water, hydrology, river, plate, or region layers;
+- later Tier 3 enrichment preserves the same body identity.
 
 ### Venus
 
-Treat Venus as a layered solid body with an optically opaque atmosphere.
+- one stable Venus body with layered presentations;
+- default Globe shows the opaque cloud deck;
+- Map shows Magellan radar imagery and topography;
+- radar-surface Globe mode is deferred;
+- Explorer and editors deferred until after the complete Sol system;
+- cloud composite must remain clearly derived and must not imply a contemporaneous observed weather state.
 
-Initial capabilities:
+### ETL product direction
 
-- Globe default: cloud deck;
-- Map: radar surface and topography;
-- optional Globe surface mode: radar surface;
-- Explorer: no;
-- editing: no;
-- Earth climate, biome, water, and hydrology: absent.
+ETL output is a durable reusable prepared-body bundle upstream of `.wforge`.
 
-Recommended sources:
-
-- Magellan C3-MIDR global radar mosaic 2025 m;
-- Magellan global topography 4641 m version 2;
-- Akatsuki UVI Level 3 map data, primarily 365 nm, for a deterministic derived cloud composite.
-
-Prepared target:
+The same core should eventually support:
 
 ```text
-1024 x 512 radar
-1024 x 512 numeric elevation
-1024 x 512 cloud presentation
+PNG / JPG / WebP / SVG upload
+  -> projection and layer-role interview
+  -> orientation and seam normalization
+  -> resampling and semantic conversion
+  -> preview and correction
+  -> provenance manifest
+  -> prepared-body bundle
+  -> normal .wforge creation or enrichment
 ```
 
-A 768 x 384 cloud texture may be accepted only if visual review shows no meaningful loss.
+Do not duplicate these transforms inside future UI components.
 
-## Architecture audit findings
+## Implemented Mars foundation
 
-### 1. Body-local raster surfaces are modeled but not rendered
+### Numeric raster metadata
 
-`RasterSurfaceDetailV1` declares Globe and Map capability, but the current active render path still obtains a mappable body through `WorldBodyRecordV1.surface` and `projectForWorldBody()`, which requires a full `PrimaryWorld` surface.
+`packages/shared/src/worldBodyDetails.ts` now describes scientific raster semantics:
 
-Result:
-
-- a Mars `raster-surface` record can validate and package;
-- it cannot yet honestly open in the existing Map or canonical Globe path without a body-local raster renderer/accessor;
-- capability flags must remain false until the runtime path exists.
-
-Do not work around this by fabricating a Mars `PrimaryWorld` full of meaningless Earth layers.
-
-### 2. Numeric raster interpretation is underspecified
-
-`WorldBodyAssetRefV1` records path, role, encoding, resolution, byte length, and checksum, but it cannot yet express the physical meaning of an elevation raster.
-
-A generic numeric raster descriptor is required for at least:
-
-- stored type and byte order;
+- data type;
+- byte order;
 - units;
 - scale and offset;
-- datum or reference surface;
+- datum;
 - no-data value or mask;
 - source and prepared ranges;
-- absolute elevation versus normalized display displacement.
+- absolute elevation, radius, normalized displacement, or scalar interpretation.
 
-Do not bury those semantics in Mars- or Venus-specific filenames or custom parsing branches.
+### Reusable prepared-body bundle
 
-### 3. Venus requires more than one body-detail component
+`scripts/referenceBodyBundle.ts` implements:
 
-A body currently owns one `detail` discriminated union.
+```text
+world-forge-reference-body-bundle-v1
+```
 
-That can be either:
+It validates:
 
-- atmospheric presentation, Globe only; or
-- raster surface, Globe and Map.
+- stable body and asset identity;
+- source attribution;
+- shape, projection, and resolution;
+- safe body-local paths;
+- unique IDs, files, and paths;
+- byte lengths and SHA-256 checksums;
+- RGB565 and numeric payload shape;
+- conversion into a valid body-detail record.
 
-Venus requires both.
+### Mars ETL
 
-The preferred solution is one additive, versioned, generic layered solid-body detail variant with:
+`tools/reference-etl/prepare_mars_reference.py` uses moderate-size official products appropriate to the 512 by 256 target:
 
-- a solid raster surface component;
-- an optional atmosphere or cloud presentation component;
-- an explicit default component per view;
-- independent origin and asset metadata;
-- optional user-selectable surface Globe mode;
-- one shared body identity and shape.
+- MGS MOLA MEGDR global topography at 16 pixels per degree;
+- reduced Viking MDIM 2.1 colorized global mosaic at approximately 1 km per pixel.
 
-The contract must be useful for Venus, Titan, Earth cloud layers, and future solid worlds with optically significant atmospheres. Do not add a Venus-only branch.
+The adapter:
 
-### 4. The Sol build command is still body-name-specific
+- downloads or accepts local overrides;
+- validates source structure;
+- records source evidence;
+- normalizes seam and orientation;
+- resamples deterministically;
+- emits `albedo.rgb565` and `elevation.i16`;
+- records all transforms, ranges, checksums, and caveats.
 
-The current producer takes explicit Earth and Jupiter inputs.
+The earlier multi-gigabyte 463 m MOLA and 232 m Viking sources are deliberately not default inputs for this coarse product increment.
 
-Before broad body expansion, prefer a repeatable body-bundle assembly seam over adding one new CLI flag per planet. A suitable implementation may use repeated body-bundle arguments or a source-controlled Sol assembly manifest that declares:
+### Sol assembly
 
-- body ID;
-- prepared bundle directory;
-- adapter kind;
-- required/optional status;
-- expected manifest schema;
-- package attachment policy.
+`scripts/build-earth-reference.ts` accepts repeatable:
 
-The normal exporter remains the only final `.wforge` writer.
+```text
+--body-input <prepared-body-directory>
+```
 
-### 5. Lazy loading remains deferred
+The normal multi-body exporter remains the only final `.wforge` writer.
 
-The current 3.24 MiB `.pworld` imports quickly. Mars and Venus must record package and memory deltas, but lazy package-entry loading is not a prerequisite for the first implementation.
+### Tier 2 Map
 
-Reconsider only when evidence shows:
+The body-aware renderer can now:
 
-- materially slower import/open behavior;
-- problematic peak browser memory;
-- or package growth that makes continued eager hydration unreasonable.
+- stage hydrated body-local raster assets;
+- decode little-endian RGB565;
+- decode typed numeric rasters with scale, offset, byte order, and no-data behavior;
+- render imported appearance in normal Map presentation;
+- render elevation/heightmap modes from the numeric raster;
+- avoid all Earth `PrimaryWorld` assumptions;
+- reject geographic point inspection explicitly.
 
-## Definition of Ready
+### Tier 2 Globe
 
-Material implementation may begin only when the following are explicitly accepted.
+A dedicated reference-raster Globe viewer now provides:
 
-### Product scope
+- imported RGB565 texture;
+- sphere, oblate-spheroid, and triaxial-ellipsoid scaling;
+- orbital light, rotation, axial tilt, drag, and zoom;
+- no Earth ocean, atmosphere, weather, seasonal, climate, or terrain-shell behavior;
+- clear target and source instrumentation.
 
-- Mars is Tier 2, Globe plus Map, with Explorer and Earthlike layers deferred.
-- Venus uses a cloud-deck default Globe and radar/topography Map.
-- Venus optional surface Globe mode is either in or out of the first increment.
-- No climate-algorithm calibration work is included.
-- Phobos, Deimos, and Luna remain separate later increments.
+### Capability boundary
 
-### Source and legal boundary
+A fully validated and hydrated Tier 2 package enables:
 
-- MOLA DEM and Viking color mosaic are accepted for Mars.
-- Magellan radar and topography are accepted for Venus.
-- Akatsuki UVI Level 3 is accepted as the cloud-composite source.
-- The required JAXA/DARTS/CC BY 4.0 attribution wording and location are agreed.
-- The Viking artistic-color caveat and Magellan radar/non-visible caveat are agreed.
+```text
+Globe: true
+Map: true
+Explorer: false
+```
 
-### Prepared-data contract
+Missing or invalid prepared assets do not advertise those views.
 
-- 1024 x 512 is accepted as the initial prepared resolution for Mars and Venus surface layers.
-- Venus cloud resolution is accepted.
-- Numeric raster type, units, scale, offset, datum, and no-data contract are accepted.
-- Image and numeric resampling methods are identified.
-- Coordinate normalization is fixed to equirectangular, planetocentric latitude, positive-east longitude, and one documented seam convention.
+## Automated coverage
 
-### Renderer and model contract
+Focused tests cover:
 
-- The body-local raster Map/Globe accessor shape is accepted.
-- The generic layered solid-body detail variant is accepted.
-- Default component behavior per view is accepted.
-- Capability flags remain false until runtime support exists.
-- Unsupported Explorer behavior is accepted.
+- numeric raster schema validation;
+- invalid byte order and invalid role combinations;
+- prepared manifest validation;
+- duplicate and unsafe paths;
+- payload length and checksum tampering;
+- RGB565 and numeric raster decoding;
+- body attachment without `PrimaryWorld` fabrication;
+- honest capability assignment;
+- Tier 2 Globe target resolution;
+- missing-payload rejection;
+- preservation of body-local asset bytes.
 
-### Venus cloud recipe
+Exact-head CI still owns final typecheck, full test, production build, and browser-smoke acceptance.
 
-- A narrow-window stitched composite, long-period statistical composite, or authored fallback is selected.
-- The observation selection rule is deterministic.
-- Gap fill and intensity normalization are documented.
-- The output remains labeled derived rather than imported.
+## Required real-source acceptance
 
-### Pipeline and evidence
+The code increment is not the accepted Mars fixture until all of the following pass.
 
-- The Sol assembly input shape is accepted.
-- Prepared manifests must include source and output checksums and transform metadata.
-- Package size is recorded after Mars and after Venus.
-- Browser memory is measured only if package or runtime behavior raises concern; subjective snappiness is sufficient for the current baseline.
-- Required visual landmarks and view-continuity tests are accepted.
+### 1. Prepare the durable Mars bundle
 
-## Recommended implementation sequence after readiness acceptance
+```powershell
+python -m pip install -r tools/reference-etl/requirements.txt
+npm run reference:prepare-mars
+```
 
-### Increment 1: reusable raster-surface foundation
+Expected directory:
 
-Implement only the generic seams needed by both bodies:
+```text
+.local/reference-data/mars-mola-viking/
+  manifest.json
+  albedo.rgb565
+  elevation.i16
+```
 
-- numeric raster metadata;
-- body-local raster asset hydration and access;
-- raster-surface Globe and Map presentation;
-- explicit unsupported Explorer state;
-- package round-trip tests;
-- no Sol-specific renderer logic.
+Record:
 
-Use small synthetic fixtures for tests. Do not download Mars or Venus data merely to prove the contract.
+- source dimensions, bytes, and checksums;
+- prepared dimensions, bytes, and checksums;
+- elevation ranges;
+- elapsed time only if operationally meaningful.
 
-### Increment 2: Mars ETL and package integration
+### 2. Build the enriched Sol package
 
-- implement MOLA and Viking adapters;
-- emit the prepared Mars bundle and manifest;
-- add Mars through the generic Sol assembly seam;
-- perform Globe, Map, active-body, save/reopen, `.wforge`, and Parchment QA;
-- record package delta.
+```powershell
+npm run reference:build-sol -- --body-input .local/reference-data/mars-mola-viking
+```
 
-Mars is the simpler proof and should land before the Venus layered-body contract is exercised with real data.
+Expected output remains:
 
-### Increment 3: layered solid-body presentation
+```text
+.local/reference-data/sol-earth-reference.wforge
+```
 
-- add the generic surface-plus-atmosphere detail variant;
-- implement default component selection by view;
-- support cloud-deck Globe plus radar Map without duplicating body identity;
-- preserve compatibility for existing catalog, atmospheric, raster, and geographic records.
+Record the new `.wforge` size and SHA-256.
 
-### Increment 4: Venus ETL and cloud composite
+### 3. Browser acceptance
 
-- implement Magellan radar and topography adapters;
-- implement the accepted deterministic Akatsuki cloud-composite recipe;
-- attach all components through the generic layered contract;
-- perform Globe, Map, optional surface-mode, active-body, package, and Parchment QA;
-- record package delta.
+Mars Globe:
 
-### Increment 5: reassess loading policy
+- recognizable broad Viking appearance;
+- correct seam and longitude orientation;
+- smooth Mars shape without Earth ocean or atmosphere shells;
+- no mirrored or upside-down texture;
+- body selection remains Mars.
 
-Compare the accepted baseline, Mars package, and Venus package.
+Mars Map:
 
-Do not implement lazy loading merely because it appears on the long-term roadmap. Proceed only if measured package/runtime behavior now justifies it.
+- recognizable broad albedo character;
+- elevation and heightmap modes show MOLA structure;
+- Olympus Mons / Tharsis, Valles Marineris, Hellas, polar regions, and Syrtis Major are placed plausibly;
+- no Earth palette or layers;
+- unsupported Explorer remains on Mars and explains the limitation.
 
-## Acceptance evidence
+### 4. Package and Parchment round trip
 
-### Mars visual checks
+- save/reopen preserves the detail and payloads;
+- `.wforge` export/import preserves checksums;
+- re-export preserves prepared bytes;
+- enriched Parchment starter imports as one Sol system;
+- Mars survives nested package round trip;
+- record `.pworld` size and responsiveness.
 
-- Olympus Mons and Tharsis;
-- Valles Marineris;
-- Hellas Planitia;
-- polar regions;
-- broad albedo character including Syrtis Major;
-- correct longitude and seam orientation;
-- no Earth palette or layers.
+## Venus implementation after Mars acceptance
 
-### Venus visual checks
+1. Select moderate-size official Magellan radar and topography inputs for the coarse target.
+2. Close the deterministic cloud-composite recipe.
+3. Add a generic layered solid-body detail contract carrying both surface and atmosphere/cloud components.
+4. Produce a reusable Venus prepared bundle.
+5. Implement cloud-default Globe plus radar/topography Map.
+6. Run the same one-system package and Parchment acceptance path.
+7. Reassess lazy loading only from measured evidence.
 
-Default Globe:
+## Future upload conversion implications
 
-- opaque pale cloud deck;
-- source-backed ultraviolet contrast;
-- no radar bleed-through;
-- no terrain displacement of the cloud shell.
+The first application-facing map importer will need an interview and preview layer around the ETL core. It must not guess silently when the source does not establish:
 
-Map or surface mode:
+- projection;
+- seam location;
+- north-up orientation;
+- longitude direction;
+- global versus partial coverage;
+- layer role;
+- palette or numeric value meaning;
+- no-data/background behavior;
+- physical units and datum;
+- new-body versus enrich-existing-body intent.
 
-- recognizable Magellan radar character;
-- Ishtar Terra and Maxwell Montes;
-- Aphrodite Terra;
-- Beta Regio;
-- broad lowland/highland distinction;
-- clear radar/topography labeling;
-- no Earth palette or layers.
-
-### Shared functional checks
-
-- body selection remains stable through System, Globe, and Map;
-- unsupported Explorer never resets to Earth;
-- package import/export preserves bytes and checksums;
-- Parchment imports one coherent Sol project;
-- imported copies remain editable without mutating the distributed starter;
-- generated ordinary worlds remain unaffected.
-
-## Package budgets
-
-These are observation thresholds, not hard product limits.
-
-Uncompressed prepared assets at 1024 x 512:
-
-- RGB565: 1,048,576 bytes;
-- u16 elevation: 1,048,576 bytes;
-- u8 radar: 524,288 bytes.
-
-Expected raw additions:
-
-- Mars core assets: approximately 2.0 MiB before package compression;
-- Venus core assets: approximately 2.5 MiB before package compression;
-- optional normals, masks, or feature catalogs add more.
-
-Record actual compressed deltas. Trigger a loading-policy review if the enriched `.pworld` approaches 15 MiB, import/open ceases to feel immediate, or memory inspection reveals a disproportionate eager-hydration cost. Do not treat 15 MiB as a release failure by itself.
+SVG imports additionally require deterministic rasterization or vector-role interpretation. A political boundary SVG and a shaded-relief SVG are not interchangeable simply because both are SVG files.
 
 ## Guardrails
 
-- Do not create per-body projects.
-- Do not fabricate full `PrimaryWorld` records for Mars or Venus.
-- Do not label the Viking mosaic true-color.
+- One system is one project.
+- Do not fabricate `PrimaryWorld` records for Tier 2 bodies.
+- Do not create a Mars-only or Venus-only final exporter.
+- Do not infer scientific semantics from filenames.
+- Do not label the Viking mosaic calibrated true color.
 - Do not label Magellan radar visible imagery.
-- Do not label a stitched Akatsuki cloud composite imported or contemporaneous.
+- Do not imply a derived Venus cloud composite is contemporaneous observation.
 - Do not let Venus surface relief deform the visible cloud shell.
 - Do not add a Venus-only durable schema.
-- Do not set capabilities before the runtime path exists.
-- Do not start ETL until this Definition of Ready is accepted.
-- Do not let this work absorb Luna, Phobos, Deimos, climate calibration, or lazy-loading implementation.
-
-## Decisions requested from product owner
-
-Recommended defaults are ready for acceptance:
-
-1. Mars starts as Tier 2 Globe plus Map, not Tier 3.
-2. Mars uses MOLA elevation and Viking MDIM 2.1 artistic colorization at 1024 x 512.
-3. Venus defaults to cloud Globe and radar/topography Map.
-4. Venus uses Magellan surface data plus a narrow-window stitched Akatsuki UVI 365 nm cloud composite.
-5. Explorer and editors remain out of scope for both bodies.
-6. A generic layered solid-body contract and numeric raster descriptor precede real ETL.
-7. Lazy loading remains deferred until package/runtime evidence changes.
-
-After those decisions are accepted, the next developer should begin with Increment 1 and synthetic fixtures, not with dataset downloads.
+- Do not implement Explorer or editors before the complete Sol system.
+- Do not duplicate ETL transformations in future UI code.
+- Do not claim real Mars acceptance until source build, browser QA, `.wforge`, and `.pworld` evidence exist.
