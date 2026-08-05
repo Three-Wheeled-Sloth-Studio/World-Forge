@@ -11,6 +11,7 @@ import { GlobeViewer as GeographicGlobeViewer } from './GeographicGlobeViewer';
 import type { GlobeDebugMode, GlobeFocusTarget } from './GeographicGlobeViewer';
 import { resolveGlobeBodyTarget } from './globeBodyTarget';
 import { AtmosphericGlobeViewer } from './AtmosphericGlobeViewer';
+import { ReferenceRasterGlobeViewer } from './ReferenceRasterGlobeViewer';
 
 export type { GlobeDebugMode, GlobeFocusTarget } from './GeographicGlobeViewer';
 
@@ -47,12 +48,32 @@ export function GlobeViewer(props: GlobeViewerProps) {
       : null,
     [
       props.orbitalContext?.artifactSignature,
+      props.project.bodyAssetPayloads,
+      props.project.bodyCatalog,
       props.project.bodyGeneration?.updatedAt,
       props.project.enrichmentArtifacts,
       props.project.projectId,
       props.targetBodyId,
     ],
   );
+
+  if (
+    props.orbitalContext
+    && target?.mode === 'reference-raster-surface-body'
+    && target.rasterDetail
+  ) {
+    return (
+      <ReferenceRasterGlobeViewer
+        project={props.project}
+        orbitalContext={props.orbitalContext}
+        target={target}
+        simulationClock={props.simulationClock}
+        zoom={props.zoom}
+        onZoom={props.onZoom}
+        onTargetBodyChange={props.onTargetBodyChange}
+      />
+    );
+  }
 
   if (
     props.orbitalContext
