@@ -5,18 +5,23 @@ import type {
   SystemOrbitalContextArtifact,
   WorldProject
 } from '@world-forge/shared';
-import type { AtmosphericPresentationDetailV1 } from '@world-forge/shared/worldBodyDetails';
+import type {
+  AtmosphericPresentationDetailV1,
+  RasterSurfaceDetailV1,
+} from '@world-forge/shared/worldBodyDetails';
 import {
   projectForWorldBody,
   worldBodyRecord,
   type MultiBodyWorldProject,
 } from '@world-forge/shared/worldBodies';
 import { rememberSessionActiveWorldBody } from '@world-forge/shared/worldBodySession';
+import { referenceRasterSurfaceForBody } from '@world-forge/renderer';
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 
 export type GlobeBodyTargetMode =
   | 'primary-world'
   | 'canonical-surface-body'
+  | 'reference-raster-surface-body'
   | 'atmospheric-presentation-body'
   | 'generated-system-body';
 
@@ -27,6 +32,7 @@ export type GlobeBodyTarget = {
   body: OrbitalPresentationBody;
   artifact: GeneratedSystemBodyArtifact | null;
   surfaceProject: WorldProject | null;
+  rasterDetail: RasterSurfaceDetailV1 | null;
   atmosphericDetail: AtmosphericPresentationDetailV1 | null;
 };
 
@@ -48,6 +54,7 @@ export function canOpenGlobeBodyTarget(
   const requested = orbitalContext.payload.bodies.find((body) => body.id === requestedBodyId);
   if (!requested) return false;
   if (projectForWorldBody(project, requestedBodyId)) return true;
+  if (importedReferenceRasterSurface(project, requestedBodyId)) return true;
   if (importedAtmosphericPresentation(project, requestedBodyId)) return true;
 
   const record = project.bodyGeneration?.records[requestedBodyId];
@@ -77,6 +84,7 @@ export function resolveGlobeBodyTarget(
       body: primary,
       artifact: null,
       surfaceProject: project,
+      rasterDetail: null,
       atmosphericDetail: null,
     };
   };
@@ -95,6 +103,22 @@ export function resolveGlobeBodyTarget(
       body: requested,
       artifact: null,
       surfaceProject,
+      rasterDetail: null,
+      atmosphericDetail: null,
+    };
+  }
+
+  const rasterDetail = importedReferenceRasterSurface(project, requestedBodyId);
+  if (rasterDetail) {
+    rememberSessionActiveWorldBody(project, requested.id);
+    return {
+      bodyId: requested.id,
+      label: worldBodyRecord(project, requested.id)?.name ?? bodyLabel(project, requested),
+      mode: 'reference-raster-surface-body',
+      body: requested,
+      artifact: null,
+      surfaceProject: null,
+      rasterDetail,
       atmosphericDetail: null,
     };
   }
@@ -109,6 +133,7 @@ export function resolveGlobeBodyTarget(
       body: requested,
       artifact: null,
       surfaceProject: null,
+      rasterDetail: null,
       atmosphericDetail,
     };
   }
@@ -126,8 +151,22 @@ export function resolveGlobeBodyTarget(
     body: requested,
     artifact,
     surfaceProject: null,
+    rasterDetail: null,
     atmosphericDetail: null,
   };
+}
+
+function importedReferenceRasterSurface(
+  project: WorldProject,
+  bodyId: string,
+): RasterSurfaceDetailV1 | null {
+  const bodyRecord = worldBodyRecord(project, bodyId);
+  const referenceSurface = referenceRasterSurfaceForBody(project, bodyId);
+  return bodyRecord?.capabilities.globe
+    && bodyRecord.detail?.kind === 'raster-surface'
+    && referenceSurface?.albedo
+    ? bodyRecord.detail
+    : null;
 }
 
 function importedAtmosphericPresentation(
