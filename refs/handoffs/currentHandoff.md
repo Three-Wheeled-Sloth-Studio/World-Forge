@@ -2,272 +2,273 @@
 
 Updated: 2026-08-05
 
-Status: The refreshed imported Earth reference, Jupiter presentation, unified World Forge build pipeline, Parchment starter embedding, and normal Parchment import path have passed user acceptance. The resulting `.pworld` is 3.24 MiB and imports very quickly, so lazy per-body loading is not justified for the current baseline. Mars and Venus source research and Definition-of-Ready drafting are complete; material implementation remains blocked pending acceptance of the recommended scope and contracts. The Earth climate-calibration benchmark remains a separate, non-blocking enrichment track. Product implementation is temporarily paused while a focused CI signal-discipline increment is reviewed; no Mars, Venus, climate, or renderer work is mixed into that change.
+Status: Earth and Jupiter have passed World Forge and Parchment acceptance. Mars Tier 2 scope is accepted and the reusable ETL/package/Map/Globe code path is implemented on `dev`. Exact-head CI and a real-source Mars build are the active acceptance boundary. Venus follows Mars as a cloud-default Globe plus radar/topography Map. Explorer and editors remain the next major World Forge work after the complete Sol system.
 
 ## Read first
 
-1. `refs/handoffs/reference-system-etl-and-multi-body-navigation.md`
-2. `refs/handoffs/system-view-body-catalog-alignment.md`
-3. `refs/testing/sol-reference-pipeline.md`
-4. `refs/testing/sol-atmospheric-geometry-and-selector-qa.md`
-5. `refs/testing/sol-earth-biome-and-selector-stability-qa.md`
-6. `refs/research/reference-data/earth-reference-data.md`
-7. `refs/planning/body-detail-tiers-and-payload-strategy.md`
-8. `refs/handoffs/mars-venus-reference-ingestion-readiness.md`
-9. `refs/research/reference-data/mars-reference-data.md`
-10. `refs/research/reference-data/venus-reference-data.md`
-11. `refs/handoffs/earth-climate-calibration-benchmark.md`
-12. `refs/engineering/ci-and-agent-workflow.md`
-13. World Forge issue #124
-14. Parchment Worlds issue #22
+1. `refs/decisions/mars-venus-product-direction-2026-08-05.md`
+2. `refs/handoffs/mars-venus-reference-ingestion-readiness.md`
+3. `refs/research/reference-data/mars-reference-data.md`
+4. `refs/research/reference-data/venus-reference-data.md`
+5. `refs/planning/body-detail-tiers-and-payload-strategy.md`
+6. `refs/testing/sol-reference-pipeline.md`
+7. `refs/engineering/ci-and-agent-workflow.md`
+8. `refs/handoffs/earth-climate-calibration-benchmark.md`
+9. World Forge issue #124
+10. Parchment Worlds issue #22
 
-## Accepted visual baseline
+## Accepted Earth and Jupiter baseline
 
 User-confirmed:
 
-- Jupiter's smooth oblate silhouette looks correct;
-- imported Jupiter banding is visually successful;
-- moons are clearly nested beneath parent worlds in the native selector;
+- Jupiter's smooth oblate silhouette and imported banding look correct;
+- moons are nested under their parent worlds in the selector;
 - canonical body names remain intact;
-- the refreshed Earth geography and imported climate/biome presentation look great;
-- recognizable climate regions are now present rather than the earlier placeholder presentation.
+- imported Earth geography and climate/biome presentation look great;
+- normal Parchment import is very snappy.
 
-The imported Earth climate direction is accepted for continued Sol fixture development. Do not reopen it merely because the separate procedural-climate benchmark remains planned.
-
-## Accepted World Forge pipeline artifact
-
-The accepted local prepared-bundle rebuild produced:
+Accepted World Forge artifact evidence:
 
 ```text
-.local/reference-data/sol-earth-reference.wforge
-```
-
-Evidence from `sol-earth-reference.wforge.pipeline.json`:
-
-```text
-schema: world-forge-sol-reference-pipeline-report-v1
-mode: prepared-bundles-to-package
+path: .local/reference-data/sol-earth-reference.wforge
 Earth resolution: 512 x 256
 topology resolution: 64
-elapsed: 875 ms
 package bytes: 2,428,738
 package SHA-256: 286794b798d9ec6d80d65056319ca0664369292b8ced3f43c46e29fd47f016e6
 Earth manifest SHA-256: 805881ef229dc9dce649a5c077bc2a82ba7515a733b026e32d35aaf1772261f6
 Jupiter manifest SHA-256: a12bb1bfc8e2c066b6bf60526d557a24a27d2a604ebbf76ba547f574ad772ae1
 ```
 
-The report did not record `sourceCommit`, so do not infer a source SHA from the package evidence alone.
+The pipeline report did not record `sourceCommit`; do not infer one.
 
-## Accepted Parchment package artifact
-
-The generated starter package is:
+Accepted Parchment artifact evidence:
 
 ```text
-apps/web/public/starter-projects/sol-system.pworld
-```
-
-User-reported evidence:
-
-```text
+path: apps/web/public/starter-projects/sol-system.pworld
 package bytes: 3,400,610
 package size: 3.24 MiB
 SHA-256 displayed prefix: e41ef0d15cd9d88362f66baa…
 ```
 
-The full digest was truncated by PowerShell table display and is not recorded here. Do not fabricate the omitted suffix.
-
-The package imported through the normal Parchment UI successfully. Earth and Jupiter survived the nested package round trip, and the import/open path was described as very snappy. Dedicated timing measurement is not warranted for this baseline.
+The full `.pworld` digest is not recorded. Do not fabricate the suffix.
 
 ### Loading decision
 
-At 3.24 MiB with subjectively instant import/open behavior, lazy per-body package loading is deferred. Reconsider it only after meaningful package growth or observed latency, memory, or browser-stability evidence.
+At 3.24 MiB with subjectively immediate import/open behavior, lazy per-body loading remains deferred. Reconsider only after measured package growth, latency, memory, or browser-stability evidence.
 
-## Current implementation checkpoint
+## Accepted Mars direction
+
+Mars is:
+
+- Tier 2 `raster-surface`;
+- coarse/default resolution, currently 512 by 256;
+- Globe-capable;
+- Map-capable;
+- Explorer/editor-disabled until after the complete Sol system;
+- backed by MOLA topography and Viking MDIM 2.1 artistic colorization;
+- one body in the existing Sol project, not a separate project;
+- upgradeable later without changing identity.
+
+Tier, resolution, and enabled tools are independent.
+
+## ETL product direction
+
+ETL is durable product infrastructure. Built-in reference adapters and later user-facing imports should target the same prepared-body contract.
+
+Long-term application path:
 
 ```text
-3b633554fa3c8730e7eb3a0a2b95ac96cba77a8b
+PNG / JPG / WebP / SVG upload
+  -> projection, orientation, seam, and layer-role interview
+  -> decoding and normalization
+  -> resampling and semantic conversion
+  -> preview and correction
+  -> provenance and transform manifest
+  -> reusable prepared-body bundle
+  -> normal .wforge creation or enrichment
 ```
 
-This includes the Windows child-process correction. The pipeline invokes the repository-local `tsx` CLI through the current Node executable rather than attempting to spawn `npm.cmd` with `shell: false`.
+Do not duplicate transformation logic in UI components. The UI should orchestrate and resolve ambiguity around the reusable ETL core.
 
-Validation run `30967195833` passed:
+## Implemented Mars vertical slice
 
-- repository typecheck;
-- unit and integration tests, including the portable child-process regression test;
-- production page harness smoke;
-- production attribution rerank smoke.
+### Durable scientific raster semantics
 
-## Standard commands
+`packages/shared/src/worldBodyDetails.ts` now supports:
 
-Full source-to-package run:
+- numeric data type and byte order;
+- units, scale, and offset;
+- datum;
+- no-data value or mask;
+- source and prepared ranges;
+- absolute elevation, radius, normalized displacement, or scalar interpretation.
+
+### Prepared-body bundle
+
+`scripts/referenceBodyBundle.ts` implements:
+
+```text
+world-forge-reference-body-bundle-v1
+```
+
+It validates source evidence, stable identity, body-local paths, payload dimensions, byte lengths, SHA-256 digests, numeric semantics, and conversion into `RasterSurfaceDetailV1`.
+
+### Real Mars ETL
+
+`tools/reference-etl/prepare_mars_reference.py` consumes moderate-size official products appropriate to the coarse target:
+
+- MGS MOLA MEGDR global topography at 16 pixels per degree;
+- reduced Viking MDIM 2.1 colorized global mosaic at approximately 1 km per pixel.
+
+It emits:
+
+```text
+.local/reference-data/mars-mola-viking/
+  manifest.json
+  albedo.rgb565
+  elevation.i16
+```
+
+The default payload is 524,288 bytes before compression and manifest overhead.
+
+The earlier multi-gigabyte 463 m MOLA and 232 m Viking products are deliberately not default inputs for this increment.
+
+### Generic Sol assembly
+
+`scripts/build-earth-reference.ts` accepts repeatable:
+
+```text
+--body-input <prepared-body-directory>
+```
+
+The normal multi-body exporter remains the sole final `.wforge` writer.
+
+### Tier 2 Map
+
+The body-aware renderer now:
+
+- stages active-body RGB565 and numeric rasters;
+- decodes scientific values from stored metadata;
+- renders imported appearance in normal Map presentation;
+- renders numeric elevation/heightmap modes;
+- supports target-resolution resampling;
+- explicitly rejects geographic point inspection;
+- never fabricates a `PrimaryWorld`.
+
+### Tier 2 Globe
+
+The dedicated reference-raster Globe viewer now provides:
+
+- imported RGB565 appearance;
+- smooth sphere, oblate-spheroid, or triaxial-ellipsoid geometry;
+- axial tilt, rotation, orbital lighting, drag, and zoom;
+- no Earth ocean, atmosphere, cloud, weather, seasonal, or terrain-shell assumptions;
+- explicit reference-body instrumentation.
+
+A valid hydrated Tier 2 package enables Globe and Map while keeping Explorer false. Missing or corrupt assets do not advertise those capabilities.
+
+## Active acceptance commands
+
+Install ETL dependencies and prepare Mars:
 
 ```powershell
 python -m pip install -r tools/reference-etl/requirements.txt
-npm run reference:pipeline-sol
+npm run reference:prepare-mars
 ```
 
-Prepared-bundle rebuild:
+Build the normal enriched Sol package:
 
 ```powershell
-npm run reference:pipeline-sol -- --prepared-only
+npm run reference:build-sol -- --body-input .local/reference-data/mars-mola-viking
 ```
 
-Expected World Forge outputs:
+Expected final World Forge output:
 
 ```text
 .local/reference-data/sol-earth-reference.wforge
-.local/reference-data/sol-earth-reference.wforge.pipeline.json
 ```
 
-Parchment starter generation:
+Do not claim accepted Mars hashes or package sizes until this real-source run completes.
 
-```powershell
-npm run generate:sol-starter
-```
+## Mars browser acceptance
 
-Expected Parchment output:
+### Globe
 
-```text
-apps/web/public/starter-projects/sol-system.pworld
-```
+- recognizable Mars appearance;
+- correct seam and longitude orientation;
+- no mirroring or vertical flip;
+- smooth Mars shape;
+- no Earth ocean, atmosphere, clouds, weather, or seasonal shells;
+- Mars remains the active body.
 
-## CI signal-discipline increment
+### Map
 
-Canonical studio guidance:
+- Viking appearance visible in normal presentation;
+- MOLA structure visible in elevation/heightmap presentation;
+- Olympus Mons / Tharsis, Valles Marineris, Hellas, polar regions, and Syrtis Major appear in plausible locations;
+- no Earth biome or ocean palette;
+- Explorer remains on Mars and explains that it is unsupported.
 
-```text
-Three-Wheeled-Sloth-Studio/TWS-Design-Principles
-engineering/CI-Signal-Discipline.md
-```
+### Package
 
-World Forge's repository-specific implementation is documented at:
+- save/reopen preserves assets and detail metadata;
+- `.wforge` import/export preserves bytes and checksums;
+- re-export does not mutate prepared payloads;
+- enriched Parchment starter imports as one Sol system;
+- Mars survives nested `.pworld` round trip;
+- record new `.wforge` and `.pworld` sizes and responsiveness.
 
-```text
-refs/engineering/ci-and-agent-workflow.md
-```
+## Venus next
 
-Focused review:
+After Mars acceptance:
 
-```text
-World Forge PR #125
-chore/ci-signal-discipline -> dev
-```
+1. select moderate-size official Magellan radar and topography inputs for the coarse target;
+2. close a deterministic derived cloud-composite recipe;
+3. implement a generic layered solid-body contract;
+4. emit a reusable Venus prepared bundle;
+5. default Globe to the opaque cloud deck;
+6. use radar/topography in Map;
+7. keep surface Globe deferred;
+8. complete normal World Forge and Parchment package acceptance.
 
-The draft `opened` event registered as skipped in run `30994209652`, confirming that draft PRs do not launch full automatic validation. Marking the PR ready started authoritative run `30994232077`; a subsequent handoff checkpoint is intentionally expected to supersede and cancel that run through the PR concurrency group.
+## Later Sol sequence
 
-The focused workflow increment preserves automatic full CI on `main`, `dev`, `qa`, and `release/**`; skips full jobs for draft pull requests; runs authoritative PR validation when a draft becomes ready for review; supports deliberate `workflow_dispatch` validation; and cancels superseded runs by workflow plus PR number or branch ref.
+1. Venus.
+2. Luna.
+3. Mercury.
+4. Saturn, Uranus, and Neptune source-backed presentation.
+5. Selected major moons.
+6. Phobos and Deimos irregular meshes.
+7. Belts and remaining reference bodies.
+8. Complete-Sol acceptance.
+9. Explorer and editor increment.
 
-Validation is ordered as:
+The exact body sequence may be adjusted by source availability, but Explorer/editor implementation must not absorb the current complete-Sol work.
 
-1. `fast-checks`: dependency installation and the full Vitest suite.
-2. `validate`: production TypeScript/frontend build.
-3. Production harness self-tests.
-4. Headless production browser smokes.
+## Separate non-blocking tracks
 
-The existing authoritative workflow name `Validate World Forge` and terminal job/check name `validate` remain stable. GitHub currently reports no protected branches, so no branch-protection mutation is part of this increment.
+### Earth climate calibration
 
-There are no deployment, release-publication, signing, migration, or irreversible artifact workflows in the repository. Future irreversible workflows require an explicit concurrency exception rather than inheriting cancel-in-progress behavior blindly.
+`refs/handoffs/earth-climate-calibration-benchmark.md` remains a separate enrichment project. It must not block imported-reference development or mutate the accepted Earth fixture.
 
-Coding agents must use draft PRs for substantial or diagnostic-heavy work, batch coherent checkpoints, read failures before pushing fixes, avoid push-triggered one-shot diagnostics, and remove temporary workflows or diagnostic debris before review.
+### Selector flicker
 
-## Earth climate-calibration boundary
-
-`refs/handoffs/earth-climate-calibration-benchmark.md` is an independent side project for testing generic climate logic against known Earth topology and observations.
-
-It:
-
-- is not Definition-of-Ready yet;
-- must not block Sol development;
-- must not block acceptance or distribution of imported Earth data;
-- must not mutate the accepted reference fixture during experiments;
-- begins with readiness closure and baseline design, not algorithm changes.
-
-## Intermittent selector flicker
-
-Selecting a body previously produced intermittent flicker and degraded response until another body was selected. No stable body-specific pattern was identified.
-
-Idempotent selector-hierarchy repair and diagnostics are implemented. Do not mark this closed until repeated pointer and keyboard selection remains stable in the deployed browser runtime. This acceptance check may proceed alongside body ingestion and is not a Sol pipeline blocker.
-
-## Active next slice: Mars and Venus readiness acceptance
-
-The planning handoff is:
-
-```text
-refs/handoffs/mars-venus-reference-ingestion-readiness.md
-```
-
-Supporting source reviews:
-
-```text
-refs/research/reference-data/mars-reference-data.md
-refs/research/reference-data/venus-reference-data.md
-```
-
-No material ETL or renderer work should begin until the recommended decisions are accepted.
-
-### Recommended Mars scope
-
-- Tier 2 compact raster surface;
-- Globe and Map supported;
-- Explorer and editors deferred;
-- MOLA 463 m global DEM;
-- Viking MDIM 2.1 artistically colorized global mosaic;
-- 1024 x 512 prepared elevation and appearance;
-- no fabricated Earth climate, biome, water, river, or plate layers.
-
-### Recommended Venus scope
-
-- default Globe presents the cloud deck;
-- Map presents Magellan radar and topography;
-- optional radar-surface Globe mode may be included;
-- Explorer and editors deferred;
-- Magellan C3-MIDR radar mosaic;
-- Magellan global topography version 2;
-- deterministic narrow-window Akatsuki UVI 365 nm cloud composite;
-- 1024 x 512 prepared layers.
-
-### Readiness architecture findings
-
-1. `raster-surface` declares Map and Globe capability, but current render access still requires a full `PrimaryWorld` surface.
-2. Numeric raster assets lack generic units, datum, scale, offset, no-data, and range metadata.
-3. Venus needs a generic layered solid-body detail capable of carrying both a surface and an atmosphere/cloud presentation.
-4. The Sol assembler should move toward a manifest or repeated body-bundle seam rather than one CLI flag per body.
-5. Lazy loading remains deferred until package/runtime evidence changes.
-
-### First implementation after acceptance
-
-Begin with generic synthetic-fixture foundation work:
-
-- numeric raster metadata;
-- body-local raster hydration and access;
-- raster-surface Globe and Map rendering;
-- explicit unsupported Explorer handling;
-- package round-trip coverage.
-
-Do not begin by downloading Mars or Venus sources. Mars source ETL follows only after the reusable raster path is accepted and validated.
-
-## Later sequence
-
-1. Mars ETL, package integration, and Parchment QA.
-2. Generic layered solid-body presentation contract.
-3. Venus surface ETL and accepted Akatsuki cloud-composite recipe.
-4. Venus package integration and Parchment QA.
-5. Reassess lazy loading only from measured package/runtime evidence.
-6. Luna, Phobos, and Deimos as separate increments.
-7. Remaining giants, selected major moons, irregular bodies, and belts.
+Intermittent selector flicker remains a parallel browser-QA issue. It does not block Mars/Venus implementation unless it prevents reliable body-continuity acceptance.
 
 ## Guardrails
 
 - One system is one project.
 - Parchment body assets are body nodes, not independent systems.
-- Atmospheric bodies must not use terrain displacement.
-- Imported facts and derived classifications must remain distinguishable.
+- Do not fabricate `PrimaryWorld` for Tier 2 bodies.
+- Do not infer scientific semantics from filenames.
+- Do not label Viking artistic color calibrated true color.
+- Do not label Magellan radar visible imagery.
+- Do not imply a derived Venus cloud composite is a contemporaneous observation.
+- Do not let Venus surface relief deform the visible cloud shell.
+- Do not add Mars-only or Venus-only durable schemas.
+- Do not duplicate ETL logic in future upload UI.
 - Unsupported views must never silently switch to Earth.
-- Use the normal exporter and normal Parchment import path for release fixtures.
-- Do not silently substitute a metadata-only starter for normal development or release packaging.
-- Do not let climate-calibration experiments delay or destabilize the Sol fixture pipeline.
-- Do not implement Mars or Venus ingestion before its Definition of Ready is accepted.
-- Do not fabricate `PrimaryWorld` records to avoid body-local raster rendering work.
-- Do not add a Venus-only durable schema.
-- Keep refs and issue threads current with every accepted increment.
-- Follow `refs/engineering/ci-and-agent-workflow.md` for CI, draft PRs, and diagnostics.
+- Use the normal exporter and normal Parchment path for release fixtures.
+- Do not enable Explorer/editors before complete-Sol acceptance.
+- Do not reopen lazy loading without evidence.
+- Keep refs and issues current with each accepted increment.
