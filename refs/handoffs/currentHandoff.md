@@ -2,7 +2,7 @@
 
 Updated: 2026-08-05
 
-Status: Earth and Jupiter have passed World Forge and Parchment acceptance. Mars Tier 2 scope is accepted and the reusable ETL/package/Map/Globe code path is implemented on `dev`. Exact-head CI and a real-source Mars build are the active acceptance boundary. Venus follows Mars as a cloud-default Globe plus radar/topography Map. Explorer and editors remain the next major World Forge work after the complete Sol system.
+Status: Earth and Jupiter have passed World Forge and Parchment acceptance. Mars Tier 2 scope is accepted, and the reusable ETL/package/Map/Globe code foundation passed exact-head repository validation. The active boundary is now the real-source Mars build, browser QA, and World Forge/Parchment package acceptance. Venus follows Mars as a cloud-default Globe plus radar/topography Map. Explorer and editors remain the next major World Forge work after the complete Sol system.
 
 ## Read first
 
@@ -90,6 +90,33 @@ PNG / JPG / WebP / SVG upload
 
 Do not duplicate transformation logic in UI components. The UI should orchestrate and resolve ambiguity around the reusable ETL core.
 
+## Validated Mars code foundation
+
+Validated code head:
+
+```text
+d74fde108ebb8d11dd88bc45b65ebee052223114
+```
+
+Authoritative workflow:
+
+```text
+Validate World Forge
+run 31023256982
+```
+
+Passed:
+
+- dependency installation;
+- full unit and integration test suite;
+- production TypeScript and frontend build;
+- production page-harness self-test;
+- production attribution-rerank self-test;
+- headless production page smoke;
+- headless production attribution-rerank smoke.
+
+This validates the code contracts and synthetic fixture coverage. It does not constitute real Mars data, visual, or package acceptance.
+
 ## Implemented Mars vertical slice
 
 ### Durable scientific raster semantics
@@ -133,15 +160,15 @@ The default payload is 524,288 bytes before compression and manifest overhead.
 
 The earlier multi-gigabyte 463 m MOLA and 232 m Viking products are deliberately not default inputs for this increment.
 
-### Generic Sol assembly
+### Generic Sol assembly and pipeline
 
-`scripts/build-earth-reference.ts` accepts repeatable:
+The direct builder and unified pipeline accept repeatable:
 
 ```text
 --body-input <prepared-body-directory>
 ```
 
-The normal multi-body exporter remains the sole final `.wforge` writer.
+The unified pipeline records every added body manifest in its evidence report. The normal multi-body exporter remains the sole final `.wforge` writer.
 
 ### Tier 2 Map
 
@@ -176,16 +203,19 @@ python -m pip install -r tools/reference-etl/requirements.txt
 npm run reference:prepare-mars
 ```
 
-Build the normal enriched Sol package:
+Build the normal enriched Sol package and evidence report from the existing accepted Earth/Jupiter bundles:
 
 ```powershell
-npm run reference:build-sol -- --body-input .local/reference-data/mars-mola-viking
+npm run reference:pipeline-sol -- `
+  --prepared-only `
+  --body-input .local/reference-data/mars-mola-viking
 ```
 
-Expected final World Forge output:
+Expected outputs:
 
 ```text
 .local/reference-data/sol-earth-reference.wforge
+.local/reference-data/sol-earth-reference.wforge.pipeline.json
 ```
 
 Do not claim accepted Mars hashes or package sizes until this real-source run completes.
