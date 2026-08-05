@@ -326,7 +326,8 @@ function isHalo(value: unknown): boolean {
 }
 
 function isBasicRings(value: unknown): boolean {
-  return isRings(value) && (value.colorHex === undefined || isHexColor(value.colorHex));
+  if (!isRecord(value) || !isRings(value)) return false;
+  return value.colorHex === undefined || isHexColor(value.colorHex);
 }
 
 function isAtmosphere(value: unknown): boolean {
