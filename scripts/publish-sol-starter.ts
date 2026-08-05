@@ -1,7 +1,7 @@
+import { spawn } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   parseSolReferencePipelineOptions,
   runSolReferencePipeline,
@@ -169,7 +169,12 @@ function quoteForLog(value: string): string {
   return /\s/.test(value) ? JSON.stringify(value) : value;
 }
 
-publishSolStarter().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+const invokedPath = process.argv[1]
+  ? pathToFileURL(path.resolve(process.argv[1])).href
+  : null;
+if (invokedPath === import.meta.url) {
+  publishSolStarter().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}
