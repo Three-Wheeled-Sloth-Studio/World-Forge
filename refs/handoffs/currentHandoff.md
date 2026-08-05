@@ -1,8 +1,8 @@
-# Current Handoff: Complete Sol Basic Globe QA
+# Current Handoff: Deferred Complete Sol Globe QA
 
 Updated: 2026-08-05
 
-Status: Earth, Jupiter, and Mars are user-accepted. The remaining canonical Sol bodies now have a validated package-driven basic Globe path. Main Asteroid Belt and Kuiper Belt remain intentional System placeholders. The only remaining closeout gate is a quick browser pass through the regenerated **Use Sol starter** package. Explorer and editor work follows complete-Sol acceptance.
+Status: Earth, Jupiter, and Mars remain user-accepted. The enriched Sol starter rebuild and normal Parchment publish path succeeded, but the new basic Globe baseline for Sol, the remaining planets, and moons did **not** pass user visual QA. This work is pinned for later rather than treated as complete. Main Asteroid Belt and Kuiper Belt remain intentional System placeholders.
 
 ## Read first
 
@@ -20,50 +20,44 @@ User-confirmed:
 - Earth looks great.
 - Jupiter's imported atmospheric presentation and selector hierarchy look correct.
 - Mars' real Viking/MOLA Tier 2 Globe and Map look good.
-- Normal Parchment starter import is responsive.
+- Normal Parchment starter generation and import remain responsive.
 
-Previously accepted World Forge package:
+Do not regress these three body paths while revisiting the deferred basic presentations.
 
-```text
-path: .local/reference-data/sol-earth-reference.wforge
-package bytes: 2,428,738
-SHA-256: 286794b798d9ec6d80d65056319ca0664369292b8ced3f43c46e29fd47f016e6
-```
+## Latest successful package evidence
 
-That digest predates Mars and the final basic-Globe fixture. Record a new size and digest after the accepted closeout refresh; do not reuse the earlier value.
-
-Previously accepted Parchment package:
+The root `refresh_sol_starter.bat` completed successfully and published through the normal World Forge and Parchment package paths.
 
 ```text
-path: apps/web/public/starter-projects/sol-system.pworld
-package bytes: 3,400,610
-SHA-256 displayed prefix: e41ef0d15cd9d88362f66baa…
+Bodies: 23
+Earth map: 512 x 256
+Jupiter appearance: 768 x 384 RGB565
+Mars prepared surface: 512 x 256, 2 assets
+Prepared body bundles: 1
+
+World Forge package:
+.local/reference-data/sol-earth-reference.wforge
+package bytes: 2,763,277
+SHA-256: 99852f4549b778d097f94511562381f572394803b297011ac9c183404b4defbd
+
+Pipeline report:
+.local/reference-data/sol-earth-reference.wforge.pipeline.json
+
+Parchment starter:
+apps/web/public/starter-projects/sol-system.pworld
 ```
 
-The full `.pworld` digest was never captured. Do not fabricate it.
+The latest `.pworld` byte size and full digest were not captured. Do not invent them.
 
-## Mars evidence
+## Automated implementation evidence
 
-Prepared real-source assets:
-
-```text
-Albedo SHA-256: fcaed3404a0f93553c3931163c5d2c52644bdcf9b70c7276fb5af491a39c3a0b
-Elevation SHA-256: f523a5504b2d1e9788530df0191f466c48db25bb5fa0b15013097c483e38b5ba
-Resolution: 512 x 256
-Elevation range: -7514 to 20531 m relative to the MOLA areoid
-```
-
-Mars is one canonical body in the existing Sol project. It remains Globe- and Map-capable, with Explorer/editor support deferred.
-
-## Complete Sol basic Globe increment
-
-Validated code head:
+Validated implementation head:
 
 ```text
 b9997fdd7a124f16d44b10e4b6bcac5ca5a4fa94
 ```
 
-Authoritative workflow:
+Workflow:
 
 ```text
 Validate World Forge
@@ -78,30 +72,31 @@ Passed:
 - production attribution-rerank self-test;
 - both browser smokes.
 
-### Presentation paths
+A later handoff/documentation head also passed exact-head validation, but automated success did not establish visual acceptance.
 
-Richer accepted paths remain intact:
+## Deferred user QA findings
 
-- Earth: geographic.
-- Jupiter: imported atmospheric texture.
-- Mars: imported raster surface.
+The complete-Sol basic Globe pass is **not accepted**.
 
-New or newly enabled bounded Globe paths:
+Observed:
 
-- Sol: emissive basic stellar presentation.
-- Mercury and Venus: basic presentations.
-- Saturn, Uranus, and Neptune: derived atmospheric profiles with rings.
-- Luna, Phobos, Deimos.
-- Io, Europa, Ganymede, Callisto.
-- Enceladus, Titan.
-- Titania, Oberon.
-- Triton.
+- Sol appears as a flat yellow orb with no useful definition.
+- Luna, Phobos, Deimos, Io, and the remaining moons do not expose working Globes.
+- Mercury, Venus, Saturn, and Uranus render but lack sufficient visual definition.
+- Testing was stopped after confirming the moon Globe path was broadly absent and the new planet presentations were below the desired bar.
+- Earth, Mars, and Jupiter still look good.
 
-Belts remain population placeholders and do not expose Globe.
+Disposition:
 
-### Durable contract
+- Preserve the current generic contracts and package evidence as groundwork.
+- Do not close the complete-Sol visual increment.
+- Return later with repaired moon Globe routing and materially richer presentation quality.
+- Source-backed textures, deterministic generated detail, or a stronger procedural material path are all valid future approaches.
+- Belts may remain placeholders.
 
-`basic-presentation` carries generic package data for:
+## Existing generic contract
+
+`basic-presentation` currently carries generic package data for:
 
 - sphere, oblate, or triaxial shape;
 - palette;
@@ -111,51 +106,38 @@ Belts remain population placeholders and do not expose Globe.
 - optional ring plane;
 - approximation/source note.
 
-The viewer does not contain body-name-specific visual rules. Future source-backed assets may replace a basic profile without changing canonical body identity.
+The viewer does not require body-name-specific visual rules. The failure is therefore a presentation-quality and routing problem, not a reason to add Sol-specific durable schemas.
 
 ## One-click local refresh
 
-The repository root now includes:
+The repository root includes:
 
 ```text
 refresh_sol_starter.bat
 ```
 
-It runs the normal enriched Sol exporter and regenerates Parchment Worlds' bundled `sol-system.pworld`. The publisher isolates World Forge's tsx environment before launching Parchment, and the Parchment **Use Sol starter** fetch bypasses browser cache.
+It runs the normal enriched Sol exporter and regenerates Parchment Worlds' bundled `sol-system.pworld`.
 
-## Remaining browser acceptance
+## Future return criteria
 
-1. Pull World Forge `dev`.
-2. Run `refresh_sol_starter.bat`.
-3. Refresh Parchment Worlds.
-4. Delete or archive any earlier Sol test copy.
-5. Import a new copy through **Use Sol starter**.
-6. In System, select Sol, each remaining planet, and the selected moons.
-7. Use **Zoom to globe** and confirm the selected body remains active.
-8. Confirm drag, zoom, rotation, and Return to primary.
-9. Confirm asteroid/Kuiper belts remain placeholders without Globe.
+Before asking for another complete-Sol acceptance pass:
 
-Specific visual checks are in `refs/testing/sol-basic-globe-acceptance.md`.
-
-## Closeout decision
-
-Once the browser pass is accepted:
-
-- record the new `.wforge` byte size and SHA-256;
-- record the new `.pworld` byte size and responsiveness;
-- do not claim a full `.pworld` digest unless actually captured;
-- close the complete-Sol basic presentation increment;
-- move World Forge focus to Explorer/editors;
-- keep richer source-backed Venus, Luna, Mercury, and moon upgrades as independent future enrichments rather than blockers.
+1. Verify every selected moon exposes a working Globe target from the normal starter package.
+2. Add visible surface or atmospheric definition beyond flat-color spheres.
+3. Make Sol read as a star rather than a yellow planet.
+4. Preserve the accepted Earth, Jupiter, and Mars paths unchanged.
+5. Keep asteroid and Kuiper belts as placeholders unless separately scoped.
+6. Run the normal `.wforge` and `.pworld` paths and record fresh package evidence.
+7. Perform browser QA before describing the increment as accepted.
 
 ## Guardrails
 
 - One stellar system remains one project.
 - Unsupported views must not silently switch to Earth.
 - Basic presentation does not imply source-backed surface accuracy.
-- Venus basic Globe is cloud-top presentation, not Magellan radar.
+- Venus Globe presentation must not be mislabeled as Magellan visible-light imagery.
 - Belts remain population records, not fake spherical worlds.
 - Do not fabricate `PrimaryWorld` for non-geographic bodies.
 - Keep normal `.wforge` and `.pworld` package paths authoritative.
 - Do not reopen lazy loading without measured evidence.
-- Earth climate calibration and selector flicker remain separate, non-blocking tracks.
+- Earth climate calibration and selector flicker remain separate tracks.
