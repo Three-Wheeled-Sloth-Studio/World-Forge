@@ -19,11 +19,13 @@ import argparse
 import hashlib
 import json
 import pathlib
+import ssl
 import tempfile
 import urllib.request
 from dataclasses import dataclass
 from typing import Final
 
+import certifi
 import numpy as np
 from PIL import Image
 
@@ -41,6 +43,7 @@ MOLA_WIDTH: Final = 5760
 MOLA_HEIGHT: Final = 2880
 MOLA_EXPECTED_BYTES: Final = MOLA_WIDTH * MOLA_HEIGHT * 2
 VIKING_MAX_SOURCE_PIXELS: Final = 300_000_000
+DOWNLOAD_SSL_CONTEXT: Final = ssl.create_default_context(cafile=certifi.where())
 
 # The official reduced Viking JPEG is 21,339 x 10,670 pixels. Pillow's generic
 # default limit rejects it before JPEG draft decoding can subsample the source.
@@ -431,7 +434,11 @@ class source_path:
             self.source_url,
             headers={"User-Agent": "World-Forge reference-data preparation"},
         )
-        with urllib.request.urlopen(request, timeout=300) as response, path.open("wb") as output:  # noqa: S310
+        with urllib.request.urlopen(
+            request,
+            timeout=300,
+            context=DOWNLOAD_SSL_CONTEXT,
+        ) as response, path.open("wb") as output:  # noqa: S310
             while chunk := response.read(1024 * 1024):
                 output.write(chunk)
         return path
