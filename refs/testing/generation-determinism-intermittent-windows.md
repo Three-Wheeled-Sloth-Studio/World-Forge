@@ -1,7 +1,7 @@
 # Intermittent Windows generation-determinism failure
 
 Updated: 2026-08-05
-Status: Determinism failure not reproduced; local correctness timeout stabilized
+Status: Resolved for the current checkpoint; no reproducible determinism defect
 
 ## Reported determinism failure
 
@@ -108,6 +108,44 @@ This separates correctness from performance:
 - dedicated generation profiling, production-stage attribution, and performance plans remain responsible for identifying actual performance regressions;
 - no generator output, export behavior, replay signature, or accepted algorithm changed.
 
+## Local acceptance at current dev head
+
+The product owner's Windows checkout then passed the focused and full-suite paths on the exact current `dev` head:
+
+```text
+commit: 8456a91e05942fa26f98e833ad359f4cc3a4531e
+Node: v24.14.0
+npm: 11.9.0
+```
+
+Focused determinism run:
+
+```text
+Test Files  2 passed (2)
+Tests       24 passed (24)
+Duration    11.06s
+```
+
+The same-seed invariant and the detailed config/cache/topology guardrail both passed.
+
+The complete repository suite then passed twice:
+
+```text
+Test Files  111 passed (111)
+Tests       401 passed (401)
+Duration    21.33s
+```
+
+and:
+
+```text
+Test Files  111 passed (111)
+Tests       401 passed (401)
+Duration    21.12s
+```
+
+`git status --short` showed only two pre-existing untracked generation-workflow comparison artifacts under `refs/testing/`. They were not modified or committed as part of this diagnosis.
+
 ## Current conclusion
 
 The reported determinism failure is not reproducible from the committed tree under:
@@ -117,13 +155,14 @@ The reported determinism failure is not reproducible from the committed tree und
 - Windows Node 24;
 - isolated determinism execution;
 - full-suite execution;
-- cold and warm projection-cache states.
+- cold and warm projection-cache states;
+- the product owner's current Windows checkout on Node 24.14.0.
 
-The later exporter failure was a correctness-test timeout under local parallel contention, not evidence of incorrect export output.
+The later exporter failure was a correctness-test timeout under local parallel contention, not evidence of incorrect export output. The updated timeout and repeated local green runs clear this incident as a blocker.
 
 Do not change generator algorithms or replay signatures based only on either unreproduced observation.
 
-## Required local follow-up
+## Reproduction commands
 
 From a clean updated `dev` checkout:
 
@@ -136,7 +175,7 @@ npx vitest run packages/generator-core/src/generator.test.ts packages/generator-
 npm test
 ```
 
-If the detailed guardrail fails, preserve the complete component-level diff and the output of:
+If the detailed guardrail fails in the future, preserve the complete component-level diff and the output of:
 
 ```powershell
 git rev-parse HEAD
@@ -153,4 +192,4 @@ That evidence is sufficient to identify whether the owner is configuration mutat
 - Do not update an expected hash; this test compares two runs, not a stored baseline.
 - Do not replace core noise functions or change generator versions without output-equivalence and replay-compatibility review.
 - Do not treat a correctness-test timeout as a performance acceptance result.
-- Do not proceed with unrelated extraction or body-ingestion implementation while the local full suite is red.
+- Mars/Venus foundation work may resume only after its separate Definition of Ready is explicitly accepted.
