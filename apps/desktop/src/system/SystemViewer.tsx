@@ -1,11 +1,14 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useLayoutEffect, useMemo } from 'react';
 import type { SystemOrbitalContextArtifact, WorldProject } from '@world-forge/shared';
 import type { StellarSurfaceEnrichmentController } from '../enrichment/useStellarSurfaceEnrichment';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import type { BodyGenerationQueueController } from '../enrichment/useBodyGenerationQueue';
 import { SystemViewer as SystemViewerBase } from './SystemViewerBase';
 import { buildSystemCatalog } from './systemPresentation';
-import { buildSystemSelectorOptions } from './systemSelectorHierarchy';
+import {
+  applySystemSelectorHierarchy,
+  buildSystemSelectorOptions,
+} from './systemSelectorHierarchy';
 
 export function SystemViewer({
   project,
@@ -39,25 +42,47 @@ export function SystemViewer({
     ],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const selector = document.getElementById('selected-system-body') as HTMLSelectElement | null;
+    if (!selector) return undefined;
+    const viewer = selector.closest('.system-viewer') as HTMLElement | null;
+    let frame = 0;
+    let repairPasses = 0;
+
     const applyHierarchy = () => {
-      const selector = document.getElementById('selected-system-body') as HTMLSelectElement | null;
-      if (!selector) return;
-      const byId = new Map(selectorOptions.map((option) => [option.id, option]));
-      for (const htmlOption of Array.from(selector.options)) {
-        const option = byId.get(htmlOption.value);
-        if (!option) continue;
-        htmlOption.textContent = option.label;
-        htmlOption.label = option.label;
-        htmlOption.dataset.bodyDepth = String(option.depth);
-        if (option.parentBodyId) htmlOption.dataset.parentBodyId = option.parentBodyId;
-        else delete htmlOption.dataset.parentBodyId;
-      }
-      selector.dataset.hierarchy = 'catalog-parent-v1';
+      const repairs = applySystemSelectorHierarchy(selector, selectorOptions);
+      if (!viewer) return;
+      repairPasses += 1;
+      viewer.dataset.systemSelectorHierarchy = 'catalog-parent-v1';
+      viewer.dataset.systemSelectorHierarchyPasses = String(repairPasses);
+      viewer.dataset.systemSelectorLastRepairCount = String(repairs);
     };
+
+    const scheduleRepair = () => {
+      window.cancelAnimationFrame(frame);
+      queueMicrotask(applyHierarchy);
+      frame = window.requestAnimationFrame(applyHierarchy);
+    };
+
+    const onChange = () => {
+      if (viewer) {
+        const changes = Number(viewer.dataset.systemSelectorChangeCount ?? 0) + 1;
+        viewer.dataset.systemSelectorChangeCount = String(changes);
+        viewer.dataset.systemSelectorLastBody = selector.value;
+      }
+      scheduleRepair();
+    };
+
     applyHierarchy();
-    const frame = window.requestAnimationFrame(applyHierarchy);
-    return () => window.cancelAnimationFrame(frame);
+    selector.addEventListener('change', onChange);
+    const observer = new MutationObserver(scheduleRepair);
+    observer.observe(selector, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      selector.removeEventListener('change', onChange);
+    };
   }, [selectorOptions]);
 
   return (
