@@ -13,7 +13,7 @@ import {
   WORLD_BODY_DETAIL_SCHEMA,
   worldBodyDetailCapabilities,
   type AtmosphericPresentationDetailV1,
-  type CatalogBodyDetailV1,
+  type BasicPresentationDetailV1,
   type GeographicSurfaceDetailV1,
   type PopulationDetailV1,
   type WorldBodyDetailV1,
@@ -92,14 +92,28 @@ function solSystemScaffold(): SolarSystem {
     generatedNotes: [
       'Reference-system scaffold. Physical and orbital facts are carried by bodyCatalog.',
       'Body detail tiers keep catalog, presentation, reference-surface, geographic, irregular-mesh, and population payloads distinct.',
+      'Sol, planets, and selected moons expose at least a basic Globe presentation; belts remain bounded population placeholders.',
       'Only bodies with compatible imported or derived detail expose Map and Explorer capabilities.',
-      'Atmospheric presentation profiles remain Globe-disabled until the dedicated body-detail renderer is wired.',
     ],
   };
 }
 
 function solBodyCatalog(earth: PrimaryWorld): WorldBodyCatalogV1 {
-  const bodies: WorldBodyRecordV1[] = [];
+  const solDetail = basicPresentationDetail('sol', 695_700);
+  const bodies: WorldBodyRecordV1[] = [{
+    bodyId: 'sol',
+    name: 'Sol',
+    bodyType: 'star',
+    capabilities: worldBodyDetailCapabilities(solDetail),
+    dataOrigin: 'imported',
+    physical: {
+      meanRadiusKm: 695_700,
+      massKg: 1.98847e30,
+      axialTiltDeg: 7.25,
+      rotationPeriodHours: 609.12,
+    },
+    detail: solDetail,
+  }];
   for (const definition of planetDefinitions) {
     const surface = definition.id === 'earth' ? earth : undefined;
     const detail = planetDetail(definition, Boolean(surface));
@@ -107,7 +121,7 @@ function solBodyCatalog(earth: PrimaryWorld): WorldBodyCatalogV1 {
       bodyId: definition.id,
       name: definition.name,
       bodyType: definition.bodyType,
-      capabilities: solCapabilitiesForDetail(detail),
+      capabilities: worldBodyDetailCapabilities(detail),
       dataOrigin: 'imported',
       physical: {
         meanRadiusKm: definition.radiusKm,
@@ -143,13 +157,7 @@ function planetDetail(definition: PlanetDefinition, hasGeographicSurface: boolea
   if (definition.bodyType === 'gas-giant' || definition.bodyType === 'ice-giant') {
     return giantPresentationDetail(definition.id);
   }
-  return catalogDetail({ kind: 'sphere' }, 'imported');
-}
-
-function solCapabilitiesForDetail(detail: WorldBodyDetailV1): WorldBodyRecordV1['capabilities'] {
-  const capabilities = worldBodyDetailCapabilities(detail);
-  if (detail.kind === 'atmospheric-presentation') return { ...capabilities, globe: false };
-  return capabilities;
+  return basicPresentationDetail(definition.id, definition.radiusKm);
 }
 
 function giantPresentationDetail(bodyId: string): AtmosphericPresentationDetailV1 {
@@ -176,13 +184,35 @@ function giantPresentationDetail(bodyId: string): AtmosphericPresentationDetailV
   };
 }
 
-function catalogDetail(shape: CatalogBodyDetailV1['shape'], origin: CatalogBodyDetailV1['origin']): CatalogBodyDetailV1 {
+function basicPresentationDetail(
+  bodyId: string,
+  meanRadiusKm: number,
+  irregular = false,
+): BasicPresentationDetailV1 {
+  const profile = basicPresentationProfiles[bodyId] ?? defaultMoonPresentationProfile;
   return {
     schema: WORLD_BODY_DETAIL_SCHEMA,
-    kind: 'catalog',
-    tier: 'catalog',
-    origin,
-    shape,
+    kind: 'basic-presentation',
+    tier: 'presentation',
+    origin: 'derived',
+    shape: irregular
+      ? {
+          kind: 'triaxial-ellipsoid',
+          axisAKm: meanRadiusKm * 1.3,
+          axisBKm: meanRadiusKm,
+          axisCKm: meanRadiusKm * 0.78,
+        }
+      : { kind: 'sphere' },
+    surface: {
+      paletteHex: [...profile.paletteHex],
+      roughness: profile.roughness,
+      metalness: profile.metalness,
+      emissiveHex: profile.emissiveHex,
+      emissiveIntensity: profile.emissiveIntensity,
+    },
+    halo: profile.halo,
+    sourceNote: profile.sourceNote
+      ?? 'Approximate presentation palette; catalog physical and orbital values remain authoritative.',
   };
 }
 
@@ -315,6 +345,16 @@ type GiantPresentationProfile = {
   rings?: AtmosphericPresentationDetailV1['rings'];
 };
 
+type BasicPresentationProfile = {
+  paletteHex: readonly string[];
+  roughness: number;
+  metalness: number;
+  emissiveHex?: string;
+  emissiveIntensity?: number;
+  halo?: BasicPresentationDetailV1['halo'];
+  sourceNote?: string;
+};
+
 const giantPresentationProfiles: Record<string, GiantPresentationProfile> = {
   jupiter: {
     equatorialRadiusKm: 71_492,
@@ -355,6 +395,50 @@ const giantPresentationProfiles: Record<string, GiantPresentationProfile> = {
     differentialRotationFraction: 0.09,
     rings: { innerRadiusRatio: 1.7, outerRadiusRatio: 2.55, opacity: 0.1, tiltDeg: 28.3 },
   },
+};
+
+const defaultMoonPresentationProfile: BasicPresentationProfile = {
+  paletteHex: ['#9d9a94', '#686865', '#c3c0b9'],
+  roughness: 0.96,
+  metalness: 0,
+};
+
+const basicPresentationProfiles: Record<string, BasicPresentationProfile> = {
+  sol: {
+    paletteHex: ['#fff2b0', '#ffc85b', '#f58b35'],
+    roughness: 0.72,
+    metalness: 0,
+    emissiveHex: '#ffb23f',
+    emissiveIntensity: 1.8,
+    halo: { colorHex: '#ffd36a', opacity: 0.24, scale: 1.22 },
+    sourceNote: 'Basic visible-light stellar presentation; stellar physical facts remain authoritative.',
+  },
+  mercury: { paletteHex: ['#8f8b84', '#5d5b57', '#bbb5aa'], roughness: 0.98, metalness: 0 },
+  venus: {
+    paletteHex: ['#d7b56d', '#f0d394', '#9f753d'],
+    roughness: 0.9,
+    metalness: 0,
+    halo: { colorHex: '#e8c77c', opacity: 0.12, scale: 1.035 },
+    sourceNote: 'Basic cloud-top presentation; Magellan radar/topography remains a later richer Map layer.',
+  },
+  luna: { paletteHex: ['#a9a69f', '#6f6d69', '#d0ccc4'], roughness: 0.98, metalness: 0 },
+  mars: { paletteHex: ['#a64f2e', '#d0794e', '#71321f'], roughness: 0.96, metalness: 0 },
+  phobos: { paletteHex: ['#766d62', '#504a43', '#9a8d7e'], roughness: 1, metalness: 0 },
+  deimos: { paletteHex: ['#82776a', '#574f47', '#a69786'], roughness: 1, metalness: 0 },
+  io: { paletteHex: ['#d7bc54', '#f0df8c', '#866c27'], roughness: 0.92, metalness: 0 },
+  europa: { paletteHex: ['#c9b999', '#e4d9bc', '#806e58'], roughness: 0.82, metalness: 0 },
+  ganymede: { paletteHex: ['#8b8176', '#b5a897', '#514b45'], roughness: 0.94, metalness: 0 },
+  callisto: { paletteHex: ['#5e554d', '#897c6e', '#332f2b'], roughness: 0.98, metalness: 0 },
+  enceladus: { paletteHex: ['#e9edf0', '#b9c4ca', '#ffffff'], roughness: 0.78, metalness: 0 },
+  titan: {
+    paletteHex: ['#c58a3b', '#e0ad62', '#8b5a28'],
+    roughness: 0.9,
+    metalness: 0,
+    halo: { colorHex: '#d79b4d', opacity: 0.1, scale: 1.04 },
+  },
+  titania: { paletteHex: ['#9aa0a0', '#707676', '#c2c7c6'], roughness: 0.95, metalness: 0 },
+  oberon: { paletteHex: ['#6f6b67', '#96918b', '#494641'], roughness: 0.97, metalness: 0 },
+  triton: { paletteHex: ['#bfae9d', '#dbc9ba', '#7e746c'], roughness: 0.9, metalness: 0 },
 };
 
 const planetDefinitions: PlanetDefinition[] = [
@@ -455,10 +539,7 @@ function beltBody(id: string, orbitalOrder: number, distanceAu: number, visibleF
 }
 
 function moonRecord(parentBodyId: string, definition: ReferenceMoon): WorldBodyRecordV1 {
-  const detail = catalogDetail(
-    definition.irregular ? { kind: 'irregular-mesh' } : { kind: 'sphere' },
-    'imported',
-  );
+  const detail = basicPresentationDetail(definition.id, definition.radiusKm, definition.irregular);
   return {
     bodyId: definition.id,
     name: definition.name,
@@ -466,7 +547,10 @@ function moonRecord(parentBodyId: string, definition: ReferenceMoon): WorldBodyR
     parentBodyId,
     capabilities: worldBodyDetailCapabilities(detail),
     dataOrigin: 'imported',
-    physical: { meanRadiusKm: definition.radiusKm },
+    physical: {
+      meanRadiusKm: definition.radiusKm,
+      rotationPeriodHours: definition.periodDays * 24,
+    },
     orbit: {
       semiMajorAxisKm: definition.semiMajorAxisKm,
       periodDays: definition.periodDays,
