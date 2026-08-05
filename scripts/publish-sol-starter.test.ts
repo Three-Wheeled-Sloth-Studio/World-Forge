@@ -1,6 +1,9 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parchmentCandidateRoots } from './publish-sol-starter';
+import {
+  parchmentCandidateRoots,
+  parchmentChildEnvironment,
+} from './publish-sol-starter';
 
 describe('Sol starter publisher', () => {
   it('prefers an explicit Parchment checkout and retains sibling discovery', () => {
@@ -23,5 +26,21 @@ describe('Sol starter publisher', () => {
     const expected = path.resolve('/workspace/Parchment-Worlds');
 
     expect(candidates.filter((candidate) => candidate === expected)).toHaveLength(1);
+  });
+
+  it('does not leak the World Forge tsx config into the Parchment process', () => {
+    const source = {
+      PATH: 'test-path',
+      npm_execpath: 'npm-cli.js',
+      TSX_TSCONFIG_PATH: 'tsconfig.scripts.json',
+    };
+
+    const child = parchmentChildEnvironment(source);
+
+    expect(child).toEqual({
+      PATH: 'test-path',
+      npm_execpath: 'npm-cli.js',
+    });
+    expect(source.TSX_TSCONFIG_PATH).toBe('tsconfig.scripts.json');
   });
 });
