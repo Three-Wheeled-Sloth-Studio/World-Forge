@@ -41,8 +41,6 @@ describe('generation determinism regression diagnostics', () => {
   }, 45_000);
 });
 
-type GenerationSignature = ReturnType<typeof generationSignature>;
-
 function generationSignature(project: ReturnType<typeof generateProject>) {
   return {
     seed: project.seed,
@@ -105,5 +103,3 @@ function hashText(value: string): string {
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
-
-void (null as unknown as GenerationSignature);
