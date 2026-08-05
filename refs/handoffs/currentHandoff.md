@@ -1,8 +1,8 @@
 # Current Handoff: Sol Reference System
 
-Updated: 2026-08-04
+Updated: 2026-08-05
 
-Status: The refreshed imported Earth reference, Jupiter presentation, unified World Forge build pipeline, Parchment starter embedding, and normal Parchment import path have passed user acceptance. The resulting `.pworld` is 3.24 MiB and imports very quickly, so lazy per-body loading is not justified for the current baseline. Mars and Venus source research and Definition-of-Ready drafting are complete; material implementation remains blocked pending acceptance of the recommended scope and contracts. The Earth climate-calibration benchmark remains a separate, non-blocking enrichment track.
+Status: The refreshed imported Earth reference, Jupiter presentation, unified World Forge build pipeline, Parchment starter embedding, and normal Parchment import path have passed user acceptance. The resulting `.pworld` is 3.24 MiB and imports very quickly, so lazy per-body loading is not justified for the current baseline. Mars and Venus source research and Definition-of-Ready drafting are complete; material implementation remains blocked pending acceptance of the recommended scope and contracts. The Earth climate-calibration benchmark remains a separate, non-blocking enrichment track. Product implementation is temporarily paused while a focused CI signal-discipline increment is reviewed; no Mars, Venus, climate, or renderer work is mixed into that change.
 
 ## Read first
 
@@ -17,8 +17,9 @@ Status: The refreshed imported Earth reference, Jupiter presentation, unified Wo
 9. `refs/research/reference-data/mars-reference-data.md`
 10. `refs/research/reference-data/venus-reference-data.md`
 11. `refs/handoffs/earth-climate-calibration-benchmark.md`
-12. World Forge issue #124
-13. Parchment Worlds issue #22
+12. `refs/engineering/ci-and-agent-workflow.md`
+13. World Forge issue #124
+14. Parchment Worlds issue #22
 
 ## Accepted visual baseline
 
@@ -130,6 +131,45 @@ Expected Parchment output:
 apps/web/public/starter-projects/sol-system.pworld
 ```
 
+## CI signal-discipline increment
+
+Canonical studio guidance:
+
+```text
+Three-Wheeled-Sloth-Studio/TWS-Design-Principles
+engineering/CI-Signal-Discipline.md
+```
+
+World Forge's repository-specific implementation is documented at:
+
+```text
+refs/engineering/ci-and-agent-workflow.md
+```
+
+Focused review:
+
+```text
+World Forge PR #125
+chore/ci-signal-discipline -> dev
+```
+
+The draft `opened` event registered as skipped in run `30994209652`, confirming that draft PRs do not launch full automatic validation. Marking the PR ready started authoritative run `30994232077`; a subsequent handoff checkpoint is intentionally expected to supersede and cancel that run through the PR concurrency group.
+
+The focused workflow increment preserves automatic full CI on `main`, `dev`, `qa`, and `release/**`; skips full jobs for draft pull requests; runs authoritative PR validation when a draft becomes ready for review; supports deliberate `workflow_dispatch` validation; and cancels superseded runs by workflow plus PR number or branch ref.
+
+Validation is ordered as:
+
+1. `fast-checks`: dependency installation and the full Vitest suite.
+2. `validate`: production TypeScript/frontend build.
+3. Production harness self-tests.
+4. Headless production browser smokes.
+
+The existing authoritative workflow name `Validate World Forge` and terminal job/check name `validate` remain stable. GitHub currently reports no protected branches, so no branch-protection mutation is part of this increment.
+
+There are no deployment, release-publication, signing, migration, or irreversible artifact workflows in the repository. Future irreversible workflows require an explicit concurrency exception rather than inheriting cancel-in-progress behavior blindly.
+
+Coding agents must use draft PRs for substantial or diagnostic-heavy work, batch coherent checkpoints, read failures before pushing fixes, avoid push-triggered one-shot diagnostics, and remove temporary workflows or diagnostic debris before review.
+
 ## Earth climate-calibration boundary
 
 `refs/handoffs/earth-climate-calibration-benchmark.md` is an independent side project for testing generic climate logic against known Earth topology and observations.
@@ -230,3 +270,4 @@ Do not begin by downloading Mars or Venus sources. Mars source ETL follows only 
 - Do not fabricate `PrimaryWorld` records to avoid body-local raster rendering work.
 - Do not add a Venus-only durable schema.
 - Keep refs and issue threads current with every accepted increment.
+- Follow `refs/engineering/ci-and-agent-workflow.md` for CI, draft PRs, and diagnostics.
