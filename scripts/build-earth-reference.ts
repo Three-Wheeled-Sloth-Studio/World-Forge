@@ -6,9 +6,14 @@ import {
   attachReferenceAtmosphericAppearance,
   REFERENCE_ATMOSPHERIC_APPEARANCE_SCHEMA,
 } from '../packages/generator-core/src/referenceAtmosphericPresentation';
+import {
+  attachReferenceRasterSurface,
+  REFERENCE_RASTER_SURFACE_PACKAGE_SCHEMA,
+} from '../packages/generator-core/src/referenceRasterSurface';
 import { importReferenceBodyRaster } from '../packages/generator-core/src/referenceBodyImport';
 import { createSolReferenceProject } from '../packages/generator-core/src/solReferenceProject';
 import type { MultiBodyWorldProject } from '@world-forge/shared/worldBodies';
+import { loadReferenceBodyBundle } from './referenceBodyBundle';
 import { loadReferenceImageBundle } from './referenceImageBundle';
 import { loadReferenceRasterBundle } from './referenceDataBundle';
 
@@ -25,6 +30,7 @@ async function main(): Promise<void> {
   const explicitJupiterDirectory = resolveArgument('--jupiter-input');
   const jupiterDirectory = explicitJupiterDirectory
     ?? path.join(repositoryRoot, '.local', 'reference-data', 'jupiter-cassini');
+  const bodyDirectories = resolveArguments('--body-input');
 
   const normalized = await loadReferenceRasterBundle(inputDirectory);
   if (normalized.bodyId !== 'earth') {
@@ -58,6 +64,28 @@ async function main(): Promise<void> {
     jupiterResolution = jupiter.resolution;
   }
 
+  const attachedBodies: Array<{ bodyId: string; width: number; height: number; assets: number }> = [];
+  const seenBodyIds = new Set<string>();
+  for (const directory of bodyDirectories) {
+    const bundle = await loadReferenceBodyBundle(directory);
+    if (seenBodyIds.has(bundle.manifest.bodyId)) {
+      throw new Error(`Duplicate --body-input bundle for body "${bundle.manifest.bodyId}".`);
+    }
+    seenBodyIds.add(bundle.manifest.bodyId);
+    project = attachReferenceRasterSurface(project, {
+      schema: REFERENCE_RASTER_SURFACE_PACKAGE_SCHEMA,
+      bodyId: bundle.manifest.bodyId,
+      detail: bundle.detail,
+      payloads: bundle.payloads,
+    });
+    attachedBodies.push({
+      bodyId: bundle.manifest.bodyId,
+      width: bundle.manifest.resolution.width,
+      height: bundle.manifest.resolution.height,
+      assets: bundle.manifest.assets.length,
+    });
+  }
+
   const packageBlob = await exportMultiBodyWforge(project, {
     compressionLevel: 1,
     onProgress: (progress) => {
@@ -75,6 +103,9 @@ async function main(): Promise<void> {
   console.log(jupiterResolution
     ? `Jupiter appearance: ${jupiterResolution.width} x ${jupiterResolution.height} RGB565`
     : 'Jupiter appearance: not included; run npm run reference:prepare-jupiter first.');
+  for (const body of attachedBodies) {
+    console.log(`${body.bodyId} prepared surface: ${body.width} x ${body.height}, ${body.assets} assets`);
+  }
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -87,11 +118,21 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 function resolveArgument(name: string): string | null {
-  const index = process.argv.indexOf(name);
-  if (index < 0) return null;
-  const value = process.argv[index + 1]?.trim();
-  if (!value || value.startsWith('--')) throw new Error(`${name} requires a value.`);
-  return path.resolve(process.cwd(), value);
+  const values = resolveArguments(name);
+  if (values.length > 1) throw new Error(`${name} may be supplied only once.`);
+  return values[0] ?? null;
+}
+
+function resolveArguments(name: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < process.argv.length; index += 1) {
+    if (process.argv[index] !== name) continue;
+    const value = process.argv[index + 1]?.trim();
+    if (!value || value.startsWith('--')) throw new Error(`${name} requires a value.`);
+    values.push(path.resolve(process.cwd(), value));
+    index += 1;
+  }
+  return values;
 }
 
 main().catch((error: unknown) => {
