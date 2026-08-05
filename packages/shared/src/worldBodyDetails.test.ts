@@ -31,6 +31,46 @@ describe('world body detail contracts', () => {
     });
   });
 
+  it('supports package-driven basic Globe presentation without granting Map or Explorer', () => {
+    const detail: WorldBodyDetailV1 = {
+      schema: WORLD_BODY_DETAIL_SCHEMA,
+      kind: 'basic-presentation',
+      tier: 'presentation',
+      origin: 'derived',
+      shape: { kind: 'triaxial-ellipsoid', axisAKm: 14.4, axisBKm: 11.1, axisCKm: 8.7 },
+      surface: {
+        paletteHex: ['#7c7368', '#a39788'],
+        roughness: 0.98,
+        metalness: 0,
+      },
+      halo: { colorHex: '#c5a86d', opacity: 0.1, scale: 1.04 },
+      rings: {
+        innerRadiusRatio: 1.4,
+        outerRadiusRatio: 2.1,
+        opacity: 0.3,
+        tiltDeg: 17,
+        colorHex: '#b7a789',
+      },
+      sourceNote: 'Bounded visual presentation only.',
+    };
+
+    expect(isWorldBodyDetail(detail)).toBe(true);
+    expect(worldBodyDetailCapabilities(detail)).toEqual({
+      globe: true,
+      map: false,
+      explorer: false,
+      irregularShape: false,
+    });
+    expect(isWorldBodyDetail({
+      ...detail,
+      halo: { colorHex: '#c5a86d', opacity: 0.1, scale: 0.9 },
+    })).toBe(false);
+    expect(isWorldBodyDetail({
+      ...detail,
+      surface: { ...detail.surface, roughness: 1.4 },
+    })).toBe(false);
+  });
+
   it('requires package assets for compact raster and irregular-mesh surfaces', () => {
     const raster: WorldBodyDetailV1 = {
       schema: WORLD_BODY_DETAIL_SCHEMA,
