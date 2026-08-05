@@ -76,6 +76,59 @@ describe('world body detail contracts', () => {
     })).toBe(false);
   });
 
+  it('preserves the physical interpretation of scientific numeric rasters', () => {
+    const mars: WorldBodyDetailV1 = {
+      schema: WORLD_BODY_DETAIL_SCHEMA,
+      kind: 'raster-surface',
+      tier: 'reference-surface',
+      origin: 'imported',
+      shape: { kind: 'sphere' },
+      projection: 'equirectangular',
+      resolution: { width: 512, height: 256 },
+      layerRoles: ['albedo', 'elevation'],
+      assets: [{
+        assetId: 'mars-albedo',
+        role: 'albedo',
+        logicalPath: 'bodies/mars/albedo.rgb565',
+        mediaType: 'application/vnd.world-forge.rgb565',
+        encoding: 'rgb565-le',
+        resolution: { width: 512, height: 256 },
+      }, {
+        assetId: 'mars-mola-elevation',
+        role: 'elevation',
+        logicalPath: 'bodies/mars/elevation.i16',
+        mediaType: 'application/vnd.world-forge.numeric-raster',
+        encoding: 'int16-le',
+        resolution: { width: 512, height: 256 },
+        numericRaster: {
+          dataType: 'int16',
+          byteOrder: 'little-endian',
+          units: 'm',
+          scale: 1,
+          offset: 0,
+          datum: 'MOLA areoid',
+          sourceRange: { min: -8200, max: 21_900 },
+          preparedRange: { min: -8200, max: 21_900 },
+          interpretation: 'absolute-elevation',
+        },
+      }],
+    };
+
+    expect(isWorldBodyDetail(mars)).toBe(true);
+    expect(isWorldBodyDetail({
+      ...mars,
+      assets: mars.assets!.map((asset) => asset.role === 'elevation'
+        ? { ...asset, numericRaster: { ...asset.numericRaster!, byteOrder: undefined } }
+        : asset),
+    })).toBe(false);
+    expect(isWorldBodyDetail({
+      ...mars,
+      assets: mars.assets!.map((asset) => asset.role === 'albedo'
+        ? { ...asset, numericRaster: mars.assets![1].numericRaster }
+        : asset),
+    })).toBe(false);
+  });
+
   it('rejects unsafe package paths and invalid population bounds', () => {
     const population = {
       schema: WORLD_BODY_DETAIL_SCHEMA,
