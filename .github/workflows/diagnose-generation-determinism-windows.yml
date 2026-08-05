@@ -1,0 +1,32 @@
+name: Diagnose generation determinism on Windows
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/diagnose-generation-determinism-windows.yml'
+      - 'packages/generator-core/src/generator.test.ts'
+      - 'packages/generator-core/src/generatorDeterminismRegression.test.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  determinism:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run determinism probes
+        run: npx vitest run packages/generator-core/src/generator.test.ts packages/generator-core/src/generatorDeterminismRegression.test.ts --reporter=verbose
