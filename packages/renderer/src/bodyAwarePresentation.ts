@@ -18,8 +18,24 @@ import type {
   RenderMode,
 } from './index';
 import type { FlowRenderOptions } from './presentation';
+import {
+  decodeRgb565ToRgba,
+  referenceRasterSurfaceForBody,
+  renderReferenceRasterSurfaceToCanvas,
+} from './referenceRasterPresentation';
 
 export * from './presentation';
+export {
+  decodeNumericRasterToFloat32,
+  decodeRgb565ToRgba,
+  referenceRasterSurfaceForBody,
+  renderReferenceRasterSurfaceToCanvas,
+} from './referenceRasterPresentation';
+export type {
+  StagedReferenceNumericRasterAsset,
+  StagedReferenceRasterAsset,
+  StagedReferenceRasterSurface,
+} from './referenceRasterPresentation';
 
 export type StagedAtmosphericPresentationRaster = {
   assetId: string;
@@ -47,6 +63,18 @@ export function renderWorldToCanvas(
 ): void {
   const presentationCanvas = canvas as AtmosphericPresentationCanvas;
   resetAtmosphericRasterGlobeHook(presentationCanvas);
+  const activeBodyId = sessionActiveWorldBodyId(project);
+  const activeBody = worldBodyRecord(project, activeBodyId);
+  const referenceSurface = referenceRasterSurfaceForBody(project, activeBodyId);
+  if (activeBody?.capabilities.map && referenceSurface) {
+    renderReferenceRasterSurfaceToCanvas(canvas, referenceSurface, {
+      mode: visible.mode,
+      renderMode: visible.renderMode,
+      targetResolution: visible.targetResolution,
+    });
+    return;
+  }
+
   const activeProject = mapProjectForActiveBody(project);
   if (!activeProject) {
     renderUnsupportedBodyMap(canvas, project, visible.targetResolution);
@@ -64,10 +92,13 @@ export function inspectWorldPoint(
   renderMode: RenderMode = 'data',
   mapMode: MapMode = 'biomes',
 ): PointInspectionRecord {
+  const bodyId = sessionActiveWorldBodyId(project);
+  const body = worldBodyRecord(project, bodyId);
+  if (body?.detail?.kind === 'raster-surface' && referenceRasterSurfaceForBody(project, bodyId)) {
+    throw new Error(`${body.name} uses a compact reference surface; geographic point inspection is not available yet.`);
+  }
   const activeProject = mapProjectForActiveBody(project);
   if (!activeProject) {
-    const bodyId = sessionActiveWorldBodyId(project);
-    const body = worldBodyRecord(project, bodyId);
     throw new Error(`${body?.name ?? bodyId} does not have a projected map surface.`);
   }
   return inspectPresentationWorldPoint(activeProject, input, theme, renderMode, mapMode);
@@ -101,27 +132,6 @@ export function atmosphericPresentationRasterForActiveBody(
     height: asset.resolution.height,
     bytes,
   };
-}
-
-export function decodeRgb565ToRgba(
-  bytes: Uint8Array,
-  width: number,
-  height: number,
-): Uint8ClampedArray {
-  const expectedBytes = width * height * 2;
-  if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0 || bytes.byteLength !== expectedBytes) {
-    throw new Error(`RGB565 raster expected ${expectedBytes} bytes for ${width} x ${height}, received ${bytes.byteLength}.`);
-  }
-  const rgba = new Uint8ClampedArray(width * height * 4);
-  for (let pixel = 0; pixel < width * height; pixel += 1) {
-    const packed = bytes[pixel * 2] | (bytes[pixel * 2 + 1] << 8);
-    const target = pixel * 4;
-    rgba[target] = Math.round(((packed >> 11) & 0x1f) * 255 / 31);
-    rgba[target + 1] = Math.round(((packed >> 5) & 0x3f) * 255 / 63);
-    rgba[target + 2] = Math.round((packed & 0x1f) * 255 / 31);
-    rgba[target + 3] = 255;
-  }
-  return rgba;
 }
 
 function installAtmosphericRasterGlobeHook(
