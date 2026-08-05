@@ -40,6 +40,13 @@ DEFAULT_HEIGHT: Final = 256
 MOLA_WIDTH: Final = 5760
 MOLA_HEIGHT: Final = 2880
 MOLA_EXPECTED_BYTES: Final = MOLA_WIDTH * MOLA_HEIGHT * 2
+VIKING_MAX_SOURCE_PIXELS: Final = 300_000_000
+
+# The official reduced Viking JPEG is 21,339 x 10,670 pixels. Pillow's generic
+# default limit rejects it before JPEG draft decoding can subsample the source.
+# Raise the ceiling only for this trusted adapter and retain an explicit hard
+# bound instead of disabling image-size protection globally.
+Image.MAX_IMAGE_PIXELS = VIKING_MAX_SOURCE_PIXELS
 
 
 @dataclass(frozen=True)
@@ -360,6 +367,10 @@ def read_viking_color(
 def validate_global_image_dimensions(width: int, height: int, source: pathlib.Path) -> None:
     if width <= 0 or height <= 0:
         raise ValueError(f"Image source contains no usable cells: {source}")
+    if width * height > VIKING_MAX_SOURCE_PIXELS:
+        raise ValueError(
+            f"Image source exceeds the trusted Mars adapter ceiling of {VIKING_MAX_SOURCE_PIXELS} pixels: {source}"
+        )
     if abs(width / height - 2.0) > 0.02:
         raise ValueError(
             f"Expected an approximately 2:1 global cylindrical image, received {width} x {height}: {source}"
