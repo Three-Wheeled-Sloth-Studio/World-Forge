@@ -6,13 +6,27 @@ on:
       - dev
       - qa
       - main
+      - 'release/**'
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  validate:
+  fast-checks:
+    name: fast-checks
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,8 +41,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate
-        run: npm run verify
+      - name: Run unit and integration tests
+        run: npm test
+
+  validate:
+    name: validate
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs:
+      - fast-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and build the production frontend
+        run: npm run build
+
+      - name: Test production page harness
+        run: npm run test:production-page-harness
+
+      - name: Test production attribution rerank
+        run: npm run test:production-rerank
 
       - name: Smoke production page harness
         run: npm run smoke:production-page-harness

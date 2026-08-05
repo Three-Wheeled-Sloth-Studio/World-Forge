@@ -30,6 +30,13 @@ npm run validate
 npm run build
 ```
 
+## Engineering references
+
+- [World Forge CI and coding-agent workflow](refs/engineering/ci-and-agent-workflow.md)
+- [Integrating World Forge with External Games](refs/reference/external-game-integration.md)
+
+The CI document records this repository's implementation of the studio-wide signal-discipline principle, including draft-PR behavior, manual validation, concurrency, stable check names, and diagnostic rules.
+
 ## External game integration
 
 See [Integrating World Forge with External Games](refs/reference/external-game-integration.md) for the recommended architecture for full-surface 4X maps, orbital fleet-combat scenarios, local headless generation, Godot and Unity consumers, versioned game packs, and an optional hosted generation service.
