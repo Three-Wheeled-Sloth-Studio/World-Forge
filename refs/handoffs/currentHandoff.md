@@ -2,19 +2,20 @@
 
 Updated: 2026-08-04
 
-Status: Jupiter smooth oblate Globe geometry and native System selector hierarchy passed user browser QA. The Earth ETL now supports imported source-backed climate classification and derived biome, wetness, and permanent-ice layers. That imported-data path is accepted for continued Sol reference development. A separate Earth climate-calibration benchmark has been defined as non-blocking enrichment work. An intermittent selector flicker remains under browser acceptance with idempotent hierarchy repair and diagnostic counters.
+Status: Jupiter smooth oblate Globe geometry and native System selector hierarchy passed user browser QA. The Earth ETL now supports imported source-backed climate classification and derived biome, wetness, and permanent-ice layers. That imported-data path is accepted for continued Sol reference development. A separate Earth climate-calibration benchmark has been defined as non-blocking enrichment work. The first unified source-to-`.wforge` pipeline increment is implemented and repository validation passed. Local source-data execution, refreshed Parchment embedding, browser acceptance, and performance measurements remain.
 
 ## Read first
 
 1. `refs/handoffs/reference-system-etl-and-multi-body-navigation.md`
 2. `refs/handoffs/system-view-body-catalog-alignment.md`
-3. `refs/testing/sol-atmospheric-geometry-and-selector-qa.md`
-4. `refs/testing/sol-earth-biome-and-selector-stability-qa.md`
-5. `refs/research/reference-data/earth-reference-data.md`
-6. `refs/planning/body-detail-tiers-and-payload-strategy.md`
-7. `refs/handoffs/earth-climate-calibration-benchmark.md` for the independent, non-blocking climate-logic enrichment track
-8. World Forge issue #124
-9. Parchment Worlds issue #22
+3. `refs/testing/sol-reference-pipeline.md`
+4. `refs/testing/sol-atmospheric-geometry-and-selector-qa.md`
+5. `refs/testing/sol-earth-biome-and-selector-stability-qa.md`
+6. `refs/research/reference-data/earth-reference-data.md`
+7. `refs/planning/body-detail-tiers-and-payload-strategy.md`
+8. `refs/handoffs/earth-climate-calibration-benchmark.md` for the independent, non-blocking climate-logic enrichment track
+9. World Forge issue #124
+10. Parchment Worlds issue #22
 
 ## Accepted runtime QA checkpoint
 
@@ -30,6 +31,30 @@ User-confirmed at that checkpoint:
 - moons are clearly nested beneath parent worlds in the native selector;
 - canonical body names remain intact;
 - Parchment Earth and Jupiter assets still enter one `.wforge` system.
+
+## Current pipeline implementation checkpoint
+
+```text
+6130bfdd2575e375dd4d1610dd2450f9eec8a853
+```
+
+Validation run `30965582824` passed:
+
+- repository typecheck;
+- unit and integration tests, including the new Sol pipeline tests;
+- production page harness smoke;
+- production attribution rerank smoke.
+
+The implementation adds:
+
+- `npm run reference:build-sol`, the correctly named normal exporter entry point;
+- `npm run reference:pipeline-sol`, the unified Earth ETL, Jupiter ETL, and normal `.wforge` export path;
+- `--prepared-only` mode for rebuilding from staged normalized bundles;
+- explicit local source-file overrides;
+- a sidecar pipeline report containing source-manifest and package sizes, SHA-256 values, stage names, parameters, and elapsed time;
+- `refs/testing/sol-reference-pipeline.md` as the command and acceptance contract.
+
+The compatibility alias `reference:build-earth` remains temporarily, but new work should use the Sol-named commands.
 
 ## Accepted Earth data direction
 
@@ -61,7 +86,7 @@ Do not mark the flicker closed until repeated keyboard and pointer selection pas
 
 ## Active pipeline slice
 
-Build a deterministic, documented, one-command path that takes approved source inputs through the normal product boundaries:
+The durable path is now:
 
 ```text
 approved source datasets and curated Sol facts
@@ -73,34 +98,54 @@ approved source datasets and curated Sol facts
   -> permanent regression fixtures and evidence
 ```
 
-The first pipeline target should preserve the already demonstrated Earth and Jupiter system while replacing ad hoc or partially manual fixture assembly with an explicit repeatable build.
+The World Forge side of this path is implemented for the accepted Earth-plus-Jupiter baseline. The next acceptance work is to execute it with approved source access and carry the output through Parchment.
 
-### Required outcomes
+### Standard World Forge command
 
-- one source-controlled Sol project definition owns the star, bodies, stable IDs, parent relationships, primary-body role, provenance, and simplification notes;
-- Earth ETL output is consumed without hand-copying generated arrays;
-- Jupiter's accepted atmospheric presentation is consumed through the same body-import boundary;
-- the source project exports through the normal World Forge `.wforge` exporter rather than a test-only ZIP writer;
-- Parchment embeds the resulting `.wforge` through its normal package model;
-- the starter package and regression fixture are derived from the same declared pipeline output;
-- deterministic checksums or equivalent signatures make fixture drift explicit;
-- build commands, staged inputs, generated outputs, and intentionally uncommitted large source assets are documented;
-- package size, build duration, import duration, and browser memory are recorded before broad body expansion.
+```powershell
+python -m pip install -r tools/reference-etl/requirements.txt
+npm run reference:pipeline-sol
+```
+
+Expected outputs:
+
+```text
+.local/reference-data/sol-earth-reference.wforge
+.local/reference-data/sol-earth-reference.wforge.pipeline.json
+```
+
+### Required remaining outcomes
+
+- run the unified command against approved Earth and Jupiter sources;
+- confirm unchanged staged inputs produce the same `.wforge` digest in `--prepared-only` mode;
+- verify the report records nonzero input and output sizes and SHA-256 values;
+- generate the Parchment starter through `npm run generate:sol-starter` using the sibling package;
+- record `.wforge` and `.pworld` size and digest;
+- import through the normal Parchment UI path;
+- confirm Earth, Jupiter, active-body behavior, and refreshed imported climate layers survive;
+- record World Forge package build time, Parchment packaging/import time, and browser memory;
+- decide from measured evidence whether lazy per-body loading is required before adding Mars, Venus, and Luna.
+
+## CI boundary
+
+World Forge CI validates the command parser, stage planning, exporter integration, and existing runtime behavior without downloading large upstream datasets.
+
+Parchment's isolated CI runner does not contain the sibling generated `.wforge`. Its workflow therefore uses the explicit `verify:metadata-only` path. Normal development and release builds continue to require the enriched World Forge package and fail clearly when it is absent. Metadata-only CI is not a fallback used by the shipped starter pipeline.
 
 ## Immediate acceptance sequence
 
-1. Run repeated planet, moon, belt, and star selection with mouse and keyboard.
-2. Confirm no selection leaves the canvas flickering or sluggish; capture `data-system-selector-*` diagnostics if it recurs.
-3. Complete the deterministic shared Sol source-to-`.wforge` build path.
-4. Rebuild Earth using the accepted source-backed climate-region ETL.
-5. Confirm major imported climate regions appear in Map and Globe.
-6. Embed the same `.wforge` in the Parchment starter `.pworld` through the normal package path.
-7. Import through Parchment and confirm Earth, Jupiter, active-body behavior, and refreshed layers survive.
+1. Run `npm run reference:pipeline-sol` in World Forge with approved source access.
+2. Capture the generated pipeline report and repeat with `--prepared-only` to verify package digest stability.
+3. Run repeated planet, moon, belt, and star selection with mouse and keyboard; capture `data-system-selector-*` diagnostics if flicker recurs.
+4. Confirm major imported climate regions appear in Earth Map and Globe.
+5. Run `npm run generate:sol-starter` in the sibling Parchment checkout.
+6. Import the generated `.pworld` through the ordinary UI.
+7. Confirm Earth and Jupiter open from the same nested `.wforge`, with the requested active body and refreshed Earth layers.
 8. Record package size, load/import time, and browser memory.
 
-## Next work after the pipeline slice
+## Next work after pipeline acceptance
 
-1. Add lazy per-body package loading before broad reference-body expansion if the measured fixture justifies it.
+1. Add lazy per-body package loading if the measured fixture justifies it.
 2. Add Mars and Venus near normal map resolution where source and performance permit.
 3. Add Luna and the generic compact solid-body renderer.
 4. Continue through the remaining giants, moons, irregular bodies, and belts.
@@ -115,4 +160,5 @@ The first pipeline target should preserve the already demonstrated Earth and Jup
 - Unsupported views must never silently switch to Earth.
 - Use the normal exporter and normal Parchment import path for release fixtures.
 - Do not let climate-calibration experiments delay or destabilize the Sol fixture pipeline.
+- Do not silently substitute a metadata-only starter for normal development or release packaging.
 - Keep refs and issue threads current with every accepted increment.
