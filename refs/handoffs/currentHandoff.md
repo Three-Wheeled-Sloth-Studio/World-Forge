@@ -146,6 +146,15 @@ World Forge's repository-specific implementation is documented at:
 refs/engineering/ci-and-agent-workflow.md
 ```
 
+Focused review:
+
+```text
+World Forge PR #125
+chore/ci-signal-discipline -> dev
+```
+
+The draft `opened` event registered as skipped in run `30994209652`, confirming that draft PRs do not launch full automatic validation. Marking the PR ready started authoritative run `30994232077`; a subsequent handoff checkpoint is intentionally expected to supersede and cancel that run through the PR concurrency group.
+
 The focused workflow increment preserves automatic full CI on `main`, `dev`, `qa`, and `release/**`; skips full jobs for draft pull requests; runs authoritative PR validation when a draft becomes ready for review; supports deliberate `workflow_dispatch` validation; and cancels superseded runs by workflow plus PR number or branch ref.
 
 Validation is ordered as:
