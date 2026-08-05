@@ -31,6 +31,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['../../packages/**/*.test.ts', '../../scripts/**/*.test.ts', 'src/**/*.test.ts']
+    include: ['../../packages/**/*.test.ts', '../../scripts/**/*.test.ts', 'src/**/*.test.ts'],
+    // Correctness tests exercise full deterministic generation and can contend with
+    // other generator-heavy files on local Windows runners. Performance regressions
+    // are owned by the dedicated profiling and production-attribution harnesses.
+    testTimeout: 15_000
   }
 });
