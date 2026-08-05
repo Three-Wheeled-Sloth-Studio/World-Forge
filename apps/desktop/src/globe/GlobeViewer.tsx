@@ -5,6 +5,7 @@ import type {
   SystemOrbitalContextArtifact,
   WorldProject,
 } from '@world-forge/shared';
+import type { MultiBodyWorldProject } from '@world-forge/shared/worldBodies';
 import type { MapMode, MapTheme, PointInspectionRecord, RenderMode } from '@world-forge/renderer';
 import type { SystemSimulationClock } from '../simulation/systemSimulationClock';
 import { GlobeViewer as GeographicGlobeViewer } from './GeographicGlobeViewer';
@@ -42,14 +43,15 @@ export type GlobeViewerProps = {
 };
 
 export function GlobeViewer(props: GlobeViewerProps) {
+  const multiBodyProject = props.project as MultiBodyWorldProject;
   const target = useMemo(
     () => props.orbitalContext
       ? resolveGlobeBodyTarget(props.project, props.orbitalContext, props.targetBodyId)
       : null,
     [
       props.orbitalContext?.artifactSignature,
-      props.project.bodyAssetPayloads,
-      props.project.bodyCatalog,
+      multiBodyProject.bodyAssetPayloads,
+      multiBodyProject.bodyCatalog,
       props.project.bodyGeneration?.updatedAt,
       props.project.enrichmentArtifacts,
       props.project.projectId,
