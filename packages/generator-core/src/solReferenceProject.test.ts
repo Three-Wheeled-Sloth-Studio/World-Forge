@@ -25,7 +25,7 @@ function earthSurface() {
 }
 
 describe('Sol reference project', () => {
-  it('keeps Earth and the wider Sol inventory in one World Forge project', () => {
+  it('keeps Sol, Earth, and the wider body inventory in one World Forge project', () => {
     const project = createSolReferenceProject(earthSurface());
     const catalog = readWorldBodyCatalog(project);
 
@@ -37,15 +37,18 @@ describe('Sol reference project', () => {
       'jupiter', 'saturn', 'uranus', 'neptune', 'kuiper-belt',
     ]);
     expect(catalog.primaryBodyId).toBe('earth');
+    expect(catalog.bodies.some((body) => body.bodyId === 'sol' && body.bodyType === 'star')).toBe(true);
     expect(catalog.bodies.some((body) => body.bodyId === 'luna' && body.parentBodyId === 'earth')).toBe(true);
     expect(catalog.bodies.some((body) => body.bodyId === 'phobos' && body.parentBodyId === 'mars')).toBe(true);
     expect(catalog.bodies.some((body) => body.bodyId === 'deimos' && body.parentBodyId === 'mars')).toBe(true);
     expect(catalog.bodies.some((body) => body.bodyId === 'main-asteroid-belt' && body.bodyType === 'belt')).toBe(true);
   });
 
-  it('uses body-appropriate detail tiers without making every body geographic', () => {
+  it('gives every canonical star, planet, and selected moon a bounded Globe presentation', () => {
     const catalog = readWorldBodyCatalog(createSolReferenceProject(earthSurface()));
     const earth = catalog.bodies.find((body) => body.bodyId === 'earth');
+    const sol = catalog.bodies.find((body) => body.bodyId === 'sol');
+    const mercury = catalog.bodies.find((body) => body.bodyId === 'mercury');
     const mars = catalog.bodies.find((body) => body.bodyId === 'mars');
     const jupiter = catalog.bodies.find((body) => body.bodyId === 'jupiter');
     const saturn = catalog.bodies.find((body) => body.bodyId === 'saturn');
@@ -56,19 +59,32 @@ describe('Sol reference project', () => {
     expect(earth?.surface?.name).toBe('Earth');
     expect(earth?.detail?.kind).toBe('geographic-surface');
 
+    expect(sol?.detail?.kind).toBe('basic-presentation');
+    expect(sol?.capabilities).toEqual({ globe: true, map: false, explorer: false, irregularShape: false });
+    expect(sol?.detail?.kind === 'basic-presentation' ? sol.detail.surface.emissiveHex : null).toBe('#ffb23f');
+
+    expect(mercury?.detail?.kind).toBe('basic-presentation');
+    expect(mercury?.capabilities.globe).toBe(true);
+    expect(mercury?.capabilities.map).toBe(false);
+
     expect(mars?.capabilities.map).toBe(false);
     expect(mars?.surface).toBeUndefined();
-    expect(mars?.detail?.tier).toBe('catalog');
+    expect(mars?.detail?.kind).toBe('basic-presentation');
     expect(mars?.physical?.meanRadiusKm).toBe(3389.5);
     expect(mars?.orbit?.periodDays).toBe(686.98);
 
     expect(jupiter?.detail?.kind).toBe('atmospheric-presentation');
-    expect(jupiter?.capabilities).toEqual({ globe: false, map: false, explorer: false, irregularShape: false });
+    expect(jupiter?.capabilities).toEqual({ globe: true, map: false, explorer: false, irregularShape: false });
     expect(saturn?.detail?.kind === 'atmospheric-presentation' ? saturn.detail.rings?.outerRadiusRatio : null).toBe(2.27);
+    expect(saturn?.capabilities.globe).toBe(true);
 
-    expect(phobos?.detail?.kind).toBe('catalog');
-    expect(phobos?.capabilities.irregularShape).toBe(true);
-    expect(phobos?.capabilities.globe).toBe(false);
+    expect(phobos?.detail?.kind).toBe('basic-presentation');
+    expect(phobos?.detail?.kind === 'basic-presentation' ? phobos.detail.shape.kind : null).toBe('triaxial-ellipsoid');
+    expect(phobos?.capabilities.globe).toBe(true);
+    expect(phobos?.capabilities.map).toBe(false);
+
+    const nonBeltBodies = catalog.bodies.filter((body) => body.bodyType !== 'belt');
+    expect(nonBeltBodies.every((body) => body.capabilities.globe)).toBe(true);
 
     expect(belt?.detail?.kind).toBe('population');
     expect(belt?.detail?.tier).toBe('presentation');
