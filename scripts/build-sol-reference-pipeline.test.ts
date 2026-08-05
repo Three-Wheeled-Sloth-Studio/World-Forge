@@ -14,7 +14,7 @@ describe('Sol reference pipeline', () => {
     expect(options.topologyResolution).toBe(64);
     expect(options.outputFile).toBe(path.join(repositoryRoot, '.local', 'reference-data', 'sol-earth-reference.wforge'));
 
-    const commands = buildSolReferencePipelineCommands(options, {}, 'linux');
+    const commands = buildSolReferencePipelineCommands(options, { NODE: 'node-test' });
     expect(commands.map((command) => command.stage)).toEqual([
       'prepare-earth',
       'prepare-jupiter',
@@ -23,8 +23,15 @@ describe('Sol reference pipeline', () => {
     expect(commands[0].args).toContain('512');
     expect(commands[0].args).toContain('256');
     expect(commands[0].args).toContain('64');
-    expect(commands[2]).toMatchObject({ command: 'npm' });
-    expect(commands[2].args).toContain('reference:build-sol');
+    expect(commands[2]).toMatchObject({ command: 'node-test' });
+    expect(commands[2].args).toEqual([
+      path.join(repositoryRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+      '--tsconfig', path.join(repositoryRoot, 'tsconfig.scripts.json'),
+      path.join(repositoryRoot, 'scripts', 'build-earth-reference.ts'),
+      '--input', path.join(repositoryRoot, '.local', 'reference-data', 'earth-etopo'),
+      '--jupiter-input', path.join(repositoryRoot, '.local', 'reference-data', 'jupiter-cassini'),
+      '--output', path.join(repositoryRoot, '.local', 'reference-data', 'sol-earth-reference.wforge'),
+    ]);
   });
 
   it('supports prepared bundles without rerunning source ETL', () => {
@@ -36,12 +43,15 @@ describe('Sol reference pipeline', () => {
       '--output', 'out/sol.wforge',
     ], repositoryRoot, repositoryRoot);
 
-    const commands = buildSolReferencePipelineCommands(options, {}, 'win32');
+    const commands = buildSolReferencePipelineCommands(options, { NODE: 'C:\\Program Files\\nodejs\\node.exe' });
     expect(commands).toHaveLength(1);
     expect(commands[0].stage).toBe('build-sol-package');
-    expect(commands[0].command).toBe('npm.cmd');
+    expect(commands[0].command).toBe('C:\\Program Files\\nodejs\\node.exe');
+    expect(commands[0].command).not.toMatch(/\.cmd$/i);
     expect(commands[0].args).toEqual([
-      'run', 'reference:build-sol', '--',
+      path.join(repositoryRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+      '--tsconfig', path.join(repositoryRoot, 'tsconfig.scripts.json'),
+      path.join(repositoryRoot, 'scripts', 'build-earth-reference.ts'),
       '--input', path.join(repositoryRoot, 'prepared', 'earth'),
       '--jupiter-input', path.join(repositoryRoot, 'prepared', 'jupiter'),
       '--output', path.join(repositoryRoot, 'out', 'sol.wforge'),
