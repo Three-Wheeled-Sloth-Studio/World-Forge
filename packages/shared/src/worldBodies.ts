@@ -34,7 +34,7 @@ export type WorldBodyOrbitFacts = {
 export type WorldBodyRecordV1 = {
   bodyId: string;
   name: string;
-  bodyType: SystemBody['bodyType'] | 'moon';
+  bodyType: SystemBody['bodyType'] | 'moon' | 'star';
   parentBodyId?: string;
   capabilities: WorldBodyCapabilities;
   dataOrigin: WorldBodyDataOrigin;
@@ -212,7 +212,7 @@ function geographicDetail(origin: WorldBodyDataOrigin): GeographicSurfaceDetailV
 
 function isWorldBodyRecord(value: unknown): value is WorldBodyRecordV1 {
   if (!isRecord(value) || !cleanText(value.bodyId) || !cleanText(value.name)) return false;
-  if (!['rocky', 'gas-giant', 'ice-giant', 'dwarf', 'belt', 'moon'].includes(String(value.bodyType))) return false;
+  if (!['rocky', 'gas-giant', 'ice-giant', 'dwarf', 'belt', 'moon', 'star'].includes(String(value.bodyType))) return false;
   if (!['imported', 'derived', 'generated', 'authored', 'edited'].includes(String(value.dataOrigin))) return false;
   if (value.physical !== undefined && !isPhysicalFacts(value.physical)) return false;
   if (value.orbit !== undefined && !isOrbitFacts(value.orbit)) return false;
