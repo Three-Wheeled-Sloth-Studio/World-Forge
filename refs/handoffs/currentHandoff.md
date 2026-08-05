@@ -2,7 +2,7 @@
 
 Updated: 2026-08-04
 
-Status: The refreshed imported Earth reference, Jupiter presentation, unified World Forge build pipeline, Parchment starter embedding, and normal Parchment import path have passed user acceptance. The resulting `.pworld` is 3.24 MiB and imports very quickly, so lazy per-body loading is not justified for the current baseline. The Earth climate-calibration benchmark remains a separate, non-blocking enrichment track.
+Status: The refreshed imported Earth reference, Jupiter presentation, unified World Forge build pipeline, Parchment starter embedding, and normal Parchment import path have passed user acceptance. The resulting `.pworld` is 3.24 MiB and imports very quickly, so lazy per-body loading is not justified for the current baseline. Mars and Venus source research and Definition-of-Ready drafting are complete; material implementation remains blocked pending acceptance of the recommended scope and contracts. The Earth climate-calibration benchmark remains a separate, non-blocking enrichment track.
 
 ## Read first
 
@@ -13,9 +13,12 @@ Status: The refreshed imported Earth reference, Jupiter presentation, unified Wo
 5. `refs/testing/sol-earth-biome-and-selector-stability-qa.md`
 6. `refs/research/reference-data/earth-reference-data.md`
 7. `refs/planning/body-detail-tiers-and-payload-strategy.md`
-8. `refs/handoffs/earth-climate-calibration-benchmark.md`
-9. World Forge issue #124
-10. Parchment Worlds issue #22
+8. `refs/handoffs/mars-venus-reference-ingestion-readiness.md`
+9. `refs/research/reference-data/mars-reference-data.md`
+10. `refs/research/reference-data/venus-reference-data.md`
+11. `refs/handoffs/earth-climate-calibration-benchmark.md`
+12. World Forge issue #124
+13. Parchment Worlds issue #22
 
 ## Accepted visual baseline
 
@@ -145,38 +148,73 @@ Selecting a body previously produced intermittent flicker and degraded response 
 
 Idempotent selector-hierarchy repair and diagnostics are implemented. Do not mark this closed until repeated pointer and keyboard selection remains stable in the deployed browser runtime. This acceptance check may proceed alongside body ingestion and is not a Sol pipeline blocker.
 
-## Active next slice: Mars and Venus ingestion readiness
+## Active next slice: Mars and Venus readiness acceptance
 
-The Earth-plus-Jupiter producer and consumer pipeline is accepted. The next body-expansion slice should prepare Mars and Venus for ingestion through the same source-project and package path.
+The planning handoff is:
 
-Do not begin substantial ETL or renderer work until the slice meets Definition of Ready.
+```text
+refs/handoffs/mars-venus-reference-ingestion-readiness.md
+```
 
-### Readiness questions
+Supporting source reviews:
 
-- accepted elevation/topography and visual-data sources for Mars and Venus;
-- redistribution and attribution constraints;
-- target source and prepared resolutions;
-- which layers are imported, derived, approximated, or intentionally absent;
-- treatment of Venus cloud-top presentation versus surface topology;
-- whether both bodies can use existing renderer contracts without special-case architecture;
-- expected package growth against the accepted 3.24 MiB `.pworld` baseline;
-- browser acceptance checks for Map, Globe, selector behavior, and Parchment round trip.
+```text
+refs/research/reference-data/mars-reference-data.md
+refs/research/reference-data/venus-reference-data.md
+```
 
-### Expected implementation shape after readiness
+No material ETL or renderer work should begin until the recommended decisions are accepted.
 
-1. Add deterministic normalized source bundles for Mars and Venus.
-2. Extend the source-controlled Sol project definition with their stable body records and provenance.
-3. Export through the existing normal `.wforge` path.
-4. Regenerate the same Parchment starter `.pworld`.
-5. Confirm package growth and user-perceived performance remain acceptable.
-6. Revisit lazy loading only if actual evidence warrants it.
+### Recommended Mars scope
 
-## Later bodies
+- Tier 2 compact raster surface;
+- Globe and Map supported;
+- Explorer and editors deferred;
+- MOLA 463 m global DEM;
+- Viking MDIM 2.1 artistically colorized global mosaic;
+- 1024 x 512 prepared elevation and appearance;
+- no fabricated Earth climate, biome, water, river, or plate layers.
 
-1. Luna and the generic compact solid-body renderer.
-2. Remaining giants and selected major moons.
-3. Irregular bodies and belts.
-4. Lazy per-body package loading only if measured evidence justifies it.
+### Recommended Venus scope
+
+- default Globe presents the cloud deck;
+- Map presents Magellan radar and topography;
+- optional radar-surface Globe mode may be included;
+- Explorer and editors deferred;
+- Magellan C3-MIDR radar mosaic;
+- Magellan global topography version 2;
+- deterministic narrow-window Akatsuki UVI 365 nm cloud composite;
+- 1024 x 512 prepared layers.
+
+### Readiness architecture findings
+
+1. `raster-surface` declares Map and Globe capability, but current render access still requires a full `PrimaryWorld` surface.
+2. Numeric raster assets lack generic units, datum, scale, offset, no-data, and range metadata.
+3. Venus needs a generic layered solid-body detail capable of carrying both a surface and an atmosphere/cloud presentation.
+4. The Sol assembler should move toward a manifest or repeated body-bundle seam rather than one CLI flag per body.
+5. Lazy loading remains deferred until package/runtime evidence changes.
+
+### First implementation after acceptance
+
+Begin with generic synthetic-fixture foundation work:
+
+- numeric raster metadata;
+- body-local raster hydration and access;
+- raster-surface Globe and Map rendering;
+- explicit unsupported Explorer handling;
+- package round-trip coverage.
+
+Do not begin by downloading Mars or Venus sources. Mars source ETL follows only after the reusable raster path is accepted and validated.
+
+## Later sequence
+
+1. Mars ETL, package integration, and Parchment QA.
+2. Generic layered solid-body presentation contract.
+3. Venus surface ETL and accepted Akatsuki cloud-composite recipe.
+4. Venus package integration and Parchment QA.
+5. Reassess lazy loading only from measured package/runtime evidence.
+6. Luna, Phobos, and Deimos as separate increments.
+7. Remaining giants, selected major moons, irregular bodies, and belts.
 
 ## Guardrails
 
@@ -189,4 +227,6 @@ Do not begin substantial ETL or renderer work until the slice meets Definition o
 - Do not silently substitute a metadata-only starter for normal development or release packaging.
 - Do not let climate-calibration experiments delay or destabilize the Sol fixture pipeline.
 - Do not implement Mars or Venus ingestion before its Definition of Ready is accepted.
+- Do not fabricate `PrimaryWorld` records to avoid body-local raster rendering work.
+- Do not add a Venus-only durable schema.
 - Keep refs and issue threads current with every accepted increment.
