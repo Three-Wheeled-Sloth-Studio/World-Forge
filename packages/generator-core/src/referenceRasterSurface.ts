@@ -46,12 +46,10 @@ export function attachReferenceRasterSurface(
     ? {
         ...body,
         dataOrigin: surfacePackage.detail.origin,
-        // The durable detail can arrive before the body-local raster renderer.
-        // Keep view capabilities honest until that runtime path is enabled.
         capabilities: {
           ...body.capabilities,
-          globe: false,
-          map: false,
+          globe: true,
+          map: true,
           explorer: false,
           irregularShape: false,
         },
