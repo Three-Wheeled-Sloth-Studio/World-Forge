@@ -43,7 +43,8 @@ export function AtmosphericGlobeViewer({
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !target.atmosphericDetail) return;
+    const body = target.body;
+    if (!host || !target.atmosphericDetail || !body) return;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -61,7 +62,7 @@ export function AtmosphericGlobeViewer({
     const spinGroup = new THREE.Group();
     scene.add(axialTiltGroup);
     axialTiltGroup.add(spinGroup);
-    axialTiltGroup.rotation.z = THREE.MathUtils.degToRad(target.body.axialTiltDeg ?? 0);
+    axialTiltGroup.rotation.z = THREE.MathUtils.degToRad(body.axialTiltDeg ?? 0);
 
     const presentation = createAtmosphericBodyPresentation(
       project,
@@ -132,9 +133,9 @@ export function AtmosphericGlobeViewer({
     let frame = 0;
     const animate = (now: number) => {
       const simulationDays = simulationClock.currentDays(now);
-      const rotationPeriodDays = Math.max(0.08, Math.abs(target.body.rotationPeriodHours) / 24);
+      const rotationPeriodDays = Math.max(0.08, Math.abs(body.rotationPeriodHours) / 24);
       spinGroup.rotation.y = simulationDays * Math.PI * 2 / rotationPeriodDays;
-      const orbitalPosition = orbitalPositionAtDays(target.body, simulationDays);
+      const orbitalPosition = orbitalPositionAtDays(body, simulationDays);
       const starDirection = new THREE.Vector3(
         -orbitalPosition.x,
         -orbitalPosition.y,
