@@ -1,76 +1,80 @@
 # Mars reference data
 
-Updated: 2026-08-04
-Status: Candidate source set selected for readiness review; no ETL implementation started
+Updated: 2026-08-05
+Status: Tier 2 scope accepted; coarse source-backed ETL and reusable prepared-body contract implemented; real source run and visual acceptance pending
 
 ## Product role
 
 Mars is the first source-backed solid secondary planet after Earth.
 
-The initial Mars increment should prove a reusable compact solid-body path rather than forcing Mars into the full Earth-oriented `PrimaryWorld` contract. The target is a recognizable Globe and projected Map with imported surface appearance and topography. Explorer, editing, climate, biome, hydrology, plate, and civilization layers are not required for the first increment.
+The initial Mars increment proves a reusable compact solid-body path rather than forcing Mars into the full Earth-oriented `PrimaryWorld` contract. The target is a recognizable Globe and projected Map with imported surface appearance and topography. Explorer, editing, climate, biome, hydrology, plate, and civilization layers are not required for this increment.
 
-Recommended detail tier: Tier 2 `raster-surface`.
+Accepted detail tier: Tier 2 `raster-surface`.
 
-Recommended initial capabilities:
+Accepted initial capabilities:
 
-- Globe: supported;
-- Map: supported;
+- Globe: supported when the prepared appearance asset is hydrated;
+- Map: supported through the body-local raster path;
 - Explorer: unsupported with an explicit capability explanation;
 - geographic editors: unsupported;
 - generated climate and biome layers: absent.
 
-## Recommended authoritative sources
+Tier, source resolution, prepared resolution, and tool capability are separate decisions. Tier 2 does not imply high-resolution assets.
 
-### Mars Global Surveyor MOLA DEM 463 m
+## Selected source products
+
+The first draft pointed at the highest-resolution convenient global mosaics. That would have downloaded roughly 2 GB of MOLA data and roughly 12 GB of Viking imagery only to prepare a 512 by 256 runtime surface. The accepted coarse implementation instead uses moderate-size official products from the same scientific lineages.
+
+### MGS MOLA MEGDR global topography, 16 pixels per degree
 
 Publisher and access:
 
 - MOLA Team / NASA Goddard Space Flight Center;
-- distributed by USGS Astrogeology and NASA PDS;
-- USGS product: `Mars MGS MOLA DEM 463m`;
-- source URL: `https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif`;
-- access and use: CC0 / public domain, no use constraints.
+- distributed through the NASA PDS Geosciences Node;
+- product: `MEGT90N000EB.IMG` from the 16-pixels-per-degree MEGDR set;
+- default source URL is recorded in `tools/reference-etl/prepare_mars_reference.py`;
+- access and use: CC0 / U.S. government public domain.
 
-Source characteristics:
+Source characteristics used by the adapter:
 
-- global digital elevation model;
-- 46,080 by 23,040 pixels;
-- 16-bit source;
-- approximately 463.08 m/pixel at the equator;
-- Simple Cylindrical projection;
+- global digital topography;
+- 5,760 by 2,880 cells;
+- signed 16-bit big-endian source values;
+- approximately 16 pixels per degree;
+- simple cylindrical global grid;
 - planetocentric latitude;
 - positive-east longitude;
-- longitude domain -180 to 180;
-- elevation above the MOLA areoid;
-- polar gaps and track gaps in the distributed mosaic include documented interpolation or reprojection fills.
+- source longitude domain 0 to 360;
+- elevation relative to the MOLA GMM3 areoid;
+- expected source byte length and broad physical range are validated before conversion.
 
 Use in World Forge:
 
 - authoritative imported topography;
-- resampled with a continuous-data filter;
-- converted to a compact numeric raster with an explicit datum, unit, scale, offset, no-data treatment, source range, prepared range, and checksum;
-- optional radial-displacement or normal presentation derived from the imported elevation;
+- source grid rolled from the 0-to-360 source seam to the shared -180-to-180 seam;
+- bilinearly resampled to the accepted prepared dimensions;
+- rounded to nearest metre and stored as little-endian signed 16-bit values;
+- packaged with explicit datum, units, type, byte order, scale, offset, source range, prepared range, and checksum;
 - never interpreted as Earth elevation relative to sea level.
 
-### Viking MDIM 2.1 colorized global mosaic 232 m
+### Viking MDIM 2.1 colorized global mosaic, reduced 1 km derivative
 
 Publisher and access:
 
 - USGS Astrogeology Science Center / NASA Ames;
-- source product: `Mars Viking Colorized Global Mosaic 232m`;
-- source URL: `https://planetarymaps.usgs.gov/mosaic/Mars_Viking_MDIM21_ClrMosaic_global_232m.tif`;
-- access and use: public domain, no use constraints.
+- product: `Mars_Viking_MDIM21_ClrMosaic_1km.jpg`;
+- default source URL is recorded in `tools/reference-etl/prepare_mars_reference.py`;
+- access and use: U.S. government public domain.
 
 Source characteristics:
 
-- global 3-band image mosaic;
-- 92,160 by 46,080 pixels;
-- approximately 231.54 m/pixel at the equator;
-- Simple Cylindrical projection;
+- global reduced derivative of the controlled MDIM 2.1 colorized mosaic;
+- approximately 21,339 by 10,670 pixels;
+- approximately 1 km per pixel;
+- simple cylindrical global presentation;
 - planetocentric latitude;
 - positive-east longitude;
-- longitude domain -180 to 180;
-- positional control aligned to MDIM 2.1 and MOLA-era standards.
+- longitude domain -180 to 180.
 
 Critical provenance note:
 
@@ -79,66 +83,163 @@ The product is an artistically colorized mosaic. NASA Ames warped an earlier col
 Use in World Forge:
 
 - imported source-backed presentation raster;
-- prepared as compact RGB565 or another accepted deterministic runtime encoding;
-- stored with `origin: imported` and a simplification note that the color is source-provided artistic colorization;
-- not used to derive scientific material or mineral classes without a separate accepted method.
+- JPEG draft decoding requests decoder-side subsampling before the full source is materialized in memory;
+- Lanczos resampling produces the prepared surface;
+- the runtime payload is deterministic little-endian RGB565;
+- stored with `origin: imported` and an explicit source-provided artistic-color note;
+- not used to derive scientific material or mineral classes without a separately accepted method.
 
-## Recommended prepared package
+## Prepared package
 
-Initial target resolution:
+Default prepared resolution:
 
 ```text
-1024 x 512
+512 x 256
 ```
 
-Recommended body-local assets:
+This is the current coarse/default reference-body target. The ETL exposes width and height overrides, but higher resolution is not required for initial Mars acceptance.
+
+Body-local assets:
 
 ```text
 bodies/mars/albedo.rgb565
-bodies/mars/elevation.u16
+bodies/mars/elevation.i16
 ```
 
-Optional derived assets should be created only if the renderer benefits materially:
+Prepared bundle directory:
 
 ```text
-bodies/mars/normal.rgb8
-bodies/mars/feature-catalog.json
+.local/reference-data/mars-mola-viking/
+  manifest.json
+  albedo.rgb565
+  elevation.i16
 ```
 
-The first increment should not add an Earth-style canonical layer inventory merely to satisfy existing renderer assumptions.
+The bundle uses:
 
-## Required contract work before ETL
+```text
+world-forge-reference-body-bundle-v1
+```
 
-The existing body asset reference contract records role, path, media type, encoding, resolution, size, and checksum, but does not yet define enough metadata to interpret scientific numeric rasters.
+The manifest records:
 
-Before encoding MOLA elevation, agree a generic numeric raster descriptor that can carry at least:
+- stable body and asset IDs;
+- source titles, publishers, URLs, roles, licenses, dimensions, byte lengths, and SHA-256 digests;
+- source coordinate conventions;
+- prepared dimensions;
+- body shape;
+- output media types and encodings;
+- output byte lengths and SHA-256 digests;
+- numeric raster semantics;
+- resampling, seam, orientation, and quantization transforms;
+- the Viking artistic-color caveat.
 
-- stored data type and byte order;
+## Implemented durable contracts
+
+### Numeric raster descriptor
+
+`WorldBodyAssetRefV1` can now carry a generic numeric raster descriptor covering:
+
+- stored data type;
+- byte order;
 - physical units;
 - scale and offset;
 - datum or reference surface;
-- no-data value or mask policy;
-- source and prepared minimum and maximum;
-- whether the values are absolute elevation, radius, or display-only normalized displacement.
+- no-data value or mask asset;
+- source and prepared ranges;
+- absolute elevation, radius, normalized displacement, or generic scalar interpretation.
 
-Do not encode those semantics into a Mars-specific file name or opaque custom encoding string.
+These semantics are not inferred from filenames and are not Mars-specific.
 
-The current `raster-surface` detail also declares Globe and Map capability, but the active render path still resolves projected surfaces through `WorldBodyRecordV1.surface` and the `PrimaryWorld` contract. A body-local raster surface renderer/accessor must exist before Mars is marked Map- or Globe-capable.
+### Prepared-body bundle
 
-## ETL transformation rules
+`scripts/referenceBodyBundle.ts` loads and validates reusable body bundles before they enter a system package. It verifies:
 
-The eventual adapter should:
+- schema and body identity;
+- shape, projection, and shared resolution;
+- source attribution records;
+- safe body-local package paths;
+- unique asset IDs, paths, and files;
+- byte lengths and checksums;
+- payload shape for RGB565 and numeric rasters;
+- conversion into a valid `RasterSurfaceDetailV1`.
 
-1. download or accept local source overrides;
-2. record source URL, source size, source checksum, projection, coordinate convention, and license;
-3. reproject only when required to reach the accepted common equirectangular grid;
-4. normalize longitude orientation and raster row direction explicitly;
-5. resample MOLA elevation with a continuous-data method;
-6. resample the color mosaic with a color-image method;
-7. preserve the seam and polar handling deterministically;
-8. emit a prepared manifest with all transforms and digests;
-9. avoid deriving Earth climate, water, biome, river, or plate layers;
-10. remain reproducible from local source overrides after the original downloads are staged.
+The prepared-body bundle is intentionally upstream of `.wforge`. It is designed to become the common output of:
+
+- built-in reference ETL adapters;
+- future command-line conversion tools;
+- future in-application source import;
+- later user workflows such as PNG, JPG, WebP, or SVG map conversion.
+
+### Normal Sol assembly
+
+The Sol builder accepts repeatable:
+
+```text
+--body-input <prepared-body-directory>
+```
+
+The normal exporter remains the sole final `.wforge` writer. Mars does not have a separate package writer or separate system project.
+
+## Implemented runtime path
+
+### Map
+
+Tier 2 Map rendering reads the active body's hydrated raster assets directly. It does not fabricate a `PrimaryWorld`.
+
+Behavior:
+
+- default and natural surface presentation use the imported RGB565 appearance;
+- elevation and heightmap modes decode the scientific numeric raster;
+- target-resolution resampling is supported;
+- compact reference surfaces explicitly reject geographic point inspection rather than returning Earth fields;
+- Explorer remains unsupported.
+
+### Globe
+
+Tier 2 Globe rendering uses a dedicated smooth reference-body viewer rather than Earth geographic geometry.
+
+Behavior:
+
+- imported RGB565 texture;
+- sphere, oblate-spheroid, or triaxial-ellipsoid shape scaling;
+- axial tilt, rotation, orbital lighting, drag, and zoom;
+- no Earth ocean shell, cloud shell, atmosphere shell, weather, seasonal surface, or terrain displacement assumptions;
+- explicit reference-surface status instrumentation.
+
+## ETL transformation sequence
+
+`tools/reference-etl/prepare_mars_reference.py`:
+
+1. downloads the selected official sources or accepts local source overrides;
+2. validates the MOLA binary dimensions, byte length, and broad physical range;
+3. validates the Viking source as an approximately 2:1 global image;
+4. records source URLs, sizes, dimensions, checksums, coordinate conventions, and licenses;
+5. rolls MOLA from the 0-to-360 seam to -180-to-180;
+6. bilinearly resamples topography;
+7. decoder-subsamples and Lanczos-resamples the Viking appearance;
+8. quantizes elevation to little-endian signed 16-bit metres;
+9. quantizes appearance to little-endian RGB565;
+10. emits the reusable manifest and checksum-protected assets.
+
+The ETL remains reproducible from local source overrides after downloads are staged.
+
+## Commands
+
+Prepare Mars:
+
+```powershell
+python -m pip install -r tools/reference-etl/requirements.txt
+npm run reference:prepare-mars
+```
+
+Attach the prepared bundle to the normal Sol package:
+
+```powershell
+npm run reference:build-sol -- --body-input .local/reference-data/mars-mola-viking
+```
+
+These commands have not yet been run against the real source products for accepted evidence. Do not record output hashes or package deltas until that run completes.
 
 ## Visual and functional acceptance
 
@@ -165,24 +266,26 @@ Functional checks:
 
 ## Package expectation
 
-At 1024 by 512:
+At 512 by 256:
 
-- one RGB565 raster is 1,048,576 uncompressed bytes;
-- one 16-bit elevation raster is 1,048,576 uncompressed bytes;
-- optional normals or feature catalogs add further cost.
+- one RGB565 raster is 262,144 uncompressed bytes;
+- one signed 16-bit elevation raster is 262,144 uncompressed bytes;
+- the core prepared payload is therefore 524,288 bytes before package compression and manifest overhead.
 
-Compressed `.wforge` growth must be measured from the real prepared assets. The current accepted `.pworld` baseline is 3,400,610 bytes and imports subjectively instantly, so lazy body loading is not a prerequisite for this first Mars increment. Reconsider it only after measured package and memory growth.
+Compressed `.wforge` and `.pworld` growth must be measured from the real prepared assets. The current accepted `.pworld` baseline is 3,400,610 bytes and imports subjectively instantly, so lazy body loading is not a prerequisite for this increment.
 
 ## Deferred sources and layers
 
 Do not broaden the first increment into:
 
+- the multi-gigabyte 463 m MOLA or 232 m Viking global mosaics unless a later high-resolution product increment justifies them;
 - global CTX or THEMIS high-resolution ingestion;
 - mineralogy or spectroscopy;
 - seasonal dust simulation;
 - observed weather replay;
 - polar-cap seasonal dynamics;
 - crater catalogs beyond a small optional feature list;
-- a full Mars climate or hydrology reconstruction.
+- a full Mars climate or hydrology reconstruction;
+- Explorer or editing before the complete Sol system is accepted.
 
-Those may become later source-backed enrichments after the compact solid-body path is accepted.
+Those may become later source-backed enrichments after the complete Sol reference and subsequent Explorer/editor increment.
