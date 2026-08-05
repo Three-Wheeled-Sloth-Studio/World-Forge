@@ -76,6 +76,32 @@ export type CatalogBodyDetailV1 = WorldBodyDetailBaseV1 & {
   shape: WorldBodyShapeModelV1;
 };
 
+export type BasicPresentationDetailV1 = WorldBodyDetailBaseV1 & {
+  kind: 'basic-presentation';
+  tier: 'presentation';
+  shape: Exclude<WorldBodyShapeModelV1, { kind: 'irregular-mesh' }>;
+  surface: {
+    paletteHex: string[];
+    roughness: number;
+    metalness: number;
+    emissiveHex?: string;
+    emissiveIntensity?: number;
+  };
+  halo?: {
+    colorHex: string;
+    opacity: number;
+    scale: number;
+  };
+  rings?: {
+    innerRadiusRatio: number;
+    outerRadiusRatio: number;
+    opacity: number;
+    tiltDeg: number;
+    colorHex?: string;
+  };
+  sourceNote?: string;
+};
+
 export type AtmosphericPresentationDetailV1 = WorldBodyDetailBaseV1 & {
   kind: 'atmospheric-presentation';
   tier: 'presentation';
@@ -141,6 +167,7 @@ export type PopulationDetailV1 = WorldBodyDetailBaseV1 & {
 
 export type WorldBodyDetailV1 =
   | CatalogBodyDetailV1
+  | BasicPresentationDetailV1
   | AtmosphericPresentationDetailV1
   | RasterSurfaceDetailV1
   | IrregularMeshDetailV1
@@ -151,7 +178,7 @@ export function worldBodyDetailSupportsView(detail: WorldBodyDetailV1 | undefine
   if (!detail) return false;
   if (detail.kind === 'geographic-surface') return true;
   if (detail.kind === 'raster-surface') return view === 'globe' || view === 'map';
-  if (detail.kind === 'irregular-mesh' || detail.kind === 'atmospheric-presentation') return view === 'globe';
+  if (detail.kind === 'irregular-mesh' || detail.kind === 'atmospheric-presentation' || detail.kind === 'basic-presentation') return view === 'globe';
   return false;
 }
 
@@ -177,6 +204,13 @@ export function isWorldBodyDetail(value: unknown): value is WorldBodyDetailV1 {
   switch (value.kind) {
     case 'catalog':
       return value.tier === 'catalog' && isShape(value.shape);
+    case 'basic-presentation':
+      return value.tier === 'presentation'
+        && isRasterShape(value.shape)
+        && isBasicSurface(value.surface)
+        && (value.halo === undefined || isHalo(value.halo))
+        && (value.rings === undefined || isBasicRings(value.rings))
+        && optionalCleanText(value.sourceNote);
     case 'atmospheric-presentation':
       return value.tier === 'presentation'
         && isAtmosphericShape(value.shape)
@@ -274,6 +308,25 @@ function isRasterShape(value: unknown): boolean {
 
 function isAxes(value: unknown): boolean {
   return isRecord(value) && positiveNumber(value.axisAKm) && positiveNumber(value.axisBKm) && positiveNumber(value.axisCKm);
+}
+
+function isBasicSurface(value: unknown): boolean {
+  if (!isRecord(value) || !Array.isArray(value.paletteHex) || value.paletteHex.length < 1 || !value.paletteHex.every(isHexColor)) return false;
+  if (!unitInterval(value.roughness) || !unitInterval(value.metalness)) return false;
+  if (value.emissiveHex !== undefined && !isHexColor(value.emissiveHex)) return false;
+  return value.emissiveIntensity === undefined || nonNegativeNumber(value.emissiveIntensity);
+}
+
+function isHalo(value: unknown): boolean {
+  return isRecord(value)
+    && isHexColor(value.colorHex)
+    && unitInterval(value.opacity)
+    && positiveNumber(value.scale)
+    && Number(value.scale) > 1;
+}
+
+function isBasicRings(value: unknown): boolean {
+  return isRings(value) && (value.colorHex === undefined || isHexColor(value.colorHex));
 }
 
 function isAtmosphere(value: unknown): boolean {
