@@ -15,7 +15,7 @@
     "profile:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts",
     "reference:prepare-earth": "python tools/reference-etl/prepare_etopo_earth.py",
     "reference:prepare-jupiter": "python tools/reference-etl/prepare_jupiter_reference.py",
-    "reference:prepare-mars": "python tools/reference-etl/prepare_mars_reference.py",
+    "reference:prepare-mars": "python tools/reference-etl/prepare_mars_reference.py --viking-source-url https://upload.wikimedia.org/wikipedia/commons/1/1f/Mars_Viking_MDIM21_ClrMosaic_1km.jpg",
     "reference:build-sol": "tsx --tsconfig tsconfig.scripts.json scripts/build-earth-reference.ts",
     "reference:build-earth": "tsx --tsconfig tsconfig.scripts.json scripts/build-earth-reference.ts",
     "reference:pipeline-sol": "tsx --tsconfig tsconfig.scripts.json scripts/build-sol-reference-pipeline.ts",
