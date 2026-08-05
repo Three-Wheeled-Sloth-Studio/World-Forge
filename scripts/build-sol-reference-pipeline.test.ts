@@ -1,0 +1,70 @@
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import {
+  buildSolReferencePipelineCommands,
+  parseSolReferencePipelineOptions,
+} from './build-sol-reference-pipeline';
+
+describe('Sol reference pipeline', () => {
+  it('uses the accepted Earth and Jupiter integration baseline by default', () => {
+    const repositoryRoot = path.resolve('/workspace/world-forge');
+    const options = parseSolReferencePipelineOptions([], repositoryRoot, repositoryRoot);
+    expect(options.earthWidth).toBe(512);
+    expect(options.earthHeight).toBe(256);
+    expect(options.topologyResolution).toBe(64);
+    expect(options.outputFile).toBe(path.join(repositoryRoot, '.local', 'reference-data', 'sol-earth-reference.wforge'));
+
+    const commands = buildSolReferencePipelineCommands(options, {}, 'linux');
+    expect(commands.map((command) => command.stage)).toEqual([
+      'prepare-earth',
+      'prepare-jupiter',
+      'build-sol-package',
+    ]);
+    expect(commands[0].args).toContain('512');
+    expect(commands[0].args).toContain('256');
+    expect(commands[0].args).toContain('64');
+    expect(commands[2]).toMatchObject({ command: 'npm' });
+    expect(commands[2].args).toContain('reference:build-sol');
+  });
+
+  it('supports prepared bundles without rerunning source ETL', () => {
+    const repositoryRoot = path.resolve('/workspace/world-forge');
+    const options = parseSolReferencePipelineOptions([
+      '--prepared-only',
+      '--earth-bundle', 'prepared/earth',
+      '--jupiter-bundle', 'prepared/jupiter',
+      '--output', 'out/sol.wforge',
+    ], repositoryRoot, repositoryRoot);
+
+    const commands = buildSolReferencePipelineCommands(options, {}, 'win32');
+    expect(commands).toHaveLength(1);
+    expect(commands[0].stage).toBe('build-sol-package');
+    expect(commands[0].command).toBe('npm.cmd');
+    expect(commands[0].args).toEqual([
+      'run', 'reference:build-sol', '--',
+      '--input', path.join(repositoryRoot, 'prepared', 'earth'),
+      '--jupiter-input', path.join(repositoryRoot, 'prepared', 'jupiter'),
+      '--output', path.join(repositoryRoot, 'out', 'sol.wforge'),
+    ]);
+  });
+
+  it('rejects invalid Earth aspect ratios and contradictory source options', () => {
+    const repositoryRoot = path.resolve('/workspace/world-forge');
+    expect(() => parseSolReferencePipelineOptions([
+      '--width', '512',
+      '--height', '512',
+    ], repositoryRoot, repositoryRoot)).toThrow(/2:1/);
+
+    expect(() => parseSolReferencePipelineOptions([
+      '--prepared-only',
+      '--earth-source', 'earth.tif',
+    ], repositoryRoot, repositoryRoot)).toThrow(/cannot be combined/);
+  });
+
+  it('rejects unknown arguments instead of silently changing the build', () => {
+    const repositoryRoot = path.resolve('/workspace/world-forge');
+    expect(() => parseSolReferencePipelineOptions([
+      '--mystery-mode',
+    ], repositoryRoot, repositoryRoot)).toThrow(/Unknown Sol reference pipeline argument/);
+  });
+});
