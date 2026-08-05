@@ -12,7 +12,7 @@ import {
 import { createSolReferenceProject } from './solReferenceProject';
 
 describe('reference raster surface attachment', () => {
-  it('preserves prepared body assets without enabling unsupported views early', () => {
+  it('preserves prepared body assets and enables only the implemented Tier 2 views', () => {
     const project = createSolReferenceProject(earthSurface());
     const albedo = Uint8Array.from([0x00, 0xf8, 0xe0, 0x07]);
     const elevation = Uint8Array.from([0x18, 0xfc, 0xd0, 0x07]);
@@ -32,8 +32,8 @@ describe('reference raster surface attachment', () => {
     expect(mars?.detail).toEqual(detail);
     expect(mars?.dataOrigin).toBe('imported');
     expect(mars?.capabilities).toEqual({
-      globe: false,
-      map: false,
+      globe: true,
+      map: true,
       explorer: false,
       irregularShape: false,
     });
