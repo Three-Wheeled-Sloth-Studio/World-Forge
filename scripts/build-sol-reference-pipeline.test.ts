@@ -12,6 +12,7 @@ describe('Sol reference pipeline', () => {
     expect(options.earthWidth).toBe(512);
     expect(options.earthHeight).toBe(256);
     expect(options.topologyResolution).toBe(64);
+    expect(options.bodyBundleDirectories).toEqual([]);
     expect(options.outputFile).toBe(path.join(repositoryRoot, '.local', 'reference-data', 'sol-earth-reference.wforge'));
 
     const commands = buildSolReferencePipelineCommands(options, { NODE: 'node-test' });
@@ -40,9 +41,15 @@ describe('Sol reference pipeline', () => {
       '--prepared-only',
       '--earth-bundle', 'prepared/earth',
       '--jupiter-bundle', 'prepared/jupiter',
+      '--body-input', 'prepared/mars',
+      '--body-input', 'prepared/venus',
       '--output', 'out/sol.wforge',
     ], repositoryRoot, repositoryRoot);
 
+    expect(options.bodyBundleDirectories).toEqual([
+      path.join(repositoryRoot, 'prepared', 'mars'),
+      path.join(repositoryRoot, 'prepared', 'venus'),
+    ]);
     const commands = buildSolReferencePipelineCommands(options, { NODE: 'C:\\Program Files\\nodejs\\node.exe' });
     expect(commands).toHaveLength(1);
     expect(commands[0].stage).toBe('build-sol-package');
@@ -54,6 +61,8 @@ describe('Sol reference pipeline', () => {
       path.join(repositoryRoot, 'scripts', 'build-earth-reference.ts'),
       '--input', path.join(repositoryRoot, 'prepared', 'earth'),
       '--jupiter-input', path.join(repositoryRoot, 'prepared', 'jupiter'),
+      '--body-input', path.join(repositoryRoot, 'prepared', 'mars'),
+      '--body-input', path.join(repositoryRoot, 'prepared', 'venus'),
       '--output', path.join(repositoryRoot, 'out', 'sol.wforge'),
     ]);
   });
@@ -71,8 +80,13 @@ describe('Sol reference pipeline', () => {
     ], repositoryRoot, repositoryRoot)).toThrow(/cannot be combined/);
   });
 
-  it('rejects unknown arguments instead of silently changing the build', () => {
+  it('rejects duplicate body directories and unknown arguments', () => {
     const repositoryRoot = path.resolve('/workspace/world-forge');
+    expect(() => parseSolReferencePipelineOptions([
+      '--body-input', 'prepared/mars',
+      '--body-input', 'prepared/mars',
+    ], repositoryRoot, repositoryRoot)).toThrow(/must be unique/);
+
     expect(() => parseSolReferencePipelineOptions([
       '--mystery-mode',
     ], repositoryRoot, repositoryRoot)).toThrow(/Unknown Sol reference pipeline argument/);
