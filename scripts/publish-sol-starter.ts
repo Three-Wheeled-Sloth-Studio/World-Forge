@@ -22,6 +22,12 @@ export function parchmentCandidateRoots(
   ]);
 }
 
+export function parchmentChildEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const childEnvironment = { ...env };
+  delete childEnvironment.TSX_TSCONFIG_PATH;
+  return childEnvironment;
+}
+
 export async function resolveParchmentRoot(
   worldForgeRoot: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -87,7 +93,12 @@ export async function publishSolStarter(
     pipelineOptions.outputFile,
   ];
   console.log(`\n[publish-parchment-starter] ${process.execPath} ${args.map(quoteForLog).join(' ')}`);
-  await runCommand(process.execPath, args, parchmentRoot, env);
+  await runCommand(
+    process.execPath,
+    args,
+    parchmentRoot,
+    parchmentChildEnvironment(env),
+  );
 
   console.log('\nPublished the enriched Sol starter package for Parchment Worlds.');
   console.log(`World Forge package: ${pipelineOptions.outputFile}`);
