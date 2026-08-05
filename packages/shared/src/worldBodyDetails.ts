@@ -24,6 +24,32 @@ export type WorldBodyAssetRole =
   | 'material-map'
   | 'feature-catalog';
 
+export type NumericRasterDataType = 'uint8' | 'uint16' | 'int16' | 'float32';
+export type NumericRasterByteOrder = 'little-endian' | 'big-endian';
+export type NumericRasterInterpretation = 'absolute-elevation' | 'radius' | 'normalized-displacement' | 'scalar';
+
+export type NumericRasterRangeV1 = {
+  min: number;
+  max: number;
+};
+
+export type NumericRasterNoDataV1 =
+  | { kind: 'value'; value: number }
+  | { kind: 'mask-asset'; assetId: string };
+
+export type NumericRasterDescriptorV1 = {
+  dataType: NumericRasterDataType;
+  byteOrder?: NumericRasterByteOrder;
+  units: string;
+  scale: number;
+  offset: number;
+  datum?: string;
+  noData?: NumericRasterNoDataV1;
+  sourceRange?: NumericRasterRangeV1;
+  preparedRange?: NumericRasterRangeV1;
+  interpretation: NumericRasterInterpretation;
+};
+
 export type WorldBodyAssetRefV1 = {
   assetId: string;
   role: WorldBodyAssetRole;
@@ -31,6 +57,7 @@ export type WorldBodyAssetRefV1 = {
   mediaType: string;
   encoding?: string;
   resolution?: Resolution;
+  numericRaster?: NumericRasterDescriptorV1;
   byteLength?: number;
   sha256?: string;
   optional?: boolean;
@@ -192,9 +219,40 @@ function isAssetRef(value: unknown): boolean {
   if (!safeLogicalPath(value.logicalPath)) return false;
   if (value.encoding !== undefined && !cleanText(value.encoding)) return false;
   if (value.resolution !== undefined && !isResolution(value.resolution)) return false;
+  if (value.numericRaster !== undefined) {
+    if (!['elevation', 'radial-displacement', 'roughness', 'material-map'].includes(String(value.role))) return false;
+    if (!isResolution(value.resolution) || !isNumericRasterDescriptor(value.numericRaster)) return false;
+  }
   if (value.byteLength !== undefined && !nonNegativeInteger(value.byteLength)) return false;
   if (value.sha256 !== undefined && !isSha256(value.sha256)) return false;
   return value.optional === undefined || typeof value.optional === 'boolean';
+}
+
+function isNumericRasterDescriptor(value: unknown): value is NumericRasterDescriptorV1 {
+  if (!isRecord(value)) return false;
+  if (!['uint8', 'uint16', 'int16', 'float32'].includes(String(value.dataType))) return false;
+  if (!cleanText(value.units) || !finiteNumber(value.scale) || Number(value.scale) === 0 || !finiteNumber(value.offset)) return false;
+  if (!['absolute-elevation', 'radius', 'normalized-displacement', 'scalar'].includes(String(value.interpretation))) return false;
+  const multiByte = value.dataType !== 'uint8';
+  if (multiByte && !['little-endian', 'big-endian'].includes(String(value.byteOrder))) return false;
+  if (!multiByte && value.byteOrder !== undefined) return false;
+  if (value.datum !== undefined && !cleanText(value.datum)) return false;
+  if (value.noData !== undefined && !isNumericRasterNoData(value.noData)) return false;
+  if (value.sourceRange !== undefined && !isNumericRasterRange(value.sourceRange)) return false;
+  return value.preparedRange === undefined || isNumericRasterRange(value.preparedRange);
+}
+
+function isNumericRasterNoData(value: unknown): value is NumericRasterNoDataV1 {
+  if (!isRecord(value)) return false;
+  if (value.kind === 'value') return finiteNumber(value.value);
+  return value.kind === 'mask-asset' && Boolean(cleanText(value.assetId));
+}
+
+function isNumericRasterRange(value: unknown): value is NumericRasterRangeV1 {
+  return isRecord(value)
+    && finiteNumber(value.min)
+    && finiteNumber(value.max)
+    && Number(value.max) >= Number(value.min);
 }
 
 function isShape(value: unknown): value is WorldBodyShapeModelV1 {
