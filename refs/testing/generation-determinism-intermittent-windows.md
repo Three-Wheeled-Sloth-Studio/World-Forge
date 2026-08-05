@@ -1,9 +1,9 @@
 # Intermittent Windows generation-determinism failure
 
-Updated: 2026-08-04
-Status: Not reproduced from a clean committed checkout; detailed regression guardrail added
+Updated: 2026-08-05
+Status: Determinism failure not reproduced; local correctness timeout stabilized
 
-## Reported failure
+## Reported determinism failure
 
 A local full-suite run on Windows reported one failure:
 
@@ -35,7 +35,7 @@ The inspected path established that:
 - projection lookup and cubed-sphere topology caches are the primary shared mutable-state boundaries;
 - the generator still contains sine-hash noise functions that deserve long-term replay-portability scrutiny, but there was no evidence justifying an output-changing replacement as part of this incident.
 
-## Added guardrail
+## Added determinism guardrail
 
 `packages/generator-core/src/generatorDeterminismRegression.test.ts` now verifies, across repeated same-seed runs:
 
@@ -75,9 +75,42 @@ The ordinary Ubuntu validation path also passed with the detailed guardrail enab
 
 The temporary diagnostic workflow was removed after the matrix completed. It is not part of the permanent CI footprint.
 
+## Follow-up local timeout
+
+After updating to the guarded suite, a local Windows full-suite run reported a different failure:
+
+```text
+packages/generator-core/src/exporters.integration.test.ts
+world export integrations > exports structured JSON and simplified SVG
+Error: Test timed out in 5000ms.
+```
+
+This was a timeout, not an assertion or export-content failure.
+
+Clean Windows Node 22 evidence from run `30971768672` showed:
+
+- the exporter integration test completed in approximately `2.18s`;
+- the original same-seed determinism test completed in approximately `3.56s`;
+- the detailed determinism guardrail completed in approximately `3.90s`;
+- the full suite completed in `42.22s`, with `85.84s` aggregate test time.
+
+The reported local run completed in `51.83s`, with `185.01s` aggregate test time. That indicates materially higher parallel CPU contention even though wall-clock duration remained reasonable. Several valid generator-heavy tests therefore operated too close to Vitest's generic `5s` default ceiling.
+
+`vite.config.ts` now sets:
+
+```ts
+testTimeout: 15_000
+```
+
+This separates correctness from performance:
+
+- deterministic generation and exporter integration tests receive enough local-runner headroom;
+- dedicated generation profiling, production-stage attribution, and performance plans remain responsible for identifying actual performance regressions;
+- no generator output, export behavior, replay signature, or accepted algorithm changed.
+
 ## Current conclusion
 
-The reported failure is not reproducible from the committed tree under:
+The reported determinism failure is not reproducible from the committed tree under:
 
 - Windows Node 20;
 - Windows Node 22;
@@ -86,7 +119,9 @@ The reported failure is not reproducible from the committed tree under:
 - full-suite execution;
 - cold and warm projection-cache states.
 
-Do not change generator algorithms or replay signatures based only on the single unreproduced observation.
+The later exporter failure was a correctness-test timeout under local parallel contention, not evidence of incorrect export output.
+
+Do not change generator algorithms or replay signatures based only on either unreproduced observation.
 
 ## Required local follow-up
 
@@ -97,7 +132,7 @@ git status --short
 git pull
 node --version
 npm ci
-npx vitest run packages/generator-core/src/generator.test.ts packages/generator-core/src/generatorDeterminismRegression.test.ts --reporter=verbose
+npx vitest run packages/generator-core/src/generator.test.ts packages/generator-core/src/generatorDeterminismRegression.test.ts packages/generator-core/src/exporters.integration.test.ts --reporter=verbose
 npm test
 ```
 
@@ -117,4 +152,5 @@ That evidence is sufficient to identify whether the owner is configuration mutat
 - Do not weaken or remove deterministic-generation assertions.
 - Do not update an expected hash; this test compares two runs, not a stored baseline.
 - Do not replace core noise functions or change generator versions without output-equivalence and replay-compatibility review.
+- Do not treat a correctness-test timeout as a performance acceptance result.
 - Do not proceed with unrelated extraction or body-ingestion implementation while the local full suite is red.
