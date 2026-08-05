@@ -1,4 +1,4 @@
-certifi>=2024.7.4
+truststore>=0.10.4
 numpy>=2.0,<3
 rasterio>=1.4,<2
 Pillow>=11,<13
