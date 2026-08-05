@@ -12,6 +12,7 @@ import { GlobeViewer as GeographicGlobeViewer } from './GeographicGlobeViewer';
 import type { GlobeDebugMode, GlobeFocusTarget } from './GeographicGlobeViewer';
 import { resolveGlobeBodyTarget } from './globeBodyTarget';
 import { AtmosphericGlobeViewer } from './AtmosphericGlobeViewer';
+import { BasicBodyGlobeViewer } from './BasicBodyGlobeViewer';
 import { ReferenceRasterGlobeViewer } from './ReferenceRasterGlobeViewer';
 
 export type { GlobeDebugMode, GlobeFocusTarget } from './GeographicGlobeViewer';
@@ -84,6 +85,24 @@ export function GlobeViewer(props: GlobeViewerProps) {
   ) {
     return (
       <AtmosphericGlobeViewer
+        project={props.project}
+        orbitalContext={props.orbitalContext}
+        target={target}
+        simulationClock={props.simulationClock}
+        zoom={props.zoom}
+        onZoom={props.onZoom}
+        onTargetBodyChange={props.onTargetBodyChange}
+      />
+    );
+  }
+
+  if (
+    props.orbitalContext
+    && target?.mode === 'basic-presentation-body'
+    && target.basicDetail
+  ) {
+    return (
+      <BasicBodyGlobeViewer
         project={props.project}
         orbitalContext={props.orbitalContext}
         target={target}
