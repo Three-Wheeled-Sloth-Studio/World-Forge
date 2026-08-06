@@ -7,7 +7,10 @@ import {
   type WorldProject,
 } from '@world-forge/shared';
 import type { GeographicAdaptiveHexScale } from '@world-forge/shared/geographicHierarchy';
-import type { GeographicTileWindowTile } from '@world-forge/shared/geographicTileWindow';
+import type {
+  GeographicRiverTerminus,
+  GeographicTileWindowTile,
+} from '@world-forge/shared/geographicTileWindow';
 import { worldHexCenter, worldHexCoordinateForLatLon } from './geographicAdaptiveScale';
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
@@ -58,6 +61,7 @@ export function assignCanonicalRiverEdges(
   for (const river of project.primaryWorld.rivers) {
     const points = riverGeographicPoints(river, project, topology);
     if (points.length < 2) continue;
+    const canonicalRoute = geographicPathTileCoordinates(points, scale);
     const visibleRoute: TileCoordinate[] = [];
 
     for (let segmentIndex = 1; segmentIndex < points.length; segmentIndex += 1) {
@@ -70,7 +74,14 @@ export function assignCanonicalRiverEdges(
     }
 
     if (visibleRoute.length < 2) continue;
-    applyRouteEdges(visibleRoute, tiles, scale, true);
+    applyRouteEdges(
+      visibleRoute,
+      tiles,
+      scale,
+      true,
+      river.terminus,
+      sameCoordinate(visibleRoute[0], canonicalRoute[0]),
+    );
     for (const coordinate of visibleRoute) majorChannel.add(coordinateKey(coordinate));
     assignDeterministicTributaries(river, visibleRoute, majorChannel, tiles, context);
   }
@@ -165,19 +176,20 @@ function assignDeterministicTributaries(
   tiles: Map<string, GeographicTileWindowTile>,
   context: RouteContext,
 ): void {
-  if (context.refinementRatio < 1.8 || route.length < 6) return;
-  const spacing = clampInteger(Math.round(11 - Math.log2(context.refinementRatio + 1)), 5, 10);
-  const chance = clamp(0.1 + Math.log2(context.refinementRatio + 1) * 0.07, 0.12, 0.42);
-  const maximumBranches = clampInteger(Math.ceil(route.length / 18), 1, 5);
+  if (context.refinementRatio < 1.55 || route.length < 5) return;
+  const refinement = Math.log2(context.refinementRatio + 1);
+  const spacing = clampInteger(Math.round(8 - refinement), 3, 7);
+  const chance = clamp(0.42 + refinement * 0.09, 0.48, 0.82);
+  const maximumBranches = clampInteger(Math.ceil(route.length / 8), 2, 12);
   let branches = 0;
 
-  for (let index = spacing; index < route.length - 2 && branches < maximumBranches; index += spacing) {
+  for (let index = Math.max(2, spacing - 1); index < route.length - 1 && branches < maximumBranches; index += spacing) {
     const anchor = route[index];
     const anchorSample = terrainSample(anchor, context);
     const branchKey = `${river.id}:tributary:${index}`;
-    const strengthFactor = clamp(anchorSample.riverStrength / 0.5, 0.35, 1);
+    const strengthFactor = clamp(anchorSample.riverStrength / 0.42, 0.55, 1);
     if (hashUnit(`${context.project.seed}:${context.scale.id}:${branchKey}`) > chance * strengthFactor) continue;
-    const source = selectTributarySource(anchor, majorChannel, context, branchKey);
+    const source = selectTributarySource(anchor, majorChannel, tiles, context, branchKey);
     if (!source) continue;
     const sourcePoint = worldHexCenter(source.q, source.r, context.scale.worldColumns, context.scale.worldRows);
     const anchorPoint = worldHexCenter(anchor.q, anchor.r, context.scale.worldColumns, context.scale.worldRows);
@@ -186,7 +198,7 @@ function assignDeterministicTributaries(
     const mergeIndex = branch.findIndex((entry, routeIndex) => routeIndex > 0 && majorChannel.has(coordinateKey(entry)));
     if (mergeIndex >= 1) branch = branch.slice(0, mergeIndex + 1);
     if (branch.length < 2 || !routeTouchesTileWindow(branch, tiles, context.scale)) continue;
-    applyRouteEdges(branch, tiles, context.scale, false);
+    applyRouteEdges(branch, tiles, context.scale, false, null, true);
     branches += 1;
   }
 }
@@ -194,13 +206,15 @@ function assignDeterministicTributaries(
 function selectTributarySource(
   anchor: TileCoordinate,
   majorChannel: Set<string>,
+  tiles: Map<string, GeographicTileWindowTile>,
   context: RouteContext,
   branchKey: string,
 ): TileCoordinate | null {
-  const radius = clampInteger(Math.round(2 + Math.log2(context.refinementRatio + 1)), 2, 6);
+  const radius = clampInteger(Math.round(2 + Math.log2(context.refinementRatio + 1)), 2, 7);
   const anchorSample = terrainSample(anchor, context);
   const candidates = coordinatesWithinRadius(anchor, radius, context.scale)
     .filter((entry) => hexDistance(entry, anchor, context.scale.worldColumns) >= 2)
+    .filter((entry) => tiles.has(tileId(context.scale, entry.q, entry.r)))
     .filter((entry) => !majorChannel.has(coordinateKey(entry)))
     .map((entry) => ({ entry, sample: terrainSample(entry, context) }))
     .filter(({ sample }) => !sample.water && sample.elevation >= anchorSample.elevation - 0.005)
@@ -220,7 +234,13 @@ function applyRouteEdges(
   tiles: Map<string, GeographicTileWindowTile>,
   scale: GeographicAdaptiveHexScale,
   allowNavigable: boolean,
+  terminus: GeographicRiverTerminus | null,
+  markSource: boolean,
 ): void {
+  const firstTile = tiles.get(tileId(scale, route[0].q, route[0].r));
+  if (markSource && firstTile && !firstTile.water) firstTile.riverSource = true;
+  let markedMouth = false;
+
   for (let index = 1; index < route.length; index += 1) {
     const previous = tiles.get(tileId(scale, route[index - 1].q, route[index - 1].r));
     const next = tiles.get(tileId(scale, route[index].q, route[index].r));
@@ -228,8 +248,26 @@ function applyRouteEdges(
     const direction = directionBetween(previous, next, scale);
     if (!direction) continue;
     const navigable = allowNavigable && riverConnectionIsNavigable(previous, next);
+
+    if (previous.water !== next.water) {
+      const land = previous.water ? next : previous;
+      const mouthEdge = previous.water ? direction.opposite : direction.edge;
+      addRiverEdge(land, mouthEdge, navigable);
+      addUnique(land.riverMouthEdges, mouthEdge);
+      land.riverTerminus = terminus ?? 'ocean';
+      markedMouth = true;
+      continue;
+    }
+
     if (!previous.water) addRiverEdge(previous, direction.edge, navigable);
     if (!next.water) addRiverEdge(next, direction.opposite, navigable);
+  }
+
+  if (!markedMouth && terminus && terminus !== 'ocean') {
+    const last = [...route].reverse()
+      .map((coordinate) => tiles.get(tileId(scale, coordinate.q, coordinate.r)))
+      .find((tile) => tile && !tile.water);
+    if (last) last.riverTerminus = terminus;
   }
 }
 
@@ -246,9 +284,9 @@ function finalizeRiverTiles(
     if (!tile.features.includes('navigable-river')) tile.features.push('navigable-river');
     tile.morphology = 'navigable-river';
     tile.terrainType = hexTerrainTypeNameFromRules(tile.biome, tile.morphology);
-    const dominant = estimatedRiverWidthMiles(tile.riverStrength) >= scale.nominalHexWidthMiles * 0.72;
-    tile.navigableRiverCenter = dominant;
-    if (!dominant || tile.ice) continue;
+    const physicallyDominant = estimatedRiverWidthMiles(tile.riverStrength) >= scale.nominalHexWidthMiles;
+    tile.navigableRiverCenter = physicallyDominant;
+    if (!physicallyDominant || tile.ice) continue;
     tile.water = true;
     tile.biome = 'marine';
     tile.features = tile.features.filter((feature) => (
@@ -411,7 +449,7 @@ function directionBetween(
 function riverConnectionIsNavigable(left: GeographicTileWindowTile, right: GeographicTileWindowTile): boolean {
   const stronger = Math.max(left.riverStrength, right.riverStrength);
   const weaker = Math.min(left.riverStrength, right.riverStrength);
-  return stronger >= 0.42 && (left.water || right.water || weaker >= 0.3);
+  return stronger >= 0.68 && (left.water || right.water || weaker >= 0.48);
 }
 
 function addRiverEdge(tile: GeographicTileWindowTile, edge: HexTileEdge, navigable: boolean): void {
@@ -469,8 +507,8 @@ function normalizeLongitude(longitude: number): number {
   return value;
 }
 
-function sameCoordinate(left: TileCoordinate | undefined, right: TileCoordinate): boolean {
-  return Boolean(left && left.q === right.q && left.r === right.r);
+function sameCoordinate(left: TileCoordinate | undefined, right: TileCoordinate | undefined): boolean {
+  return Boolean(left && right && left.q === right.q && left.r === right.r);
 }
 
 function coordinateKey(coordinate: TileCoordinate): string {
