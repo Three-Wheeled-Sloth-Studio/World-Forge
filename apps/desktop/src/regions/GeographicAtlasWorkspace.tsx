@@ -149,6 +149,7 @@ export function GeographicAtlasWorkspace({
 
   const selectedMacro = preview?.macroAreaSet.macroAreas.find((entry) => entry.id === controller.selectedMacroId) ?? null;
   const selectedChildIndex = controller.partition?.children.findIndex((entry) => entry.id === controller.selectedChildId) ?? -1;
+  const naturalPresentationActive = controller.presentation !== 'terrain' && controller.presentation !== 'overlay';
   const compactInspector = current
     ? {
         title: current.label,
@@ -182,9 +183,8 @@ export function GeographicAtlasWorkspace({
         </nav>
         {current && (
           <div className="geographic-drilldown-presentations" role="group" aria-label="Drill-down map presentation">
-            <button type="button" className={controller.presentation === 'auto' ? 'active' : ''} onClick={() => controller.setPresentation('auto')}>Auto</button>
-            <button type="button" className={controller.presentation === 'terrain' ? 'active' : ''} onClick={() => controller.setPresentation('terrain')}>Terrain + hex</button>
-            <button type="button" className={controller.presentation === 'tiles' ? 'active' : ''} onClick={() => controller.setPresentation('tiles')}>Tiles</button>
+            <button type="button" className={naturalPresentationActive ? 'active' : ''} onClick={() => controller.setPresentation('natural')}>Natural</button>
+            <button type="button" className={controller.presentation === 'terrain' ? 'active' : ''} onClick={() => controller.setPresentation('terrain')}>Terrain</button>
           </div>
         )}
         {inspectorActive && <span className="geographic-drilldown-inspection-chip">Point inspector</span>}
