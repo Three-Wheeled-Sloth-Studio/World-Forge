@@ -4,6 +4,7 @@ import type {
   GeographicTileWindowTile,
 } from '@world-forge/shared/geographicTileWindow';
 import { worldHexCoordinateForLatLon } from '@world-forge/generator-core/geographicAdaptiveScale';
+import { estimatedRiverWidthMiles } from '@world-forge/generator-core/geographicRiverTileProjection';
 import {
   createGeographicWindowTransform,
   type GeographicWindowTransform,
@@ -30,6 +31,7 @@ type TileGeometry = {
 };
 
 const SQRT_THREE = Math.sqrt(3);
+const RIVER_RGB = '68, 178, 226';
 const EDGE_ORDER: HexTileEdge[] = ['ne', 'e', 'se', 'sw', 'w', 'nw'];
 const EDGE_INDEX: Record<HexTileEdge, number> = {
   ne: 0,
@@ -66,7 +68,10 @@ export function renderGeographicTileWindowToCanvas(
 
   const layout = createLayout(window, width, height);
   const byCoordinate = new Map(window.tiles.map((tile) => [`${tile.q},${tile.r}`, tile]));
-  const geometry = window.tiles.map((tile) => tileGeometry(tile, window, layout));
+  const visibleIds = visibleGeographicAtlasTileIds(window);
+  const geometry = window.tiles
+    .filter((tile) => visibleIds.has(tile.id))
+    .map((tile) => tileGeometry(tile, window, layout));
 
   for (const entry of geometry) drawTileFill(context, entry, options, window);
   drawContextVeil(context, geometry);
@@ -84,22 +89,46 @@ export function createGeographicTileWindowCanvasTransform(
   height: number,
 ): GeographicTileWindowCanvasTransform {
   const layout = createLayout(window, width, height);
-  const geometry = window.tiles.map((tile) => tileGeometry(tile, window, layout));
+  const visibleIds = visibleGeographicAtlasTileIds(window);
+  const geometry = window.tiles
+    .filter((tile) => visibleIds.has(tile.id))
+    .map((tile) => tileGeometry(tile, window, layout));
   return createTileCanvasTransform(window, width, height, geometry);
 }
 
-export function atlasRiverCorridorWidthMiles(riverStrength: number, navigable: boolean): number {
-  const normalized = clamp(riverStrength, 0, 1);
-  const majorCorridorWidth = 0.08 + Math.pow(normalized, 1.75) * 9.4;
-  return majorCorridorWidth * (navigable ? 1 : 0.34);
+export function visibleGeographicAtlasTileIds(window: GeographicTileWindow): Set<string> {
+  const byCoordinate = new Map(window.tiles.map((tile) => [`${tile.q},${tile.r}`, tile]));
+  const visible = new Set(window.tiles
+    .filter((tile) => tile.membershipRole === 'parent')
+    .map((tile) => tile.id));
+  let frontier = window.tiles.filter((tile) => tile.membershipRole === 'parent');
+  const contextRings = clampInteger(window.extent.contextPaddingHexes, 0, 2);
+
+  for (let ring = 0; ring < contextRings; ring += 1) {
+    const nextFrontier: GeographicTileWindowTile[] = [];
+    for (const tile of frontier) {
+      for (const edge of EDGE_ORDER) {
+        const neighbor = neighborFor(tile, edge, byCoordinate, window);
+        if (!neighbor || visible.has(neighbor.id)) continue;
+        visible.add(neighbor.id);
+        nextFrontier.push(neighbor);
+      }
+    }
+    frontier = nextFrontier;
+  }
+  return visible;
 }
 
-export function atlasRiverWidthFraction(
+export function atlasRiverDisplayWidthFraction(
   riverStrength: number,
   nominalHexWidthMiles: number,
   navigable: boolean,
 ): number {
-  return atlasRiverCorridorWidthMiles(riverStrength, navigable) / Math.max(0.1, nominalHexWidthMiles);
+  const physicalFraction = estimatedRiverWidthMiles(riverStrength) / Math.max(0.1, nominalHexWidthMiles);
+  if (physicalFraction >= 1) return 1;
+  return navigable
+    ? clamp(0.12 + physicalFraction * 1.9, 0.12, 0.65)
+    : clamp(0.045 + physicalFraction * 0.68, 0.045, 0.22);
 }
 
 export function riverBoundaryRouteVertexIndices(
@@ -301,15 +330,15 @@ function drawRiverNetwork(
   entry: TileGeometry,
   window: GeographicTileWindow,
 ): void {
-  const dominant = riverDominatesTile(entry.tile, window);
+  const dominant = riverDominatesTile(entry.tile);
   const minorEdges = entry.tile.minorRiverEdges.filter((edge) => !entry.tile.navigableRiverEdges.includes(edge));
   if (minorEdges.length > 0) {
     drawRiverConnections(
       context,
       entry,
       minorEdges,
-      riverLineWidth(entry, window, false, false),
-      'rgba(99, 190, 229, 0.86)',
+      riverLineWidth(entry, window, false),
+      `rgba(${RIVER_RGB}, 0.72)`,
       false,
     );
   }
@@ -318,11 +347,12 @@ function drawRiverNetwork(
       context,
       entry,
       entry.tile.navigableRiverEdges,
-      riverLineWidth(entry, window, true, dominant),
-      'rgba(73, 183, 238, 0.98)',
+      riverLineWidth(entry, window, true),
+      `rgba(${RIVER_RGB}, 0.96)`,
       dominant,
     );
   }
+  drawRiverEndpointMarkers(context, entry, window);
 }
 
 function drawRiverConnections(
@@ -396,6 +426,47 @@ function drawBoundaryRiverConnections(
   }
 }
 
+function drawRiverEndpointMarkers(
+  context: CanvasRenderingContext2D,
+  entry: TileGeometry,
+  window: GeographicTileWindow,
+): void {
+  const allEdges = [...new Set([...entry.tile.minorRiverEdges, ...entry.tile.navigableRiverEdges])];
+  const width = riverLineWidth(entry, window, entry.tile.navigableRiverEdges.length > 0);
+  context.save();
+  context.fillStyle = `rgba(${RIVER_RGB}, 0.96)`;
+  context.strokeStyle = 'rgba(22, 80, 105, 0.72)';
+  context.lineWidth = Math.max(0.7, width * 0.12);
+
+  if (entry.tile.riverSource && allEdges.length > 0) {
+    const edge = allEdges[0];
+    const [left, right] = EDGE_VERTICES[edge];
+    const vertex = hashUnit(`river-source:${entry.tile.q}:${entry.tile.r}:${edge}`) < 0.5 ? left : right;
+    const [x, y] = entry.vertices[vertex];
+    context.beginPath();
+    context.arc(x, y, Math.max(1.8, width * 0.28), 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+  }
+
+  for (const edge of entry.tile.riverMouthEdges) {
+    const midpoint = edgeMidpoint(entry, edge);
+    context.beginPath();
+    context.arc(midpoint.x, midpoint.y, Math.max(2.2, width * 0.38), 0, Math.PI * 2);
+    context.fill();
+  }
+
+  if (entry.tile.riverTerminus && entry.tile.riverMouthEdges.length === 0 && allEdges.length > 0) {
+    const edge = allEdges[allEdges.length - 1];
+    const midpoint = edgeMidpoint(entry, edge);
+    context.beginPath();
+    context.ellipse(midpoint.x, midpoint.y, Math.max(2.8, width * 0.5), Math.max(1.8, width * 0.3), 0, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+  }
+  context.restore();
+}
+
 function edgeMidpoint(entry: TileGeometry, edge: HexTileEdge): { x: number; y: number } {
   const [left, right] = EDGE_VERTICES[edge];
   return {
@@ -408,26 +479,18 @@ function riverLineWidth(
   entry: TileGeometry,
   window: GeographicTileWindow,
   navigable: boolean,
-  dominant: boolean,
 ): number {
-  const widthFraction = atlasRiverWidthFraction(
+  const widthFraction = atlasRiverDisplayWidthFraction(
     entry.tile.riverStrength,
     window.scale.nominalHexWidthMiles,
     navigable,
   );
-  const projectedWidth = widthFraction * entry.radius * 1.7;
-  const minimum = navigable ? 1.2 : 0.72;
-  const maximum = dominant ? entry.radius * 1.35 : entry.radius * 0.62;
-  return clamp(projectedWidth, minimum, maximum);
+  const flatToFlatWidth = entry.radius * SQRT_THREE;
+  return Math.max(navigable ? 1.2 : 0.72, widthFraction * flatToFlatWidth);
 }
 
-function riverDominatesTile(tile: GeographicTileWindowTile, window: GeographicTileWindow): boolean {
-  if (tile.navigableRiverEdges.length === 0) return false;
-  return tile.navigableRiverCenter || atlasRiverWidthFraction(
-    tile.riverStrength,
-    window.scale.nominalHexWidthMiles,
-    true,
-  ) >= 0.72;
+function riverDominatesTile(tile: GeographicTileWindowTile): boolean {
+  return tile.navigableRiverCenter && tile.navigableRiverEdges.length > 0;
 }
 
 function drawHexLines(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
@@ -445,7 +508,7 @@ function tileFill(
   presentation: GeographicTileWindowPresentation,
   window: GeographicTileWindow,
 ): string {
-  if (riverDominatesTile(tile, window)) return riverDominantFill(tile, presentation, window);
+  if (riverDominatesTile(tile)) return riverDominantFill(tile, presentation, window);
   if (presentation === 'terrain') return terrainFill(tile);
   const base = naturalBase(tile);
   const elevationLift = clamp((tile.elevation + 0.35) * 0.22, -0.08, 0.16);
@@ -458,20 +521,20 @@ function riverDominantFill(
   presentation: GeographicTileWindowPresentation,
   window: GeographicTileWindow,
 ): string {
-  const dominance = clamp(atlasRiverWidthFraction(
-    tile.riverStrength,
-    window.scale.nominalHexWidthMiles,
-    true,
-  ), 0, 1);
+  const physicalFraction = clamp(
+    estimatedRiverWidthMiles(tile.riverStrength) / Math.max(0.1, window.scale.nominalHexWidthMiles),
+    0,
+    1,
+  );
   const base = presentation === 'terrain' ? '#327492' : '#3d86a8';
-  return adjustHex(base, dominance * 0.06);
+  return adjustHex(base, physicalFraction * 0.06);
 }
 
 function naturalBase(tile: GeographicTileWindowTile): string {
   if (tile.ice) return '#dbe8e8';
   if (tile.water) return tile.morphology === 'coastal' || tile.morphology === 'lake' ? '#397a9b' : '#225776';
   switch (tile.biome) {
-    case 'tundra': return '#9ca99b';
+    case 'tundra': return '#aeb9a2';
     case 'desert': return '#c5a768';
     case 'tropical': return '#3f7f4b';
     case 'grassland': return '#789456';
