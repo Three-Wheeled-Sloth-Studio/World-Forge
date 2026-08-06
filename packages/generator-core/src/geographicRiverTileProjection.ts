@@ -189,7 +189,7 @@ function assignDeterministicTributaries(
     const branchKey = `${river.id}:tributary:${index}`;
     const strengthFactor = clamp(anchorSample.riverStrength / 0.42, 0.55, 1);
     if (hashUnit(`${context.project.seed}:${context.scale.id}:${branchKey}`) > chance * strengthFactor) continue;
-    const source = selectTributarySource(anchor, majorChannel, tiles, context, branchKey);
+    const source = selectTributarySource(anchor, majorChannel, context, branchKey);
     if (!source) continue;
     const sourcePoint = worldHexCenter(source.q, source.r, context.scale.worldColumns, context.scale.worldRows);
     const anchorPoint = worldHexCenter(anchor.q, anchor.r, context.scale.worldColumns, context.scale.worldRows);
@@ -206,7 +206,6 @@ function assignDeterministicTributaries(
 function selectTributarySource(
   anchor: TileCoordinate,
   majorChannel: Set<string>,
-  tiles: Map<string, GeographicTileWindowTile>,
   context: RouteContext,
   branchKey: string,
 ): TileCoordinate | null {
@@ -214,7 +213,6 @@ function selectTributarySource(
   const anchorSample = terrainSample(anchor, context);
   const candidates = coordinatesWithinRadius(anchor, radius, context.scale)
     .filter((entry) => hexDistance(entry, anchor, context.scale.worldColumns) >= 2)
-    .filter((entry) => tiles.has(tileId(context.scale, entry.q, entry.r)))
     .filter((entry) => !majorChannel.has(coordinateKey(entry)))
     .map((entry) => ({ entry, sample: terrainSample(entry, context) }))
     .filter(({ sample }) => !sample.water && sample.elevation >= anchorSample.elevation - 0.005)
