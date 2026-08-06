@@ -118,7 +118,39 @@ refresh_sol_starter.bat
 
 It runs the normal enriched Sol exporter and regenerates Parchment Worlds' bundled `sol-system.pworld`.
 
-## Future return criteria
+## Candidate next slices
+
+### 1. Canonical tile-window geographic drilldown — recommended
+
+World Forge issue #10 is the strongest next product slice.
+
+Why:
+
+- it is already defined as the immediate next geographic increment;
+- it delivers obvious user value beyond global map inspection;
+- it replaces the current soft raster enlargement with deterministic world-anchored tile windows;
+- it establishes the spatial model needed by Explorer, later editors, resources, settlements, and civilization simulation;
+- it is independent of the deferred Sol presentation work.
+
+Best bounded start: WP1 and WP2 from Issue #10 — extract the shared classifier, define the versioned tile-window contract, and prove seam-aware overlapping windows before committing to the full renderer/UI pass.
+
+### 2. Editing and versioning foundation — strategic, but not yet ready
+
+The user direction remains easy-to-do/easy-to-undo editing for coastlines, biomes, and feature placement. This is strategically important, but it lacks a current implementation issue and should begin with a focused planning slice covering revision identity, reversible operations, invalidation, regeneration blending, and `.wforge` persistence.
+
+This becomes substantially easier after canonical tile windows exist, because edits can target stable world coordinates instead of screen pixels or enlarged rasters.
+
+### 3. Active-body and moon-routing cleanup — small tactical slice
+
+World Forge issue #124 still owns generic body continuity and unsupported-view behavior. A narrow slice could diagnose why published moon records do not become Globe targets and close the routing defect without attempting richer art.
+
+This is lower priority unless the goal is to reduce known technical debt. It risks pulling work back into the deliberately deferred Sol visual track.
+
+### 4. Production performance audit store — infrastructure slice
+
+World Forge issue #116 would add a PostgreSQL-backed append-only production timing trail. It is useful for long-term performance governance, but it offers less immediate user value than drilldown or editing and is not required to continue local benchmark work.
+
+## Future return criteria for Sol
 
 Before asking for another complete-Sol acceptance pass:
 
