@@ -1,11 +1,10 @@
+import type { CubedSphereTopology } from '@world-forge/shared';
 import {
-  cubedSphereCellForLonLat,
-  type CubedSphereTopology,
-} from '@world-forge/shared';
-import type { GeographicWindowTransform } from './geographicWindowedMap';
+  topologyCellAtWindowPoint,
+  type GeographicWindowTransform,
+} from './geographicWindowedMap';
 
 const UNASSIGNED_CHILD = 0xffff;
-const DEGREES_TO_RADIANS = Math.PI / 180;
 
 export function drawGeographicChildBoundaryOverlay(
   canvas: HTMLCanvasElement,
@@ -27,15 +26,9 @@ export function drawGeographicChildBoundaryOverlay(
 
   for (let row = 0; row < sampleRows; row += 1) {
     for (let column = 0; column < sampleColumns; column += 1) {
-      const point = transform.canvasPointToGeo(
-        ((column + 0.5) / sampleColumns) * canvas.width,
-        ((row + 0.5) / sampleRows) * canvas.height,
-      );
-      const cell = cubedSphereCellForLonLat(
-        topology,
-        point.longitude * DEGREES_TO_RADIANS,
-        point.latitude * DEGREES_TO_RADIANS,
-      );
+      const canvasX = ((column + 0.5) / sampleColumns) * canvas.width;
+      const canvasY = ((row + 0.5) / sampleRows) * canvas.height;
+      const cell = topologyCellAtWindowPoint(topology, transform, canvasX, canvasY);
       const index = row * sampleColumns + column;
       sampledParent[index] = parentMembership[cell] === 1 ? 1 : 0;
       sampledChildren[index] = childMembership[cell] ?? UNASSIGNED_CHILD;
