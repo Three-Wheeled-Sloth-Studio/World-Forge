@@ -6,11 +6,16 @@ import {
   type WorldProject,
 } from '@world-forge/shared';
 import {
+  CURRENT_GENERATOR_VERSION,
   expectedNamedRiverCount,
   supplementNamedTopologyRivers,
 } from './index';
 
 describe('named topology river promotion', () => {
+  it('uses the resolved-river generator version', () => {
+    expect(CURRENT_GENERATOR_VERSION).toBe('0.1.2-mvp');
+  });
+
   it('promotes an existing signaled drainage path only when it reaches real water', () => {
     const topology = buildCubedSphereTopology(4);
     const drainagePath = longestBreadthFirstPath(topology, 0).slice(0, 7);
