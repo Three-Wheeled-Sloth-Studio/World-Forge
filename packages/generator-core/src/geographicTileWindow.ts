@@ -214,8 +214,11 @@ function classifyTile(
     featureDetails: [...new Set(canonicalDetails)],
     minorRiverEdges: [],
     navigableRiverEdges: [],
+    riverMouthEdges: [],
     ridgeEdges: [],
     navigableRiverCenter: false,
+    riverSource: false,
+    riverTerminus: null,
     riverStrength: round(riverStrength),
     elevation: round(elevation),
     slope: round(surfaceStructure.slopeByCell[cell]),
@@ -320,6 +323,9 @@ function tileWindowSignature(
     add(tile.ridgeEdges.join(','));
     add(tile.minorRiverEdges.join(','));
     add(tile.navigableRiverEdges.join(','));
+    add(tile.riverMouthEdges.join(','));
+    add(tile.riverSource ? 1 : 0);
+    add(tile.riverTerminus ?? 'none');
   }
   return `wftw-v1-${hash.toString(16).padStart(8, '0')}`;
 }
