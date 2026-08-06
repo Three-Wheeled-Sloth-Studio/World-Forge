@@ -5,6 +5,7 @@ import { generateProject } from './index';
 import {
   estimatedRiverWidthMiles,
   geographicPathTileCoordinates,
+  geographicTileCoordinateDistance,
 } from './geographicRiverTileProjection';
 import { generateGeographicTileWindow } from './geographicTileWindow';
 
@@ -75,6 +76,24 @@ describe('geographic river tile projection', () => {
     expect(route.length).toBeLessThan(8);
     expect(route.some((coordinate) => coordinate.q === 0)).toBe(true);
     expect(route.some((coordinate) => coordinate.q >= 358)).toBe(true);
+  });
+
+  it('fills every projected route gap with adjacent world-relative hexes', () => {
+    const scale = { worldColumns: 144, worldRows: 72 };
+    const route = geographicPathTileCoordinates([
+      { latitude: 54, longitude: -132 },
+      { latitude: 21, longitude: -58 },
+      { latitude: -18, longitude: 23 },
+    ], scale);
+
+    expect(route.length).toBeGreaterThan(8);
+    for (let index = 1; index < route.length; index += 1) {
+      expect(geographicTileCoordinateDistance(
+        route[index - 1],
+        route[index],
+        scale.worldColumns,
+      )).toBe(1);
+    }
   });
 
   it('uses a monotonic bounded physical-width estimate for scale-aware river presentation', () => {
