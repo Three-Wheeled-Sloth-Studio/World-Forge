@@ -3,9 +3,10 @@ import type { GeographicAdaptiveHexScale, GeographicHierarchyMapExtent } from '@
 import type { GeographicTileWindow, GeographicTileWindowTile } from '@world-forge/shared/geographicTileWindow';
 import { worldHexCenter } from '@world-forge/generator-core/geographicAdaptiveScale';
 import {
-  atlasRiverWidthFraction,
+  atlasRiverDisplayWidthFraction,
   createGeographicTileWindowCanvasTransform,
   riverBoundaryRouteVertexIndices,
+  visibleGeographicAtlasTileIds,
 } from './geographicTileWindowMap';
 
 const scale: GeographicAdaptiveHexScale = {
@@ -43,7 +44,12 @@ const extent: GeographicHierarchyMapExtent = {
   selectedMembershipFitsMaximum: true,
 };
 
-function tile(q: number, r: number, topologyCell: number): GeographicTileWindowTile {
+function tile(
+  q: number,
+  r: number,
+  topologyCell: number,
+  membershipRole: GeographicTileWindowTile['membershipRole'] = 'parent',
+): GeographicTileWindowTile {
   const center = worldHexCenter(q, r, scale.worldColumns, scale.worldRows);
   return {
     id: `${scale.id}:q${q}:r${r}`,
@@ -52,8 +58,8 @@ function tile(q: number, r: number, topologyCell: number): GeographicTileWindowT
     longitude: center.longitude,
     latitude: center.latitude,
     topologyCell,
-    membershipRole: 'parent',
-    childIndex: topologyCell,
+    membershipRole,
+    childIndex: membershipRole === 'parent' ? topologyCell : null,
     plateId: 0,
     biome: 'grassland',
     morphology: 'flat',
@@ -62,8 +68,11 @@ function tile(q: number, r: number, topologyCell: number): GeographicTileWindowT
     featureDetails: [],
     minorRiverEdges: [],
     navigableRiverEdges: [],
+    riverMouthEdges: [],
     ridgeEdges: [],
     navigableRiverCenter: false,
+    riverSource: false,
+    riverTerminus: null,
     riverStrength: 0,
     elevation: 0.2,
     slope: 0,
@@ -127,6 +136,39 @@ describe('geographic tile-window canvas transform', () => {
     expect(transform.tileAtCanvasPoint(center.x + 24, center.y)?.id).toBe(oddRowTile.id);
     expect(transform.tileAtCanvasPoint(center.x - 24, center.y)?.id).toBe(oddRowTile.id);
   });
+
+  it('keeps a connected coastal halo instead of rendering the full rectangular context field', () => {
+    const haloExtent: GeographicHierarchyMapExtent = {
+      ...extent,
+      qMin: 1,
+      qMax: 5,
+      rMin: 0,
+      rMax: 4,
+      columns: 5,
+      rows: 5,
+      contextPaddingHexes: 1,
+    };
+    const tiles: GeographicTileWindowTile[] = [];
+    let topologyCell = 0;
+    for (let r = haloExtent.rMin; r <= haloExtent.rMax; r += 1) {
+      for (let q = haloExtent.qMin; q <= haloExtent.qMax; q += 1) {
+        tiles.push(tile(q, r, topologyCell, q === 3 && r === 2 ? 'parent' : 'context'));
+        topologyCell += 1;
+      }
+    }
+    const window: GeographicTileWindow = {
+      ...tileWindow(),
+      extent: haloExtent,
+      dimensions: { ...tileWindow().dimensions, columns: 5, rows: 5 },
+      tiles,
+    };
+    const visible = visibleGeographicAtlasTileIds(window);
+
+    expect(visible.size).toBe(7);
+    expect(visible.has(`${scale.id}:q3:r2`)).toBe(true);
+    expect(visible.has(`${scale.id}:q1:r0`)).toBe(false);
+    expect(visible.has(`${scale.id}:q5:r4`)).toBe(false);
+  });
 });
 
 describe('geographic tile-window river presentation', () => {
@@ -136,20 +178,25 @@ describe('geographic tile-window river presentation', () => {
     expect(riverBoundaryRouteVertexIndices('ne', 'sw', false)).toEqual([0, 5, 4]);
   });
 
-  it('makes the same river occupy more of a finer hex', () => {
-    const regional = atlasRiverWidthFraction(0.8, 60, true);
-    const local = atlasRiverWidthFraction(0.8, 12, true);
-    const detail = atlasRiverWidthFraction(0.8, 6, true);
+  it('makes the same river occupy more of a finer hex without filling a subhex channel', () => {
+    const regional = atlasRiverDisplayWidthFraction(0.8, 60, true);
+    const local = atlasRiverDisplayWidthFraction(0.8, 12, true);
+    const detail = atlasRiverDisplayWidthFraction(0.8, 6, true);
 
     expect(local).toBeGreaterThan(regional);
     expect(detail).toBeGreaterThan(local);
-    expect(local).toBeLessThan(0.72);
-    expect(detail).toBeGreaterThan(0.72);
+    expect(detail).toBeLessThanOrEqual(0.65);
+    expect(atlasRiverDisplayWidthFraction(1, 10, true)).toBe(0.65);
   });
 
-  it('keeps minor tributaries visually subordinate to major channels', () => {
-    expect(atlasRiverWidthFraction(0.65, 12, false)).toBeLessThan(
-      atlasRiverWidthFraction(0.65, 12, true),
+  it('reserves full-width treatment for a channel physically wider than the active hex', () => {
+    expect(atlasRiverDisplayWidthFraction(1, 3, true)).toBeLessThan(1);
+    expect(atlasRiverDisplayWidthFraction(1, 2, true)).toBe(1);
+  });
+
+  it('keeps minor tributaries visually subordinate to major channels without changing hue', () => {
+    expect(atlasRiverDisplayWidthFraction(0.65, 12, false)).toBeLessThan(
+      atlasRiverDisplayWidthFraction(0.65, 12, true),
     );
   });
 });
