@@ -15,6 +15,8 @@ import {
 
 export * from './generatorCoreBase';
 
+export const CURRENT_GENERATOR_VERSION = '0.1.2-mvp' as const;
+
 type DownstreamRoute = {
   path: number[];
   index: number;
@@ -30,7 +32,10 @@ export function generateProject(
   input: Partial<GenerationConfig> = {},
   options: GenerateProjectOptions = {},
 ): WorldProject {
-  return supplementNamedTopologyRivers(generateBaseProject(input, options));
+  const project = supplementNamedTopologyRivers(generateBaseProject(input, options));
+  return project.generatorVersion === CURRENT_GENERATOR_VERSION
+    ? project
+    : { ...project, generatorVersion: CURRENT_GENERATOR_VERSION };
 }
 
 export function supplementNamedTopologyRivers(project: WorldProject): WorldProject {
