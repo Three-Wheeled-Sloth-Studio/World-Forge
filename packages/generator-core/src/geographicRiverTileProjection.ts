@@ -10,7 +10,6 @@ import type {
   GeographicRiverTerminus,
   GeographicTileWindowTile,
 } from '@world-forge/shared/geographicTileWindow';
-import { worldHexCoordinateForLatLon } from './geographicAdaptiveScale';
 import {
   assignCanonicalRiverEdges as assignBaseCanonicalRiverEdges,
   estimatedRiverWidthMiles,
