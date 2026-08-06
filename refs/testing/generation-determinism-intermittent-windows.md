@@ -1,11 +1,11 @@
 # Intermittent Windows generation-determinism failure
 
 Updated: 2026-08-05
-Status: Resolved for the current checkpoint; no reproducible determinism defect
+Status: Reopened after an exact local Windows recurrence; root cause not yet isolated
 
 ## Reported determinism failure
 
-A local full-suite run on Windows reported one failure:
+A local full-suite run on Windows reported:
 
 ```text
 packages/generator-core/src/generator.test.ts
@@ -15,14 +15,32 @@ Expected: cbfc0bb6
 Received: 450189e9
 ```
 
-The test generates the same explicit seed and configuration twice in one process and hashes a semantic project signature. This is a genuine determinism invariant; it is not a fixed golden-hash assertion and must not be resolved by changing an expected value or weakening the test.
+The test generates the same explicit seed and configuration twice in one process and hashes a semantic project signature. This is a genuine determinism invariant. It is not a fixed golden-hash assertion and must not be resolved by changing an expected value or weakening the test.
 
-Reported suite result:
+The first report occurred with:
 
 ```text
 Test Files  1 failed | 109 passed (110)
 Tests       1 failed | 399 passed (400)
 ```
+
+## Exact recurrence on the geographic-atlas checkpoint
+
+A later local Windows full-suite run at commit `81be5c06164917d7a0c1a1d47b092b2144fa1499` reproduced the exact same aggregate pair:
+
+```text
+Expected: cbfc0bb6
+Received: 450189e9
+
+Test Files  2 failed | 117 passed (119)
+Tests       2 failed | 424 passed (426)
+```
+
+The second failure in that run was an unrelated platform-assumption bug in `scripts/publish-sol-starter.test.ts`. That test incorrectly required both `Parchment-Worlds` and `parchment-worlds` candidates to survive on Windows even though production code deliberately deduplicates paths case-insensitively there. The publisher test has been corrected separately.
+
+A repository comparison from the last locally accepted checkpoint, `8456a91e05942fa26f98e833ad359f4cc3a4531e`, through the failing atlas head showed no changes to the ordinary `generateProject` algorithm path. Generator-core changes in that range were limited to Sol and reference-raster support. The recurrence therefore reopens the existing environment, cache-state, or runtime-sensitive defect rather than implicating the atlas implementation.
+
+Do not mark this incident resolved again solely because clean Linux CI or a single Windows rerun passes. Resolution now requires either an identified cause or repeated local Windows acceptance with the strengthened cold and warm diagnostics.
 
 ## Initial audit
 
@@ -33,11 +51,11 @@ The inspected path established that:
 - graph and phase timing diagnostics do not feed the semantic signature;
 - each generation creates a fresh seeded PRNG and graph runner;
 - projection lookup and cubed-sphere topology caches are the primary shared mutable-state boundaries;
-- the generator still contains sine-hash noise functions that deserve long-term replay-portability scrutiny, but there was no evidence justifying an output-changing replacement as part of this incident.
+- the generator still contains sine-hash noise functions that deserve long-term replay-portability scrutiny, but there is no evidence justifying an output-changing replacement as part of this incident.
 
-## Added determinism guardrail
+## Strengthened determinism diagnostics
 
-`packages/generator-core/src/generatorDeterminismRegression.test.ts` now verifies, across repeated same-seed runs:
+`packages/generator-core/src/generatorDeterminismRegression.test.ts` verifies, across repeated same-seed runs:
 
 - selected-value stability;
 - metric stability;
@@ -49,11 +67,13 @@ The inspected path established that:
 - cached cubed-sphere topology immutability;
 - cold-versus-warm equirectangular projection-cache equivalence.
 
-Failures report the individual differing component rather than only one aggregate hash.
+The regression previously called `buildCubedSphereTopology` before its first generation. That setup warmed the shared topology cache and could conceal a difference between a truly cold first run and later warm runs. It now performs the first generation before capturing the cached topology, then compares warm generation, cleared projection-cache generation, and topology immutability.
 
-## Clean reproduction matrix
+Failures from this detailed guardrail report the individual differing component rather than only the aggregate `450189e9` versus `cbfc0bb6` pair.
 
-A temporary Windows GitHub Actions workflow ran both the isolated determinism probes and the entire repository test suite on clean `windows-latest` runners.
+## Previous clean reproduction matrix
+
+A temporary Windows GitHub Actions workflow previously ran both the isolated determinism probes and the entire repository test suite on clean `windows-latest` runners.
 
 ### Isolated probes
 
@@ -71,13 +91,13 @@ Run `30971768672`:
 - Node 22: passed;
 - Node 24: passed.
 
-The ordinary Ubuntu validation path also passed with the detailed guardrail enabled.
+The ordinary Ubuntu validation path also passed with the detailed guardrail enabled. The temporary diagnostic workflow was removed after the matrix completed.
 
-The temporary diagnostic workflow was removed after the matrix completed. It is not part of the permanent CI footprint.
+These clean results remain useful evidence that the failure is intermittent or environment-sensitive. They no longer justify calling the incident resolved after the exact local recurrence.
 
-## Follow-up local timeout
+## Previous local timeout follow-up
 
-After updating to the guarded suite, a local Windows full-suite run reported a different failure:
+A separate local Windows full-suite run reported:
 
 ```text
 packages/generator-core/src/exporters.integration.test.ts
@@ -85,32 +105,17 @@ world export integrations > exports structured JSON and simplified SVG
 Error: Test timed out in 5000ms.
 ```
 
-This was a timeout, not an assertion or export-content failure.
-
-Clean Windows Node 22 evidence from run `30971768672` showed:
-
-- the exporter integration test completed in approximately `2.18s`;
-- the original same-seed determinism test completed in approximately `3.56s`;
-- the detailed determinism guardrail completed in approximately `3.90s`;
-- the full suite completed in `42.22s`, with `85.84s` aggregate test time.
-
-The reported local run completed in `51.83s`, with `185.01s` aggregate test time. That indicates materially higher parallel CPU contention even though wall-clock duration remained reasonable. Several valid generator-heavy tests therefore operated too close to Vitest's generic `5s` default ceiling.
-
-`vite.config.ts` now sets:
+That was a timeout, not an assertion or export-content failure. `vite.config.ts` now sets:
 
 ```ts
 testTimeout: 15_000
 ```
 
-This separates correctness from performance:
+This separates correctness from performance. Dedicated generation profiling, production-stage attribution, and performance plans remain responsible for identifying actual regressions. No generator output, export behavior, replay signature, or accepted algorithm changed for the timeout adjustment.
 
-- deterministic generation and exporter integration tests receive enough local-runner headroom;
-- dedicated generation profiling, production-stage attribution, and performance plans remain responsible for identifying actual performance regressions;
-- no generator output, export behavior, replay signature, or accepted algorithm changed.
+## Previous local acceptance
 
-## Local acceptance at current dev head
-
-The product owner's Windows checkout then passed the focused and full-suite paths on the exact current `dev` head:
+The product owner's Windows checkout previously passed the focused path and complete suite at:
 
 ```text
 commit: 8456a91e05942fa26f98e833ad359f4cc3a4531e
@@ -125,8 +130,6 @@ Test Files  2 passed (2)
 Tests       24 passed (24)
 Duration    11.06s
 ```
-
-The same-seed invariant and the detailed config/cache/topology guardrail both passed.
 
 The complete repository suite then passed twice:
 
@@ -144,23 +147,21 @@ Tests       401 passed (401)
 Duration    21.12s
 ```
 
-`git status --short` showed only two pre-existing untracked generation-workflow comparison artifacts under `refs/testing/`. They were not modified or committed as part of this diagnosis.
+That acceptance remains historical evidence, but it is superseded as a resolution claim by the exact later recurrence.
 
 ## Current conclusion
 
-The reported determinism failure is not reproducible from the committed tree under:
+The defect is not reproduced reliably from clean committed checkouts, but it has now occurred twice on the product owner's Windows environment with the exact same pair of aggregate signatures.
 
-- Windows Node 20;
-- Windows Node 22;
-- Windows Node 24;
-- isolated determinism execution;
-- full-suite execution;
-- cold and warm projection-cache states;
-- the product owner's current Windows checkout on Node 24.14.0.
+Current evidence supports these statements:
 
-The later exporter failure was a correctness-test timeout under local parallel contention, not evidence of incorrect export output. The updated timeout and repeated local green runs clear this incident as a blocker.
+- deterministic generation remains a mandatory invariant;
+- the geographic-atlas work did not alter the ordinary generation algorithm path;
+- changing a stored expected hash would be incorrect because the assertion compares two runs in one process;
+- a clean Linux CI result does not disprove the local Windows recurrence;
+- the next recurrence must be captured through the strengthened component-level regression before changing generator algorithms.
 
-Do not change generator algorithms or replay signatures based only on either unreproduced observation.
+The incident remains open until the differing component and owner are identified or a sufficiently repeated local Windows acceptance establishes that a concrete environment or cache correction removed it.
 
 ## Reproduction commands
 
@@ -175,7 +176,7 @@ npx vitest run packages/generator-core/src/generator.test.ts packages/generator-
 npm test
 ```
 
-If the detailed guardrail fails in the future, preserve the complete component-level diff and the output of:
+If the detailed guardrail fails, preserve its complete component-level diff and the output of:
 
 ```powershell
 git rev-parse HEAD
@@ -184,7 +185,7 @@ node --version
 npm --version
 ```
 
-That evidence is sufficient to identify whether the owner is configuration mutation, topology mutation, projection-cache state, a specific semantic layer, or a local dependency/runtime mismatch.
+That evidence is sufficient to identify whether the owner is configuration mutation, topology mutation, projection-cache state, a specific semantic layer, or a local dependency and runtime mismatch.
 
 ## Guardrails
 
@@ -192,4 +193,4 @@ That evidence is sufficient to identify whether the owner is configuration mutat
 - Do not update an expected hash; this test compares two runs, not a stored baseline.
 - Do not replace core noise functions or change generator versions without output-equivalence and replay-compatibility review.
 - Do not treat a correctness-test timeout as a performance acceptance result.
-- Mars/Venus foundation work may resume only after its separate Definition of Ready is explicitly accepted.
+- Do not close this incident again solely from one clean CI or local rerun.
