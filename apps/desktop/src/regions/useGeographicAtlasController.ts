@@ -122,7 +122,7 @@ export function useGeographicAtlasController(
         scale: current.scale,
         extent: current.extent,
         parentMembership: current.membership,
-        childMembership: null,
+        childMembership,
       });
       transform = renderGeographicTileWindowToCanvas(
         canvasRef.current,
@@ -130,20 +130,22 @@ export function useGeographicAtlasController(
         {
           presentation: resolvedPresentation.tilePresentation,
           showHexes,
-          selectedChildIndex: null,
+          selectedChildIndex: selectedChildIndex >= 0 ? selectedChildIndex : null,
         },
       );
     }
 
     transformRef.current = transform;
-    drawGeographicChildBoundaryOverlay(
-      canvasRef.current,
-      preview.regionPreview.topology,
-      transform,
-      current.membership,
-      childMembership,
-      selectedChildIndex >= 0 ? selectedChildIndex : null,
-    );
+    if (resolvedPresentation.mode === 'overlay') {
+      drawGeographicChildBoundaryOverlay(
+        canvasRef.current,
+        preview.regionPreview.topology,
+        transform,
+        current.membership,
+        childMembership,
+        selectedChildIndex >= 0 ? selectedChildIndex : null,
+      );
+    }
     drawLabels(
       canvasRef.current,
       transform,
