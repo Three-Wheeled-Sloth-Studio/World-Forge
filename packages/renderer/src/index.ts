@@ -138,6 +138,10 @@ export type BiomeRenderParityDiagnostics = {
 
 const derivedLayerCache = new WeakMap<PrimaryWorld, DerivedRenderLayers>();
 
+export function naturalLandBiomeForPresentation(biome: string, permanentIce: boolean): string {
+  return biome === 'ice_cap' && !permanentIce ? 'tundra' : biome;
+}
+
 export function createDerivedRenderLayers(world: PrimaryWorld): DerivedRenderLayers {
   const cached = derivedLayerCache.get(world);
   if (cached) return cached;
@@ -306,7 +310,8 @@ export function inspectWorldPoint(
     ? undefined
     : deepTime.deepTime?.biomeDiagnostics?.climateRegimeByCell?.[topologyCell];
   const [lowElevation, highElevation] = percentileRange(world.layers.elevation, 0.02, 0.98);
-  const baseBiomeColor = parseHex(theme.colors[biome] ?? theme.colors.grassland);
+  const presentationBiome = naturalLandBiomeForPresentation(biome, derived.surfacePermanentIce[index] === 1);
+  const baseBiomeColor = parseHex(theme.colors[presentationBiome] ?? theme.colors.grassland);
   const depth = waterDepth01(world, index, 0.34);
   const depthColor = world.layers.water[index] === 1 ? waterRamp(Math.pow(depth, 0.58)) : [0, 0, 0] as [number, number, number];
   const coastalBlend = world.layers.water[index] === 1
@@ -474,21 +479,22 @@ function naturalViewContributions(
     };
   }
 
-  let color = parseHex(theme.colors[biome] ?? theme.colors.grassland);
+  const permanentIce = derived.surfacePermanentIce[index] === 1;
+  const presentationBiome = naturalLandBiomeForPresentation(biome, permanentIce);
+  let color = parseHex(theme.colors[presentationBiome] ?? theme.colors.grassland);
   const landDistance = derived.landDistanceToWater[index];
   const coastT = clamp(1 - landDistance / 8);
   const wetness = world.layers.wetness[index];
-  if (biome === 'wetland') {
+  if (presentationBiome === 'wetland') {
     const marshBase: [number, number, number] = [91, 112, 72];
     const reed: [number, number, number] = [116, 132, 78];
     const mud: [number, number, number] = [93, 82, 57];
     color = mix(marshBase, reed, clamp((wetness - 0.52) / 0.42) * 0.5);
     color = mix(color, mud, coastT * 0.16 + smoothStep(0.78, 1, wetness) * 0.12);
   }
-  const permanentIce = derived.surfacePermanentIce[index] === 1;
-  const coastalMaterial = coastalMaterialColor(biome, permanentIce, wetness);
+  const coastalMaterial = coastalMaterialColor(presentationBiome, permanentIce, wetness);
   const lowCoast = clamp((world.seaLevel + 0.08 - elevation) / 0.13);
-  color = mix(color, coastalMaterial, coastT * Math.max(0.2, lowCoast) * (biome === 'wetland' ? 0.28 : 0.38));
+  color = mix(color, coastalMaterial, coastT * Math.max(0.2, lowCoast) * (presentationBiome === 'wetland' ? 0.28 : 0.38));
 
   const morphology = surfaceMorphologyFromCode(derived.surfaceMorphology[index]);
   const morphologyRock = morphology === 'mountainous' ? 0.72 : morphology === 'rugged' ? 0.42 : morphology === 'rolling' ? 0.16 : 0;
@@ -509,7 +515,7 @@ function naturalViewContributions(
 
   const relief = 0.72 + hillshade * 0.44;
   const elevationTint = 0.94 + landElevation01 * 0.1 + wetness * 0.035;
-  const noiseStrength = biome === 'desert' ? 0.075 : biome === 'wetland' ? 0.034 : 0.047;
+  const noiseStrength = presentationBiome === 'desert' ? 0.075 : presentationBiome === 'wetland' ? 0.034 : 0.047;
   const noise = 1 + (grain - 0.5) * noiseStrength;
   return {
     finalColor: scaleRgb(color, relief * elevationTint * noise),
@@ -616,7 +622,7 @@ export function analyzeBiomeRenderParity(project: WorldProject, theme: MapTheme 
     albedoHash = fingerprintByte(albedoHash, color[2]);
     const actualIce = derived.surfacePermanentIce[index] === 1;
     if (actualIce) actualIceLandCells += 1;
-    if (actualIce || biome === 'ice_cap') continue;
+    if (actualIce) continue;
     nonIceLandCells += 1;
     const maximum = Math.max(color[0], color[1], color[2]);
     const minimum = Math.min(color[0], color[1], color[2]);
@@ -651,7 +657,7 @@ export function worldToSvg(project: WorldProject, theme: MapTheme = cleanGameMap
       const sy = Math.min(height - 1, Math.floor(y * cellH));
       const i = sy * width + sx;
       const color = hexForBiome(world, i, theme);
-      rects.push(`<rect x="${round(x * cellW)}" y="${round(y * cellH)}" width="${round(cellW + 0.5)}" height="${round(cellH + 0.5)}" fill="${color}" />`);
+      rects.push(`<rect x=\"${round(x * cellW)}\" y=\"${round(y * cellH)}\" width=\"${round(cellW + 0.5)}\" height=\"${round(cellH + 0.5)}\" fill=\"${color}\" />`);
     }
   }
   const rivers = world.rivers
@@ -663,12 +669,12 @@ export function worldToSvg(project: WorldProject, theme: MapTheme = cleanGameMap
       return splitWrappedRiverPath(sampledPath, width, 1, 1)
         .map((segment) => {
           const points = segment.map((point) => `${round(point.x - 0.5)},${round(point.y - 0.5)}`).join(' ');
-          return `<polyline points="${points}" fill="none" stroke="${theme.colors.river}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />`;
+          return `<polyline points=\"${points}\" fill=\"none\" stroke=\"${theme.colors.river}\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.85\" />`;
         });
     })
     .flat();
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(project.projectName)}">`,
+    `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${width}\" height=\"${height}\" viewBox=\"0 0 ${width} ${height}\" role=\"img\" aria-label=\"${escapeXml(project.projectName)}\">`,
     `<title>${escapeXml(project.projectName)}</title>`,
     `<desc>Seed ${escapeXml(project.seed)}. Simplified SVG export from World Forge.</desc>`,
     ...rects,
@@ -1426,7 +1432,7 @@ function percentileRange(values: Float32Array, lowPercentile: number, highPercen
 }
 
 function escapeXml(value: string): string {
-  return value.replace(/[<>&'"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[char] ?? char);
+  return value.replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '\"': '&quot;' })[char] ?? char);
 }
 
 function round(value: number): number {
