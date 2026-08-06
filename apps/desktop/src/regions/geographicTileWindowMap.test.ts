@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { GeographicAdaptiveHexScale, GeographicHierarchyMapExtent } from '@world-forge/shared/geographicHierarchy';
 import type { GeographicTileWindow, GeographicTileWindowTile } from '@world-forge/shared/geographicTileWindow';
 import { worldHexCenter } from '@world-forge/generator-core/geographicAdaptiveScale';
-import { createGeographicTileWindowCanvasTransform } from './geographicTileWindowMap';
+import {
+  atlasRiverWidthFraction,
+  createGeographicTileWindowCanvasTransform,
+  riverBoundaryRouteVertexIndices,
+} from './geographicTileWindowMap';
 
 const scale: GeographicAdaptiveHexScale = {
   modelVersion: 'adaptive-world-hex-scale-v1',
@@ -106,6 +110,7 @@ describe('geographic tile-window canvas transform', () => {
     for (const expected of window.tiles) {
       const center = transform.geoToCanvasPoint(expected.latitude, expected.longitude);
       expect(transform.tileAtCanvasPoint(center.x, center.y)?.id).toBe(expected.id);
+      expect(transform.tileAtCanvasPoint(center.x, center.y)?.childIndex).toBe(expected.childIndex);
       expect(transform.canvasPointToGeo(center.x, center.y)).toEqual({
         latitude: expected.latitude,
         longitude: expected.longitude,
@@ -121,5 +126,30 @@ describe('geographic tile-window canvas transform', () => {
 
     expect(transform.tileAtCanvasPoint(center.x + 24, center.y)?.id).toBe(oddRowTile.id);
     expect(transform.tileAtCanvasPoint(center.x - 24, center.y)?.id).toBe(oddRowTile.id);
+  });
+});
+
+describe('geographic tile-window river presentation', () => {
+  it('routes ordinary channels around the hex perimeter rather than through the center', () => {
+    expect(riverBoundaryRouteVertexIndices('ne', 'se', true)).toEqual([1, 2]);
+    expect(riverBoundaryRouteVertexIndices('ne', 'sw', true)).toEqual([1, 2, 3]);
+    expect(riverBoundaryRouteVertexIndices('ne', 'sw', false)).toEqual([0, 5, 4]);
+  });
+
+  it('makes the same river occupy more of a finer hex', () => {
+    const regional = atlasRiverWidthFraction(0.8, 60, true);
+    const local = atlasRiverWidthFraction(0.8, 12, true);
+    const detail = atlasRiverWidthFraction(0.8, 6, true);
+
+    expect(local).toBeGreaterThan(regional);
+    expect(detail).toBeGreaterThan(local);
+    expect(local).toBeLessThan(0.72);
+    expect(detail).toBeGreaterThan(0.72);
+  });
+
+  it('keeps minor tributaries visually subordinate to major channels', () => {
+    expect(atlasRiverWidthFraction(0.65, 12, false)).toBeLessThan(
+      atlasRiverWidthFraction(0.65, 12, true),
+    );
   });
 });
