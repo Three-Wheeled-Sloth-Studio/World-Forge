@@ -9,6 +9,27 @@ World Forge is an open procedural world-generation project for tabletop RPG sett
 - Added saved-world workflows and PNG, JSON, binary, and `.wforge` exports.
 - Added generation diagnostics and performance benchmarking.
 - Continued work on graph-based terrain, hydrology, biome, and surface-classification systems.
+- Proved canonical world-relative geographic hierarchy and tile-window contracts through browser QA.
+
+## Geographic atlas direction
+
+The current flat geographic atlas is now a hierarchy and contract proof rather than the production rendering destination. The accepted next step is a constrained 2.5D atlas architecture with:
+
+- elevation-displaced continuous terrain;
+- orthographic map interaction with optional shallow pitch;
+- Natural and analytical materials over the same geometry;
+- explicit water and terrain-following river layers;
+- region boundaries, selection, labels, and progressive hexes as overlays;
+- continuous zoom instead of hierarchy-triggered renderer switches;
+- a renderer-independent `GeographicScene` contract.
+
+The spike preserves authoritative geography, deterministic generation, `.wforge`, and Parchment integration contracts. It does not turn renderer output into saved-world truth.
+
+See:
+
+- [2.5D atlas architecture decision](refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md)
+- [2.5D atlas architecture spike](refs/planning/geographic-atlas-2.5d-architecture-spike.md)
+- [Current implementation handoff](refs/handoffs/currentHandoff.md)
 
 World Forge is under active development. Generated results, file formats, and controls may change between preview builds.
 
@@ -43,4 +64,4 @@ See [Integrating World Forge with External Games](refs/reference/external-game-i
 
 ## Roadmap
 
-Near-term work focuses on improving physical plausibility, graph-based surface generation, biome and ocean classification, editing tools, diagnostics, and export reliability. The reusable generation engine and browser tool remain public; private product shell, account, roadmap, and deployment material stay in Parchment Worlds and Portfolio.
+Near-term work focuses on the 2.5D geographic-scene spike, physical plausibility, graph-based generation, editing foundations, diagnostics, and export reliability. The reusable generation engine and browser tool remain public; private product shell, account, roadmap, and deployment material stay in Parchment Worlds and Portfolio.
