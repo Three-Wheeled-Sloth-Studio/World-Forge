@@ -2,6 +2,8 @@
 
 Status: follow-up planning note
 
+Tracking: World Forge issue `#126`
+
 Source: v0.3.63 geographic drilldown browser QA
 
 ## Product direction
