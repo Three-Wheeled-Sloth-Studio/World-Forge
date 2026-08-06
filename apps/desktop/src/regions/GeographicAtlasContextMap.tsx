@@ -4,7 +4,7 @@ import {
   type CubedSphereTopology,
 } from '@world-forge/shared';
 import type { GeographicRegionBounds } from '@world-forge/shared/geographicRegions';
-import { geographicAtlasContextRects } from './geographicAtlasContextMap';
+import { geographicAtlasContextRects } from './geographicAtlasContextGeometry';
 
 const CONTEXT_WIDTH = 320;
 const CONTEXT_HEIGHT = 160;

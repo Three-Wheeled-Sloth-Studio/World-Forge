@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { geographicAtlasContextRects } from './geographicAtlasContextMap';
+import { geographicAtlasContextRects } from './geographicAtlasContextGeometry';
 
 describe('geographicAtlasContextRects', () => {
   it('maps an ordinary geographic extent into one normalized rectangle', () => {
