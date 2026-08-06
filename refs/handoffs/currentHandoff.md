@@ -1,21 +1,23 @@
-# Current Handoff: Geographic Atlas 2.5D Architecture Spike
+# Current Handoff: Geographic Atlas WP2 Representative Terrain Patch
 
 Updated: 2026-08-06
 
-Status: **accepted architecture pivot and active next slice on `dev`**
+Status: **WP0 and WP1 complete on `dev`; WP2 is the active next slice**
 
 Primary tracking:
 
 - World Forge issue `#10`
 - `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
 - `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
+- `refs/planning/geographic-atlas-2.5d-wp0-inventory.md`
 - `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
 
-Decision baseline:
+Implementation baseline:
 
 - repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 - branch: `dev`
-- commit: `b8c2a7e9e97d1fdd9cd1ee3cdd0d8dc24ebca056`
+- architecture commit: `3144aa7fafad45118bc28c92b04efbc20a0155da`
+- WP0/WP1 commit: `df752d39f31f485643a9c5819ac33b710b91f6a6`
 - visible version: `0.3.66`
 
 Integration repository:
@@ -24,14 +26,59 @@ Integration repository:
 - branch: `dev`
 - integration handoff: `refs/handoffs/world-forge-2.5d-atlas-integration.md`
 
-Portfolio decision:
+## Completed in WP0 and WP1
 
-- `Three-Wheeled-Sloth-Studio/Parchment-Worlds-Portfolio`
-- `docs/geographic-atlas-2.5d-architecture-pivot.md`
+### Inventory
 
-## Decision
+`refs/planning/geographic-atlas-2.5d-wp0-inventory.md` now classifies the current geographic seams as Reuse, Extend, Replace, or Reference-only.
 
-Pause incremental patching of the current flat geographic atlas and build a constrained 2.5D scene architecture.
+Important findings:
+
+- canonical hierarchy, tile-window, topology, river projection, surface-domain, width-scaling, label, and hex-overlay seams are reusable;
+- the flat atlas remains QA evidence and an explicit temporary fallback during the spike, not the production rendering authority;
+- Three.js is already a repository dependency, but the current tracked source contains no reusable `WebGLRenderer` or `OrbitControls` host found by the audit;
+- WP2 should introduce the renderer adapter deliberately instead of reviving an unverified legacy seam.
+
+### Pure scene contract
+
+`packages/shared/src/geographicScene.ts` now defines the renderer-neutral `GeographicScene` boundary for:
+
+- deterministic source identity and signatures;
+- projection and visible extent;
+- elevation-displaced terrain patches;
+- explicit reciprocal patch seams and skirt fallback metadata;
+- separate water surfaces;
+- canonical rivers;
+- region boundaries;
+- progressive hex overlays;
+- screen-space label anchors;
+- selection and context metadata;
+- deterministic diagnostics;
+- structural cancellation and progress reporting.
+
+The module imports no DOM, React, Canvas, WebGL, or Three.js types.
+
+### Tests and validation
+
+`packages/shared/src/geographicScene.test.ts` covers:
+
+- stable signatures across object key order;
+- signature changes when scene truth changes;
+- symmetric seam identities;
+- same-order and reverse-order reciprocal seams;
+- deterministic seam diagnostics;
+- AbortError-compatible cancellation;
+- normalized progress reporting.
+
+Validation completed in the available runtime:
+
+- strict isolated TypeScript compile for the contract;
+- strict isolated TypeScript compile for the tests using a local Vitest declaration shim;
+- executable smoke checks for signatures, seams, progress, and cancellation.
+
+Full repository validation still needs to run in the normal repository checkout or CI because the current execution runtime cannot clone GitHub directly.
+
+## Architecture remains locked
 
 The production direction is:
 
@@ -44,52 +91,6 @@ The production direction is:
 - region boundaries, selection, and hexes as overlays;
 - screen-space labels;
 - continuous zoom and level of detail instead of hierarchy-triggered renderer switches.
-
-The current atlas remains useful as hierarchy, data-contract, and QA evidence. It is not the production rendering architecture.
-
-## Why this supersedes the prior handoff
-
-Versions `0.3.61` through `0.3.66` proved useful pieces:
-
-- world-to-detail hierarchy navigation;
-- main-workspace atlas mounting;
-- canonical tile-window contracts;
-- world-relative IDs;
-- contextual mini-map;
-- direct rendered-tile selection;
-- improved river continuity and presentation experiments;
-- right-click location actions.
-
-The same QA also showed that the flat renderer had reached diminishing returns:
-
-- elevation remained visually absent;
-- color and ice authority differed by rendering path;
-- region membership and presentation became entangled;
-- zoom stopped at implementation-defined scale levels;
-- Auto and legacy fallback behavior created contradictory views;
-- fixes to rivers, context, and materials repeatedly regressed neighboring behavior;
-- renderer code was increasingly reconstructing geography.
-
-Do not resume that patch loop except for a build-breaking or data-corrupting defect.
-
-## Read first
-
-1. `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
-2. `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
-3. World Forge issue `#10`
-4. `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
-5. `refs/testing/geographic-drilldown-qa-0.3.66.md`
-6. `refs/testing/geographic-drilldown-scale-fidelity-findings-2026-08-06.md`
-7. `packages/shared/src/geographicTileWindow.ts`
-8. `packages/generator-core/src/geographicTileWindow.ts`
-9. existing globe and Three.js scene utilities
-10. Parchment Worlds `refs/handoffs/world-forge-2.5d-atlas-integration.md`
-
-Where older documents say 2D acceptance is a prerequisite for 3D, this handoff and the accepted decision record supersede them.
-
-## Product objective
-
-Deliver one authoritative geographic scene that can present a generated world from continental through local scale with useful terrain relief, stable selection, continuous zoom, canonical rivers, progressive hexes, and no hidden renderer switch.
 
 Hierarchy remains semantic navigation:
 
@@ -104,7 +105,40 @@ World
 
 It does not impose a camera or resolution ceiling.
 
-## Required ownership boundaries
+## Active next slice: WP2
+
+Build one fixed representative continental fixture and prove the terrain and water path end to end.
+
+### Required implementation sequence
+
+1. Add a pure scene builder that consumes a bounded canonical tile window and produces one deterministic `GeographicScene` fixture.
+2. Build continuous terrain vertices and triangle indices from authoritative elevation.
+3. Build a separate water surface from authoritative water classification and level.
+4. Populate explicit patch seams and run `validateGeographicScenePatchSeams` before rendering.
+5. Add a desktop Three.js scene adapter for terrain and water only.
+6. Mount the adapter behind an explicit spike path in the existing atlas workspace.
+7. Render Natural and Elevation or Slope views over the same terrain geometry.
+8. Expose deterministic scene diagnostics and explicit cancelled, unsupported, and failed states.
+
+Do not add rivers, boundaries, labels, or hexes to the renderer until terrain and water are proven. Their contracts are ready; their rendering belongs to later vertical slices.
+
+### WP2 acceptance
+
+The representative fixture must prove:
+
+- visible and useful elevation relief;
+- continuous terrain rather than raised hex columns;
+- a separate water surface with no material-color inference;
+- Natural and analytical views sharing one geometry;
+- deterministic scene signatures;
+- no visible cracks at declared patch seams;
+- bounded fixture size and build time;
+- explicit failure behavior with no silent Auto fallback;
+- no saved-world, `.wforge`, `.pworld`, or Parchment host-contract change.
+
+A screenshot without these seams is not acceptance.
+
+## Ownership boundaries
 
 ### Generator and geographic interpretation own
 
@@ -137,57 +171,6 @@ It does not impose a camera or resolution ceiling.
 
 The renderer does not classify continents, invent rivers, or decide saved-world truth.
 
-## Immediate work sequence
-
-### WP0: Freeze and inventory
-
-- preserve v0.3.66 QA evidence;
-- identify reusable data and interaction seams;
-- classify old renderer modules as comparison-only or retirement candidates;
-- confirm existing Three.js and globe utilities;
-- prevent silent Auto or fallback behavior in the new path.
-
-### WP1: Pure `GeographicScene` contract
-
-- add renderer-neutral scene types;
-- define identity, extent, projection, terrain patches, water, rivers, boundaries, labels, selection, and context;
-- add deterministic signatures and pure tests;
-- import no DOM, React, Canvas, WebGL, or Three.js types.
-
-### WP2: Representative terrain patch
-
-- build one fixed continental fixture;
-- displace continuous terrain from authoritative elevation;
-- add a separate water surface;
-- render Natural and Elevation or Slope views on the same geometry;
-- expose scene-build diagnostics.
-
-### WP3: Map interaction
-
-- orthographic pan and continuous zoom;
-- map reset;
-- shallow pitch and limited rotation;
-- canonical picking;
-- region boundaries and selection overlays;
-- screen-space labels;
-- synchronized context map.
-
-### WP4: Rivers and progressive hexes
-
-- terrain-following canonical river vectors;
-- unresolved drainage diagnostics;
-- scale-aware river presentation;
-- progressive world-anchored hex overlay;
-- no renderer switch when hexes appear.
-
-### WP5: Integration and evidence
-
-- mount in normal World Forge workspace;
-- verify Parchment embedding without a contract change;
-- profile scene build, frame rate, draw calls, memory, and interaction latency;
-- test reopen, resize, neighboring extents, seams, and cancellation;
-- capture exact-head QA and decide whether to continue into production.
-
 ## Guardrails
 
 - Do not create a second geography model for 2.5D.
@@ -203,23 +186,31 @@ The renderer does not classify continents, invent rivers, or decide saved-world 
 - Do not resume issue `#12` threshold tuning as part of this spike.
 - Preserve issue `#126` as a later consumer of canonical location actions.
 
-## Acceptance boundary
+## Read first for WP2
 
-The spike is accepted only when one representative area proves:
+1. `refs/planning/geographic-atlas-2.5d-wp0-inventory.md`
+2. `packages/shared/src/geographicScene.ts`
+3. `packages/shared/src/geographicScene.test.ts`
+4. `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
+5. `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
+6. World Forge issue `#10`
+7. `packages/shared/src/geographicTileWindow.ts`
+8. `packages/generator-core/src/geographicTileWindow.ts`
+9. `packages/generator-core/src/geographicSurfaceDomains.ts`
+10. `packages/generator-core/src/geographicTopologyAdjacency.ts`
 
-- useful elevation relief;
-- continuous zoom beyond the prior 24-mile ceiling;
-- Natural and analytical materials on one geometry;
-- canonical region selection and boundaries;
-- continuous terrain-following rivers;
-- progressive hex visibility;
-- stable labels;
-- synchronized context map;
-- bounded desktop performance;
-- no hidden fallback renderer;
-- no saved-world or host-contract change.
+## Validation commands
 
-A screenshot without these seams is not acceptance.
+Run from the repository root after WP2 changes:
+
+```bash
+npm run validate
+npm run validate:desktop
+npm run validate:api
+npm run adr:guard -- --base HEAD~1
+```
+
+Also run the focused geographic scene and representative fixture tests directly when practical.
 
 ## Deferred
 
