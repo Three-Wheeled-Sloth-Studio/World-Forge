@@ -22,6 +22,20 @@ Agents working in this repository must:
 - Do not claim validation passed when it was not run or when GitHub reports no check result.
 - Preserve deterministic generation, stable IDs, replay compatibility, and saved-world contracts unless a change is explicitly approved and documented.
 
+### Cross-platform path casing
+
+Case-only filename distinctions are forbidden. Windows commonly resolves paths case-insensitively while Git and Linux CI preserve case, so files such as `GeographicAtlasContextMap.tsx` and `geographicAtlasContextMap.ts` can coexist remotely but break a Windows checkout with `TS1149` or `TS1261`. This has been a recurring repository failure mode.
+
+Agents must:
+
+- ensure no two tracked paths differ only by capitalization;
+- match import casing exactly to the tracked filename;
+- use semantic helper suffixes such as `Geometry`, `Model`, `State`, or `Utils` instead of relying on initial-letter case to distinguish modules;
+- use an intermediate `git mv` name for case-only renames;
+- run `npm run check:case-collisions` before committing file additions or renames.
+
+`npm run typecheck` and `npm run build` execute this guard automatically. A Windows-only casing error is a repository defect, not a local-environment exception. See `refs/engineering/cross-platform-path-casing.md` and `refs/testing/case-collision-regression.md`.
+
 ## Current product references
 
 Before changing geographic drilldown behavior, read and update as appropriate:
