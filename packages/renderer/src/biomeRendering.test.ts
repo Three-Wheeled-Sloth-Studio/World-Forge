@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { landElevationPercentileRange, naturalSnowTintStrength } from './index';
+import {
+  landElevationPercentileRange,
+  naturalLandBiomeForPresentation,
+  naturalSnowTintStrength,
+} from './index';
 
 describe('biome rendering elevation and snow semantics', () => {
   it('normalizes natural land elevation without ocean cells', () => {
@@ -9,6 +13,12 @@ describe('biome rendering elevation and snow semantics', () => {
 
     expect(low).toBeCloseTo(0.1, 5);
     expect(high).toBeCloseTo(0.4, 5);
+  });
+
+  it('renders a stale ice-cap biome as tundra when permanent ice is absent', () => {
+    expect(naturalLandBiomeForPresentation('ice_cap', false)).toBe('tundra');
+    expect(naturalLandBiomeForPresentation('ice_cap', true)).toBe('ice_cap');
+    expect(naturalLandBiomeForPresentation('grassland', false)).toBe('grassland');
   });
 
   it('does not whiten warm highlands as snow', () => {
