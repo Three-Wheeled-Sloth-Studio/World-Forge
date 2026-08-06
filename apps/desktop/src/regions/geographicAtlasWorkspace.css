@@ -140,6 +140,52 @@
   flex: 0 0 auto;
 }
 
+.geographic-atlas-workspace.scene-enabled .geographic-drilldown-canvas {
+  visibility: hidden;
+}
+
+.geographic-scene-layer {
+  inset: 38px 0 0;
+  min-height: 0;
+  position: absolute;
+  z-index: 3;
+}
+
+.geographic-scene-viewer {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.geographic-scene-viewer canvas {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.geographic-scene-status {
+  align-content: center;
+  background: #091119;
+  color: #f7f0df;
+  display: grid;
+  gap: 8px;
+  height: 100%;
+  justify-items: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.geographic-scene-status span {
+  color: #c8c0ad;
+  max-width: 560px;
+}
+
+.geographic-scene-status.failed strong,
+.geographic-scene-status.unsupported strong {
+  color: #ffcfb3;
+}
+
 @media (max-width: 900px) {
   .geographic-atlas-context-map {
     width: min(240px, calc(100% - 20px));
