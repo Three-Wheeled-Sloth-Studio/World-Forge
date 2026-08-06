@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { buildCubedSphereTopology } from '@world-forge/shared';
 import { deriveAdaptiveGeographicScale } from './geographicAdaptiveScale';
 import { generateProject } from './index';
-import { geographicPathTileCoordinates } from './geographicRiverTileProjection';
+import {
+  estimatedRiverWidthMiles,
+  geographicPathTileCoordinates,
+} from './geographicRiverTileProjection';
 import { generateGeographicTileWindow } from './geographicTileWindow';
 
 function testProject(seed: string) {
@@ -40,6 +43,7 @@ describe('geographic river tile projection', () => {
       0,
     );
     expect(projectedEdgeCount).toBeGreaterThan(0);
+    expect(projectedEdgeCount).toBeLessThan(projected.tiles.length * 2);
 
     project.primaryWorld.rivers = [];
     project.primaryWorld.topologyLayers.river.fill(1);
@@ -65,5 +69,12 @@ describe('geographic river tile projection', () => {
     expect(route.length).toBeLessThan(8);
     expect(route.some((coordinate) => coordinate.q === 0)).toBe(true);
     expect(route.some((coordinate) => coordinate.q >= 358)).toBe(true);
+  });
+
+  it('uses a monotonic physical-width estimate for scale-aware river presentation', () => {
+    expect(estimatedRiverWidthMiles(0)).toBeGreaterThan(0);
+    expect(estimatedRiverWidthMiles(0.45)).toBeGreaterThan(estimatedRiverWidthMiles(0.2));
+    expect(estimatedRiverWidthMiles(0.8)).toBeGreaterThan(estimatedRiverWidthMiles(0.45));
+    expect(estimatedRiverWidthMiles(1)).toBeGreaterThan(2.5);
   });
 });
