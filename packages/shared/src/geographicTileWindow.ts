@@ -15,6 +15,7 @@ export const GEOGRAPHIC_TILE_WINDOW_VERSION = 'geographic-tile-window-v1' as con
 export const GEOGRAPHIC_TILE_CLASSIFIER_VERSION = 'geographic-tile-classifier-v1' as const;
 
 export type GeographicTileMembershipRole = 'parent' | 'context';
+export type GeographicRiverTerminus = 'ocean' | 'basin' | 'lake' | 'wetland';
 
 export type GeographicTileWindowTile = {
   id: string;
@@ -33,8 +34,11 @@ export type GeographicTileWindowTile = {
   featureDetails: HexTileFeatureDetail[];
   minorRiverEdges: HexTileEdge[];
   navigableRiverEdges: HexTileEdge[];
+  riverMouthEdges: HexTileEdge[];
   ridgeEdges: HexTileEdge[];
   navigableRiverCenter: boolean;
+  riverSource: boolean;
+  riverTerminus: GeographicRiverTerminus | null;
   riverStrength: number;
   elevation: number;
   slope: number;
