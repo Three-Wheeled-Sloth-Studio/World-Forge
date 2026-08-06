@@ -49,11 +49,12 @@ export function GeographicAtlasWorkspace({
 
   useEffect(() => {
     if (!preview || status !== 'ready' || current || !controller.canvasRef.current) return;
+    const baseCanvas = mapTarget.querySelector<HTMLCanvasElement>(':scope > canvas:first-of-type');
     const draw = () => {
-      const baseCanvas = mapTarget.querySelector<HTMLCanvasElement>(':scope > canvas:first-of-type');
       drawWorldMacroOverlay(
         controller.canvasRef.current!,
         baseCanvas,
+        project,
         preview,
         controller.selectedMacroId,
       );
@@ -61,8 +62,13 @@ export function GeographicAtlasWorkspace({
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(mapTarget);
-    return () => observer.disconnect();
-  }, [controller.canvasRef, controller.selectedMacroId, current, mapTarget, preview, status]);
+    if (baseCanvas) observer.observe(baseCanvas);
+    window.addEventListener('resize', draw);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', draw);
+    };
+  }, [controller.canvasRef, controller.selectedMacroId, current, mapTarget, preview, project, status]);
 
   const macroAtEvent = (event: React.MouseEvent<HTMLCanvasElement>): GeographicMacroArea | null => {
     if (!preview) return null;
