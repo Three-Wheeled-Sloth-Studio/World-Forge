@@ -13,11 +13,13 @@ describe('generation determinism regression diagnostics', () => {
     const configBefore = JSON.stringify(config);
     const topologyResolution = config.topologyResolution
       ?? topologyResolutionForOutput(config.outputResolution);
-    const topology = buildCubedSphereTopology(topologyResolution);
-    const topologyBefore = topologySignature(topology);
 
     clearEquirectangularTopologyLookupCache();
     const first = generationSignature(generateProject(config));
+
+    // Capture the topology only after the first generation. Pre-building it here used to
+    // hide cold-versus-warm topology-cache differences from this regression test.
+    const topology = buildCubedSphereTopology(topologyResolution);
     const topologyAfterFirst = topologySignature(topology);
 
     const second = generationSignature(generateProject(config));
@@ -29,12 +31,11 @@ describe('generation determinism regression diagnostics', () => {
 
     expect(JSON.stringify(config), 'generateProject must not mutate caller-owned config').toBe(configBefore);
     expect(
-      { topologyAfterFirst, topologyAfterSecond, topologyAfterThird },
+      { topologyAfterSecond, topologyAfterThird },
       'generation must not mutate the shared cached cubed-sphere topology',
     ).toEqual({
-      topologyAfterFirst: topologyBefore,
-      topologyAfterSecond: topologyBefore,
-      topologyAfterThird: topologyBefore,
+      topologyAfterSecond: topologyAfterFirst,
+      topologyAfterThird: topologyAfterFirst,
     });
     expect(second, 'warm-cache generation differs from the first run').toEqual(first);
     expect(third, 'cold projection-cache generation differs from the first run').toEqual(first);
