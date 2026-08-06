@@ -8,6 +8,8 @@ Observed runtime: visible version `0.3.61`
 
 Corrective implementation target: visible version `0.3.62`
 
+Canonical-path correction commit: `5093b8d7525528e1db43acf978cbebec9e3c2f3c`
+
 ## Accepted behavior from this pass
 
 The main-workspace drilldown path remained usable from world through detail. Hierarchy navigation, Back behavior, child selection, parent/child boundaries, hex anchoring, and the contextual mini-map all behaved well enough to continue the visual acceptance pass.
