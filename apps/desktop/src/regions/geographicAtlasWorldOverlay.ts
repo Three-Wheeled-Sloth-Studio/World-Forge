@@ -4,6 +4,8 @@ import type { GeographicHierarchyPreview } from './geographicHierarchyPreview';
 
 const UNASSIGNED_INDEX = 0xffff;
 
+type RectLike = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
 export function drawWorldMacroOverlay(
   canvas: HTMLCanvasElement,
   baseCanvas: HTMLCanvasElement | null,
@@ -78,6 +80,15 @@ export function drawWorldMacroOverlay(
   drawMacroLabels(context, width, height, preview, selectedMacroId);
 }
 
+export function worldMacroOverlayCanvasBox(baseRect: RectLike, hostRect: RectLike) {
+  return {
+    left: baseRect.left - hostRect.left,
+    top: baseRect.top - hostRect.top,
+    width: baseRect.width,
+    height: baseRect.height,
+  };
+}
+
 export function alignWorldMacroOverlayCanvas(
   canvas: HTMLCanvasElement,
   baseCanvas: HTMLCanvasElement | null,
@@ -88,13 +99,15 @@ export function alignWorldMacroOverlayCanvas(
     canvas.style.height = '100%';
     return;
   }
-  const baseRect = baseCanvas.getBoundingClientRect();
-  const hostRect = canvas.parentElement.getBoundingClientRect();
+  const box = worldMacroOverlayCanvasBox(
+    baseCanvas.getBoundingClientRect(),
+    canvas.parentElement.getBoundingClientRect(),
+  );
   canvas.style.inset = 'auto';
-  canvas.style.left = `${baseRect.left - hostRect.left}px`;
-  canvas.style.top = `${baseRect.top - hostRect.top}px`;
-  canvas.style.width = `${baseRect.width}px`;
-  canvas.style.height = `${baseRect.height}px`;
+  canvas.style.left = `${box.left}px`;
+  canvas.style.top = `${box.top}px`;
+  canvas.style.width = `${box.width}px`;
+  canvas.style.height = `${box.height}px`;
 }
 
 function drawMacroLabels(
