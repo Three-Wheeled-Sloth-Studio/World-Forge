@@ -1,175 +1,168 @@
-# Current Handoff: Deferred Complete Sol Globe QA
+# Current Handoff: Canonical Geographic Drilldown
 
 Updated: 2026-08-05
 
-Status: Earth, Jupiter, and Mars remain user-accepted. The enriched Sol starter rebuild and normal Parchment publish path succeeded, but the new basic Globe baseline for Sol, the remaining planets, and moons did **not** pass user visual QA. This work is pinned for later rather than treated as complete. Main Asteroid Belt and Kuiper Belt remain intentional System placeholders.
+Status: **active next slice on `dev`**
+
+Primary tracking:
+
+- World Forge issue `#10`, **[PI] Build canonical tile-window geographic drilldown**
+- `refs/handoffs/canonical-geographic-drilldown-next-slice.md`
+- `refs/testing/geographic-region-drilldown-qa.md`
+
+Primary repository:
+
+- `Three-Wheeled-Sloth-Studio/World-Forge`
+- branch: `dev`
+
+Integration/regression repository:
+
+- `Three-Wheeled-Sloth-Studio/Parchment-Worlds`
+- branch: `dev`
+- preserve embedded World Forge launch, save-back, and the accepted Sol starter path
+
+## Product objective
+
+Deliver a deterministic 2D hierarchy:
+
+```text
+World
+-> continent / archipelago / provisional ocean basin
+-> region
+-> subregion
+-> local
+-> detail
+```
+
+Region and deeper views must use canonical world-anchored tile windows rather than enlarged global raster crops. Stable IDs, inherited geography, exact parent membership, context-only terrain, seam behavior, and overlapping-window consistency are core contracts.
+
+## Required UX additions
+
+### Mini-map
+
+Every opened drilldown level must include a compact mini-map that:
+
+- shows whole-world or useful ancestor context;
+- marks the current window;
+- distinguishes exact parent and surrounding context;
+- marks the selected immediate child when applicable;
+- remains longitude-seam aware;
+- updates with Back and breadcrumb navigation;
+- does not generate a second fine-resolution tile window.
+
+The first accepted mini-map may be read-only.
+
+### Main-workspace presentation
+
+The current atlas mounts as `GeographicAtlasModal` over the normal page. The preferred low-effort shape is:
+
+- extract one neutral `GeographicAtlasWorkspace` from the modal;
+- mount it in the primary content area while drilldown is active;
+- suppress the ordinary application side panels;
+- retain a compact drilldown-specific inspector;
+- provide a clear breadcrumb back to the normal world map;
+- restore the prior map context on exit.
+
+Retain the modal temporarily only if the shell change requires new routing, durable state, Parchment integration, or duplicated controller behavior. Even then, use the shared workspace component and record the remaining shell migration.
 
 ## Read first
 
-1. `refs/testing/sol-basic-globe-acceptance.md`
-2. `refs/testing/sol-reference-pipeline.md`
-3. `refs/decisions/mars-venus-product-direction-2026-08-05.md`
-4. `refs/planning/body-detail-tiers-and-payload-strategy.md`
-5. World Forge issue #124
-6. Parchment Worlds issue #22
+1. `refs/handoffs/canonical-geographic-drilldown-next-slice.md`
+2. World Forge issue `#10`
+3. `refs/handoffs/geographic-region-drilldown.md`
+4. `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
+5. `refs/testing/geographic-region-drilldown-qa.md`
+6. `refs/handoffs/archive/geographic-drilldown-v0.3.32-paused.md`
+7. `packages/shared/src/geographicTileWindow.ts`
+8. `packages/generator-core/src/geographicTileWindow.ts`
+9. `apps/desktop/src/regions/geographicTileWindowMap.ts`
+10. `apps/desktop/src/regions/GeographicAtlasModal.tsx`
+11. `apps/desktop/src/regions/useGeographicAtlasController.ts`
+12. `packages/exporters/src/index.ts`
 
-## Accepted baseline
+The dedicated next-slice handoff is authoritative where older status descriptions conflict.
 
-User-confirmed:
+## Current verified source baseline
 
-- Earth looks great.
-- Jupiter's imported atmospheric presentation and selector hierarchy look correct.
-- Mars' real Viking/MOLA Tier 2 Globe and Map look good.
-- Normal Parchment starter generation and import remain responsive.
+Present on `dev`:
 
-Do not regress these three body paths while revisiting the deferred basic presentations.
+- `geographic-tile-window-v1` and `geographic-tile-classifier-v1`;
+- bounded seam-aware tile-window generation with a halo;
+- world-relative `q/r` coordinates and stable tile IDs;
+- exact parent and context roles;
+- deterministic signatures;
+- a dedicated 2D tile renderer;
+- generic atlas controller and current modal presentation.
 
-## Latest successful package evidence
+Not accepted yet:
 
-The root `refresh_sol_starter.bat` completed successfully and published through the normal World Forge and Parchment package paths.
+- exact-head browser QA across the issue `#10` matrix;
+- exporter/runtime classifier convergence;
+- persistent mini-map;
+- main-workspace presentation;
+- full world-to-detail acceptance on a trustworthy runtime;
+- macro-decomposition behavior tracked separately by issue `#12`.
 
-```text
-Bodies: 23
-Earth map: 512 x 256
-Jupiter appearance: 768 x 384 RGB565
-Mars prepared surface: 512 x 256, 2 assets
-Prepared body bundles: 1
+## Recommended sequence
 
-World Forge package:
-.local/reference-data/sol-earth-reference.wforge
-package bytes: 2,763,277
-SHA-256: 99852f4549b778d097f94511562381f572394803b297011ac9c183404b4defbd
+### WP0 — Trustworthy baseline
 
-Pipeline report:
-.local/reference-data/sol-earth-reference.wforge.pipeline.json
+- record exact `dev` head and visible runtime version;
+- run focused tests plus `npm audit`, `npm run verify`, and `npm run evaluate:regions`;
+- identify the actual active browser path;
+- capture defects before changing behavior.
 
-Parchment starter:
-apps/web/public/starter-projects/sol-system.pworld
-```
+### WP1 — Canonical ownership
 
-The latest `.pworld` byte size and full digest were not captured. Do not invent them.
+- establish exporter/runtime parity fixtures;
+- converge exporter generation onto the canonical classifier or shared pure classification seam;
+- prove overlap, seam, river, and ridge consistency.
 
-## Automated implementation evidence
+### WP2 — Workspace and mini-map
 
-Validated implementation head:
+- extract `GeographicAtlasWorkspace`;
+- implement main-content atlas-session mode when low effort;
+- suppress normal side panels;
+- add breadcrumb back to the world map;
+- add persistent mini-map at every opened level;
+- preserve one controller and renderer path.
 
-```text
-b9997fdd7a124f16d44b10e4b6bcac5ca5a4fa94
-```
+### WP3 — Hierarchy hardening
 
-Workflow:
+- validate world through detail;
+- fix scale progression, selection, labels, edge continuity, and context behavior;
+- preserve inherited geography;
+- keep region and deeper maps materially cleaner than raster enlargement.
 
-```text
-Validate World Forge
-run 31035846677
-```
+### WP4 — QA and closeout
 
-Passed:
-
-- complete unit and integration suite;
-- production TypeScript build;
-- production page-harness self-test;
-- production attribution-rerank self-test;
-- both browser smokes.
-
-A later handoff/documentation head also passed exact-head validation, but automated success did not establish visual acceptance.
-
-## Deferred user QA findings
-
-The complete-Sol basic Globe pass is **not accepted**.
-
-Observed:
-
-- Sol appears as a flat yellow orb with no useful definition.
-- Luna, Phobos, Deimos, Io, and the remaining moons do not expose working Globes.
-- Mercury, Venus, Saturn, and Uranus render but lack sufficient visual definition.
-- Testing was stopped after confirming the moon Globe path was broadly absent and the new planet presentations were below the desired bar.
-- Earth, Mars, and Jupiter still look good.
-
-Disposition:
-
-- Preserve the current generic contracts and package evidence as groundwork.
-- Do not close the complete-Sol visual increment.
-- Return later with repaired moon Globe routing and materially richer presentation quality.
-- Source-backed textures, deterministic generated detail, or a stronger procedural material path are all valid future approaches.
-- Belts may remain placeholders.
-
-## Existing generic contract
-
-`basic-presentation` currently carries generic package data for:
-
-- sphere, oblate, or triaxial shape;
-- palette;
-- roughness and metalness;
-- optional emissive treatment;
-- optional halo;
-- optional ring plane;
-- approximation/source note.
-
-The viewer does not require body-name-specific visual rules. The failure is therefore a presentation-quality and routing problem, not a reason to add Sol-specific durable schemas.
-
-## One-click local refresh
-
-The repository root includes:
-
-```text
-refresh_sol_starter.bat
-```
-
-It runs the normal enriched Sol exporter and regenerates Parchment Worlds' bundled `sol-system.pworld`.
-
-## Candidate next slices
-
-### 1. Canonical tile-window geographic drilldown — recommended
-
-World Forge issue #10 is the strongest next product slice.
-
-Why:
-
-- it is already defined as the immediate next geographic increment;
-- it delivers obvious user value beyond global map inspection;
-- it replaces the current soft raster enlargement with deterministic world-anchored tile windows;
-- it establishes the spatial model needed by Explorer, later editors, resources, settlements, and civilization simulation;
-- it is independent of the deferred Sol presentation work.
-
-Best bounded start: WP1 and WP2 from Issue #10 — extract the shared classifier, define the versioned tile-window contract, and prove seam-aware overlapping windows before committing to the full renderer/UI pass.
-
-### 2. Editing and versioning foundation — strategic, but not yet ready
-
-The user direction remains easy-to-do/easy-to-undo editing for coastlines, biomes, and feature placement. This is strategically important, but it lacks a current implementation issue and should begin with a focused planning slice covering revision identity, reversible operations, invalidation, regeneration blending, and `.wforge` persistence.
-
-This becomes substantially easier after canonical tile windows exist, because edits can target stable world coordinates instead of screen pixels or enlarged rasters.
-
-### 3. Active-body and moon-routing cleanup — small tactical slice
-
-World Forge issue #124 still owns generic body continuity and unsupported-view behavior. A narrow slice could diagnose why published moon records do not become Globe targets and close the routing defect without attempting richer art.
-
-This is lower priority unless the goal is to reduce known technical debt. It risks pulling work back into the deliberately deferred Sol visual track.
-
-### 4. Production performance audit store — infrastructure slice
-
-World Forge issue #116 would add a PostgreSQL-backed append-only production timing trail. It is useful for long-term performance governance, but it offers less immediate user value than drilldown or editing and is not required to continue local benchmark work.
-
-## Future return criteria for Sol
-
-Before asking for another complete-Sol acceptance pass:
-
-1. Verify every selected moon exposes a working Globe target from the normal starter package.
-2. Add visible surface or atmospheric definition beyond flat-color spheres.
-3. Make Sol read as a star rather than a yellow planet.
-4. Preserve the accepted Earth, Jupiter, and Mars paths unchanged.
-5. Keep asteroid and Kuiper belts as placeholders unless separately scoped.
-6. Run the normal `.wforge` and `.pworld` paths and record fresh package evidence.
-7. Perform browser QA before describing the increment as accepted.
+- complete fixed-seed, preset, seam, reopen, and maximum-footprint checks;
+- validate `1920 x 1080` and `1440 x 900`;
+- capture a full screenshot sequence including mini-map and workspace shell;
+- update issue `#10` and repository handoffs.
 
 ## Guardrails
 
-- One stellar system remains one project.
-- Unsupported views must not silently switch to Earth.
-- Basic presentation does not imply source-backed surface accuracy.
-- Venus Globe presentation must not be mislabeled as Magellan visible-light imagery.
-- Belts remain population records, not fake spherical worlds.
-- Do not fabricate `PrimaryWorld` for non-geographic bodies.
-- Keep normal `.wforge` and `.pworld` package paths authoritative.
-- Do not reopen lazy loading without measured evidence.
-- Earth climate calibration and selector flicker remain separate tracks.
+- Do not create a second geography model for the mini-map or workspace.
+- Do not reset coordinates per parent.
+- Do not keep two untracked long-lived classifiers.
+- Do not generate a full-world fine tile grid.
+- Do not activate or persist `world-regions-v2`.
+- Do not begin regional 3D, PBR materials, politics, settlements, roads, or resources.
+- Do not resume issue `#12` by blindly tuning thresholds.
+- Do not reopen deferred Sol presentation work.
+- Preserve ordinary deterministic generation and `.wforge` compatibility.
+
+## Deferred Sol reference status
+
+The Sol package pipeline remains operational. Earth, Jupiter, and Mars are user-accepted. Broader planet/moon Globe coverage remains deferred and unaccepted.
+
+Latest recorded `.wforge` evidence:
+
+```text
+Bodies: 23
+Package bytes: 2,763,277
+SHA-256: 99852f4549b778d097f94511562381f572394803b297011ac9c183404b4defbd
+```
+
+Do not regress these paths or claim a full `.pworld` digest.
