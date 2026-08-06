@@ -1,61 +1,95 @@
 # Geographic Region Drilldown Handoff
 
-Updated: 2026-07-28
+Updated: 2026-08-05
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-Status: **paused**
+Status: **active next slice; implementation present but not accepted**
 
-Runtime version observed in browser QA: `0.3.32`
+Tracking:
 
-Source version currently declared in `apps/desktop/src/appVersion.ts`: `0.3.23`
+- World Forge issue `#10` — canonical tile-window geographic drilldown
+- World Forge issue `#12` — narrow-isthmus macro decomposition, separate and paused
 
-Tracking issues:
+Authoritative resume handoff:
 
-- `#10` Canonical tile-window geographic drilldown
-- `#12` Split oversized landmasses at narrow isthmuses
+- `refs/handoffs/canonical-geographic-drilldown-next-slice.md`
 
-Detailed pinned status:
+Current repository handoff:
 
-`refs/handoffs/archive/geographic-drilldown-v0.3.32-paused.md`
+- `refs/handoffs/currentHandoff.md`
 
-## Decision
+Browser QA:
 
-The drilldown is usable enough to remain on `dev` for testing, but it is not an accepted or promoted milestone.
+- `refs/testing/geographic-region-drilldown-qa.md`
 
-Work is paused because the production browser test still groups the large connected land bodies into one continent. The synthetic isthmus decomposition tests pass, but real-world behavior did not change. More threshold tuning is prohibited until runtime provenance and macro-decomposition diagnostics identify which production stage is failing.
+Rendering roadmap:
 
-The active product increment is now world-builder cleanup.
+- `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
 
-## What remains available
+Historical pause record:
 
-- Main-world-map drilldown toggle.
-- World-level macro selection.
-- Right-click action menu and direct double-click/Enter open paths.
-- Breadcrumb, Back, and Escape navigation.
-- Width-driven scale progression targeting approximately 50 hexes across.
-- Generic hierarchy through region, subregion, local, and detail.
-- Canonical world-anchored tile windows.
-- Natural terrain overlays and clean detailed tile rendering.
-- Immediate child boundaries and populated drilldown inspector.
+- `refs/handoffs/archive/geographic-drilldown-v0.3.32-paused.md`
 
-## Known defects retained
+## Status reconciliation
 
-- Real continent grouping remains unchanged.
-- Browser/runtime version provenance is inconsistent.
-- Raster-backed maps become fuzzy at deeper scales.
-- Some drill paths appear to stop near 6-mile hexes.
-- Suspicious ribbon land remains a terrain-generation concern.
-- Runtime and exporter tile classifiers remain parallel.
+The archived pause record remains useful historical evidence, but its statement that world-builder cleanup is the active increment is obsolete.
 
-## Required first step when work resumes
+The current `dev` source contains:
 
-Add a macro-decomposition diagnostic report that exposes the exact runtime commit, selected continent target, land domains, requested pieces, erosion depths, accepted and rejected cores, final macro count, membership signature, cache use, and overlay membership source.
+- versioned canonical tile-window and classifier contracts;
+- bounded seam-aware world-relative tile generation;
+- exact parent and context roles;
+- deterministic tile IDs and signatures;
+- a clean 2D tile renderer;
+- generic atlas orchestration;
+- a current modal atlas shell.
 
-Do not resume by adjusting thresholds blindly.
+The work is not accepted because the complete exact-head browser matrix, classifier convergence, and production UX have not been closed.
+
+## Current product direction
+
+Resume issue `#10` as a 2D geographic foundation:
+
+```text
+World
+-> continent / archipelago / provisional ocean basin
+-> region
+-> subregion
+-> local
+-> detail
+```
+
+Region and deeper views must use canonical tile windows rather than enlarged world rasters.
+
+New UX requirements added on 2026-08-05:
+
+- persistent mini-map at every opened drilldown level;
+- mini-map shows current window, parent context, and selected child without generating a duplicate fine window;
+- prefer repurposing the main application workspace over a modal when the shell change is low effort;
+- hide ordinary side panels during the atlas session;
+- retain a compact drilldown inspector and a clear breadcrumb back to the normal world map;
+- extract one shared `GeographicAtlasWorkspace` so modal and main-workspace modes cannot diverge.
+
+## Immediate start
+
+1. Record exact `dev` head and visible runtime version.
+2. Run focused tests, `npm audit`, `npm run verify`, and `npm run evaluate:regions`.
+3. Confirm which UI path is active in the browser.
+4. Extract the neutral workspace component and prove the mini-map data path.
+5. Converge exporter and runtime classifier ownership with parity fixtures.
+6. Complete world-to-detail browser QA and screenshot evidence.
+
+## Boundaries
+
+- Issue `#12` macro decomposition is not solved by threshold tuning during this slice.
+- Do not activate or persist `world-regions-v2`.
+- Do not begin 3D, PBR materials, resources, settlements, roads, politics, or cultures.
+- Do not create a second geography model for the mini-map.
+- Preserve deterministic generation, `.wforge`, and Parchment embedding behavior.
 
 ## Promotion status
 
-Do not promote this work as a completed geography milestone. Issues `#10` and `#12` remain open and paused.
+Do not promote this as a completed geography milestone until issue `#10` acceptance criteria, including mini-map and workspace-shell decisions, pass on the exact validated commit.
