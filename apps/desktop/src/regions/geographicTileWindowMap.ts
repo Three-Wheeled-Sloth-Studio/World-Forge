@@ -3,12 +3,18 @@ import type {
   GeographicTileWindow,
   GeographicTileWindowTile,
 } from '@world-forge/shared/geographicTileWindow';
+import { estimatedRiverWidthMiles } from '@world-forge/generator-core/geographicRiverTileProjection';
+import { worldHexCoordinateForLatLon } from '@world-forge/generator-core/geographicAdaptiveScale';
 import {
   createGeographicWindowTransform,
   type GeographicWindowTransform,
 } from './geographicWindowedMap';
 
 export type GeographicTileWindowPresentation = 'natural' | 'terrain';
+
+export type GeographicTileWindowCanvasTransform = GeographicWindowTransform & {
+  tileAtCanvasPoint: (x: number, y: number) => GeographicTileWindowTile | null;
+};
 
 export type GeographicTileWindowRenderOptions = {
   presentation: GeographicTileWindowPresentation;
@@ -20,6 +26,7 @@ type TileGeometry = {
   tile: GeographicTileWindowTile;
   centerX: number;
   centerY: number;
+  radius: number;
   vertices: Array<[number, number]>;
 };
 
@@ -37,7 +44,7 @@ export function renderGeographicTileWindowToCanvas(
   canvas: HTMLCanvasElement,
   window: GeographicTileWindow,
   options: GeographicTileWindowRenderOptions,
-): GeographicWindowTransform {
+): GeographicTileWindowCanvasTransform {
   const width = clampInteger(window.extent.columns * 48, 840, 1500);
   const height = clampInteger(window.extent.rows * 42, 560, 1000);
   canvas.width = width;
@@ -53,14 +60,71 @@ export function renderGeographicTileWindowToCanvas(
   const byCoordinate = new Map(window.tiles.map((tile) => [`${tile.q},${tile.r}`, tile]));
   const geometry = window.tiles.map((tile) => tileGeometry(tile, window, layout));
 
-  for (const entry of geometry) drawTileFill(context, entry, options);
+  for (const entry of geometry) drawTileFill(context, entry, options, window);
   drawContextVeil(context, geometry);
   drawChildBoundaries(context, geometry, byCoordinate, window);
   drawParentBoundary(context, geometry, byCoordinate, window);
-  drawTerrainEdges(context, geometry);
+  drawTerrainEdges(context, geometry, window);
   if (options.showHexes) drawHexLines(context, geometry);
 
-  return createGeographicWindowTransform(width, height, window.extent, window.scale);
+  return createTileCanvasTransform(window, width, height, geometry);
+}
+
+export function createGeographicTileWindowCanvasTransform(
+  window: GeographicTileWindow,
+  width: number,
+  height: number,
+): GeographicTileWindowCanvasTransform {
+  const layout = createLayout(window, width, height);
+  const geometry = window.tiles.map((tile) => tileGeometry(tile, window, layout));
+  return createTileCanvasTransform(window, width, height, geometry);
+}
+
+function createTileCanvasTransform(
+  window: GeographicTileWindow,
+  width: number,
+  height: number,
+  geometry: TileGeometry[],
+): GeographicTileWindowCanvasTransform {
+  const fallback = createGeographicWindowTransform(width, height, window.extent, window.scale);
+  const byCoordinate = new Map(geometry.map((entry) => [`${entry.tile.q},${entry.tile.r}`, entry]));
+  const hitTest = (x: number, y: number): TileGeometry | null => {
+    let nearest: TileGeometry | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const entry of geometry) {
+      if (Math.abs(x - entry.centerX) > entry.radius || Math.abs(y - entry.centerY) > entry.radius) continue;
+      if (!pointInPolygon(x, y, entry.vertices)) continue;
+      const distance = (x - entry.centerX) ** 2 + (y - entry.centerY) ** 2;
+      if (distance < nearestDistance) {
+        nearest = entry;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  };
+
+  return {
+    ...fallback,
+    tileAtCanvasPoint: (x, y) => hitTest(x, y)?.tile ?? null,
+    canvasPointToGeo: (x, y) => {
+      const tile = hitTest(x, y)?.tile;
+      return tile
+        ? { latitude: tile.latitude, longitude: tile.longitude }
+        : fallback.canvasPointToGeo(x, y);
+    },
+    geoToCanvasPoint: (latitude, longitude) => {
+      const coordinate = worldHexCoordinateForLatLon(
+        latitude,
+        longitude,
+        window.scale.worldColumns,
+        window.scale.worldRows,
+      );
+      const entry = byCoordinate.get(`${coordinate.q},${coordinate.r}`);
+      return entry
+        ? { x: entry.centerX, y: entry.centerY }
+        : fallback.geoToCanvasPoint(latitude, longitude);
+    },
+  };
 }
 
 function createLayout(window: GeographicTileWindow, width: number, height: number) {
@@ -95,17 +159,18 @@ function tileGeometry(
       centerY + Math.sin(angle) * layout.radius,
     ]);
   }
-  return { tile, centerX, centerY, vertices };
+  return { tile, centerX, centerY, radius: layout.radius, vertices };
 }
 
 function drawTileFill(
   context: CanvasRenderingContext2D,
   entry: TileGeometry,
   options: GeographicTileWindowRenderOptions,
+  window: GeographicTileWindow,
 ): void {
   context.beginPath();
   tracePolygon(context, entry.vertices);
-  context.fillStyle = tileFill(entry.tile, options.presentation);
+  context.fillStyle = tileFill(entry.tile, options.presentation, window);
   context.fill();
 
   if (entry.tile.childIndex !== null && entry.tile.childIndex === options.selectedChildIndex) {
@@ -163,33 +228,119 @@ function drawChildBoundaries(
   }
 }
 
-function drawTerrainEdges(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
+function drawTerrainEdges(
+  context: CanvasRenderingContext2D,
+  geometry: TileGeometry[],
+  window: GeographicTileWindow,
+): void {
   for (const entry of geometry) {
     for (const edge of entry.tile.ridgeEdges) {
       context.strokeStyle = entry.tile.ice ? 'rgba(215, 229, 235, 0.9)' : 'rgba(76, 55, 39, 0.92)';
       context.lineWidth = 2.1;
       strokeEdge(context, entry.vertices, edge);
     }
-    for (const edge of entry.tile.minorRiverEdges) {
-      drawRiver(context, entry, edge, false);
-    }
-    for (const edge of entry.tile.navigableRiverEdges) {
-      drawRiver(context, entry, edge, true);
-    }
+    drawRiverNetwork(context, entry, window);
   }
 }
 
-function drawRiver(context: CanvasRenderingContext2D, entry: TileGeometry, edge: HexTileEdge, navigable: boolean): void {
-  const [left, right] = EDGE_VERTICES[edge];
-  const midpointX = (entry.vertices[left][0] + entry.vertices[right][0]) / 2;
-  const midpointY = (entry.vertices[left][1] + entry.vertices[right][1]) / 2;
-  context.beginPath();
-  context.moveTo(entry.centerX, entry.centerY);
-  context.lineTo(midpointX, midpointY);
-  context.strokeStyle = navigable ? 'rgba(73, 183, 238, 0.96)' : 'rgba(99, 190, 229, 0.86)';
-  context.lineWidth = navigable ? 2.8 : 1.45;
+function drawRiverNetwork(
+  context: CanvasRenderingContext2D,
+  entry: TileGeometry,
+  window: GeographicTileWindow,
+): void {
+  const minorEdges = entry.tile.minorRiverEdges.filter((edge) => !entry.tile.navigableRiverEdges.includes(edge));
+  if (minorEdges.length > 0) {
+    drawRiverConnections(
+      context,
+      entry,
+      minorEdges,
+      riverLineWidth(entry, window, false),
+      'rgba(99, 190, 229, 0.82)',
+      entry.tile.navigableRiverCenter,
+    );
+  }
+  if (entry.tile.navigableRiverEdges.length > 0) {
+    drawRiverConnections(
+      context,
+      entry,
+      entry.tile.navigableRiverEdges,
+      riverLineWidth(entry, window, true),
+      'rgba(73, 183, 238, 0.96)',
+      entry.tile.navigableRiverCenter,
+    );
+  }
+}
+
+function drawRiverConnections(
+  context: CanvasRenderingContext2D,
+  entry: TileGeometry,
+  edges: HexTileEdge[],
+  lineWidth: number,
+  strokeStyle: string,
+  dominant: boolean,
+): void {
+  const uniqueEdges = [...new Set(edges)];
+  if (uniqueEdges.length === 0) return;
+  const junction = riverJunction(entry, dominant);
+  context.save();
+  context.strokeStyle = strokeStyle;
+  context.lineWidth = lineWidth;
   context.lineCap = 'round';
-  context.stroke();
+  context.lineJoin = 'round';
+
+  if (uniqueEdges.length === 2) {
+    const start = edgeMidpoint(entry, uniqueEdges[0]);
+    const end = edgeMidpoint(entry, uniqueEdges[1]);
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.quadraticCurveTo(junction.x, junction.y, end.x, end.y);
+    context.stroke();
+  } else {
+    for (const edge of uniqueEdges) {
+      const midpoint = edgeMidpoint(entry, edge);
+      context.beginPath();
+      context.moveTo(midpoint.x, midpoint.y);
+      context.quadraticCurveTo(
+        (midpoint.x + junction.x) / 2,
+        (midpoint.y + junction.y) / 2,
+        junction.x,
+        junction.y,
+      );
+      context.stroke();
+    }
+  }
+  context.restore();
+}
+
+function riverJunction(entry: TileGeometry, dominant: boolean): { x: number; y: number } {
+  if (dominant) return { x: entry.centerX, y: entry.centerY };
+  const xNoise = hashUnit(`river-junction-x:${entry.tile.q}:${entry.tile.r}`) * 2 - 1;
+  const yNoise = hashUnit(`river-junction-y:${entry.tile.q}:${entry.tile.r}`) * 2 - 1;
+  return {
+    x: entry.centerX + xNoise * entry.radius * 0.18,
+    y: entry.centerY + yNoise * entry.radius * 0.18,
+  };
+}
+
+function edgeMidpoint(entry: TileGeometry, edge: HexTileEdge): { x: number; y: number } {
+  const [left, right] = EDGE_VERTICES[edge];
+  return {
+    x: (entry.vertices[left][0] + entry.vertices[right][0]) / 2,
+    y: (entry.vertices[left][1] + entry.vertices[right][1]) / 2,
+  };
+}
+
+function riverLineWidth(
+  entry: TileGeometry,
+  window: GeographicTileWindow,
+  navigable: boolean,
+): number {
+  const physicalWidth = estimatedRiverWidthMiles(entry.tile.riverStrength) * (navigable ? 1 : 0.42);
+  const widthFraction = physicalWidth / Math.max(0.1, window.scale.nominalHexWidthMiles);
+  const projectedWidth = widthFraction * entry.radius * 1.75;
+  const minimum = navigable ? 1.15 : 0.72;
+  const maximum = entry.tile.navigableRiverCenter ? entry.radius * 1.25 : entry.radius * 0.52;
+  return clamp(projectedWidth, minimum, maximum);
 }
 
 function drawHexLines(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
@@ -202,12 +353,31 @@ function drawHexLines(context: CanvasRenderingContext2D, geometry: TileGeometry[
   }
 }
 
-function tileFill(tile: GeographicTileWindowTile, presentation: GeographicTileWindowPresentation): string {
+function tileFill(
+  tile: GeographicTileWindowTile,
+  presentation: GeographicTileWindowPresentation,
+  window: GeographicTileWindow,
+): string {
+  if (tile.navigableRiverCenter) return riverDominantFill(tile, presentation, window);
   if (presentation === 'terrain') return terrainFill(tile);
   const base = naturalBase(tile);
   const elevationLift = clamp((tile.elevation + 0.35) * 0.22, -0.08, 0.16);
   const wetnessLift = clamp((tile.wetness - 0.5) * 0.08, -0.05, 0.05);
   return adjustHex(base, elevationLift + wetnessLift);
+}
+
+function riverDominantFill(
+  tile: GeographicTileWindowTile,
+  presentation: GeographicTileWindowPresentation,
+  window: GeographicTileWindow,
+): string {
+  const dominance = clamp(
+    estimatedRiverWidthMiles(tile.riverStrength) / Math.max(0.1, window.scale.nominalHexWidthMiles),
+    0,
+    1,
+  );
+  const base = presentation === 'terrain' ? '#327492' : '#3d86a8';
+  return adjustHex(base, dominance * 0.06);
 }
 
 function naturalBase(tile: GeographicTileWindowTile): string {
@@ -272,6 +442,18 @@ function tracePolygon(context: CanvasRenderingContext2D, vertices: Array<[number
   context.closePath();
 }
 
+function pointInPolygon(x: number, y: number, vertices: Array<[number, number]>): boolean {
+  let inside = false;
+  for (let index = 0, previous = vertices.length - 1; index < vertices.length; previous = index, index += 1) {
+    const [x1, y1] = vertices[index];
+    const [x2, y2] = vertices[previous];
+    const intersects = ((y1 > y) !== (y2 > y))
+      && x < ((x2 - x1) * (y - y1)) / (y2 - y1) + x1;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
 function edgeOrder(): HexTileEdge[] {
   return ['ne', 'e', 'se', 'sw', 'w', 'nw'];
 }
@@ -283,6 +465,12 @@ function adjustHex(value: string, amount: number): string {
   const green = clampInteger(((numeric >> 8) & 0xff) + shift, 0, 255);
   const blue = clampInteger((numeric & 0xff) + shift, 0, 255);
   return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
+}
+
+function hashUnit(value: string): number {
+  let hash = 0x811c9dc5;
+  for (const character of value) hash = Math.imul(hash ^ character.charCodeAt(0), 0x01000193) >>> 0;
+  return hash / 0xffffffff;
 }
 
 function mod(value: number, divisor: number): number {
