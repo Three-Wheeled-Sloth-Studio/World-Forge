@@ -30,6 +30,7 @@ import {
   type GeographicTileWindowTile,
 } from '@world-forge/shared/geographicTileWindow';
 import { worldHexCenter } from './geographicAdaptiveScale';
+import { assignCanonicalRiverEdges } from './geographicRiverTileProjection';
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const UNASSIGNED_CHILD = 0xffff;
@@ -87,7 +88,7 @@ export function generateGeographicTileWindow(input: GenerateGeographicTileWindow
     }
   }
 
-  assignRiverEdges(haloTiles, scale);
+  assignCanonicalRiverEdges(haloTiles, scale, project, topology);
   assignRidgeEdges(haloTiles, scale);
 
   const tiles: GeographicTileWindowTile[] = [];
@@ -226,31 +227,6 @@ function classifyTile(
   };
 }
 
-function assignRiverEdges(tiles: Map<string, GeographicTileWindowTile>, scale: GeographicAdaptiveHexScale): void {
-  for (const tile of tiles.values()) {
-    if (tile.water || tile.riverStrength <= 0.12) continue;
-    const candidates = ODD_R_DIRECTIONS
-      .map((direction) => ({ direction, neighbor: neighborTile(tile, direction, tiles, scale) }))
-      .filter((entry): entry is { direction: TileDirection; neighbor: GeographicTileWindowTile } => Boolean(entry.neighbor))
-      .filter(({ neighbor }) => neighbor.water || neighbor.riverStrength >= 0.08 || tile.riverStrength >= 0.28)
-      .map(({ direction, neighbor }) => ({
-        direction,
-        neighbor,
-        score: (neighbor.water ? 2 : 0)
-          + neighbor.riverStrength
-          + Math.max(0, tile.elevation - neighbor.elevation) * 0.65
-          - Math.max(0, neighbor.elevation - tile.elevation) * 0.25,
-      }))
-      .sort((left, right) => right.score - left.score || left.direction.edge.localeCompare(right.direction.edge));
-    const connectionCount = tile.riverStrength >= 0.48 ? 2 : 1;
-    for (const candidate of candidates.slice(0, connectionCount)) {
-      const navigable = tile.riverStrength >= 0.42 && (candidate.neighbor.water || candidate.neighbor.riverStrength >= 0.3);
-      addRiverEdge(tile, candidate.direction.edge, navigable);
-      if (!candidate.neighbor.water) addRiverEdge(candidate.neighbor, candidate.direction.opposite, navigable);
-    }
-  }
-}
-
 function assignRidgeEdges(tiles: Map<string, GeographicTileWindowTile>, scale: GeographicAdaptiveHexScale): void {
   const forwardEdges = new Set<HexTileEdge>(['e', 'se', 'sw']);
   for (const tile of tiles.values()) {
@@ -281,17 +257,6 @@ function neighborTile(
   const r = tile.r + (odd ? direction.drOdd : direction.drEven);
   if (r < 0 || r >= scale.worldRows) return undefined;
   return tiles.get(tileId(scale, q, r));
-}
-
-function addRiverEdge(tile: GeographicTileWindowTile, edge: HexTileEdge, navigable: boolean): void {
-  if (navigable) {
-    addUnique(tile.navigableRiverEdges, edge);
-    tile.navigableRiverCenter = true;
-    tile.morphology = 'navigable-river';
-    tile.terrainType = hexTerrainTypeNameFromRules(tile.biome, tile.morphology);
-  } else {
-    addUnique(tile.minorRiverEdges, edge);
-  }
 }
 
 function addUnique(values: HexTileEdge[], value: HexTileEdge): void {
