@@ -28,6 +28,9 @@ import {
 import { drawGeographicChildBoundaryOverlay } from './geographicDrilldownBoundaryOverlay';
 
 export type GeographicDrilldownPresentation = 'auto' | 'overlay' | 'tiles' | 'natural' | 'terrain';
+export type ResolvedGeographicDrilldownPresentation =
+  | { mode: 'overlay'; tilePresentation: GeographicTileWindowPresentation }
+  | { mode: 'tiles'; tilePresentation: GeographicTileWindowPresentation };
 
 export function childIdAtGeographicCanvasPoint({
   topology,
@@ -124,7 +127,7 @@ export function useGeographicAtlasController(
     if (!preview || !current || !canvasRef.current) return;
     const childMembership = partition?.membership.childIndexByTopologyCell ?? null;
     const selectedChildIndex = partition?.children.findIndex((entry) => entry.id === selectedChildId) ?? -1;
-    const resolvedPresentation = resolvePresentation(presentation, current.level);
+    const resolvedPresentation = resolveGeographicDrilldownPresentation(presentation, current.level);
     let transform: GeographicWindowTransform;
 
     if (resolvedPresentation.mode === 'overlay') {
@@ -317,16 +320,13 @@ export function useGeographicAtlasController(
   };
 }
 
-function resolvePresentation(
+export function resolveGeographicDrilldownPresentation(
   presentation: GeographicDrilldownPresentation,
-  level: GeographicHierarchyOpenMap['level'],
-): { mode: 'overlay'; tilePresentation: GeographicTileWindowPresentation } | { mode: 'tiles'; tilePresentation: GeographicTileWindowPresentation } {
+  _level: GeographicHierarchyOpenMap['level'],
+): ResolvedGeographicDrilldownPresentation {
   if (presentation === 'overlay') return { mode: 'overlay', tilePresentation: 'natural' };
   if (presentation === 'terrain') return { mode: 'tiles', tilePresentation: 'terrain' };
-  if (presentation === 'natural' || presentation === 'tiles') return { mode: 'tiles', tilePresentation: 'natural' };
-  return level === 'local' || level === 'detail'
-    ? { mode: 'tiles', tilePresentation: 'natural' }
-    : { mode: 'overlay', tilePresentation: 'natural' };
+  return { mode: 'tiles', tilePresentation: 'natural' };
 }
 
 function drawLabels(
