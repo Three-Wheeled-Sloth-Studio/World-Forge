@@ -7,7 +7,10 @@ import {
 } from '@world-forge/shared';
 import { buildGeographicMacroRegions } from './geographicRegionPartition';
 import { deriveGeographicRegionScaleBudget } from './geographicRegionBudget';
-import { buildGeographicSurfaceDomains } from './geographicSurfaceDomains';
+import {
+  buildGeographicSurfaceDomains,
+  surfaceDomainKindForComponentAreas,
+} from './geographicSurfaceDomains';
 import { repairGeographicRegionSlivers } from './geographicRegionRepair';
 import { buildFlatWorldHexOverlay } from './worldHexOverlay';
 
@@ -74,6 +77,16 @@ describe('geographic surface domains', () => {
     for (const merge of repaired.repair?.merges ?? []) {
       expect(parentByRegionId.get(merge.removedRegionId)).toBe(parentByRegionId.get(merge.retainedRegionId));
     }
+  });
+
+  it('keeps a dominant mainland classified as landmass despite satellite islands', () => {
+    expect(surfaceDomainKindForComponentAreas([90, 5, 5])).toBe('landmass');
+    expect(surfaceDomainKindForComponentAreas([72, 18, 10])).toBe('landmass');
+  });
+
+  it('reserves archipelago for clusters without a dominant mainland', () => {
+    expect(surfaceDomainKindForComponentAreas([60, 25, 15])).toBe('archipelago');
+    expect(surfaceDomainKindForComponentAreas([34, 33, 33])).toBe('archipelago');
   });
 });
 
