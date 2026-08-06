@@ -11,15 +11,14 @@ Observed runtime sequence:
 - `0.3.61`: initial tile-window browser QA;
 - `0.3.62`: canonical-path density correction;
 - `0.3.63`: sub-source river refinement and first tile-hit correction;
-- `0.3.64`: direct rendered-tile selection, canonical Terrain presentation, and explicit boundary-versus-center river grammar.
+- `0.3.64`: direct rendered-tile selection, canonical Terrain presentation, and explicit boundary-versus-center river grammar;
+- `0.3.65`: world-overlay alignment, non-ice land color correction, bounded context halo, physical-width guardrails, endpoint markers, and tributary rebalancing.
 
 ## Accepted behavior from the browser pass
 
-The main-workspace drilldown path remains usable from world through detail. Hierarchy navigation, Back behavior, contextual map, and right-click action menu are useful enough to retain as the interaction baseline.
+The main-workspace drilldown path remains usable from world through detail. Hierarchy navigation, Back behavior, contextual map, and right-click action menu remain the interaction baseline.
 
-The v0.3.62 and v0.3.63 changes materially reduced the original local/detail river spam. Canonical generated paths remain the anchors, with bounded deterministic refinement below source resolution.
-
-This is not full issue `#10` acceptance.
+Canonical generated river paths remain the authoritative anchors, with bounded deterministic decomposition below source resolution. This is not full issue `#10` acceptance.
 
 ## Selection-coordinate defect
 
@@ -33,101 +32,118 @@ v0.3.63 added rendered-hex hit testing, but the controller still converted the h
 
 At deep scales, many fine tiles share coarse topology provenance. The round trip could therefore select a different coarse child from the child visibly drawn under the pointer.
 
-### v0.3.64 correction
+### Current correction
 
-Tile presentation now returns the clicked canonical tile directly to the controller.
+Tile presentation returns the clicked canonical tile directly to the controller. Selection uses the hit tile's `membershipRole`, exact `childIndex`, and world-relative tile identity. It does not fall back to rectangular topology selection when the pointer misses the rendered grid.
 
-Selection uses:
+Overlay/raster presentation retains its continuous geographic lookup path.
 
-- the hit tile's `membershipRole`;
-- the hit tile's exact `childIndex`;
-- the partition child at that index.
+## World atlas outline offset
 
-It does not fall back to rectangular topology selection when the pointer misses the rendered tile grid. Overlay/raster presentation retains its continuous geographic lookup path.
+The world atlas overlay had two independent projection errors:
 
-A regression deliberately makes rendered-tile child membership disagree with coarse topology membership and verifies that the rendered tile wins.
+1. macro membership was sampled into a separate fixed-size raster rather than the same equirectangular topology lookup used by the visible world map;
+2. the overlay canvas filled the workspace while the base canvas occupied a measured aspect-preserving rectangle inside that workspace.
 
-## Terrain presentation defect
+v0.3.65 now:
 
-The control labeled **Terrain + hex** was still wired to legacy raster-overlay presentation. Canonical refined rivers existed only in the tile renderer, so the Terrain view showed no rivers at deep levels and could lose them at broader levels through raster scaling.
+- projects macro membership with `equirectangularTopologyLookup` at the base canvas's exact intrinsic resolution;
+- sizes and positions the overlay over the base canvas's measured display rectangle;
+- observes both the map host and base canvas for resize changes;
+- uses the same aligned overlay surface for pointer selection.
 
-In v0.3.64, **Terrain + hex** selects canonical terrain-tile presentation at every drilldown level. Natural Tiles and Terrain now consume the same tile facts and river layer; only their fill treatment differs.
+A focused geometry regression verifies that the overlay uses the base-canvas box rather than the workspace box.
 
-Auto may still use the raster overview at broader hierarchy levels.
+## Pale blue land regression
 
-## Terrain fidelity ceiling
+The water mask was not the cause. Some projected land cells retained an `ice_cap` biome code after authoritative surface-structure classification determined they were not permanent ice.
 
-Around subregion scale and below, inherited terrain information is still reused beyond its useful source resolution. Tile presentation removes raster blur but exposes repeated coarse facts as broad, blocky areas.
+Natural View previously chose the ice-cap palette before consulting permanent-ice facts. Large cold land areas could therefore read as shallow coastal water.
 
-Local/detail terrain acceptance still requires deterministic scale-specific refinement constrained by:
+v0.3.65 makes the surface permanent-ice layer authoritative for natural presentation:
 
-- coastline and water identity;
-- broad relief and drainage;
-- climate and biome;
-- major ridges and rivers;
-- stable world anchoring.
+- `ice_cap` plus permanent ice remains ice;
+- `ice_cap` without permanent ice presents through the tundra palette;
+- point-inspection base-color diagnostics use the same presentation fallback;
+- pale-land parity diagnostics no longer exclude stale non-permanent `ice_cap` cells.
 
-Sharpening alone is not a solution.
+The atlas world overlay also applies a subtle land-only warm tint so macro boundaries remain legible without warming ocean pixels.
 
-## River overgrowth diagnosis
+## Terrain presentation
 
-The original local/detail renderer copied one coarse topology-cell river value into many fine tiles and let every tile choose downstream directions independently. Repeated source values and deterministic tie-breaking manufactured combs, spokes, and chevrons.
+The control labeled **Terrain + hex** previously used legacy raster-overlay presentation, where refined tile rivers were absent. It now selects canonical terrain-tile presentation at every drilldown level.
 
-The current model instead:
+Natural Tiles and Terrain consume the same tile facts and hydrology; only fill treatment differs. Auto may still use the raster overview at broader levels.
 
-- anchors to canonical generated river paths;
-- refines routes only inside a bounded inherited corridor;
-- uses elevation, water, wetness, river strength, and small deterministic micro-relief;
-- permits bounded minor tributaries and early convergence;
-- keeps scalar river strength unable to invent a network without canonical paths.
+## Context halo
+
+The tile generator needs nearby land and water facts for coastlines, islands, routing, and continuity. Rendering the entire rectangular extent as context hexes created large artificial ocean rectangles.
+
+v0.3.65 retains context facts but presents only a connected halo around parent tiles:
+
+- parent tiles are always visible;
+- neighboring context expands by the requested padding, capped at two rings;
+- disconnected rectangular corners remain hidden and cannot be selected;
+- nearby ocean, lakes, islands, and adjacent land remain available where they touch the selected area.
+
+## River hierarchy and endpoint legibility
+
+### Sources and mouths
+
+A visible river endpoint now carries runtime-only derived metadata:
+
+- `riverSource` for a visible canonical or procedural source;
+- `riverMouthEdges` where a land channel meets a water tile;
+- `riverTerminus` for ocean, basin, lake, or wetland termination.
+
+The renderer adds small source and mouth/terminus markers. These facts are generated with the tile window and are not persisted to `.wforge`.
+
+### Main channels versus tributaries
+
+v0.3.64 over-promoted inherited main channels while generating too few tributaries. v0.3.65:
+
+- raises the navigable/main-channel strength threshold;
+- increases bounded tributary opportunity below source resolution;
+- shortens tributary spacing and raises the branch budget;
+- constrains procedural sources to the generated window;
+- permits early tributary convergence into existing channels;
+- keeps canonical source rivers authoritative.
+
+This is still a cheap cartographic decomposition, not a full drainage-basin or discharge simulation.
 
 ## River visual grammar
 
-The following definitions apply to the geographic atlas.
-
 ### Boundary river
 
-A notable river that does not dominate the active hex is drawn along the hex perimeter from one crossed edge midpoint to another through one or more hex vertices.
+A notable river that does not dominate the active hex follows the hex perimeter from one crossed edge midpoint to another through one or more vertices. It does not enter the center.
 
-It does not enter the center of the hex.
+This is an atlas cartographic treatment. It does not yet assert that the stored edge is the final strategy-game movement-penalty boundary.
 
-This is currently an atlas cartographic treatment intended to break repeated geometric centerlines. It does **not** yet assert that the stored river edge is the exact strategy-game movement-penalty boundary. That stronger semantic contract belongs to game-map/export work.
+### Center river and water tile
 
-### Center river
+Center routing and water-tile conversion are now reserved for a river whose estimated physical width meets or exceeds the active nominal hex width.
 
-A center river runs from one or more edge midpoints into the hex interior. It is reserved for water that visually dominates the tile at the active scale.
+The source physical-width estimate currently tops out below three miles. A 10-mile or 6-mile hex therefore remains land with a channel, not a fully painted water tile.
 
-### Water-dominant tile
+### Subhex display width
 
-The atlas estimates a bounded river corridor width from inherited river strength. When that display corridor reaches 72 percent of the active hex width:
+A strong but subhex main channel can occupy at most 65 percent of the flat-to-flat hex width. Minor tributaries cap at a substantially smaller fraction.
 
-- the tile receives water-dominant river fill;
-- the river may enter the tile center;
-- its stroke occupies a materially larger portion of the hex.
+Main channels and tributaries use the same blue hue; width and opacity provide hierarchy so confluences do not look like two unrelated water systems.
 
-The estimate is cartographic, not yet authoritative bank-to-bank discharge geometry.
+## v0.3.65 implementation summary
 
-### Scale hierarchy
-
-The same river's width is divided by the active nominal hex width. It must therefore occupy progressively more of the tile when drilling down:
-
-- regional view: relatively light;
-- local view: heavier;
-- detail view: potentially dominant water terrain.
-
-Minor tributaries retain a lower multiplier than major/navigable channels.
-
-## v0.3.64 implementation
-
-- direct rendered-tile child selection;
-- no topology fallback outside the rendered tile grid;
-- Terrain button routed to canonical tile presentation;
-- rivers present in Natural Tiles and Terrain Tiles;
-- ordinary rivers drawn on the hex perimeter;
-- center routing limited to water-dominant channels;
-- scale-relative corridor and stroke width;
-- display-dominant river tiles filled as water;
-- focused tests for direct tile selection, outside-grid rejection, context-tile rejection, perimeter route choice, scale hierarchy, and minor-versus-major visual weight.
+- direct rendered-tile selection retained;
+- canonical terrain-tile hydrology retained;
+- world atlas overlay uses canonical equirectangular projection and the measured base-canvas box;
+- stale non-permanent ice-cap land falls back to tundra presentation;
+- rectangular context fields replaced by bounded connected halos;
+- runtime-only source, mouth, and terminus metadata added;
+- tributary generation increased and main-channel classification tightened;
+- invented nine-mile atlas corridor estimate removed;
+- physical river estimate again controls true water-tile conversion;
+- subhex main rivers cap at 65 percent display width;
+- main and minor rivers share a hue with width/opacity hierarchy.
 
 ## Context-menu direction
 
@@ -148,7 +164,7 @@ A later full local-hydrology and strategy-map model should provide:
 
 - explicit discharge and river order;
 - drainage-basin-aware tributary budgets;
-- physically grounded channel width;
+- physically grounded bank-to-bank channel width;
 - deltas, distributaries, floodplains, wetlands, and intermittent streams;
 - semantic edge-river ownership for crossing penalties;
 - semantic center/water-tile ownership for navigation;
@@ -157,23 +173,26 @@ A later full local-hydrology and strategy-map model should provide:
 
 Terrain refinement remains separate.
 
-## v0.3.64 browser retest
+## v0.3.65 browser retest
 
-1. Repeat the reported southeast Region 15 selection with left-click and right-click.
-2. Click near every map edge and in the black margin; margins must not select a child.
-3. Compare the same river reach in Tiles and Terrain at region, subregion, local, and detail levels.
-4. Confirm Terrain contains the same canonical river network as Tiles.
-5. Confirm ordinary channels visibly hug hex boundaries rather than entering centers.
-6. Confirm the same major channel becomes heavier relative to the hex at finer levels.
-7. Confirm any water-dominant detail tile is filled and uses center routing.
-8. Record any river-window generation delay.
+1. Confirm pale non-ice land no longer reads as shallow water in the normal world map and atlas.
+2. Confirm world macro outlines sit directly on the land and water boundaries they represent at multiple window sizes.
+3. Repeat the southeast Region 15 left-click and right-click selection.
+4. Confirm surrounding context is a connected coastal halo rather than a rectangular ocean field.
+5. Compare the same river reach in Tiles and Terrain at region, subregion, local, and detail levels.
+6. Confirm visible sources and mouths/termini read as intentional endpoints rather than clipped lines.
+7. Confirm tributaries usually outnumber or at least materially supplement main trunks in deeply refined river basins.
+8. Confirm main and minor channels blend through one hue family.
+9. Confirm a strong river in a 10-mile or 6-mile hex remains capped near 65 percent unless its estimated physical width truly exceeds the hex.
+10. Record river-window generation delay and any overlap/seam discontinuity.
 
 ## Acceptance impact
 
 - workspace and hierarchy behavior: provisionally passed;
-- canonical-path density correction: visually improved;
-- direct tile selection: implemented for v0.3.64, browser verification required;
-- Terrain river parity: implemented for v0.3.64, browser verification required;
-- boundary-versus-center grammar: implemented for v0.3.64, browser verification required;
-- local/detail terrain fidelity: unresolved;
+- direct tile selection: implemented, browser re-verification required;
+- world atlas alignment: implemented for v0.3.65, browser verification required;
+- land/water color separation: implemented for v0.3.65, browser verification required;
+- bounded context halo: implemented for v0.3.65, browser verification required;
+- source/mouth legibility and tributary hierarchy: implemented for v0.3.65, browser verification required;
+- local/detail terrain refinement: unresolved;
 - issue `#10`: remains open.
