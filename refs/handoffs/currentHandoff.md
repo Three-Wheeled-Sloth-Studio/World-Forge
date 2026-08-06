@@ -1,168 +1,238 @@
-# Current Handoff: Canonical Geographic Drilldown
+# Current Handoff: Geographic Atlas 2.5D Architecture Spike
 
-Updated: 2026-08-05
+Updated: 2026-08-06
 
-Status: **active next slice on `dev`**
+Status: **accepted architecture pivot and active next slice on `dev`**
 
 Primary tracking:
 
-- World Forge issue `#10`, **[PI] Build canonical tile-window geographic drilldown**
-- `refs/handoffs/canonical-geographic-drilldown-next-slice.md`
-- `refs/testing/geographic-region-drilldown-qa.md`
+- World Forge issue `#10`
+- `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
+- `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
+- `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
 
-Primary repository:
+Decision baseline:
 
-- `Three-Wheeled-Sloth-Studio/World-Forge`
+- repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 - branch: `dev`
+- commit: `b8c2a7e9e97d1fdd9cd1ee3cdd0d8dc24ebca056`
+- visible version: `0.3.66`
 
-Integration/regression repository:
+Integration repository:
 
 - `Three-Wheeled-Sloth-Studio/Parchment-Worlds`
 - branch: `dev`
-- preserve embedded World Forge launch, save-back, and the accepted Sol starter path
+- integration handoff: `refs/handoffs/world-forge-2.5d-atlas-integration.md`
+
+Portfolio decision:
+
+- `Three-Wheeled-Sloth-Studio/Parchment-Worlds-Portfolio`
+- `docs/geographic-atlas-2.5d-architecture-pivot.md`
+
+## Decision
+
+Pause incremental patching of the current flat geographic atlas and build a constrained 2.5D scene architecture.
+
+The production direction is:
+
+- orthographic, map-like interaction by default;
+- optional shallow pitch and limited rotation;
+- elevation-displaced continuous terrain;
+- separate water surfaces;
+- Natural and analytical materials over the same geometry;
+- canonical rivers draped over terrain;
+- region boundaries, selection, and hexes as overlays;
+- screen-space labels;
+- continuous zoom and level of detail instead of hierarchy-triggered renderer switches.
+
+The current atlas remains useful as hierarchy, data-contract, and QA evidence. It is not the production rendering architecture.
+
+## Why this supersedes the prior handoff
+
+Versions `0.3.61` through `0.3.66` proved useful pieces:
+
+- world-to-detail hierarchy navigation;
+- main-workspace atlas mounting;
+- canonical tile-window contracts;
+- world-relative IDs;
+- contextual mini-map;
+- direct rendered-tile selection;
+- improved river continuity and presentation experiments;
+- right-click location actions.
+
+The same QA also showed that the flat renderer had reached diminishing returns:
+
+- elevation remained visually absent;
+- color and ice authority differed by rendering path;
+- region membership and presentation became entangled;
+- zoom stopped at implementation-defined scale levels;
+- Auto and legacy fallback behavior created contradictory views;
+- fixes to rivers, context, and materials repeatedly regressed neighboring behavior;
+- renderer code was increasingly reconstructing geography.
+
+Do not resume that patch loop except for a build-breaking or data-corrupting defect.
+
+## Read first
+
+1. `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
+2. `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
+3. World Forge issue `#10`
+4. `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
+5. `refs/testing/geographic-drilldown-qa-0.3.66.md`
+6. `refs/testing/geographic-drilldown-scale-fidelity-findings-2026-08-06.md`
+7. `packages/shared/src/geographicTileWindow.ts`
+8. `packages/generator-core/src/geographicTileWindow.ts`
+9. existing globe and Three.js scene utilities
+10. Parchment Worlds `refs/handoffs/world-forge-2.5d-atlas-integration.md`
+
+Where older documents say 2D acceptance is a prerequisite for 3D, this handoff and the accepted decision record supersede them.
 
 ## Product objective
 
-Deliver a deterministic 2D hierarchy:
+Deliver one authoritative geographic scene that can present a generated world from continental through local scale with useful terrain relief, stable selection, continuous zoom, canonical rivers, progressive hexes, and no hidden renderer switch.
+
+Hierarchy remains semantic navigation:
 
 ```text
 World
--> continent / archipelago / provisional ocean basin
+-> landmass / archipelago / ocean basin
 -> region
 -> subregion
 -> local
 -> detail
 ```
 
-Region and deeper views must use canonical world-anchored tile windows rather than enlarged global raster crops. Stable IDs, inherited geography, exact parent membership, context-only terrain, seam behavior, and overlapping-window consistency are core contracts.
+It does not impose a camera or resolution ceiling.
 
-## Required UX additions
+## Required ownership boundaries
 
-### Mini-map
+### Generator and geographic interpretation own
 
-Every opened drilldown level must include a compact mini-map that:
+- elevation, water, ice, climate, biome, geology, and hydrology;
+- landmass, archipelago, region, and child membership;
+- stable IDs and parent-child relationships;
+- replay versions and provenance.
 
-- shows whole-world or useful ancestor context;
-- marks the current window;
-- distinguishes exact parent and surrounding context;
-- marks the selected immediate child when applicable;
-- remains longitude-seam aware;
-- updates with Back and breadcrumb navigation;
-- does not generate a second fine-resolution tile window.
+### Geographic scene builder owns
 
-The first accepted mini-map may be read-only.
+- projected visible extent;
+- terrain patch resolution and seams;
+- water surfaces;
+- presentation-ready river paths;
+- material weights;
+- boundary paths;
+- labels and anchors;
+- visible hex overlay scale;
+- selection and camera-context metadata.
 
-### Main-workspace presentation
+### Renderer owns
 
-The current atlas mounts as `GeographicAtlasModal` over the normal page. The preferred low-effort shape is:
+- camera;
+- lighting and relief exaggeration;
+- materials;
+- vector and grid overlays;
+- screen-space labels;
+- picking presentation;
+- visual level of detail.
 
-- extract one neutral `GeographicAtlasWorkspace` from the modal;
-- mount it in the primary content area while drilldown is active;
-- suppress the ordinary application side panels;
-- retain a compact drilldown-specific inspector;
-- provide a clear breadcrumb back to the normal world map;
-- restore the prior map context on exit.
+The renderer does not classify continents, invent rivers, or decide saved-world truth.
 
-Retain the modal temporarily only if the shell change requires new routing, durable state, Parchment integration, or duplicated controller behavior. Even then, use the shared workspace component and record the remaining shell migration.
+## Immediate work sequence
 
-## Read first
+### WP0: Freeze and inventory
 
-1. `refs/handoffs/canonical-geographic-drilldown-next-slice.md`
-2. World Forge issue `#10`
-3. `refs/handoffs/geographic-region-drilldown.md`
-4. `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
-5. `refs/testing/geographic-region-drilldown-qa.md`
-6. `refs/handoffs/archive/geographic-drilldown-v0.3.32-paused.md`
-7. `packages/shared/src/geographicTileWindow.ts`
-8. `packages/generator-core/src/geographicTileWindow.ts`
-9. `apps/desktop/src/regions/geographicTileWindowMap.ts`
-10. `apps/desktop/src/regions/GeographicAtlasModal.tsx`
-11. `apps/desktop/src/regions/useGeographicAtlasController.ts`
-12. `packages/exporters/src/index.ts`
+- preserve v0.3.66 QA evidence;
+- identify reusable data and interaction seams;
+- classify old renderer modules as comparison-only or retirement candidates;
+- confirm existing Three.js and globe utilities;
+- prevent silent Auto or fallback behavior in the new path.
 
-The dedicated next-slice handoff is authoritative where older status descriptions conflict.
+### WP1: Pure `GeographicScene` contract
 
-## Current verified source baseline
+- add renderer-neutral scene types;
+- define identity, extent, projection, terrain patches, water, rivers, boundaries, labels, selection, and context;
+- add deterministic signatures and pure tests;
+- import no DOM, React, Canvas, WebGL, or Three.js types.
 
-Present on `dev`:
+### WP2: Representative terrain patch
 
-- `geographic-tile-window-v1` and `geographic-tile-classifier-v1`;
-- bounded seam-aware tile-window generation with a halo;
-- world-relative `q/r` coordinates and stable tile IDs;
-- exact parent and context roles;
-- deterministic signatures;
-- a dedicated 2D tile renderer;
-- generic atlas controller and current modal presentation.
+- build one fixed continental fixture;
+- displace continuous terrain from authoritative elevation;
+- add a separate water surface;
+- render Natural and Elevation or Slope views on the same geometry;
+- expose scene-build diagnostics.
 
-Not accepted yet:
+### WP3: Map interaction
 
-- exact-head browser QA across the issue `#10` matrix;
-- exporter/runtime classifier convergence;
-- persistent mini-map;
-- main-workspace presentation;
-- full world-to-detail acceptance on a trustworthy runtime;
-- macro-decomposition behavior tracked separately by issue `#12`.
+- orthographic pan and continuous zoom;
+- map reset;
+- shallow pitch and limited rotation;
+- canonical picking;
+- region boundaries and selection overlays;
+- screen-space labels;
+- synchronized context map.
 
-## Recommended sequence
+### WP4: Rivers and progressive hexes
 
-### WP0 — Trustworthy baseline
+- terrain-following canonical river vectors;
+- unresolved drainage diagnostics;
+- scale-aware river presentation;
+- progressive world-anchored hex overlay;
+- no renderer switch when hexes appear.
 
-- record exact `dev` head and visible runtime version;
-- run focused tests plus `npm audit`, `npm run verify`, and `npm run evaluate:regions`;
-- identify the actual active browser path;
-- capture defects before changing behavior.
+### WP5: Integration and evidence
 
-### WP1 — Canonical ownership
-
-- establish exporter/runtime parity fixtures;
-- converge exporter generation onto the canonical classifier or shared pure classification seam;
-- prove overlap, seam, river, and ridge consistency.
-
-### WP2 — Workspace and mini-map
-
-- extract `GeographicAtlasWorkspace`;
-- implement main-content atlas-session mode when low effort;
-- suppress normal side panels;
-- add breadcrumb back to the world map;
-- add persistent mini-map at every opened level;
-- preserve one controller and renderer path.
-
-### WP3 — Hierarchy hardening
-
-- validate world through detail;
-- fix scale progression, selection, labels, edge continuity, and context behavior;
-- preserve inherited geography;
-- keep region and deeper maps materially cleaner than raster enlargement.
-
-### WP4 — QA and closeout
-
-- complete fixed-seed, preset, seam, reopen, and maximum-footprint checks;
-- validate `1920 x 1080` and `1440 x 900`;
-- capture a full screenshot sequence including mini-map and workspace shell;
-- update issue `#10` and repository handoffs.
+- mount in normal World Forge workspace;
+- verify Parchment embedding without a contract change;
+- profile scene build, frame rate, draw calls, memory, and interaction latency;
+- test reopen, resize, neighboring extents, seams, and cancellation;
+- capture exact-head QA and decide whether to continue into production.
 
 ## Guardrails
 
-- Do not create a second geography model for the mini-map or workspace.
-- Do not reset coordinates per parent.
-- Do not keep two untracked long-lived classifiers.
-- Do not generate a full-world fine tile grid.
-- Do not activate or persist `world-regions-v2`.
-- Do not begin regional 3D, PBR materials, politics, settlements, roads, or resources.
-- Do not resume issue `#12` by blindly tuning thresholds.
-- Do not reopen deferred Sol presentation work.
-- Preserve ordinary deterministic generation and `.wforge` compatibility.
+- Do not create a second geography model for 2.5D.
+- Do not build production terrain from raised hex columns.
+- Do not make the terrain mesh the source of region membership.
+- Do not infer rivers or boundaries from material colors.
+- Do not allocate a full-world fine terrain mesh.
+- Do not make every hex a scene object.
+- Do not add unrestricted flight controls.
+- Do not persist spike-only scene artifacts.
+- Do not change `.wforge`, `.pworld`, or Parchment host contracts during the spike.
+- Do not retain the flat atlas as a hidden production fallback after acceptance.
+- Do not resume issue `#12` threshold tuning as part of this spike.
+- Preserve issue `#126` as a later consumer of canonical location actions.
 
-## Deferred Sol reference status
+## Acceptance boundary
 
-The Sol package pipeline remains operational. Earth, Jupiter, and Mars are user-accepted. Broader planet/moon Globe coverage remains deferred and unaccepted.
+The spike is accepted only when one representative area proves:
 
-Latest recorded `.wforge` evidence:
+- useful elevation relief;
+- continuous zoom beyond the prior 24-mile ceiling;
+- Natural and analytical materials on one geometry;
+- canonical region selection and boundaries;
+- continuous terrain-following rivers;
+- progressive hex visibility;
+- stable labels;
+- synchronized context map;
+- bounded desktop performance;
+- no hidden fallback renderer;
+- no saved-world or host-contract change.
 
-```text
-Bodies: 23
-Package bytes: 2,763,277
-SHA-256: 99852f4549b778d097f94511562381f572394803b297011ac9c183404b4defbd
-```
+A screenshot without these seams is not acceptance.
 
-Do not regress these paths or claim a full `.pworld` digest.
+## Deferred
+
+- final PBR library;
+- vegetation and feature instancing;
+- terrain editing;
+- persisted camera bookmarks;
+- derived regional asset persistence;
+- politics, cultures, settlements, and roads;
+- strategy-game river-edge semantics;
+- production mobile interaction;
+- cinematic globe-to-patch transitions.
+
+## Existing Sol reference status
+
+The Sol package pipeline remains operational. Earth, Jupiter, and Mars remain the accepted body-presentation baseline. Broader body presentation is still deferred and must not be absorbed into the atlas spike.
