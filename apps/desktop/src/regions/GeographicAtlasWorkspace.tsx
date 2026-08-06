@@ -177,7 +177,7 @@ export function GeographicAtlasWorkspace({
         {current && (
           <div className="geographic-drilldown-presentations" role="group" aria-label="Drill-down map presentation">
             <button type="button" className={controller.presentation === 'auto' ? 'active' : ''} onClick={() => controller.setPresentation('auto')}>Auto</button>
-            <button type="button" className={controller.presentation === 'overlay' ? 'active' : ''} onClick={() => controller.setPresentation('overlay')}>Terrain + hex</button>
+            <button type="button" className={controller.presentation === 'terrain' ? 'active' : ''} onClick={() => controller.setPresentation('terrain')}>Terrain + hex</button>
             <button type="button" className={controller.presentation === 'tiles' ? 'active' : ''} onClick={() => controller.setPresentation('tiles')}>Tiles</button>
           </div>
         )}
