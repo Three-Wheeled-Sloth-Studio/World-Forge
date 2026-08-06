@@ -13,13 +13,14 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 export function parchmentCandidateRoots(
   worldForgeRoot: string,
   env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
 ): string[] {
   const configured = cleanText(env.PARCHMENT_WORLDS_LOCAL_PATH);
   return uniquePaths([
     configured ? path.resolve(worldForgeRoot, configured) : null,
     path.resolve(worldForgeRoot, '..', 'Parchment-Worlds'),
     path.resolve(worldForgeRoot, '..', 'parchment-worlds'),
-  ]);
+  ], platform === 'win32');
 }
 
 export function parchmentChildEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -157,13 +158,13 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-function uniquePaths(values: Array<string | null>): string[] {
+function uniquePaths(values: Array<string | null>, caseInsensitive: boolean): string[] {
   const seen = new Set<string>();
   const output: string[] = [];
   for (const value of values) {
     if (!value) continue;
     const resolved = path.resolve(value);
-    const key = process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+    const key = caseInsensitive ? resolved.toLowerCase() : resolved;
     if (seen.has(key)) continue;
     seen.add(key);
     output.push(resolved);
