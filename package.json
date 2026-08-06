@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host localhost",
+    "check:case-collisions": "node scripts/check-case-collisions.mjs",
+    "prebuild": "npm run check:case-collisions",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "benchmark:generation": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark-generation.ts",
@@ -32,6 +34,7 @@
     "validate:presets": "tsx --tsconfig tsconfig.scripts.json scripts/run-preset-validation.ts",
     "workflow:legacy": "tsx --tsconfig tsconfig.scripts.json scripts/run-generation-workflow.ts",
     "test": "vitest run",
+    "pretypecheck": "npm run check:case-collisions",
     "typecheck": "tsc -b",
     "validate": "npm run typecheck && npm test && npm run test:production-page-harness && npm run test:production-rerank",
     "verify": "npm run validate && npm run build"
