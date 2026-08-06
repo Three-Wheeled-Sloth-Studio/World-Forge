@@ -42,8 +42,11 @@ describe('geographic river tile projection', () => {
       (total, tile) => total + tile.minorRiverEdges.length + tile.navigableRiverEdges.length,
       0,
     );
+    const minorEdgeCount = projected.tiles.reduce((total, tile) => total + tile.minorRiverEdges.length, 0);
     expect(projectedEdgeCount).toBeGreaterThan(0);
-    expect(projectedEdgeCount).toBeLessThan(projected.tiles.length * 2);
+    expect(projectedEdgeCount).toBeLessThan(projected.tiles.length * 3);
+    expect(minorEdgeCount).toBeGreaterThan(0);
+    expect(projected.tiles.some((tile) => tile.riverSource || tile.riverMouthEdges.length > 0)).toBe(true);
 
     project.primaryWorld.rivers = [];
     project.primaryWorld.topologyLayers.river.fill(1);
@@ -55,7 +58,10 @@ describe('geographic river tile projection', () => {
       parentMembership: membership,
     });
     expect(scalarOnly.tiles.every((tile) => (
-      tile.minorRiverEdges.length === 0 && tile.navigableRiverEdges.length === 0
+      tile.minorRiverEdges.length === 0
+      && tile.navigableRiverEdges.length === 0
+      && tile.riverMouthEdges.length === 0
+      && !tile.riverSource
     ))).toBe(true);
   });
 
@@ -71,10 +77,28 @@ describe('geographic river tile projection', () => {
     expect(route.some((coordinate) => coordinate.q >= 358)).toBe(true);
   });
 
-  it('uses a monotonic physical-width estimate for scale-aware river presentation', () => {
+  it('uses a monotonic bounded physical-width estimate for scale-aware river presentation', () => {
     expect(estimatedRiverWidthMiles(0)).toBeGreaterThan(0);
     expect(estimatedRiverWidthMiles(0.45)).toBeGreaterThan(estimatedRiverWidthMiles(0.2));
     expect(estimatedRiverWidthMiles(0.8)).toBeGreaterThan(estimatedRiverWidthMiles(0.45));
     expect(estimatedRiverWidthMiles(1)).toBeGreaterThan(2.5);
+    expect(estimatedRiverWidthMiles(1)).toBeLessThan(3);
+  });
+
+  it('does not convert a river into water terrain unless its estimated width exceeds the active hex', () => {
+    const project = testProject('tile-window-river-dominance');
+    const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
+    const membership = new Uint8Array(topology.cellCount).fill(1);
+    const scaleResult = deriveAdaptiveGeographicScale(topology, 24881, membership);
+    const projected = generateGeographicTileWindow({
+      project,
+      topology,
+      scale: scaleResult.scale,
+      extent: scaleResult.extent,
+      parentMembership: membership,
+    });
+
+    expect(scaleResult.scale.nominalHexWidthMiles).toBeGreaterThan(estimatedRiverWidthMiles(1));
+    expect(projected.tiles.every((tile) => !tile.navigableRiverCenter)).toBe(true);
   });
 });
