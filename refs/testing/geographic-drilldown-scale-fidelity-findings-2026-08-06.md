@@ -105,9 +105,10 @@ v0.3.64 over-promoted inherited main channels while generating too few tributari
 - raises the navigable/main-channel strength threshold;
 - increases bounded tributary opportunity below source resolution;
 - shortens tributary spacing and raises the branch budget;
-- constrains procedural sources to the generated window;
 - permits early tributary convergence into existing channels;
-- keeps canonical source rivers authoritative.
+- keeps canonical source rivers authoritative;
+- selects procedural tributary sources from world, scale, terrain, and route facts rather than the currently open window;
+- keeps overlapping-window tributary routes stable, while only displaying a source marker when the true source is inside the visible tile set.
 
 This is still a cheap cartographic decomposition, not a full drainage-basin or discharge simulation.
 
@@ -140,6 +141,7 @@ Main channels and tributaries use the same blue hue; width and opacity provide h
 - rectangular context fields replaced by bounded connected halos;
 - runtime-only source, mouth, and terminus metadata added;
 - tributary generation increased and main-channel classification tightened;
+- tributary refinement remains stable across overlapping windows;
 - invented nine-mile atlas corridor estimate removed;
 - physical river estimate again controls true water-tile conversion;
 - subhex main rivers cap at 65 percent display width;
