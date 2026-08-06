@@ -1,0 +1,151 @@
+/* The live geographic hierarchy already portals into the central map frame.
+   While an atlas session is open, let that neutral workspace own the
+   application shell instead of preserving unrelated editor chrome. */
+.app-shell:has(.geographic-atlas-workspace) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell:has(.geographic-atlas-workspace) > .toolbar,
+.app-shell:has(.geographic-atlas-workspace) > .summary,
+.app-shell:has(.geographic-atlas-workspace) .workspace-toolbar-stack {
+  display: none;
+}
+
+.app-shell:has(.geographic-atlas-workspace) > .map-pane {
+  grid-column: 1 / -1;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.app-shell:has(.geographic-atlas-workspace) .canvas-wrap {
+  align-items: stretch;
+  overflow: hidden;
+  padding: 0;
+}
+
+.app-shell:has(.geographic-atlas-workspace) .map-canvas-frame {
+  height: 100%;
+  min-height: 0;
+  min-width: 100%;
+  width: 100% !important;
+}
+
+.geographic-atlas-workspace.drilled {
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+.geographic-atlas-workspace.drilled .geographic-drilldown-canvas {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.geographic-atlas-compact-inspector,
+.geographic-atlas-context-map {
+  backdrop-filter: blur(7px);
+  background: rgba(10, 17, 21, 0.9);
+  border: 1px solid rgba(255, 242, 196, 0.46);
+  border-radius: 8px;
+  bottom: 12px;
+  color: #f7f0df;
+  pointer-events: none;
+  position: absolute;
+  z-index: 7;
+}
+
+.geographic-atlas-compact-inspector {
+  display: grid;
+  gap: 4px;
+  left: 12px;
+  max-width: min(260px, calc(100% - 24px));
+  padding: 8px 10px;
+}
+
+.geographic-atlas-compact-inspector > strong,
+.geographic-atlas-context-map figcaption strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geographic-atlas-compact-inspector > span,
+.geographic-atlas-context-map figcaption span {
+  color: #c8c0ad;
+  text-transform: uppercase;
+}
+
+.geographic-atlas-compact-inspector > span {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.geographic-atlas-compact-inspector dl {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 0;
+}
+
+.geographic-atlas-compact-inspector dl div {
+  display: flex;
+  font-size: 11px;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.geographic-atlas-compact-inspector dt {
+  color: #c8c0ad;
+}
+
+.geographic-atlas-compact-inspector dd {
+  font-weight: 800;
+  margin: 0;
+  max-width: 165px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geographic-atlas-context-map {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  max-width: calc(100% - 24px);
+  padding: 6px;
+  right: 12px;
+  width: min(320px, calc(100% - 24px));
+}
+
+.geographic-atlas-context-map canvas {
+  aspect-ratio: 2 / 1;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.geographic-atlas-context-map figcaption {
+  align-items: center;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.geographic-atlas-context-map figcaption span {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  .geographic-atlas-context-map {
+    width: min(240px, calc(100% - 20px));
+  }
+
+  .geographic-atlas-compact-inspector {
+    max-width: min(220px, calc(100% - 20px));
+  }
+}

@@ -1,26 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ChevronRight, LoaderCircle, MapPinned } from 'lucide-react';
-import {
-  cubedSphereCellForLonLat,
-  type WorldProject,
-} from '@world-forge/shared';
-import type { GeographicHierarchyPartition, GeographicMacroArea } from '@world-forge/shared/geographicHierarchy';
+import { ArrowLeft, LoaderCircle, MapPinned } from 'lucide-react';
+import type { WorldProject } from '@world-forge/shared';
+import type { GeographicHierarchyPartition } from '@world-forge/shared/geographicHierarchy';
 import {
   buildGeographicHierarchyPreview,
-  macroAreaAtTopologyCell,
   type GeographicHierarchyPreview,
 } from './geographicHierarchyPreview';
 import { geographicRegionPreviewProjectKey } from './geographicRegionPreview';
 import { useGeographicAtlasController } from './useGeographicAtlasController';
+import {
+  GeographicAtlasWorkspace,
+  type GeographicHierarchyBuildStatus,
+} from './GeographicAtlasWorkspace';
 import './geographicHierarchy.css';
 
-const UNASSIGNED_INDEX = 0xffff;
-
-export type GeographicHierarchyBuildStatus = 'idle' | 'building' | 'ready' | 'error';
-
-type DrilldownController = ReturnType<typeof useGeographicAtlasController>;
-type DrilldownContextMenu = { x: number; y: number; label: string };
+export type { GeographicHierarchyBuildStatus } from './GeographicAtlasWorkspace';
 
 type GeographicHierarchyPanelProps = {
   project: WorldProject;
@@ -32,6 +27,7 @@ type GeographicHierarchyPanelProps = {
 export function GeographicHierarchyPanel({ project, workspaceActive, showInspector, onContextActiveChange }: GeographicHierarchyPanelProps) {
   const projectKey = geographicRegionPreviewProjectKey(project);
   const previewCacheRef = useRef(new Map<string, GeographicHierarchyPreview>());
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const partitionCacheRef = useRef(new Map<string, GeographicHierarchyPartition>());
   const [status, setStatus] = useState<GeographicHierarchyBuildStatus>('idle');
   const [preview, setPreview] = useState<GeographicHierarchyPreview | null>(null);
@@ -132,6 +128,7 @@ export function GeographicHierarchyPanel({ project, workspaceActive, showInspect
     <>
       {workspaceActive && toolbarTarget && createPortal(
         <button
+          ref={toggleRef}
           type="button"
           className={`icon-button geographic-drilldown-toggle ${enabled ? 'active' : ''}`}
           aria-label={enabled ? 'Disable geographic drill-down' : 'Enable geographic drill-down'}
@@ -147,7 +144,7 @@ export function GeographicHierarchyPanel({ project, workspaceActive, showInspect
       )}
 
       {workspaceActive && enabled && mapTarget && createPortal(
-        <GeographicDrilldownSurface
+        <GeographicAtlasWorkspace
           project={project}
           preview={preview}
           status={status}
@@ -155,9 +152,10 @@ export function GeographicHierarchyPanel({ project, workspaceActive, showInspect
           inspectorActive={inspectorActive}
           mapTarget={mapTarget}
           controller={controller}
-          onDisable={() => {
+          onExit={() => {
             controller.reset();
             setEnabled(false);
+            window.requestAnimationFrame(() => toggleRef.current?.focus());
           }}
         />,
         mapTarget,
@@ -194,270 +192,4 @@ export function GeographicHierarchyPanel({ project, workspaceActive, showInspect
       </section>}
     </>
   );
-}
-
-function GeographicDrilldownSurface({
-  project,
-  preview,
-  status,
-  error,
-  inspectorActive,
-  mapTarget,
-  controller,
-  onDisable,
-}: {
-  project: WorldProject;
-  preview: GeographicHierarchyPreview | null;
-  status: GeographicHierarchyBuildStatus;
-  error: string;
-  inspectorActive: boolean;
-  mapTarget: HTMLElement;
-  controller: DrilldownController;
-  onDisable: () => void;
-}) {
-  const current = controller.current;
-  const [contextMenu, setContextMenu] = useState<DrilldownContextMenu | null>(null);
-
-  useEffect(() => setContextMenu(null), [current?.id]);
-
-  useEffect(() => {
-    if (!preview || status !== 'ready' || current || !controller.canvasRef.current) return;
-    const draw = () => {
-      const baseCanvas = mapTarget.querySelector<HTMLCanvasElement>(':scope > canvas:first-of-type');
-      drawWorldMacroOverlay(
-        controller.canvasRef.current!,
-        baseCanvas,
-        preview,
-        controller.selectedMacroId,
-      );
-    };
-    draw();
-    const observer = new ResizeObserver(draw);
-    observer.observe(mapTarget);
-    return () => observer.disconnect();
-  }, [controller.canvasRef, controller.selectedMacroId, current, mapTarget, preview, status]);
-
-  const macroAtEvent = (event: React.MouseEvent<HTMLCanvasElement>): GeographicMacroArea | null => {
-    if (!preview) return null;
-    const canvas = event.currentTarget;
-    const rect = canvas.getBoundingClientRect();
-    const xRatio = (event.clientX - rect.left) / Math.max(1, rect.width);
-    const yRatio = (event.clientY - rect.top) / Math.max(1, rect.height);
-    const longitude = (xRatio * Math.PI * 2) - Math.PI;
-    const latitude = (Math.PI / 2) - (yRatio * Math.PI);
-    const cell = cubedSphereCellForLonLat(preview.regionPreview.topology, longitude, latitude);
-    return macroAreaAtTopologyCell(preview, cell);
-  };
-
-  const selectWorldMacro = (event: React.MouseEvent<HTMLCanvasElement>): GeographicMacroArea | null => {
-    const macroArea = macroAtEvent(event);
-    if (macroArea) controller.setSelectedMacroId(macroArea.id);
-    return macroArea;
-  };
-
-  const openWorldMacro = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const macroArea = selectWorldMacro(event);
-    if (macroArea) controller.openMacro(macroArea);
-  };
-
-  const onClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    setContextMenu(null);
-    if (current) controller.onCanvasClick(event);
-    else selectWorldMacro(event);
-  };
-
-  const onContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    let label: string | null = null;
-    if (current) {
-      const childId = controller.onCanvasContextMenu(event);
-      label = controller.partition?.children.find((entry) => entry.id === childId)?.label ?? null;
-    } else {
-      label = selectWorldMacro(event)?.label ?? null;
-    }
-    if (!label) {
-      setContextMenu(null);
-      return;
-    }
-    setContextMenu({
-      x: Math.max(8, Math.min(event.clientX - rect.left, rect.width - 190)),
-      y: Math.max(44, Math.min(event.clientY - rect.top, rect.height - 88)),
-      label,
-    });
-  };
-
-  const onDoubleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    setContextMenu(null);
-    if (current) controller.onCanvasDoubleClick(event);
-    else openWorldMacro(event);
-  };
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLCanvasElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      if (contextMenu) {
-        setContextMenu(null);
-        return;
-      }
-      if (current) controller.back();
-      else onDisable();
-      return;
-    }
-    if (current) controller.onCanvasKeyDown(event);
-    else if (event.key === 'Enter') controller.openSelectedMacro();
-  };
-
-  const openContextSelection = () => {
-    if (current) controller.openSelectedChild();
-    else controller.openSelectedMacro();
-    setContextMenu(null);
-  };
-
-  return (
-    <div className={`geographic-drilldown-surface ${current ? 'drilled' : 'world'} ${inspectorActive ? 'inspecting' : ''}`}>
-      <div className="geographic-drilldown-bar" onPointerDown={(event) => { event.stopPropagation(); setContextMenu(null); }}>
-        {current && <button type="button" className="icon-button" title="Back to parent" aria-label="Back to parent" onClick={controller.back}><ArrowLeft size={15} /></button>}
-        <nav className="geographic-drilldown-breadcrumbs" aria-label="Geographic hierarchy">
-          <button type="button" onClick={controller.reset}>World</button>
-          {controller.navigation.map((entry, index) => (
-            <React.Fragment key={`${entry.level}:${entry.id}`}>
-              <ChevronRight size={12} />
-              <button type="button" onClick={() => controller.navigateTo(index)}>{entry.label}</button>
-            </React.Fragment>
-          ))}
-        </nav>
-        {current && (
-          <div className="geographic-drilldown-presentations" role="group" aria-label="Drill-down map presentation">
-            <button type="button" className={controller.presentation === 'auto' ? 'active' : ''} onClick={() => controller.setPresentation('auto')}>Auto</button>
-            <button type="button" className={controller.presentation === 'overlay' ? 'active' : ''} onClick={() => controller.setPresentation('overlay')}>Terrain + hex</button>
-            <button type="button" className={controller.presentation === 'tiles' ? 'active' : ''} onClick={() => controller.setPresentation('tiles')}>Tiles</button>
-          </div>
-        )}
-        {inspectorActive && <span className="geographic-drilldown-inspection-chip">Point inspector</span>}
-        <label><input type="checkbox" checked={controller.showHexes} onChange={(event) => controller.setShowHexes(event.target.checked)} />Hexes</label>
-        <button type="button" className="geographic-drilldown-exit" onClick={onDisable}>Exit</button>
-      </div>
-      {status === 'building' && <div className="geographic-drilldown-status"><LoaderCircle className="geographic-atlas-spinner" size={18} />Building geography</div>}
-      {status === 'error' && <div className="geographic-drilldown-status geographic-atlas-error">{error}</div>}
-      <canvas
-        ref={controller.canvasRef}
-        className="geographic-drilldown-canvas"
-        aria-label={current ? `${current.label} drill-down map` : 'World geographic drill-down map'}
-        aria-disabled={inspectorActive}
-        tabIndex={inspectorActive ? -1 : 0}
-        onClick={onClick}
-        onContextMenu={onContextMenu}
-        onDoubleClick={onDoubleClick}
-        onKeyDown={onKeyDown}
-      />
-      {contextMenu && (
-        <div
-          className="geographic-drilldown-context-menu"
-          role="menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <button type="button" role="menuitem" onClick={openContextSelection}>Open {contextMenu.label}</button>
-          <button type="button" role="menuitem" onClick={() => setContextMenu(null)}>Keep selected</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function drawWorldMacroOverlay(
-  canvas: HTMLCanvasElement,
-  baseCanvas: HTMLCanvasElement | null,
-  preview: GeographicHierarchyPreview,
-  selectedMacroId: string | null,
-): void {
-  const width = Math.max(512, baseCanvas?.width ?? 1024);
-  const height = Math.max(256, baseCanvas?.height ?? 512);
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.clearRect(0, 0, width, height);
-
-  const rasterWidth = Math.min(1024, width);
-  const rasterHeight = Math.max(1, Math.round(rasterWidth * height / width));
-  const macroIndexes = new Uint16Array(rasterWidth * rasterHeight);
-  macroIndexes.fill(UNASSIGNED_INDEX);
-  const topology = preview.regionPreview.topology;
-  const membership = preview.macroAreaSet.membership.macroAreaIndexByTopologyCell;
-  const selectedIndex = preview.macroAreaSet.macroAreas.find((entry) => entry.id === selectedMacroId)?.index ?? -1;
-
-  for (let y = 0; y < rasterHeight; y += 1) {
-    const latitude = Math.PI / 2 - ((y + 0.5) / rasterHeight) * Math.PI;
-    for (let x = 0; x < rasterWidth; x += 1) {
-      const longitude = -Math.PI + ((x + 0.5) / rasterWidth) * Math.PI * 2;
-      const cell = cubedSphereCellForLonLat(topology, longitude, latitude);
-      macroIndexes[y * rasterWidth + x] = membership[cell] ?? UNASSIGNED_INDEX;
-    }
-  }
-
-  const image = context.createImageData(rasterWidth, rasterHeight);
-  for (let y = 0; y < rasterHeight; y += 1) {
-    for (let x = 0; x < rasterWidth; x += 1) {
-      const index = y * rasterWidth + x;
-      const macroIndex = macroIndexes[index];
-      const pixel = index * 4;
-      if (macroIndex === selectedIndex) {
-        image.data[pixel] = 240;
-        image.data[pixel + 1] = 190;
-        image.data[pixel + 2] = 88;
-        image.data[pixel + 3] = 34;
-      }
-      const left = y * rasterWidth + ((x - 1 + rasterWidth) % rasterWidth);
-      const right = y * rasterWidth + ((x + 1) % rasterWidth);
-      const above = y > 0 ? index - rasterWidth : index;
-      const below = y + 1 < rasterHeight ? index + rasterWidth : index;
-      const boundary = macroIndex !== macroIndexes[left]
-        || macroIndex !== macroIndexes[right]
-        || macroIndex !== macroIndexes[above]
-        || macroIndex !== macroIndexes[below];
-      if (!boundary) continue;
-      const selectedBoundary = macroIndex === selectedIndex
-        || macroIndexes[left] === selectedIndex
-        || macroIndexes[right] === selectedIndex
-        || macroIndexes[above] === selectedIndex
-        || macroIndexes[below] === selectedIndex;
-      image.data[pixel] = selectedBoundary ? 255 : 238;
-      image.data[pixel + 1] = selectedBoundary ? 221 : 232;
-      image.data[pixel + 2] = selectedBoundary ? 139 : 211;
-      image.data[pixel + 3] = selectedBoundary ? 245 : 220;
-    }
-  }
-
-  const overlay = document.createElement('canvas');
-  overlay.width = rasterWidth;
-  overlay.height = rasterHeight;
-  overlay.getContext('2d')?.putImageData(image, 0, 0);
-  context.imageSmoothingEnabled = false;
-  context.drawImage(overlay, 0, 0, width, height);
-  drawMacroLabels(context, width, height, preview, selectedMacroId);
-}
-
-function drawMacroLabels(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  preview: GeographicHierarchyPreview,
-  selectedMacroId: string | null,
-): void {
-  context.save();
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.font = `600 ${Math.max(11, Math.min(16, width / 90))}px Inter, system-ui, sans-serif`;
-  for (const macroArea of preview.macroAreaSet.macroAreas) {
-    const x = ((macroArea.labelPoint.longitude + 180) / 360) * width;
-    const y = ((90 - macroArea.labelPoint.latitude) / 180) * height;
-    context.lineWidth = macroArea.id === selectedMacroId ? 4 : 3;
-    context.strokeStyle = 'rgba(9, 18, 22, 0.92)';
-    context.strokeText(macroArea.label, x, y);
-    context.fillStyle = macroArea.id === selectedMacroId ? '#ffe39b' : '#f6f1df';
-    context.fillText(macroArea.label, x, y);
-  }
-  context.restore();
 }

@@ -48,17 +48,17 @@ jobs:
       - name: Run focused geographic drilldown tests
         run: >-
           npm test -- --run
-          packages/shared/src/geographicRegionDrilldown.test.ts
-          packages/shared/src/geographicTileWindowGeometry.test.ts
-          packages/shared/src/geographicTileWindowPersistence.test.ts
-          packages/shared/src/firstPartyWorldSource.test.ts
-          packages/generator-core/src/geographicTileWindow.test.ts
-          packages/generator-core/src/geographicTileWindowSeam.test.ts
-          packages/exporters/src/firstPartyGeographicTileWindowPersistence.test.ts
-          apps/desktop/src/regions/geographicAtlasRegionData.test.ts
-          apps/desktop/src/regions/geographicTileWindowMap.test.ts
-          apps/desktop/src/regions/geographicTileWindowAreaBoundaries.test.ts
-          apps/desktop/src/regions/useGeographicAtlasController.test.ts
+          ../../packages/generator-core/src/geographicAdaptiveScale.test.ts
+          ../../packages/generator-core/src/geographicChildPartition.test.ts
+          ../../packages/generator-core/src/geographicMacroAreas.test.ts
+          ../../packages/generator-core/src/geographicTileWindow.test.ts
+          ../../packages/generator-core/src/geographicWidthScale.test.ts
+          ../../packages/exporters/src/multiBodyLocalSerialization.test.ts
+          ../../packages/exporters/src/multiBodyWforge.test.ts
+          src/regions/geographicRegionPreview.test.ts
+          src/regions/geographicAtlasContextMap.test.ts
+          src/worlds/systemPackageBridge.test.ts
+          src/worlds/systemPackageReadyBridge.test.ts
 
       - name: Audit dependencies
         run: npm audit
