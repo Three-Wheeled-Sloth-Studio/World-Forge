@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
-import type { WorldProject } from '@world-forge/shared';
+import type { CubedSphereTopology, WorldProject } from '@world-forge/shared';
 import type { GeographicHierarchyPartition, GeographicMacroArea } from '@world-forge/shared/geographicHierarchy';
 import type { GeographicWorldRegionV2 } from '@world-forge/shared/geographicRegions';
 import { generateGeographicTileWindow } from '@world-forge/generator-core/geographicTileWindow';
@@ -22,11 +22,40 @@ import {
 } from './geographicWindowedMap';
 import {
   renderGeographicTileWindowToCanvas,
+  type GeographicTileWindowCanvasTransform,
   type GeographicTileWindowPresentation,
 } from './geographicTileWindowMap';
 import { drawGeographicChildBoundaryOverlay } from './geographicDrilldownBoundaryOverlay';
 
 export type GeographicDrilldownPresentation = 'auto' | 'overlay' | 'tiles' | 'natural' | 'terrain';
+
+export function childIdAtGeographicCanvasPoint({
+  topology,
+  transform,
+  parentMembership,
+  partition,
+  x,
+  y,
+}: {
+  topology: CubedSphereTopology;
+  transform: GeographicWindowTransform;
+  parentMembership: Uint8Array;
+  partition: GeographicHierarchyPartition;
+  x: number;
+  y: number;
+}): string | null {
+  const tileTransform = transform as GeographicWindowTransform & Partial<GeographicTileWindowCanvasTransform>;
+  if (typeof tileTransform.tileAtCanvasPoint === 'function') {
+    const tile = tileTransform.tileAtCanvasPoint(x, y);
+    if (!tile || tile.membershipRole !== 'parent' || tile.childIndex === null) return null;
+    return partition.children[tile.childIndex]?.id ?? null;
+  }
+
+  const cell = topologyCellAtWindowPoint(topology, transform, x, y);
+  if (parentMembership[cell] !== 1) return null;
+  const childIndex = partition.membership.childIndexByTopologyCell[cell];
+  return partition.children[childIndex]?.id ?? null;
+}
 
 export function useGeographicAtlasController(
   project: WorldProject,
@@ -217,10 +246,14 @@ export function useGeographicAtlasController(
     const rect = canvasRef.current.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * canvasRef.current.width;
     const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * canvasRef.current.height;
-    const cell = topologyCellAtWindowPoint(preview.regionPreview.topology, transformRef.current, x, y);
-    if (current.membership[cell] !== 1) return null;
-    const childIndex = partition.membership.childIndexByTopologyCell[cell];
-    return partition.children[childIndex]?.id ?? null;
+    return childIdAtGeographicCanvasPoint({
+      topology: preview.regionPreview.topology,
+      transform: transformRef.current,
+      parentMembership: current.membership,
+      partition,
+      x,
+      y,
+    });
   };
 
   const onCanvasClick = (event: MouseEvent<HTMLCanvasElement>): string | null => {
