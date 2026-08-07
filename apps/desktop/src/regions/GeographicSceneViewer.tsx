@@ -77,7 +77,9 @@ export function createGeographicSceneThreeObject(
       'position',
       new THREE.Float32BufferAttribute(surface.vertices.flatMap((vertex) => vertex.position), 3),
     );
-    geometry.setIndex(surface.triangleIndices);
+    geometry.setIndex(
+      new THREE.BufferAttribute(Uint32Array.from(surface.triangleIndices), 1),
+    );
     geometry.computeVertexNormals();
     const water = new THREE.Mesh(
       geometry,
