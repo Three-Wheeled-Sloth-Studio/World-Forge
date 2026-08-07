@@ -114,7 +114,7 @@ export function GeographicAtlasWorkspace({
         status: 'unsupported',
         scene: null,
         tileWindow: null,
-        error: 'The 2.5D spike requires an open bounded geographic area.',
+        error: '3D terrain requires an open bounded geographic area.',
       };
     }
 
@@ -293,12 +293,14 @@ export function GeographicAtlasWorkspace({
             <button
               type="button"
               className={sceneEnabled ? 'active' : ''}
+              aria-label={sceneEnabled ? 'Return to 2D map' : 'Open 3D terrain'}
               aria-pressed={sceneEnabled}
+              title={sceneEnabled ? 'Return to the 2D tile map' : 'Open stepped 3D hex terrain'}
               onClick={() => setSceneEnabled((enabled) => !enabled)}
             >
-              2.5D spike
+              {sceneEnabled ? '2D map' : '3D terrain'}
             </button>
-            <div className="geographic-drilldown-presentations" role="group" aria-label={sceneEnabled ? '2.5D scene presentation' : 'Drill-down map presentation'}>
+            <div className="geographic-drilldown-presentations" role="group" aria-label={sceneEnabled ? '3D terrain presentation' : '2D map presentation'}>
               {sceneEnabled ? (
                 <>
                   <button type="button" className={scenePresentation === 'natural' ? 'active' : ''} onClick={() => setScenePresentation('natural')}>Natural</button>
@@ -314,7 +316,7 @@ export function GeographicAtlasWorkspace({
           </>
         )}
         {inspectorActive && <span className="geographic-drilldown-inspection-chip">Point inspector</span>}
-        {!sceneEnabled && <label><input type="checkbox" checked={controller.showHexes} onChange={(event) => controller.setShowHexes(event.target.checked)} />Hexes</label>}
+        <label><input type="checkbox" checked={controller.showHexes} onChange={(event) => controller.setShowHexes(event.target.checked)} />Hexes</label>
         <button type="button" className="geographic-drilldown-exit" onClick={onExit}>World map</button>
       </div>
       {status === 'building' && <div className="geographic-drilldown-status"><LoaderCircle className="geographic-atlas-spinner" size={18} />Building geography</div>}
@@ -328,7 +330,7 @@ export function GeographicAtlasWorkspace({
             <div><dt>Window</dt><dd>{compactInspector.viewport}</dd></div>
             <div><dt>Children</dt><dd>{compactInspector.children}</dd></div>
             {sceneEnabled && sceneBuild.status === 'ready' && (
-              <div><dt>Scene</dt><dd>{sceneBuild.scene.diagnostics.terrainPatchCount} patches</dd></div>
+              <div><dt>Terrain</dt><dd>{sceneBuild.tileWindow.tiles.length} hex tiles</dd></div>
             )}
             {sceneEnabled && pickedSceneTile && (
               <div><dt>Pick</dt><dd title={`${pickedSceneTile.id} · ${pickedSceneTile.latitude.toFixed(3)}, ${pickedSceneTile.longitude.toFixed(3)}`}>{pickedSceneTile.label}</dd></div>
@@ -365,13 +367,17 @@ export function GeographicAtlasWorkspace({
           {sceneBuild.status === 'ready' ? (
             <GeographicSceneViewer
               scene={sceneBuild.scene}
+              tileWindow={sceneBuild.tileWindow}
               presentation={scenePresentation}
+              showHexes={controller.showHexes}
+              selectedChildIndex={selectedChildIndex >= 0 ? selectedChildIndex : null}
+              selectedSourceSampleId={pickedSceneTile?.id ?? null}
               onPick={handleScenePick}
               onCameraFootprintChange={setSceneCameraFootprint}
             />
           ) : (
             <div className={`geographic-scene-status ${sceneBuild.status}`}>
-              <strong>2.5D scene unavailable</strong>
+              <strong>3D terrain unavailable</strong>
               <span>{sceneBuild.error || 'No scene was produced.'}</span>
             </div>
           )}
