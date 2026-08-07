@@ -30,9 +30,12 @@
 }
 
 .geographic-atlas-workspace.drilled {
+  background: #091119;
   height: 100%;
+  isolation: isolate;
   min-height: 0;
   position: relative;
+  z-index: 10;
 }
 
 .geographic-atlas-workspace.drilled .geographic-drilldown-canvas {
@@ -145,6 +148,7 @@
 }
 
 .geographic-scene-layer {
+  background: #091119;
   inset: 38px 0 0;
   min-height: 0;
   position: absolute;
