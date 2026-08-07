@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 
 import { buildGeographicSceneFromTileWindow } from '@world-forge/generator-core/geographicSceneBuilder';
 import { createRepresentativeGeographicTileWindowFixture } from '@world-forge/generator-core/geographicSceneFixture';
@@ -6,6 +7,7 @@ import {
   buildGeographicSceneTerrainBufferData,
   createGeographicSceneThreeObject,
   disposeGeographicSceneThreeObject,
+  pickGeographicSceneIntersection,
 } from './GeographicSceneViewer';
 
 function createScene() {
@@ -41,6 +43,28 @@ describe('geographic scene Three.js adapter', () => {
 
     expect(object.children.filter((child) => child.name.startsWith('terrain-'))).toHaveLength(4);
     expect(object.children.some((child) => child.name === 'water-surface')).toBe(true);
+
+    disposeGeographicSceneThreeObject(object);
+  });
+
+  it('resolves a terrain intersection to canonical source identity', () => {
+    const scene = createScene();
+    const object = createGeographicSceneThreeObject(scene, 'natural');
+    const terrain = object.children.find((child) => child.name.startsWith('terrain-'));
+    expect(terrain).toBeInstanceOf(THREE.Mesh);
+    const mesh = terrain as THREE.Mesh<THREE.BufferGeometry>;
+    const position = mesh.geometry.getAttribute('position');
+    const pick = pickGeographicSceneIntersection({
+      distance: 0,
+      point: new THREE.Vector3(position.getX(0), position.getY(0), position.getZ(0)),
+      object: mesh,
+      face: { a: 0, b: 1, c: 2, normal: new THREE.Vector3(), materialIndex: 0 },
+      faceIndex: 0,
+      uv: new THREE.Vector2(),
+    });
+
+    expect(pick?.sourceSampleId).toBe(scene.terrainPatches[0].vertices[0].sourceSampleId);
+    expect(pick?.geographic).toEqual(scene.terrainPatches[0].vertices[0].geographic);
 
     disposeGeographicSceneThreeObject(object);
   });
