@@ -19,7 +19,8 @@ Implementation baseline:
 - architecture commit: `3144aa7fafad45118bc28c92b04efbc20a0155da`
 - WP0/WP1 contract commit: `df752d39f31f485643a9c5819ac33b710b91f6a6`
 - WP2 implementation commit: `30fd1cb0b0e4f5cc22d6200890f6c68191b049c4`
-- visible version: `0.3.66`
+- WP2 validation fix commit: `db1f5163bf713f892776e950a4fb11ae784c034b`
+- visible version: `0.3.67`
 
 ## Completed
 
@@ -54,6 +55,8 @@ The repository inventory and renderer-neutral `GeographicScene` contract are com
 - renders Natural and Elevation presentations from identical positions and indices;
 - owns resize and GPU disposal lifecycle explicitly.
 
+The first exact-head Windows validation caught a TypeScript boundary mismatch where the readonly scene water indices were passed directly to Three.js. Commit `db1f5163bf713f892776e950a4fb11ae784c034b` preserves the readonly scene contract and creates an explicit `Uint32Array`/`BufferAttribute` copy at the renderer boundary.
+
 ### Workspace spike path
 
 `GeographicAtlasWorkspace.tsx` now exposes an explicit `2.5D spike` toggle for an open bounded geographic area.
@@ -80,11 +83,11 @@ The spike path:
   - relief range: `-4.6224` through `9.05904` scene units;
   - final progress ratio: `1`.
 
-GitHub currently reports no workflow runs or commit statuses for the WP2 implementation commit. Do not treat that absence as passing CI.
+GitHub currently reports no workflow runs or commit statuses for the WP2 implementation or validation-fix commits. Do not treat that absence as passing CI.
 
 ## Active next work: exact-head WP2 acceptance
 
-Run the normal repository validation and perform desktop visual QA on commit `30fd1cb0b0e4f5cc22d6200890f6c68191b049c4` or its documented descendant.
+Run the normal repository validation and perform desktop visual QA on commit `db1f5163bf713f892776e950a4fb11ae784c034b` or its documented descendant.
 
 ### Repository validation
 
