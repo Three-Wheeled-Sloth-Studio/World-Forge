@@ -1,15 +1,14 @@
-# Current Handoff: Geographic Atlas WP2 Visual QA
+# Current Handoff: Geographic Atlas WP3 Interaction Foundation
 
 Updated: 2026-08-06
 
-Status: **WP0 and WP1 complete; WP2 implementation and exact-head repository validation are complete; desktop visual QA is active**
+Status: **WP0/WP1 complete; WP2 implementation and repository validation complete; WP2 visual acceptance remains open; WP3 camera, picking, and context synchronization are implemented on `dev` pending exact-head validation and desktop QA**
 
 Primary tracking:
 
 - World Forge issue `#10`
 - `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
 - `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
-- `refs/planning/geographic-atlas-2.5d-wp0-inventory.md`
 - `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
 
 Implementation baseline:
@@ -19,156 +18,137 @@ Implementation baseline:
 - architecture commit: `3144aa7fafad45118bc28c92b04efbc20a0155da`
 - WP0/WP1 contract commit: `df752d39f31f485643a9c5819ac33b710b91f6a6`
 - WP2 implementation commit: `30fd1cb0b0e4f5cc22d6200890f6c68191b049c4`
-- WP2 renderer validation fix commit: `db1f5163bf713f892776e950a4fb11ae784c034b`
-- final-river diagnostic validation fix commit: `9a852f8c03039d382f86ff9afffdcba209c5641a`
-- locally validated descendant before this handoff update: `d02ed81b2bd63d10c91ca48d861fe8a06b00f997`
-- visible version: `0.3.68`
+- WP2 renderer validation fix: `db1f5163bf713f892776e950a4fb11ae784c034b`
+- final-river diagnostic validation fix: `9a852f8c03039d382f86ff9afffdcba209c5641a`
+- last user-validated descendant before WP3: `d02ed81b2bd63d10c91ca48d861fe8a06b00f997`
+- WP3 interaction descendant before this handoff update: `da9db38659ae3ba457ca08445f8a39474c66ce99`
+- visible version: `0.3.69`
 
-## Completed
+## Completed foundations
 
-### WP0 and WP1
+### WP0/WP1
 
-The repository inventory and renderer-neutral `GeographicScene` contract are complete. The contract owns deterministic source identity, projected extent, terrain patches and seams, separate water surfaces, later river and overlay seams, diagnostics, progress, and cancellation without importing React, DOM, Canvas, WebGL, or Three.js types.
+The repository inventory and renderer-neutral `GeographicScene` contract are complete. The scene contract owns deterministic source identity, projected extent, terrain patches and seams, separate water surfaces, later vector/overlay seams, diagnostics, progress, and cancellation without importing React, DOM, Canvas, WebGL, or Three.js types.
 
-### WP2 scene builder
+### WP2 terrain proof
 
-`packages/generator-core/src/geographicSceneBuilder.ts` now:
+The bounded scene builder and direct Three.js adapter provide:
 
-- consumes a bounded canonical `GeographicTileWindow`;
-- builds elevation-displaced continuous terrain;
-- splits representative windows into four overlapping seam-sharing patches;
-- records reciprocal shared-sample seam metadata;
-- rejects invalid seams before finalizing the scene;
-- builds separate clipped water geometry from authoritative water classification;
-- assigns deterministic natural material weights;
-- reports progress and honors structural cancellation;
-- finalizes a deterministic `GeographicScene` signature;
-- leaves rivers, boundaries, labels, and hexes empty for this slice.
+- elevation-displaced continuous terrain;
+- four seam-sharing indexed patches for the representative fixture;
+- explicit seam validation;
+- a separate clipped water surface;
+- Natural and Elevation presentations on identical geometry;
+- deterministic signatures and diagnostics;
+- explicit unsupported, cancelled, and failed workspace states;
+- no saved-world, `.wforge`, `.pworld`, or Parchment contract change.
 
-`packages/generator-core/src/geographicSceneFixture.ts` provides a deterministic 9 by 7 continental fixture with ocean, inlet coast, lowlands, mixed biomes, permanent ice, and a mountain ridge.
+The user reported `npm run validate` passing on the exact WP2 correction descendant on 2026-08-06, including the complete 129-file / 468-test Vitest suite and the other validation steps chained by that repository script.
 
-### WP2 renderer adapter
+## WP3 interaction foundation now on `dev`
 
-`apps/desktop/src/regions/GeographicSceneViewer.tsx` now:
+### Pure camera model
 
-- converts each terrain patch into a Three.js buffer geometry;
-- renders water as a separate mesh;
-- uses an orthographic camera with shallow map-like pitch;
-- renders Natural and Elevation presentations from identical positions and indices;
-- owns resize and GPU disposal lifecycle explicitly.
+`apps/desktop/src/regions/geographicSceneInteraction.ts` defines a testable map-camera model with:
 
-The first exact-head Windows validation caught a TypeScript boundary mismatch where the readonly scene water indices were passed directly to Three.js. Commit `db1f5163bf713f892776e950a4fb11ae784c034b` preserves the readonly scene contract and creates an explicit `Uint32Array`/`BufferAttribute` copy at the renderer boundary.
+- north-up default;
+- orthographic continuous zoom from `0.65x` through `20x`;
+- map-relative pan;
+- bounded focus overscroll;
+- shallow pitch with a near-top-down toggle;
+- rotation limited to plus or minus 30 degrees;
+- deterministic reset;
+- projected-scene to geographic-coordinate conversion.
 
-The second Windows validation reached the full test suite and exposed stale hydrology telemetry: the deep-time hydrology builder accepted 22 rivers, then `supplementNamedTopologyRivers` added 12 final named rivers after the diagnostics object had already been finalized. Commit `9a852f8c03039d382f86ff9afffdcba209c5641a` synchronizes every named-river-dependent diagnostic after supplementation, including count, capacity use, covered path share, path lengths, source and mouth elevations, terminus shares, and conditional notes. A focused regression test covers the synchronization and verifies the original diagnostic object is not mutated.
+Focused tests cover initial state, continuous zoom limits, pan/clamping, pitch/rotation limits, and geographic corner mapping.
 
-### Workspace spike path
+### Interactive Three.js adapter
 
-`GeographicAtlasWorkspace.tsx` now exposes an explicit `2.5D spike` toggle for an open bounded geographic area.
+`GeographicSceneViewer.tsx` now provides:
 
-The spike path:
+- drag-to-pan;
+- mouse-wheel and keyboard zoom;
+- Alt-drag or middle-drag shallow pitch/rotation;
+- explicit Reset, Tilt, rotate, and zoom controls;
+- keyboard arrows, `+`, `-`, `R`, `T`, `[` and `]`;
+- camera state retained when switching Natural/Elevation presentation;
+- raycast terrain picking that resolves the nearest canonical `sourceSampleId` and geographic coordinate from the renderer-neutral scene vertex metadata;
+- explicit GPU and DOM cleanup for the interaction path.
 
-- builds from the same canonical tile window used by the current atlas;
-- does not silently enter through Auto presentation;
-- shows explicit unsupported, cancelled, and failed states;
-- preserves the flat canvas only as an intentional comparison path during the spike;
-- does not change saved-world, `.wforge`, `.pworld`, or Parchment host contracts.
+The synthetic-intersection test verifies that a Three.js terrain hit resolves to canonical source identity rather than a presentation-only mesh identifier.
+
+### Hierarchy semantics
+
+The atlas workspace retains the canonical `GeographicTileWindow` beside the rendered scene. A terrain pick is resolved back to that window and therefore:
+
+- context-only terrain remains non-selectable as a hierarchy child;
+- parent terrain with a `childIndex` selects the canonical child ID;
+- double-click opens that child;
+- right-click uses the existing Open / Keep selected semantics;
+- pick details appear in the compact inspector;
+- selection does not rebuild the WebGL canvas, preserving native double-click sequencing.
+
+### Context-map synchronization
+
+The viewer projects its four viewport corners onto the scene plane, converts them back to geographic coordinates, and emits a camera footprint. `GeographicAtlasContextMap.tsx` draws that footprint in cyan and handles longitude wrapping per edge.
 
 ## Validation status
 
-Available-runtime validation completed during implementation:
+The prior WP2 descendant is locally validated. The WP3 descendant has source-level inspection and focused automated tests committed, but this execution environment cannot clone the public repository because outbound DNS is blocked. Do not mark WP3 validation green until a local or CI run completes.
 
-- strict isolated TypeScript compilation of the scene builder and fixture;
-- strict isolated TypeScript compilation of the Three.js adapter;
-- workspace syntax and type-shape review against the current controller boundary;
-- executable builder smoke run:
-  - deterministic signature: `geographic-scene-v1:55ba8116`;
-  - terrain patches: `4`;
-  - seam defects: `0`;
-  - water surfaces: `1`;
-  - clipped water triangles: `84`;
-  - relief range: `-4.6224` through `9.05904` scene units;
-  - final progress ratio: `1`.
-
-User-reported exact-head Windows validation on 2026-08-06:
+Run from the repository root:
 
 ```bash
 npm run validate
 ```
 
-Result: **passed**, including the complete 129-file / 468-test Vitest suite and the validation steps chained by the repository script.
-
-GitHub reports no attached workflow runs or commit statuses for these commits; the successful local Windows run is the current repository-validation evidence.
-
-## Active next work: WP2 visual acceptance
-
-Perform desktop visual QA on the validated implementation or its documented descendant.
-
-### Desktop visual QA path
-
-1. Open a generated world in the normal workspace.
-2. Enter the geographic atlas.
-3. Open a bounded landmass or region.
-4. Toggle `2.5D spike`.
-5. Verify useful visible relief with no raised-hex-column appearance.
-6. Switch between Natural and Elevation and verify geometry does not move.
-7. Verify water remains a separate surface and follows the authoritative coastline.
-8. Check all four terrain patch joins for cracks or lighting discontinuities.
-9. Resize the workspace repeatedly and confirm the renderer resizes cleanly.
-10. Toggle back to the flat comparison path and reopen the same area.
-11. Exercise an unsupported or malformed scene and confirm an explicit error rather than a hidden fallback.
-12. Capture exact commit, operating system, GPU, viewport, and screenshots in issue `#10`.
-
-Remaining repository-specific checks, if not already included in the local acceptance pass:
+Focused tests:
 
 ```bash
-npm run validate:desktop
-npm run validate:api
-npm run adr:guard -- --base HEAD~1
+npx vitest run \
+  apps/desktop/src/regions/geographicSceneInteraction.test.ts \
+  apps/desktop/src/regions/GeographicSceneViewer.test.ts \
+  packages/generator-core/src/geographicSceneBuilder.test.ts
 ```
 
-## WP2 acceptance boundary
+## Combined desktop QA path
 
-WP2 is accepted only when exact-head QA proves:
+1. Pull the exact `dev` head and confirm visible version `0.3.69`.
+2. Open a generated world, enter the atlas, and open a bounded area.
+3. Toggle `2.5D spike`.
+4. Verify useful relief, separate water, and no cracks at the four patch joins.
+5. Drag to pan and use the wheel to zoom continuously beyond the old hierarchy ceiling.
+6. Use Reset and confirm the original north-up framing returns.
+7. Use Tilt and the rotation buttons; confirm pitch remains shallow and rotation remains constrained.
+8. Switch Natural/Elevation after moving the camera; confirm the camera and geometry do not reset.
+9. Click terrain; confirm the compact inspector updates and the matching child is selected where one exists.
+10. Double-click selectable child terrain; confirm the hierarchy opens the child.
+11. Right-click selectable child terrain; confirm Open / Keep selected behavior.
+12. Pan, zoom, tilt, and rotate while watching the context map; confirm the cyan footprint follows the camera.
+13. Resize repeatedly and confirm controls, rendering, picking, and footprint remain aligned.
+14. Capture exact commit, OS, GPU, viewport, and screenshots in issue `#10`.
 
-- useful elevation relief;
-- continuous terrain rather than raised hex columns;
-- separate water geometry with no material-color inference;
-- Natural and analytical presentations sharing one geometry;
-- deterministic signatures;
-- no visible cracks at declared seams;
-- bounded scene-build and desktop rendering cost;
-- explicit failure behavior;
-- no saved-world or integration contract change.
+## Remaining WP3 work after this increment
 
-A screenshot without seam, geometry-sharing, and failure-state evidence is not acceptance.
+- parent and child boundaries as explicit scene overlays;
+- selected-region fill or outline independent of terrain materials;
+- screen-space labels with collision and visibility limits;
+- visual selection treatment that does not rebuild the renderer;
+- interaction/performance measurements against the under-100-ms target.
 
-## Next architecture slice after WP2 acceptance
-
-WP3 adds map interaction over the accepted geometry:
-
-- orthographic pan and continuous zoom;
-- map reset;
-- shallow pitch and limited rotation;
-- canonical picking;
-- region boundaries and selection overlays;
-- screen-space labels;
-- synchronized context map.
-
-Do not pull rivers or progressive hex rendering forward. They remain WP4 after terrain, water, and interaction are accepted.
+Do not pull rivers or progressive hex rendering forward. They remain WP4.
 
 ## Guardrails
 
-- Do not create a second geography model for 2.5D.
+- Do not create a second geography model.
+- Do not derive hierarchy membership from terrain triangles or colors.
 - Do not build production terrain from raised hex columns.
-- Do not make terrain geometry the source of region membership.
-- Do not infer rivers or boundaries from material colors.
 - Do not allocate a full-world fine terrain mesh.
-- Do not make every hex a scene object.
+- Do not create one Three.js object per hex.
 - Do not add unrestricted flight controls.
-- Do not persist spike-only scene artifacts.
-- Do not change `.wforge`, `.pworld`, or Parchment host contracts during the spike.
-- Do not retain the flat atlas as a hidden production fallback after spike acceptance.
-- Do not absorb issue `#12` tuning or issue `#126` location actions into this slice.
+- Do not persist spike-only camera or scene artifacts.
+- Do not change `.wforge`, `.pworld`, or Parchment host contracts.
+- Do not absorb issue `#12` tuning or issue `#126` location actions.
 
 ## Existing Sol reference status
 
