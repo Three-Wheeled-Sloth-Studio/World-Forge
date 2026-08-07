@@ -54,14 +54,15 @@ describe('geographic scene Three.js adapter', () => {
     expect(terrain).toBeInstanceOf(THREE.Mesh);
     const mesh = terrain as THREE.Mesh<THREE.BufferGeometry>;
     const position = mesh.geometry.getAttribute('position');
-    const pick = pickGeographicSceneIntersection({
+    const intersection = {
       distance: 0,
       point: new THREE.Vector3(position.getX(0), position.getY(0), position.getZ(0)),
       object: mesh,
       face: { a: 0, b: 1, c: 2, normal: new THREE.Vector3(), materialIndex: 0 },
       faceIndex: 0,
       uv: new THREE.Vector2(),
-    });
+    } as THREE.Intersection<THREE.Object3D>;
+    const pick = pickGeographicSceneIntersection(intersection);
 
     expect(pick?.sourceSampleId).toBe(scene.terrainPatches[0].vertices[0].sourceSampleId);
     expect(pick?.geographic).toEqual(scene.terrainPatches[0].vertices[0].geographic);
