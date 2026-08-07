@@ -37,7 +37,25 @@ describe('width-driven geographic scale', () => {
     }
   });
 
-  it('sizes child counts from next-level viewport coverage rather than raw tile count', () => {
+  it('reserves multiple visible children inside an ordinary atlas window', () => {
+    expect(targetChildCountForExtent({
+      minLatitude: -20,
+      maxLatitude: 30,
+      minLongitude: -80,
+      maxLongitude: 40,
+      wrapsLongitude: false,
+      qMin: 0,
+      qMax: 49,
+      rMin: 0,
+      rMax: 29,
+      columns: 50,
+      rows: 30,
+      contextPaddingHexes: 2,
+      selectedMembershipFitsMaximum: true,
+    })).toBe(3);
+  });
+
+  it('scales larger windows by usable area rather than 50-column buckets', () => {
     expect(targetChildCountForExtent({
       minLatitude: -20,
       maxLatitude: 30,
@@ -52,7 +70,7 @@ describe('width-driven geographic scale', () => {
       rows: 49,
       contextPaddingHexes: 2,
       selectedMembershipFitsMaximum: true,
-    })).toBe(2);
+    })).toBe(11);
   });
 });
 
