@@ -5,6 +5,7 @@ import {
 } from '@world-forge/shared';
 import type { GeographicRegionBounds } from '@world-forge/shared/geographicRegions';
 import { geographicAtlasContextRects } from './geographicAtlasContextGeometry';
+import type { GeographicSceneCameraFootprint } from './geographicSceneInteraction';
 
 const CONTEXT_WIDTH = 320;
 const CONTEXT_HEIGHT = 160;
@@ -18,6 +19,7 @@ type GeographicAtlasContextMapProps = {
   childMembership: Uint16Array | null;
   selectedChildIndex: number | null;
   extent: GeographicRegionBounds;
+  cameraFootprint?: GeographicSceneCameraFootprint | null;
   label: string;
 };
 
@@ -28,6 +30,7 @@ export function GeographicAtlasContextMap({
   childMembership,
   selectedChildIndex,
   extent,
+  cameraFootprint = null,
   label,
 }: GeographicAtlasContextMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,8 +46,10 @@ export function GeographicAtlasContextMap({
       childMembership,
       selectedChildIndex,
       extent,
+      cameraFootprint,
     );
   }, [
+    cameraFootprint,
     childMembership,
     extent.maxLatitude,
     extent.maxLongitude,
@@ -62,7 +67,7 @@ export function GeographicAtlasContextMap({
       <canvas ref={canvasRef} width={CONTEXT_WIDTH} height={CONTEXT_HEIGHT} />
       <figcaption>
         <strong>{label}</strong>
-        <span>World context</span>
+        <span>{cameraFootprint ? 'Camera context' : 'World context'}</span>
       </figcaption>
     </figure>
   );
@@ -76,6 +81,7 @@ function drawContextMap(
   childMembership: Uint16Array | null,
   selectedChildIndex: number | null,
   extent: GeographicRegionBounds,
+  cameraFootprint: GeographicSceneCameraFootprint | null,
 ): void {
   canvas.width = CONTEXT_WIDTH;
   canvas.height = CONTEXT_HEIGHT;
@@ -178,4 +184,43 @@ function drawContextMap(
     );
   }
   context.restore();
+
+  if (cameraFootprint?.corners.length === 4) {
+    drawWrappedCameraFootprint(context, cameraFootprint);
+  }
+}
+
+function drawWrappedCameraFootprint(
+  context: CanvasRenderingContext2D,
+  footprint: GeographicSceneCameraFootprint,
+): void {
+  const points = [...footprint.corners, footprint.corners[0]].map(([longitude, latitude]) => ({
+    x: ((normalizeLongitude(longitude) + 180) / 360) * CONTEXT_WIDTH,
+    y: ((90 - Math.max(-90, Math.min(90, latitude))) / 180) * CONTEXT_HEIGHT,
+  }));
+  context.save();
+  context.strokeStyle = '#73d8ff';
+  context.lineWidth = 2;
+  context.setLineDash([]);
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index];
+    const end = points[index + 1];
+    let adjustedEndX = end.x;
+    if (adjustedEndX - start.x > CONTEXT_WIDTH / 2) adjustedEndX -= CONTEXT_WIDTH;
+    if (start.x - adjustedEndX > CONTEXT_WIDTH / 2) adjustedEndX += CONTEXT_WIDTH;
+    for (const offset of [-CONTEXT_WIDTH, 0, CONTEXT_WIDTH]) {
+      context.beginPath();
+      context.moveTo(start.x + offset, start.y);
+      context.lineTo(adjustedEndX + offset, end.y);
+      context.stroke();
+    }
+  }
+  context.restore();
+}
+
+function normalizeLongitude(value: number): number {
+  let normalized = value;
+  while (normalized < -180) normalized += 360;
+  while (normalized > 180) normalized -= 360;
+  return normalized;
 }
