@@ -19,8 +19,9 @@ Implementation baseline:
 - architecture commit: `3144aa7fafad45118bc28c92b04efbc20a0155da`
 - WP0/WP1 contract commit: `df752d39f31f485643a9c5819ac33b710b91f6a6`
 - WP2 implementation commit: `30fd1cb0b0e4f5cc22d6200890f6c68191b049c4`
-- WP2 validation fix commit: `db1f5163bf713f892776e950a4fb11ae784c034b`
-- visible version: `0.3.67`
+- WP2 renderer validation fix commit: `db1f5163bf713f892776e950a4fb11ae784c034b`
+- final-river diagnostic validation fix commit: `9a852f8c03039d382f86ff9afffdcba209c5641a`
+- visible version: `0.3.68`
 
 ## Completed
 
@@ -57,6 +58,8 @@ The repository inventory and renderer-neutral `GeographicScene` contract are com
 
 The first exact-head Windows validation caught a TypeScript boundary mismatch where the readonly scene water indices were passed directly to Three.js. Commit `db1f5163bf713f892776e950a4fb11ae784c034b` preserves the readonly scene contract and creates an explicit `Uint32Array`/`BufferAttribute` copy at the renderer boundary.
 
+The second Windows validation reached the full test suite and exposed stale hydrology telemetry: the deep-time hydrology builder accepted 22 rivers, then `supplementNamedTopologyRivers` added 12 final named rivers after the diagnostics object had already been finalized. Commit `9a852f8c03039d382f86ff9afffdcba209c5641a` synchronizes every named-river-dependent diagnostic after supplementation, including count, capacity use, covered path share, path lengths, source and mouth elevations, terminus shares, and conditional notes. A focused regression test covers the synchronization and verifies the original diagnostic object is not mutated.
+
 ### Workspace spike path
 
 `GeographicAtlasWorkspace.tsx` now exposes an explicit `2.5D spike` toggle for an open bounded geographic area.
@@ -87,7 +90,7 @@ GitHub currently reports no workflow runs or commit statuses for the WP2 impleme
 
 ## Active next work: exact-head WP2 acceptance
 
-Run the normal repository validation and perform desktop visual QA on commit `db1f5163bf713f892776e950a4fb11ae784c034b` or its documented descendant.
+Run the normal repository validation and perform desktop visual QA on commit `9a852f8c03039d382f86ff9afffdcba209c5641a` or its documented descendant.
 
 ### Repository validation
 
@@ -101,7 +104,7 @@ npm run adr:guard -- --base HEAD~1
 Also run the focused tests:
 
 ```bash
-npx vitest run packages/generator-core/src/geographicSceneBuilder.test.ts apps/desktop/src/regions/GeographicSceneViewer.test.ts
+npx vitest run packages/generator-core/src/plateMotionPipelineDiagnostics.test.ts packages/generator-core/src/geographicSceneBuilder.test.ts apps/desktop/src/regions/GeographicSceneViewer.test.ts
 ```
 
 ### Desktop visual QA path
