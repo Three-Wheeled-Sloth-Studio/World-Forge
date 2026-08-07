@@ -282,5 +282,5 @@ function planetCircumferenceMiles(project: WorldProject): number {
 }
 
 function previewAlgorithmKey(): string {
-  return 'geographic-hierarchy-v2:isthmus-core-v1:width-driven-scale-v1:geographic-child-partition-v1:geographic-tile-window-v1';
+  return 'geographic-hierarchy-v2:isthmus-core-v1:width-driven-scale-v2:area-child-count-v1:geographic-child-partition-v1:geographic-tile-window-v1';
 }
