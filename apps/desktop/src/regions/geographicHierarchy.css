@@ -18,6 +18,7 @@
 }
 
 .geographic-drilldown-surface {
+  isolation: isolate;
   min-height: 0;
   min-width: 100%;
   overflow: hidden;
@@ -51,8 +52,14 @@
 .map-canvas-frame.geographic-drilldown-active > .hex-overlay-canvas,
 .map-canvas-frame.geographic-drilldown-active > .inspection-map-marker,
 .map-canvas-frame.geographic-drilldown-active > .hex-inspection-marker,
-.map-canvas-frame.geographic-drilldown-active > .highest-point-map-marker {
-  display: none;
+.map-canvas-frame.geographic-drilldown-active > .highest-point-map-marker,
+.map-canvas-frame > [data-geographic-atlas-suppressed='true'] {
+  display: none !important;
+}
+
+.map-canvas-frame.geographic-drilldown-active > .geographic-drilldown-surface {
+  position: relative;
+  z-index: 10;
 }
 
 .geographic-drilldown-canvas {
