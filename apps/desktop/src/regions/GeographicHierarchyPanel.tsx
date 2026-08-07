@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, LoaderCircle, MapPinned } from 'lucide-react';
 import type { WorldProject } from '@world-forge/shared';
@@ -9,6 +9,7 @@ import {
 } from './geographicHierarchyPreview';
 import { geographicRegionPreviewProjectKey } from './geographicRegionPreview';
 import { useGeographicAtlasController } from './useGeographicAtlasController';
+import { suppressLegacyGeographicMapLayers } from './geographicAtlasLayerVisibility';
 import {
   GeographicAtlasWorkspace,
   type GeographicHierarchyBuildStatus,
@@ -75,16 +76,27 @@ export function GeographicHierarchyPanel({ project, workspaceActive, showInspect
     if (inspectorActive && controller.current) controller.reset();
   }, [inspectorActive, controller.current?.id]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mapTarget) return;
     const active = workspaceActive && enabled;
+    const drilled = Boolean(active && controller.current);
     mapTarget.classList.toggle('geographic-drilldown-enabled', active);
-    mapTarget.classList.toggle('geographic-drilldown-active', Boolean(active && controller.current));
+    mapTarget.classList.toggle('geographic-drilldown-active', drilled);
+    mapTarget.setAttribute(
+      'data-geographic-renderer',
+      drilled ? 'atlas' : active ? 'world-overlay' : 'world',
+    );
+    const restoreLegacyLayers = drilled
+      ? suppressLegacyGeographicMapLayers(mapTarget)
+      : () => undefined;
+
     return () => {
+      restoreLegacyLayers();
       mapTarget.classList.remove('geographic-drilldown-enabled');
       mapTarget.classList.remove('geographic-drilldown-active');
+      mapTarget.removeAttribute('data-geographic-renderer');
     };
-  }, [controller.current, enabled, mapTarget, workspaceActive]);
+  }, [controller.current?.id, enabled, mapTarget, workspaceActive]);
 
   const buildPreview = () => {
     if (preview || status === 'building') return;
