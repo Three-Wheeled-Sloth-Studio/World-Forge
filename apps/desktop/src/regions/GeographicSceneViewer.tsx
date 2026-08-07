@@ -6,6 +6,7 @@ import type {
   GeographicSceneMaterial,
   GeographicScenePoint3,
 } from '@world-forge/shared/geographicScene';
+import type { GeographicTileWindow } from '@world-forge/shared/geographicTileWindow';
 import {
   createGeographicSceneCameraState,
   geographicPointForScenePosition,
@@ -19,6 +20,7 @@ import {
   type GeographicSceneCameraFootprint,
   type GeographicSceneCameraState,
 } from './geographicSceneInteraction';
+import { createGeographicHexSceneThreeObject } from './geographicHexScene';
 
 export type GeographicScenePresentation = 'natural' | 'elevation';
 export type GeographicSceneInteractionKind = 'select' | 'open' | 'context';
@@ -80,7 +82,16 @@ export function buildGeographicSceneTerrainBufferData(
 export function createGeographicSceneThreeObject(
   scene: GeographicScene,
   presentation: GeographicScenePresentation,
+  tileWindow?: GeographicTileWindow,
+  options: { showHexes?: boolean; selectedChildIndex?: number | null } = {},
 ): THREE.Group {
+  if (tileWindow) {
+    return createGeographicHexSceneThreeObject(scene, tileWindow, presentation, {
+      showHexes: options.showHexes ?? true,
+      selectedChildIndex: options.selectedChildIndex ?? null,
+    });
+  }
+
   const group = new THREE.Group();
   group.name = `geographic-scene:${scene.signature}`;
   const terrainMaterial = new THREE.MeshStandardMaterial({
@@ -179,7 +190,7 @@ export function pickGeographicSceneIntersection(
 
 export function disposeGeographicSceneThreeObject(object: THREE.Object3D): void {
   object.traverse((child) => {
-    if (!(child instanceof THREE.Mesh)) return;
+    if (!(child instanceof THREE.Mesh) && !(child instanceof THREE.LineSegments)) return;
     child.geometry.dispose();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     for (const material of materials) material.dispose();
@@ -189,12 +200,18 @@ export function disposeGeographicSceneThreeObject(object: THREE.Object3D): void 
 export function GeographicSceneViewer({
   scene,
   presentation,
+  tileWindow,
+  showHexes = true,
+  selectedChildIndex = null,
   selectedSourceSampleId = null,
   onPick,
   onCameraFootprintChange,
 }: {
   scene: GeographicScene;
   presentation: GeographicScenePresentation;
+  tileWindow?: GeographicTileWindow;
+  showHexes?: boolean;
+  selectedChildIndex?: number | null;
   selectedSourceSampleId?: string | null;
   onPick?: (
     pick: GeographicScenePick,
@@ -233,10 +250,14 @@ export function GeographicSceneViewer({
     host.replaceChildren(renderer.domElement);
 
     const threeScene = new THREE.Scene();
-    const object = createGeographicSceneThreeObject(scene, presentation);
+    const object = createGeographicSceneThreeObject(scene, presentation, tileWindow, {
+      showHexes,
+      selectedChildIndex,
+    });
     threeScene.add(object);
-    threeScene.add(new THREE.HemisphereLight(0xbfd9e6, 0x26321d, 1.65));
-    const sun = new THREE.DirectionalLight(0xfff0d2, 2.2);
+    threeScene.add(new THREE.AmbientLight(0xffffff, 0.42));
+    threeScene.add(new THREE.HemisphereLight(0xcfe6ee, 0x253018, 1.25));
+    const sun = new THREE.DirectionalLight(0xfff0d2, 1.85);
     sun.position.set(-1, -1.3, 2.4);
     sun.castShadow = true;
     threeScene.add(sun);
@@ -445,13 +466,14 @@ export function GeographicSceneViewer({
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [presentation, scene, selectedSourceSampleId]);
+  }, [presentation, scene, selectedChildIndex, selectedSourceSampleId, showHexes, tileWindow]);
 
   return (
     <div
       className="geographic-scene-viewer"
       data-scene-signature={scene.signature}
       data-scene-presentation={presentation}
+      data-scene-geometry={tileWindow ? 'stepped-hex' : 'continuous-patch'}
     >
       <div ref={canvasHostRef} className="geographic-scene-canvas-host" />
       <div className="geographic-scene-controls" role="group" aria-label="2.5D map view controls">
