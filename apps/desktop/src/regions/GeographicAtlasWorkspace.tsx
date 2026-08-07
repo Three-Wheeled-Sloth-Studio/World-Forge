@@ -331,7 +331,7 @@ export function GeographicAtlasWorkspace({
               <div><dt>Scene</dt><dd>{sceneBuild.scene.diagnostics.terrainPatchCount} patches</dd></div>
             )}
             {sceneEnabled && pickedSceneTile && (
-              <div><dt>Pick</dt><dd title={pickedSceneTile.id}>{pickedSceneTile.label}</dd></div>
+              <div><dt>Pick</dt><dd title={`${pickedSceneTile.id} · ${pickedSceneTile.latitude.toFixed(3)}, ${pickedSceneTile.longitude.toFixed(3)}`}>{pickedSceneTile.label}</dd></div>
             )}
           </dl>
         </aside>
@@ -366,7 +366,6 @@ export function GeographicAtlasWorkspace({
             <GeographicSceneViewer
               scene={sceneBuild.scene}
               presentation={scenePresentation}
-              selectedSourceSampleId={pickedSceneTile?.id ?? null}
               onPick={handleScenePick}
               onCameraFootprintChange={setSceneCameraFootprint}
             />
