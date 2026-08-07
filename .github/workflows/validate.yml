@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check cross-platform path collisions
+        run: npm run check:case-collisions
+
       - name: Run unit and integration tests
         run: npm test
 

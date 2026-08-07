@@ -1,203 +1,83 @@
-# Current Handoff: Geographic Atlas WP3 Stepped Hex Terrain
+# Current Handoff: Infrastructure Baseline and Product Pivot
 
-Updated: 2026-08-06
+Updated: 2026-08-07
 
-Status: **WP0/WP1 complete; WP2 repository validation complete; WP2 visual acceptance superseded by the stepped-hex correction; WP3 interaction, renderer ownership, canonical stepped hex terrain, and internal child-region borders are implemented and exact-head CI validated on `dev`; desktop visual acceptance remains open**
+Status: **Shared studio guidance reviewed and selectively incorporated; geographic atlas visual iteration is paused at visible version `0.3.71`; no new product PI is selected in this handoff.**
 
-Primary tracking:
-
-- World Forge issue `#10`
-- `refs/decisions/geographic-atlas-2.5d-architecture-pivot-2026-08-06.md`
-- `refs/planning/geographic-atlas-2.5d-architecture-spike.md`
-- `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
-
-Implementation baseline:
+## Current operating state
 
 - repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 - branch: `dev`
-- architecture commit: `3144aa7fafad45118bc28c92b04efbc20a0155da`
-- WP0/WP1 contract commit: `df752d39f31f485643a9c5819ac33b710b91f6a6`
-- WP2 continuous-terrain proof: `30fd1cb0b0e4f5cc22d6200890f6c68191b049c4`
-- WP2 renderer validation fix: `db1f5163bf713f892776e950a4fb11ae784c034b`
-- final-river diagnostic validation fix: `9a852f8c03039d382f86ff9afffdcba209c5641a`
-- last user-validated descendant before WP3: `d02ed81b2bd63d10c91ca48d861fe8a06b00f997`
-- WP3 interaction handoff baseline: `7fc559fd5ce2c91f45e45c9f8ecc7afe0c86b5c7`
-- drilled-atlas layer ownership correction: `3321b89b793f4d2342795eba726ef71ce228ea12`
-- stepped hex terrain implementation: `28edbb2fd8cc5622c199226fe234cc0e6b98cdc7`
-- stepped hex Three.js integration: `16ad9acb3e7ac3af2cd0053dd97e062e70401924`
-- stepped terrain workspace wiring: `0ba1b5ba03cccaab37e9eff2930ab9c2ef32e19a`
-- child-partition cache invalidation: `61227839775430f3d313edf17316d1c57e13f892`
-- exact validated head: `725c53189c98646ecd0329495589fd587657ef5e`
 - visible version: `0.3.71`
+- geographic atlas issue `#10` remains open but is parked after repeated visual iteration produced diminishing returns;
+- the complete prior geographic-atlas state is preserved at `refs/handoffs/archive/geographic-atlas-v0.3.71-paused.md`;
+- do not resume atlas rendering work by default; wait for explicit user direction or a clearly related task.
 
-## Completed foundations
+No runtime behavior, saved-world contract, generator contract, or visible version changes are part of this housekeeping increment.
 
-### WP0/WP1
+## Project-memory entry points
 
-The repository inventory and renderer-neutral `GeographicScene` contract are complete. The scene contract owns deterministic source identity, projected extent, terrain source samples, separate water facts, diagnostics, progress, and cancellation without importing React, DOM, Canvas, WebGL, or Three.js types.
+Start future implementation work with:
 
-### WP2 continuous-terrain proof
+1. `AGENTS.md`
+2. `refs/README.md`
+3. `refs/project.yaml`
+4. this handoff
+5. the planning, engineering, decision, research, or testing references directly relevant to the requested change
+6. `refs/testing/validationCommands.yaml` before finalizing the increment
 
-The original bounded scene builder proved deterministic scene construction, camera-scale terrain, seam validation, water separation, and canonical source identity. User visual QA on 2026-08-06 rejected its displayed form: the joined center-sample surface read as a smooth torn sheet, exposed patch-shaped silhouettes, had no visible hex structure, and did not resemble the desired Civilization/Humankind close-map language.
+Do not broadly import or recreate the blank Agent Academy template. World Forge already has a mature `refs/` taxonomy; add standardized metadata only where it solves a retrieval or automation need.
 
-The underlying renderer-neutral scene remains useful for elevation scaling, picking provenance, camera extent, and later non-hex presentations. It is no longer the accepted displayed terrain shape for the atlas.
+## Shared guidance baseline
 
-## WP3 interaction foundation
+Canonical shared sources:
 
-### Pure camera model
+- `Three-Wheeled-Sloth-Studio/TWS-Design-Principles`
+- `Three-Wheeled-Sloth-Studio/Agent-Academy`
+- `Three-Wheeled-Sloth-Studio/TWS-Agentic-Harness`
 
-`apps/desktop/src/regions/geographicSceneInteraction.ts` defines a testable map-camera model with:
+Detailed World Forge application and deliberate deferments are recorded in `refs/engineering/studio-principles-application.md`.
 
-- north-up default;
-- orthographic continuous zoom from `0.65x` through `20x`;
-- map-relative pan;
-- bounded focus overscroll;
-- shallow pitch with a near-top-down toggle;
-- rotation limited to plus or minus 30 degrees;
-- deterministic reset;
-- projected-scene to geographic-coordinate conversion.
+Key operating rules now captured locally:
 
-### Interactive Three.js adapter
+- shared guidance is a decision aid, not a compliance checklist;
+- World Forge keeps its single-developer direct-`dev` workflow instead of manufacturing routine draft-PR ceremony;
+- publish coherent checkpoints rather than connector-level file-write commits;
+- the Git-index case-collision guard remains mandatory and runs before build/typecheck, with an explicit early CI check;
+- three consecutive materially non-improving repair attempts trigger architectural reassessment rather than another patch at the same seam;
+- five unsuccessful modification iterations require an explicit human decision, re-scope, or documented reason to continue;
+- tool or adapter failure is a blocker, not evidence of success;
+- independent verification is used where risk justifies it, not as mandatory second-agent ceremony.
 
-`GeographicSceneViewer.tsx` provides:
+The Python `TWS-Agentic-Harness` is a reference implementation, not a World Forge dependency. World Forge currently needs its feedback-governance concepts, not another orchestration runtime.
 
-- drag-to-pan;
-- mouse-wheel and keyboard zoom;
-- Alt-drag or middle-drag shallow pitch/rotation;
-- Reset, Tilt, rotate, and zoom controls;
-- camera state retained across Natural/Elevation presentation changes;
-- canonical source-tile picking;
-- explicit GPU and DOM cleanup.
+## CI and diagnostics
 
-### Hierarchy semantics
+Authoritative repository CI remains `.github/workflows/validate.yml` (`Validate World Forge`). It retains automatic validation on accepted branches, concurrency cancellation, and cheap-to-expensive ordering.
 
-The atlas retains the canonical `GeographicTileWindow` beside the rendered scene. Terrain picks resolve to canonical tile IDs and child membership, so context-only terrain remains non-selectable, selectable child terrain can be opened, and the existing select / double-click / context-menu semantics remain intact.
+The former push-triggered geographic drilldown workflow is now `Geographic Drilldown Diagnostic` and is manual-only. Use it only when geographic work needs a clean remote focused checkpoint. It is not authoritative repository CI and should not run on ordinary `dev` pushes.
 
-### Context-map synchronization
+Project-specific CI and agent behavior is documented in `refs/engineering/ci-and-agent-workflow.md`.
 
-The viewer projects its four viewport corners onto the scene plane, converts them back to geographic coordinates, and emits a camera footprint. `GeographicAtlasContextMap.tsx` draws that footprint in cyan and handles longitude wrapping per edge.
+## Validation expectations
 
-## Exclusive drilled-atlas layer ownership
+Read `refs/testing/validationCommands.yaml` and run the narrowest useful checks for the change being made.
 
-User screenshot feedback exposed a paint-order race where the legacy full-world canvas could redraw above the atlas. The corrected path:
+General expectations:
 
-- applies ownership changes in `useLayoutEffect`, before paint;
-- marks direct legacy canvases and markers `hidden`, `inert`, and `aria-hidden` for bounded atlas views;
-- restores their exact prior state on exit;
-- suppresses only direct map-frame children, leaving nested Three.js canvases active;
-- retains CSS `display: none !important` and isolated opaque atlas stacking as defensive layers.
+- use focused tests while iterating;
+- use `npm run validate` for a coherent implementation checkpoint;
+- use `npm run verify` before declaring a functional/build-facing milestone complete;
+- use `npm audit` when dependencies or security-sensitive build inputs change, not as ritual for every documentation edit;
+- use `npm run evaluate:regions` only when geographic generation behavior changes;
+- never claim validation passed unless it actually ran and produced evidence.
 
-The full-world atlas overview intentionally remains 2D for macro-area selection. The workspace now makes the transition explicit with `3D terrain` and `2D map` actions rather than the ambiguous `2.5D spike` label.
+## Parked geographic atlas work
 
-## Stepped canonical hex terrain correction
+Issue `#10` and the archived `0.3.71` handoff contain the full state of the current atlas implementation, tests, visual target, and remaining QA. Preserve that work as a recoverable branch of product development, but do not spend more effort tuning it until the user explicitly chooses to return.
 
-User visual feedback on visible version `0.3.70` established the accepted target language:
+If the atlas is resumed later, begin from the archived handoff and current issue state rather than reconstructing context from chat history.
 
-- recognizable 3D hex tiles rather than a continuous smoothed sheet;
-- discrete elevation changes between neighboring tiles;
-- bounded roughness within a tile;
-- optional visible hex lines;
-- internal hierarchy borders in both 2D and 3D;
-- a strategic-map look closer to Civilization or Humankind, without copying their assets or exact styling.
+## Next work
 
-`apps/desktop/src/regions/geographicHexScene.ts` now builds a merged Three.js representation directly from the canonical `GeographicTileWindow`:
-
-- one merged indexed terrain mesh, not one object per tile;
-- faceted hex tops with deterministic center relief for sub-tile roughness;
-- vertical side walls where adjacent tile elevations differ;
-- flat water elevation and differentiated water colors;
-- flat shading, high material roughness, and directional relief lighting;
-- context-only tile darkening;
-- selected-child tinting;
-- separate line layers for the hex grid, child boundaries, selected-child boundary, and parent boundary;
-- canonical tile IDs and geographic coordinates retained for picking.
-
-Natural and Elevation presentations change color only. Geometry, hierarchy membership, boundaries, and picking remain shared.
-
-## Internal child-region border correction
-
-The missing internal border report was not primarily a draw-order defect. `targetChildCountForExtent(...)` created one child for a normal roughly `50 x 30` atlas window because it counted 50-column buckets. One child means no internal boundary can exist.
-
-The corrected area-based target:
-
-- subtracts context padding;
-- estimates usable parent hex area;
-- targets roughly 400 usable hexes per child;
-- clamps non-terminal partitions to 2 through 64 children;
-- yields 3 target children for a representative `50 x 30` window and 11 for `99 x 49`;
-- invalidates prior in-memory single-child partitions through `width-driven-scale-v2:area-child-count-v1` in the hierarchy cache key.
-
-The existing 2D renderer already draws child boundaries from canonical `childIndex` differences. The 3D renderer now draws the same relationship as an elevated line layer.
-
-## Validation status
-
-Exact head `725c53189c98646ecd0329495589fd587657ef5e` passed GitHub Actions workflow `Validate World Forge`, run `31138942068`, on 2026-08-06.
-
-Green jobs include:
-
-- unit and integration tests;
-- TypeScript type-check and production frontend build;
-- production page harness tests and smoke checks;
-- production attribution-rerank tests and smoke checks.
-
-Focused coverage now includes:
-
-```bash
-npx vitest run \
-  apps/desktop/src/regions/geographicAtlasLayerVisibility.test.ts \
-  apps/desktop/src/regions/geographicHexScene.test.ts \
-  apps/desktop/src/regions/geographicSceneInteraction.test.ts \
-  apps/desktop/src/regions/GeographicSceneViewer.test.ts \
-  packages/generator-core/src/geographicWidthScale.test.ts \
-  packages/generator-core/src/geographicSceneBuilder.test.ts
-```
-
-Repository validation is green. Browser/GPU visual acceptance is still required.
-
-## Combined desktop QA path
-
-1. Pull exact `dev` head `725c53189c98646ecd0329495589fd587657ef5e`, restart or rebuild the running app, and confirm visible version `0.3.71`.
-2. Enable geographic drill-down. Confirm the full-world overview remains a clearly labeled 2D selection view.
-3. Open a continent, archipelago, ocean basin, region, or deeper bounded area.
-4. In the compact inspector, confirm the generated child count is greater than one for an ordinary non-terminal map.
-5. In 2D, confirm internal child-region borders appear even when the Hexes checkbox is off.
-6. Toggle Hexes and confirm world-anchored hex lines appear without changing the borders or selection.
-7. Select a child and confirm its outline/highlight is distinct from ordinary internal borders.
-8. Choose `3D terrain`.
-9. Confirm the display is composed of contiguous hex tops with visible elevation steps and no torn four-patch silhouette.
-10. Confirm bounded within-tile roughness reads as low-relief terrain rather than smooth interpolation or extreme spikes.
-11. Toggle Hexes in 3D and confirm the grid appears and disappears without rebuilding hierarchy facts.
-12. Confirm internal child borders, selected-child border, and heavy parent border are visible above terrain in 3D.
-13. Switch Natural/Elevation after moving the camera; confirm geometry, camera, borders, and selection remain stable.
-14. Click terrain; confirm the compact inspector updates and the matching child is selected where one exists.
-15. Double-click selectable child terrain and confirm the hierarchy opens the child.
-16. Right-click selectable child terrain and confirm Open / Keep selected behavior.
-17. Pan, zoom, tilt, and rotate while watching the context map; confirm the cyan footprint follows the camera.
-18. Confirm no legacy blue map flashes above either bounded renderer during load, redraw, presentation changes, or resize.
-19. Exit the atlas and confirm the original world map and overlays restore normally.
-20. Capture exact commit, OS, GPU, viewport, and screenshots in issue `#10`.
-
-## Remaining visual work after acceptance of this increment
-
-- tune elevation exaggeration and within-tile roughness from real browser screenshots;
-- improve strategic-map material and lighting language without introducing copied assets;
-- add screen-space labels with collision and visibility limits;
-- add rivers and ridge accents as explicit canonical overlays;
-- measure interaction and rebuild performance against the under-100-ms target;
-- decide whether the full-world overview should eventually receive a separate low-detail 3D mode.
-
-## Guardrails
-
-- Do not create a second geography or hierarchy model.
-- Do not derive hierarchy membership from terrain geometry, colors, or raycast coordinates.
-- Build displayed terrain from canonical tile-window facts and stable tile IDs.
-- Use merged/batched geometry; do not create one Three.js object per hex.
-- Do not allocate a full-world fine terrain mesh.
-- Do not add unrestricted flight controls.
-- Do not persist presentation-only camera or mesh artifacts into saved worlds.
-- Do not change `.wforge`, `.pworld`, or Parchment host contracts for this visual correction.
-- Do not absorb issue `#12` tuning or issue `#126` location actions.
-
-## Existing Sol reference status
-
-The Sol package pipeline remains operational. Earth, Jupiter, and Mars remain the accepted body-presentation baseline. Broader body presentation remains outside this atlas work.
+Await the user's next product or infrastructure priority. Keep the geographic work parked and preserve the new agent/CI/project-memory baseline unless a future task exposes a concrete reason to adjust it.

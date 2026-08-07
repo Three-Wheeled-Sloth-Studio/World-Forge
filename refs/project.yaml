@@ -1,0 +1,30 @@
+version: 1
+updated: 2026-08-07
+project:
+  name: World Forge
+  repository: Three-Wheeled-Sloth-Studio/World-Forge
+  purpose: Science-informed procedural generation and authoring of stellar systems, worlds, geography, and related worldbuilding data.
+  primary_development_branch: dev
+  promotion_path: dev -> qa -> main
+source_of_truth:
+  agent_workflow: AGENTS.md
+  project_memory_index: refs/README.md
+  current_handoff: refs/handoffs/currentHandoff.md
+  validation_commands: refs/testing/validationCommands.yaml
+  ci_workflow: .github/workflows/validate.yml
+external_guidance:
+  - id: tws-design-principles
+    repository: Three-Wheeled-Sloth-Studio/TWS-Design-Principles
+    status: active
+    application: Apply relevant shared product, application, engineering, UI, and release principles; record World Forge deviations locally.
+  - id: agent-academy
+    repository: Three-Wheeled-Sloth-Studio/Agent-Academy
+    status: selective
+    application: Use project-memory and agent-orientation patterns where they add retrieval or automation value; do not import the blank template wholesale.
+  - id: tws-agentic-harness
+    repository: Three-Wheeled-Sloth-Studio/TWS-Agentic-Harness
+    status: reference
+    application: Use its feedback-governance controls for coding-agent repair loops. It is not a World Forge runtime dependency.
+local_reference_access:
+  environment_variable: TWS_REFERENCE_HOME
+  note: Optional local checkout pointer for TWS-Design-Principles. GitHub-backed agents may read the canonical repository directly.

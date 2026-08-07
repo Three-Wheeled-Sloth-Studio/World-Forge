@@ -1,17 +1,11 @@
-name: Geographic Drilldown WP0
+name: Geographic Drilldown Diagnostic
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - dev
-    paths:
-      - .github/workflows/geographic-drilldown-wp0.yml
-      - apps/desktop/src/main.tsx
-      - apps/desktop/src/regions/**
-      - refs/handoffs/canonical-geographic-drilldown-next-slice.md
-      - refs/handoffs/currentHandoff.md
-      - refs/testing/geographic-drilldown-workspace-minimap-qa.md
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -20,59 +14,46 @@ jobs:
   validate:
     name: Validate geographic drilldown slice
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
 
     steps:
       - name: Check out requested source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Use Node 24.13.0
-        uses: actions/setup-node@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v5
         with:
-          node-version: 24.13.0
-          cache: npm
-
-      - name: Record source snapshot
-        run: git archive --format=zip --output=world-forge-source.zip HEAD
+          node-version: '22'
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Record runtime and build provenance
+      - name: Record runtime and source provenance
         run: |
-          git status --short
           node --version
           npm --version
-          git log -6 --oneline
+          git log -3 --oneline
 
       - name: Run focused geographic drilldown tests
         run: >-
-          npm test -- --run
-          ../../packages/generator-core/src/geographicAdaptiveScale.test.ts
-          ../../packages/generator-core/src/geographicChildPartition.test.ts
-          ../../packages/generator-core/src/geographicMacroAreas.test.ts
-          ../../packages/generator-core/src/geographicTileWindow.test.ts
-          ../../packages/generator-core/src/geographicWidthScale.test.ts
-          ../../packages/exporters/src/multiBodyLocalSerialization.test.ts
-          ../../packages/exporters/src/multiBodyWforge.test.ts
-          src/regions/geographicRegionPreview.test.ts
-          src/regions/geographicAtlasContextMap.test.ts
-          src/worlds/systemPackageBridge.test.ts
-          src/worlds/systemPackageReadyBridge.test.ts
-
-      - name: Audit dependencies
-        run: npm audit
-
-      - name: Verify repository
-        run: npm run verify
+          npx vitest run
+          packages/generator-core/src/geographicAdaptiveScale.test.ts
+          packages/generator-core/src/geographicChildPartition.test.ts
+          packages/generator-core/src/geographicMacroAreas.test.ts
+          packages/generator-core/src/geographicTileWindow.test.ts
+          packages/generator-core/src/geographicWidthScale.test.ts
+          packages/generator-core/src/geographicSceneBuilder.test.ts
+          packages/exporters/src/multiBodyLocalSerialization.test.ts
+          packages/exporters/src/multiBodyWforge.test.ts
+          apps/desktop/src/regions/geographicRegionPreview.test.ts
+          apps/desktop/src/regions/geographicAtlasContextMap.test.ts
+          apps/desktop/src/regions/geographicAtlasLayerVisibility.test.ts
+          apps/desktop/src/regions/geographicHexScene.test.ts
+          apps/desktop/src/regions/geographicSceneInteraction.test.ts
+          apps/desktop/src/regions/GeographicSceneViewer.test.ts
+          apps/desktop/src/worlds/systemPackageBridge.test.ts
+          apps/desktop/src/worlds/systemPackageReadyBridge.test.ts
 
       - name: Evaluate geographic regions
         run: npm run evaluate:regions
-
-      - name: Preserve validated source snapshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: world-forge-source-${{ github.sha }}
-          path: world-forge-source.zip
-          retention-days: 1

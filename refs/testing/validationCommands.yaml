@@ -1,0 +1,32 @@
+version: 1
+updated: 2026-08-07
+principle: Run the narrowest useful validation during implementation, then the appropriate checkpoint validation before declaring work complete. Not every command applies to every change.
+commands:
+  - id: case-collisions
+    command: npm run check:case-collisions
+    purpose: Fail on tracked paths that collide after case-folding.
+    use_when: Any file is added, renamed, moved, or an import path changes; also runs automatically before typecheck and build.
+  - id: focused-tests
+    command: npx vitest run <relevant-test-files>
+    purpose: Exercise the smallest relevant regression surface while implementing a change.
+    use_when: During ordinary implementation and repair loops.
+  - id: validate
+    command: npm run validate
+    purpose: Run typecheck, the complete Vitest suite, and production harness self-tests.
+    use_when: A coherent implementation checkpoint is ready for broader validation.
+  - id: verify
+    command: npm run verify
+    purpose: Run validation plus the production frontend build.
+    use_when: Before declaring a functional milestone complete or when build-facing files change.
+  - id: dependency-audit
+    command: npm audit
+    purpose: Check the current dependency graph for known vulnerabilities.
+    use_when: Dependencies, lockfiles, package overrides, or security-sensitive build inputs change; also during intentional security review.
+  - id: geographic-evaluation
+    command: npm run evaluate:regions
+    purpose: Run deterministic geographic-region quality evaluation.
+    use_when: Geographic partitioning, drilldown, tile-window, or related generation behavior changes.
+  - id: geographic-diagnostic-ci
+    command: GitHub Actions -> Geographic Drilldown Diagnostic -> Run workflow
+    purpose: Run the focused geographic drilldown regression and evaluation suite in a clean remote environment.
+    use_when: Geographic work needs an intentional remote diagnostic checkpoint. This workflow is manual-only and is not authoritative repository CI.

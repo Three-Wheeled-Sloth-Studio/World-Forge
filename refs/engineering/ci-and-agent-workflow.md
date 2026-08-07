@@ -1,6 +1,14 @@
 # World Forge CI and Coding-Agent Workflow
 
-World Forge follows the studio-wide [CI Signal Discipline](https://github.com/Three-Wheeled-Sloth-Studio/TWS-Design-Principles/blob/main/engineering/CI-Signal-Discipline.md). That document is authoritative. This file records only the repository-specific implementation.
+World Forge follows the studio-wide [CI Signal Discipline](https://github.com/Three-Wheeled-Sloth-Studio/TWS-Design-Principles/blob/main/engineering/CI-Signal-Discipline.md). That document is the shared principle source. This file records the repository-specific implementation and deliberate deviations.
+
+## Project-specific branch model
+
+World Forge is currently a single-developer repository. Routine implementation works directly on `dev`; `qa` and `main` are promotion targets. This is an explicit project-specific deviation from the shared recommendation to use draft pull requests for substantial work.
+
+Do not create a PR merely to satisfy the generic studio pattern. Use branch isolation or a draft PR only when the user explicitly asks for it, when independent parallel work genuinely requires it, or when a risky experiment should not touch `dev`.
+
+Because `dev` is both the active implementation branch and an automatically validated branch, remote commits must be coherent checkpoints. Connector-level file writes, speculative one-line fixes, and repeated guess-and-push debugging should be batched before updating `dev` whenever the available tooling allows it.
 
 ## Automatic CI branches
 
@@ -11,23 +19,23 @@ Full automatic validation runs on pushes to:
 - `qa`
 - `release/**`
 
-Ready-for-review pull requests also receive the authoritative suite.
+Ready-for-review pull requests also receive the authoritative suite when a PR-based workflow is deliberately used.
 
-## Draft pull requests
+## Pull-request behavior
 
-Draft pull requests are working space. Pull-request events still register, but `fast-checks` and `validate` skip while the PR is draft. Commits to a draft PR therefore do not launch the full validation suite.
+Draft pull requests are exceptional working space in this repository, not the default development path. When one is used, pull-request events still register, but `fast-checks` and `validate` skip while the PR is draft.
 
 Marking the PR ready for review triggers authoritative CI. Converting it back to draft cancels obsolete in-progress work for that PR and skips the replacement jobs.
 
-## Manual draft validation
+## Manual validation
 
-Use **Actions → Validate World Forge → Run workflow**, then select the draft branch. `workflow_dispatch` bypasses the draft guard and runs the full suite without changing the PR review state.
+Use **Actions -> Validate World Forge -> Run workflow** to run the authoritative suite at an intentional checkpoint without changing branch or PR state.
 
-GitHub exposes manual dispatch from the default branch. During rollout, this control becomes available after the workflow revision reaches `main`.
+The geographic drilldown workflow is a manual diagnostic only. It must not run on every `dev` push and must not substitute for the authoritative `Validate World Forge` workflow.
 
 ## Concurrency
 
-The workflow groups runs by workflow plus PR number or branch ref:
+The authoritative workflow groups runs by workflow plus PR number or branch ref:
 
 ```yaml
 concurrency:
@@ -41,12 +49,13 @@ A newer checkpoint cancels obsolete validation for the same PR or accepted branc
 
 The workflow runs in this order:
 
-1. `fast-checks`: dependency installation and the complete Vitest suite.
-2. `validate`: dependency installation, TypeScript compilation and production frontend build.
-3. Production page and attribution harness self-tests.
-4. Headless production page and attribution smoke runs.
+1. Git-index case-collision guard.
+2. `fast-checks`: dependency installation and the complete Vitest suite.
+3. `validate`: dependency installation, TypeScript compilation and production frontend build.
+4. Production page and attribution harness self-tests.
+5. Headless production page and attribution smoke runs.
 
-`validate` depends on `fast-checks`, so the slower build and browser checks do not start when the test suite has already rejected the checkpoint.
+`validate` depends on `fast-checks`, so the slower build and browser checks do not start when the cheap path-safety guard or test suite has already rejected the checkpoint.
 
 ## Stable check names
 
@@ -63,15 +72,30 @@ There are currently no deployment, publication, signing, migration, or irreversi
 
 `release/**` receives ordinary cancelable validation. Any future irreversible workflow must define its own concurrency and cancellation policy rather than inheriting this validation workflow blindly.
 
+## Feedback-governed repair loop
+
+`Three-Wheeled-Sloth-Studio/TWS-Agentic-Harness` is the reference implementation for these controls. World Forge does not vendor the Python harness or make it a runtime dependency; the repository currently needs the governance behavior, not another execution framework.
+
+For validation-driven repair work:
+
+1. Record or retain the meaningful current failure set after each test run.
+2. Compare the next failure set to the previous one. A materially smaller set is progress and resets stalled-repair detection.
+3. After three consecutive non-improving repairs, stop patching the same seam. Re-evaluate ownership, architecture, assumptions, or the validation strategy before another modification.
+4. After five modification iterations without an acceptable checkpoint, require an explicit human decision, re-scope, or documented reason to continue.
+5. If an adapter, runner, connector, or environment fails, report the execution fault. Do not translate missing evidence into a passing result.
+6. Compress noisy context into the current diff, error trajectory, decisions, and handoff state. Do not preserve unlimited transcript history as working context.
+7. Use a genuinely independent verifier for high-risk contract, security, migration, release, or architectural changes when available. Do not invoke a second model for routine changes solely for ceremony.
+
+The thresholds are circuit breakers, not goals. A clear architectural diagnosis can justify changing direction before the third failed repair.
+
 ## Coding-agent and diagnostic rules
 
-- Start substantial, cross-stack, or diagnostic-heavy work as a draft PR.
 - Publish coherent checkpoints rather than one remote commit per speculative edit.
 - Run the cheapest relevant local test first when local execution is available.
 - Read the existing failure before publishing a repair.
 - Do not create push-triggered one-shot diagnostic workflows.
-- Temporary diagnostics must be manual-only, narrowly scoped, safe for this public repository, and removed before review.
+- Temporary diagnostics must be manual-only, narrowly scoped, safe for this public repository, and removed when they stop providing durable value.
 - Prefer existing logs, clean-checkout reproduction, focused reruns, and uploaded artifacts over committed logs or environment dumps.
 - Treat manifests, icons, capabilities, schemas, generated context, lock files, and packaging configuration as part of the build contract.
 - Do not commit `.local` output, transient performance logs, downloaded reference datasets, or diagnostic dumps.
-- Remove repair scaffolding and superseded diagnostics before marking a PR ready.
+- Remove repair scaffolding and superseded diagnostics before a milestone is considered complete.
