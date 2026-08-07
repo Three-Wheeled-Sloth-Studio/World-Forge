@@ -2,7 +2,7 @@
 
 Updated: 2026-08-06
 
-Status: **WP0/WP1 complete; WP2 implementation and repository validation complete; WP2 visual acceptance remains open; WP3 camera, picking, and context synchronization are implemented on `dev` pending exact-head validation and desktop QA**
+Status: **WP0/WP1 complete; WP2 implementation and repository validation complete; WP2 visual acceptance remains open; WP3 camera, picking, context synchronization, and exclusive drilled-atlas layer ownership are implemented on `dev` pending exact-head validation and desktop QA**
 
 Primary tracking:
 
@@ -21,8 +21,9 @@ Implementation baseline:
 - WP2 renderer validation fix: `db1f5163bf713f892776e950a4fb11ae784c034b`
 - final-river diagnostic validation fix: `9a852f8c03039d382f86ff9afffdcba209c5641a`
 - last user-validated descendant before WP3: `d02ed81b2bd63d10c91ca48d861fe8a06b00f997`
-- WP3 interaction descendant before this handoff update: `da9db38659ae3ba457ca08445f8a39474c66ce99`
-- visible version: `0.3.69`
+- WP3 interaction handoff baseline: `7fc559fd5ce2c91f45e45c9f8ecc7afe0c86b5c7`
+- drilled-atlas layer ownership correction: `3321b89b793f4d2342795eba726ef71ce228ea12`
+- visible version: `0.3.70`
 
 ## Completed foundations
 
@@ -92,9 +93,27 @@ The atlas workspace retains the canonical `GeographicTileWindow` beside the rend
 
 The viewer projects its four viewport corners onto the scene plane, converts them back to geographic coordinates, and emits a camera footprint. `GeographicAtlasContextMap.tsx` draws that footprint in cyan and handles longitude wrapping per edge.
 
+## Drilled-atlas layer ownership correction
+
+User screenshot feedback on 2026-08-06 showed visible version `0.3.68`, a brief presentation-color change, and the full-world 2D map remaining visible. Two distinctions matter:
+
+- the screenshot was from an older bundle because the current source version at the time was already `0.3.69`;
+- the full-world atlas overview remains intentionally 2D for macro-area selection. The 2.5D renderer starts only after opening a bounded macro area, region, or deeper map and toggling `2.5D`.
+
+The feedback still exposed a weak implementation seam: drilled mode depended only on a CSS class applied in a normal React effect to hide the original map canvas. Commit `3321b89b793f4d2342795eba726ef71ce228ea12` hardens that boundary:
+
+- `GeographicHierarchyPanel` now applies ownership changes in `useLayoutEffect`, before paint;
+- direct legacy canvases and map markers are explicitly marked `hidden`, `inert`, and `aria-hidden` while a bounded atlas map is open;
+- exact previous element state is restored on atlas exit;
+- only direct map-frame children are suppressed, so the nested Three.js canvas remains active;
+- CSS `display: none !important` remains as a second line of defense;
+- the drilled atlas and 2.5D scene use isolated, opaque stacking surfaces above the legacy renderer;
+- a focused classifier test protects the direct-child layer boundary;
+- visible version is now `0.3.70`.
+
 ## Validation status
 
-The prior WP2 descendant is locally validated. The WP3 descendant has source-level inspection and focused automated tests committed, but this execution environment cannot clone the public repository because outbound DNS is blocked. Do not mark WP3 validation green until a local or CI run completes.
+The prior WP2 descendant is locally validated. The WP3 and layer-ownership descendants have source-level inspection and focused automated tests committed, but this execution environment cannot clone the public repository because outbound DNS is blocked. Do not mark current-head validation green until a local or CI run completes.
 
 Run from the repository root:
 
@@ -106,6 +125,7 @@ Focused tests:
 
 ```bash
 npx vitest run \
+  apps/desktop/src/regions/geographicAtlasLayerVisibility.test.ts \
   apps/desktop/src/regions/geographicSceneInteraction.test.ts \
   apps/desktop/src/regions/GeographicSceneViewer.test.ts \
   packages/generator-core/src/geographicSceneBuilder.test.ts
@@ -113,20 +133,24 @@ npx vitest run \
 
 ## Combined desktop QA path
 
-1. Pull the exact `dev` head and confirm visible version `0.3.69`.
-2. Open a generated world, enter the atlas, and open a bounded area.
-3. Toggle `2.5D spike`.
-4. Verify useful relief, separate water, and no cracks at the four patch joins.
-5. Drag to pan and use the wheel to zoom continuously beyond the old hierarchy ceiling.
-6. Use Reset and confirm the original north-up framing returns.
-7. Use Tilt and the rotation buttons; confirm pitch remains shallow and rotation remains constrained.
-8. Switch Natural/Elevation after moving the camera; confirm the camera and geometry do not reset.
-9. Click terrain; confirm the compact inspector updates and the matching child is selected where one exists.
-10. Double-click selectable child terrain; confirm the hierarchy opens the child.
-11. Right-click selectable child terrain; confirm Open / Keep selected behavior.
-12. Pan, zoom, tilt, and rotate while watching the context map; confirm the cyan footprint follows the camera.
-13. Resize repeatedly and confirm controls, rendering, picking, and footprint remain aligned.
-14. Capture exact commit, OS, GPU, viewport, and screenshots in issue `#10`.
+1. Pull the exact `dev` head, restart or rebuild the running app, and confirm visible version `0.3.70`.
+2. Enable geographic drill-down. The full-world overview is expected to remain 2D.
+3. Select and open a continent, archipelago, ocean basin, region, or deeper bounded area.
+4. Confirm the original full-world canvas disappears completely after opening the bounded area.
+5. Toggle `2.5D`.
+6. Verify useful relief, separate water, and no cracks at the four patch joins.
+7. Confirm no blue-dominated legacy map flashes above the scene during initial load, delayed world redraw, presentation changes, or resize.
+8. Drag to pan and use the wheel to zoom continuously beyond the old hierarchy ceiling.
+9. Use Reset and confirm the original north-up framing returns.
+10. Use Tilt and the rotation buttons; confirm pitch remains shallow and rotation remains constrained.
+11. Switch Natural/Elevation after moving the camera; confirm the camera and geometry do not reset.
+12. Click terrain; confirm the compact inspector updates and the matching child is selected where one exists.
+13. Double-click selectable child terrain; confirm the hierarchy opens the child.
+14. Right-click selectable child terrain; confirm Open / Keep selected behavior.
+15. Pan, zoom, tilt, and rotate while watching the context map; confirm the cyan footprint follows the camera.
+16. Exit the atlas and confirm the original world map, overlays, and inspection markers restore normally.
+17. Resize repeatedly and confirm controls, rendering, picking, footprint, and layer ownership remain aligned.
+18. Capture exact commit, OS, GPU, viewport, and screenshots in issue `#10`.
 
 ## Remaining WP3 work after this increment
 
