@@ -8,6 +8,7 @@ import type {
   GeographicScene,
   GeographicSceneSemanticScale,
 } from '@world-forge/shared/geographicScene';
+import type { GeographicTileWindow } from '@world-forge/shared/geographicTileWindow';
 import type { GeographicMacroArea } from '@world-forge/shared/geographicHierarchy';
 import { generateGeographicTileWindow } from '@world-forge/generator-core/geographicTileWindow';
 import { buildGeographicSceneFromTileWindow } from '@world-forge/generator-core/geographicSceneBuilder';
@@ -17,8 +18,11 @@ import {
 } from './geographicHierarchyPreview';
 import type { useGeographicAtlasController } from './useGeographicAtlasController';
 import { GeographicAtlasContextMap } from './GeographicAtlasContextMap';
+import type { GeographicSceneCameraFootprint } from './geographicSceneInteraction';
 import {
   GeographicSceneViewer,
+  type GeographicSceneInteractionKind,
+  type GeographicScenePick,
   type GeographicScenePresentation,
 } from './GeographicSceneViewer';
 import { drawWorldMacroOverlay } from './geographicAtlasWorldOverlay';
@@ -28,10 +32,16 @@ export type GeographicHierarchyBuildStatus = 'idle' | 'building' | 'ready' | 'er
 
 type GeographicAtlasController = ReturnType<typeof useGeographicAtlasController>;
 type DrilldownContextMenu = { x: number; y: number; label: string };
+type PickedSceneTile = {
+  id: string;
+  label: string;
+  longitude: number;
+  latitude: number;
+};
 type GeographicSceneBuildState =
-  | { status: 'idle'; scene: null; error: '' }
-  | { status: 'ready'; scene: GeographicScene; error: '' }
-  | { status: 'cancelled' | 'unsupported' | 'failed'; scene: null; error: string };
+  | { status: 'idle'; scene: null; tileWindow: null; error: '' }
+  | { status: 'ready'; scene: GeographicScene; tileWindow: GeographicTileWindow; error: '' }
+  | { status: 'cancelled' | 'unsupported' | 'failed'; scene: null; tileWindow: null; error: string };
 
 export function GeographicAtlasWorkspace({
   project,
@@ -57,8 +67,15 @@ export function GeographicAtlasWorkspace({
   const [sceneEnabled, setSceneEnabled] = useState(false);
   const [scenePresentation, setScenePresentation] =
     useState<GeographicScenePresentation>('natural');
+  const [sceneCameraFootprint, setSceneCameraFootprint] =
+    useState<GeographicSceneCameraFootprint | null>(null);
+  const [pickedSceneTile, setPickedSceneTile] = useState<PickedSceneTile | null>(null);
 
   useEffect(() => setContextMenu(null), [current?.id]);
+  useEffect(() => {
+    setSceneCameraFootprint(null);
+    setPickedSceneTile(null);
+  }, [current?.id, sceneEnabled]);
   useEffect(() => {
     if (!current) setSceneEnabled(false);
   }, [current]);
@@ -91,11 +108,12 @@ export function GeographicAtlasWorkspace({
   }, [controller.canvasRef, controller.selectedMacroId, current, mapTarget, preview, project, status]);
 
   const sceneBuild = useMemo<GeographicSceneBuildState>(() => {
-    if (!sceneEnabled) return { status: 'idle', scene: null, error: '' };
+    if (!sceneEnabled) return { status: 'idle', scene: null, tileWindow: null, error: '' };
     if (!preview || !current) {
       return {
         status: 'unsupported',
         scene: null,
+        tileWindow: null,
         error: 'The 2.5D spike requires an open bounded geographic area.',
       };
     }
@@ -116,13 +134,13 @@ export function GeographicAtlasWorkspace({
         waterLevel: project.primaryWorld.seaLevel,
         replayVersion: `${tileWindow.classifierVersion}:${project.primaryWorld.topology.resolution}`,
       });
-      return { status: 'ready', scene, error: '' };
+      return { status: 'ready', scene, tileWindow, error: '' };
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : 'Geographic scene construction failed.';
       if (reason instanceof Error && reason.name === 'AbortError') {
-        return { status: 'cancelled', scene: null, error: message };
+        return { status: 'cancelled', scene: null, tileWindow: null, error: message };
       }
-      return { status: 'failed', scene: null, error: message };
+      return { status: 'failed', scene: null, tileWindow: null, error: message };
     }
   }, [controller.partition, current, preview, project, sceneEnabled]);
 
@@ -203,6 +221,39 @@ export function GeographicAtlasWorkspace({
     setContextMenu(null);
   };
 
+  const handleScenePick = (
+    pick: GeographicScenePick,
+    interaction: GeographicSceneInteractionKind,
+    pointer: { clientX: number; clientY: number },
+  ) => {
+    if (sceneBuild.status !== 'ready') return;
+    const tile = sceneBuild.tileWindow.tiles.find((candidate) => candidate.id === pick.sourceSampleId);
+    if (!tile) return;
+    const child = tile.membershipRole === 'parent' && tile.childIndex !== null
+      ? controller.partition?.children[tile.childIndex] ?? null
+      : null;
+    setPickedSceneTile({
+      id: tile.id,
+      label: child?.label ?? tile.terrainType,
+      longitude: tile.longitude,
+      latitude: tile.latitude,
+    });
+    setContextMenu(null);
+    if (child) controller.setSelectedChildId(child.id);
+    if (interaction === 'open' && child) {
+      controller.openChildById(child.id);
+      return;
+    }
+    if (interaction === 'context' && child) {
+      const rect = mapTarget.getBoundingClientRect();
+      setContextMenu({
+        x: Math.max(8, Math.min(pointer.clientX - rect.left, rect.width - 190)),
+        y: Math.max(44, Math.min(pointer.clientY - rect.top, rect.height - 88)),
+        label: child.label,
+      });
+    }
+  };
+
   const selectedMacro = preview?.macroAreaSet.macroAreas.find((entry) => entry.id === controller.selectedMacroId) ?? null;
   const selectedChildIndex = controller.partition?.children.findIndex((entry) => entry.id === controller.selectedChildId) ?? -1;
   const naturalPresentationActive = controller.presentation !== 'terrain' && controller.presentation !== 'overlay';
@@ -279,6 +330,9 @@ export function GeographicAtlasWorkspace({
             {sceneEnabled && sceneBuild.status === 'ready' && (
               <div><dt>Scene</dt><dd>{sceneBuild.scene.diagnostics.terrainPatchCount} patches</dd></div>
             )}
+            {sceneEnabled && pickedSceneTile && (
+              <div><dt>Pick</dt><dd title={pickedSceneTile.id}>{pickedSceneTile.label}</dd></div>
+            )}
           </dl>
         </aside>
       )}
@@ -290,6 +344,7 @@ export function GeographicAtlasWorkspace({
           childMembership={controller.partition?.membership.childIndexByTopologyCell ?? null}
           selectedChildIndex={selectedChildIndex >= 0 ? selectedChildIndex : null}
           extent={current.extent}
+          cameraFootprint={sceneEnabled ? sceneCameraFootprint : null}
           label={current.label}
         />
       )}
@@ -308,7 +363,13 @@ export function GeographicAtlasWorkspace({
       {sceneEnabled && (
         <div className="geographic-scene-layer">
           {sceneBuild.status === 'ready' ? (
-            <GeographicSceneViewer scene={sceneBuild.scene} presentation={scenePresentation} />
+            <GeographicSceneViewer
+              scene={sceneBuild.scene}
+              presentation={scenePresentation}
+              selectedSourceSampleId={pickedSceneTile?.id ?? null}
+              onPick={handleScenePick}
+              onCameraFootprintChange={setSceneCameraFootprint}
+            />
           ) : (
             <div className={`geographic-scene-status ${sceneBuild.status}`}>
               <strong>2.5D scene unavailable</strong>
@@ -317,7 +378,7 @@ export function GeographicAtlasWorkspace({
           )}
         </div>
       )}
-      {!sceneEnabled && contextMenu && (
+      {contextMenu && (
         <div
           className="geographic-drilldown-context-menu"
           role="menu"
