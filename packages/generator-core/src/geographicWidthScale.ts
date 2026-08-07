@@ -7,6 +7,7 @@ import {
 
 export const GEOGRAPHIC_DRILLDOWN_TARGET_COLUMNS = 50;
 export const GEOGRAPHIC_DRILLDOWN_MAX_SCALE_RATIO = 2.5;
+export const GEOGRAPHIC_CHILD_TARGET_HEXES = 400;
 
 const MINIMUM_SCALE_MILES = 0.5;
 const CANONICAL_TARGET_SCALES = [60, 24, 6, 1, 0.5] as const;
@@ -98,11 +99,14 @@ export function nextGeographicScaleMiles(currentScaleMiles: number): number {
 
 export function targetChildCountForExtent(
   extent: GeographicHierarchyMapExtent,
-  targetColumns = GEOGRAPHIC_DRILLDOWN_TARGET_COLUMNS,
+  targetHexesPerChild = GEOGRAPHIC_CHILD_TARGET_HEXES,
 ): number {
-  const widthGroups = Math.max(1, Math.ceil(extent.columns / Math.max(1, targetColumns)));
-  const heightGroups = Math.max(1, Math.ceil(extent.rows / Math.max(1, targetColumns)));
-  return Math.max(1, Math.min(64, widthGroups * heightGroups));
+  const padding = Math.max(0, extent.contextPaddingHexes);
+  const contentColumns = Math.max(1, extent.columns - padding * 2);
+  const contentRows = Math.max(1, extent.rows - padding * 2);
+  const estimatedParentHexes = contentColumns * contentRows;
+  const target = Math.max(25, Math.round(targetHexesPerChild));
+  return Math.max(2, Math.min(64, Math.ceil(estimatedParentHexes / target)));
 }
 
 function selectedLongitudeSpanDegrees(
