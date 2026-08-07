@@ -2,7 +2,7 @@
 
 Updated: 2026-08-06
 
-Status: **WP0 and WP1 complete; WP2 implementation is on `dev`; exact-head repository validation and visual QA are active**
+Status: **WP0 and WP1 complete; WP2 implementation and exact-head repository validation are complete; desktop visual QA is active**
 
 Primary tracking:
 
@@ -21,6 +21,7 @@ Implementation baseline:
 - WP2 implementation commit: `30fd1cb0b0e4f5cc22d6200890f6c68191b049c4`
 - WP2 renderer validation fix commit: `db1f5163bf713f892776e950a4fb11ae784c034b`
 - final-river diagnostic validation fix commit: `9a852f8c03039d382f86ff9afffdcba209c5641a`
+- locally validated descendant before this handoff update: `d02ed81b2bd63d10c91ca48d861fe8a06b00f997`
 - visible version: `0.3.68`
 
 ## Completed
@@ -72,7 +73,9 @@ The spike path:
 - preserves the flat canvas only as an intentional comparison path during the spike;
 - does not change saved-world, `.wforge`, `.pworld`, or Parchment host contracts.
 
-## Validation completed in the available runtime
+## Validation status
+
+Available-runtime validation completed during implementation:
 
 - strict isolated TypeScript compilation of the scene builder and fixture;
 - strict isolated TypeScript compilation of the Three.js adapter;
@@ -86,26 +89,19 @@ The spike path:
   - relief range: `-4.6224` through `9.05904` scene units;
   - final progress ratio: `1`.
 
-GitHub currently reports no workflow runs or commit statuses for the WP2 implementation or validation-fix commits. Do not treat that absence as passing CI.
-
-## Active next work: exact-head WP2 acceptance
-
-Run the normal repository validation and perform desktop visual QA on commit `9a852f8c03039d382f86ff9afffdcba209c5641a` or its documented descendant.
-
-### Repository validation
+User-reported exact-head Windows validation on 2026-08-06:
 
 ```bash
 npm run validate
-npm run validate:desktop
-npm run validate:api
-npm run adr:guard -- --base HEAD~1
 ```
 
-Also run the focused tests:
+Result: **passed**, including the complete 129-file / 468-test Vitest suite and the validation steps chained by the repository script.
 
-```bash
-npx vitest run packages/generator-core/src/plateMotionPipelineDiagnostics.test.ts packages/generator-core/src/geographicSceneBuilder.test.ts apps/desktop/src/regions/GeographicSceneViewer.test.ts
-```
+GitHub reports no attached workflow runs or commit statuses for these commits; the successful local Windows run is the current repository-validation evidence.
+
+## Active next work: WP2 visual acceptance
+
+Perform desktop visual QA on the validated implementation or its documented descendant.
 
 ### Desktop visual QA path
 
@@ -121,6 +117,14 @@ npx vitest run packages/generator-core/src/plateMotionPipelineDiagnostics.test.t
 10. Toggle back to the flat comparison path and reopen the same area.
 11. Exercise an unsupported or malformed scene and confirm an explicit error rather than a hidden fallback.
 12. Capture exact commit, operating system, GPU, viewport, and screenshots in issue `#10`.
+
+Remaining repository-specific checks, if not already included in the local acceptance pass:
+
+```bash
+npm run validate:desktop
+npm run validate:api
+npm run adr:guard -- --base HEAD~1
+```
 
 ## WP2 acceptance boundary
 
