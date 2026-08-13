@@ -30,4 +30,20 @@ describe('geographic atlas presentation resolution', () => {
       tilePresentation: 'natural',
     });
   });
+
+  it('keeps the legacy tiles token as a Natural alias', () => {
+    expect(resolveGeographicDrilldownPresentation('tiles', 'region')).toEqual({
+      mode: 'tiles',
+      tilePresentation: 'natural',
+    });
+  });
+
+  it('routes the TTRPG presentation through the same canonical tile renderer', () => {
+    for (const level of levels) {
+      expect(resolveGeographicDrilldownPresentation('ttrpg', level)).toEqual({
+        mode: 'tiles',
+        tilePresentation: 'ttrpg',
+      });
+    }
+  });
 });

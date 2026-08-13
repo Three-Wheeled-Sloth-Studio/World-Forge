@@ -6,11 +6,16 @@ import type {
 import { worldHexCoordinateForLatLon } from '@world-forge/generator-core/geographicAdaptiveScale';
 import { estimatedRiverWidthMiles } from '@world-forge/generator-core/geographicRiverTileProjection';
 import {
+  GEOGRAPHIC_ATLAS_TTRPG_PALETTE,
+  geographicAtlasNaturalBaseColor,
+  geographicAtlasTtrpgBaseColor,
+} from './geographicAtlasPalette';
+import {
   createGeographicWindowTransform,
   type GeographicWindowTransform,
 } from './geographicWindowedMap';
 
-export type GeographicTileWindowPresentation = 'natural' | 'terrain';
+export type GeographicTileWindowPresentation = 'natural' | 'terrain' | 'ttrpg';
 
 export type GeographicTileWindowCanvasTransform = GeographicWindowTransform & {
   tileAtCanvasPoint: (x: number, y: number) => GeographicTileWindowTile | null;
@@ -32,6 +37,7 @@ type TileGeometry = {
 
 const SQRT_THREE = Math.sqrt(3);
 const RIVER_RGB = '68, 178, 226';
+const TTRPG_RIVER_RGB = '72, 112, 116';
 const EDGE_ORDER: HexTileEdge[] = ['ne', 'e', 'se', 'sw', 'w', 'nw'];
 const EDGE_INDEX: Record<HexTileEdge, number> = {
   ne: 0,
@@ -63,7 +69,7 @@ export function renderGeographicTileWindowToCanvas(
   if (!context) throw new Error('Unable to acquire geographic tile-window canvas context.');
 
   context.clearRect(0, 0, width, height);
-  context.fillStyle = '#071019';
+  context.fillStyle = options.presentation === 'ttrpg' ? GEOGRAPHIC_ATLAS_TTRPG_PALETTE.paper : '#071019';
   context.fillRect(0, 0, width, height);
 
   const layout = createLayout(window, width, height);
@@ -74,11 +80,12 @@ export function renderGeographicTileWindowToCanvas(
     .map((tile) => tileGeometry(tile, window, layout));
 
   for (const entry of geometry) drawTileFill(context, entry, options, window);
-  drawContextVeil(context, geometry);
-  if (options.showHexes) drawHexLines(context, geometry);
-  drawTerrainEdges(context, geometry, window);
-  drawChildBoundaries(context, geometry, byCoordinate, window);
-  drawParentBoundary(context, geometry, byCoordinate, window);
+  drawContextVeil(context, geometry, options.presentation);
+  if (options.showHexes) drawHexLines(context, geometry, options.presentation);
+  drawCoastlines(context, geometry, byCoordinate, window, options.presentation);
+  drawTerrainEdges(context, geometry, window, options.presentation);
+  drawChildBoundaries(context, geometry, byCoordinate, window, options.presentation);
+  drawParentBoundary(context, geometry, byCoordinate, window, options.presentation);
 
   return createTileCanvasTransform(window, width, height, geometry);
 }
@@ -256,13 +263,21 @@ function drawTileFill(
   context.fill();
 
   if (entry.tile.childIndex !== null && entry.tile.childIndex === options.selectedChildIndex) {
-    context.fillStyle = 'rgba(255, 232, 151, 0.28)';
+    context.fillStyle = options.presentation === 'ttrpg'
+      ? 'rgba(121, 75, 39, 0.2)'
+      : 'rgba(255, 232, 151, 0.28)';
     context.fill();
   }
 }
 
-function drawContextVeil(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
-  context.fillStyle = 'rgba(3, 7, 12, 0.36)';
+function drawContextVeil(
+  context: CanvasRenderingContext2D,
+  geometry: TileGeometry[],
+  presentation: GeographicTileWindowPresentation,
+): void {
+  context.fillStyle = presentation === 'ttrpg'
+    ? 'rgba(75, 56, 37, 0.16)'
+    : 'rgba(3, 7, 12, 0.36)';
   for (const entry of geometry) {
     if (entry.tile.membershipRole === 'parent') continue;
     context.beginPath();
@@ -276,9 +291,12 @@ function drawParentBoundary(
   geometry: TileGeometry[],
   byCoordinate: Map<string, GeographicTileWindowTile>,
   window: GeographicTileWindow,
+  presentation: GeographicTileWindowPresentation,
 ): void {
-  context.strokeStyle = 'rgba(255, 255, 246, 0.98)';
-  context.lineWidth = 3.1;
+  context.strokeStyle = presentation === 'ttrpg'
+    ? 'rgba(62, 46, 31, 0.96)'
+    : 'rgba(255, 255, 246, 0.98)';
+  context.lineWidth = presentation === 'ttrpg' ? 2.5 : 3.1;
   context.lineJoin = 'round';
   for (const entry of geometry) {
     if (entry.tile.membershipRole !== 'parent') continue;
@@ -295,9 +313,12 @@ function drawChildBoundaries(
   geometry: TileGeometry[],
   byCoordinate: Map<string, GeographicTileWindowTile>,
   window: GeographicTileWindow,
+  presentation: GeographicTileWindowPresentation,
 ): void {
-  context.strokeStyle = 'rgba(247, 210, 123, 0.74)';
-  context.lineWidth = 1.4;
+  context.strokeStyle = presentation === 'ttrpg'
+    ? 'rgba(96, 72, 45, 0.58)'
+    : 'rgba(247, 210, 123, 0.74)';
+  context.lineWidth = presentation === 'ttrpg' ? 1.1 : 1.4;
   context.lineJoin = 'round';
   for (const entry of geometry) {
     const childIndex = entry.tile.childIndex;
@@ -310,18 +331,80 @@ function drawChildBoundaries(
   }
 }
 
+function drawCoastlines(
+  context: CanvasRenderingContext2D,
+  geometry: TileGeometry[],
+  byCoordinate: Map<string, GeographicTileWindowTile>,
+  window: GeographicTileWindow,
+  presentation: GeographicTileWindowPresentation,
+): void {
+  context.save();
+  context.lineJoin = 'round';
+  context.lineCap = 'round';
+  context.strokeStyle = presentation === 'ttrpg'
+    ? 'rgba(68, 52, 35, 0.96)'
+    : 'rgba(226, 220, 187, 0.82)';
+  context.lineWidth = presentation === 'ttrpg' ? 2.15 : 1.35;
+  for (const entry of geometry) {
+    if (entry.tile.water) continue;
+    for (const edge of EDGE_ORDER) {
+      const neighbor = neighborFor(entry.tile, edge, byCoordinate, window);
+      if (!neighbor?.water) continue;
+      strokeEdge(context, entry.vertices, edge);
+    }
+  }
+  if (presentation === 'ttrpg') drawTtrpgWaterHachures(context, geometry, byCoordinate, window);
+  context.restore();
+}
+
+function drawTtrpgWaterHachures(
+  context: CanvasRenderingContext2D,
+  geometry: TileGeometry[],
+  byCoordinate: Map<string, GeographicTileWindowTile>,
+  window: GeographicTileWindow,
+): void {
+  context.strokeStyle = 'rgba(65, 88, 89, 0.48)';
+  context.lineWidth = 0.8;
+  for (const entry of geometry) {
+    if (!entry.tile.water) continue;
+    for (const edge of EDGE_ORDER) {
+      const neighbor = neighborFor(entry.tile, edge, byCoordinate, window);
+      if (!neighbor || neighbor.water) continue;
+      const [leftIndex, rightIndex] = EDGE_VERTICES[edge];
+      const left = entry.vertices[leftIndex];
+      const right = entry.vertices[rightIndex];
+      const inset = 0.18;
+      context.beginPath();
+      context.moveTo(
+        left[0] + (entry.centerX - left[0]) * inset,
+        left[1] + (entry.centerY - left[1]) * inset,
+      );
+      context.lineTo(
+        right[0] + (entry.centerX - right[0]) * inset,
+        right[1] + (entry.centerY - right[1]) * inset,
+      );
+      context.stroke();
+    }
+  }
+}
+
 function drawTerrainEdges(
   context: CanvasRenderingContext2D,
   geometry: TileGeometry[],
   window: GeographicTileWindow,
+  presentation: GeographicTileWindowPresentation,
 ): void {
   for (const entry of geometry) {
     for (const edge of entry.tile.ridgeEdges) {
-      context.strokeStyle = entry.tile.ice ? 'rgba(215, 229, 235, 0.9)' : 'rgba(76, 55, 39, 0.92)';
-      context.lineWidth = 2.1;
+      context.strokeStyle = presentation === 'ttrpg'
+        ? 'rgba(79, 60, 39, 0.72)'
+        : entry.tile.ice
+          ? 'rgba(215, 229, 235, 0.9)'
+          : 'rgba(76, 55, 39, 0.92)';
+      context.lineWidth = presentation === 'ttrpg' ? 1.55 : 2.1;
       strokeEdge(context, entry.vertices, edge);
     }
-    drawRiverNetwork(context, entry, window);
+    drawRiverNetwork(context, entry, window, presentation);
   }
 }
 
@@ -329,16 +412,18 @@ function drawRiverNetwork(
   context: CanvasRenderingContext2D,
   entry: TileGeometry,
   window: GeographicTileWindow,
+  presentation: GeographicTileWindowPresentation,
 ): void {
   const dominant = riverDominatesTile(entry.tile);
   const minorEdges = entry.tile.minorRiverEdges.filter((edge) => !entry.tile.navigableRiverEdges.includes(edge));
+  const riverRgb = presentation === 'ttrpg' ? TTRPG_RIVER_RGB : RIVER_RGB;
   if (minorEdges.length > 0) {
     drawRiverConnections(
       context,
       entry,
       minorEdges,
       riverLineWidth(entry, window, false),
-      `rgba(${RIVER_RGB}, 0.72)`,
+      `rgba(${riverRgb}, 0.72)`,
       false,
     );
   }
@@ -348,11 +433,11 @@ function drawRiverNetwork(
       entry,
       entry.tile.navigableRiverEdges,
       riverLineWidth(entry, window, true),
-      `rgba(${RIVER_RGB}, 0.96)`,
+      `rgba(${riverRgb}, 0.96)`,
       dominant,
     );
   }
-  drawRiverEndpointMarkers(context, entry, window);
+  drawRiverEndpointMarkers(context, entry, window, presentation);
 }
 
 function drawRiverConnections(
@@ -430,12 +515,16 @@ function drawRiverEndpointMarkers(
   context: CanvasRenderingContext2D,
   entry: TileGeometry,
   window: GeographicTileWindow,
+  presentation: GeographicTileWindowPresentation,
 ): void {
   const allEdges = [...new Set([...entry.tile.minorRiverEdges, ...entry.tile.navigableRiverEdges])];
   const width = riverLineWidth(entry, window, entry.tile.navigableRiverEdges.length > 0);
+  const riverRgb = presentation === 'ttrpg' ? TTRPG_RIVER_RGB : RIVER_RGB;
   context.save();
-  context.fillStyle = `rgba(${RIVER_RGB}, 0.96)`;
-  context.strokeStyle = 'rgba(22, 80, 105, 0.72)';
+  context.fillStyle = `rgba(${riverRgb}, 0.96)`;
+  context.strokeStyle = presentation === 'ttrpg'
+    ? 'rgba(53, 78, 79, 0.72)'
+    : 'rgba(22, 80, 105, 0.72)';
   context.lineWidth = Math.max(0.7, width * 0.12);
 
   if (entry.tile.riverSource && allEdges.length > 0) {
@@ -493,9 +582,15 @@ function riverDominatesTile(tile: GeographicTileWindowTile): boolean {
   return tile.navigableRiverCenter && tile.navigableRiverEdges.length > 0;
 }
 
-function drawHexLines(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
-  context.strokeStyle = 'rgba(236, 225, 192, 0.22)';
-  context.lineWidth = 0.7;
+function drawHexLines(
+  context: CanvasRenderingContext2D,
+  geometry: TileGeometry[],
+  presentation: GeographicTileWindowPresentation,
+): void {
+  context.strokeStyle = presentation === 'ttrpg'
+    ? 'rgba(74, 58, 41, 0.2)'
+    : 'rgba(236, 225, 192, 0.22)';
+  context.lineWidth = presentation === 'ttrpg' ? 0.6 : 0.7;
   for (const entry of geometry) {
     context.beginPath();
     tracePolygon(context, entry.vertices);
@@ -509,10 +604,11 @@ function tileFill(
   window: GeographicTileWindow,
 ): string {
   if (riverDominatesTile(tile)) return riverDominantFill(tile, presentation, window);
+  if (presentation === 'ttrpg') return geographicAtlasTtrpgBaseColor(tile);
   if (presentation === 'terrain') return terrainFill(tile);
-  const base = naturalBase(tile);
-  const elevationLift = clamp((tile.elevation + 0.35) * 0.22, -0.08, 0.16);
-  const wetnessLift = clamp((tile.wetness - 0.5) * 0.08, -0.05, 0.05);
+  const base = geographicAtlasNaturalBaseColor(tile);
+  const elevationLift = clamp((tile.elevation + 0.35) * 0.2, -0.07, 0.13);
+  const wetnessLift = tile.water ? 0 : clamp((tile.wetness - 0.5) * 0.045, -0.025, 0.025);
   return adjustHex(base, elevationLift + wetnessLift);
 }
 
@@ -526,33 +622,24 @@ function riverDominantFill(
     0,
     1,
   );
-  const base = presentation === 'terrain' ? '#327492' : '#3d86a8';
-  return adjustHex(base, physicalFraction * 0.06);
-}
-
-function naturalBase(tile: GeographicTileWindowTile): string {
-  if (tile.ice) return '#dbe8e8';
-  if (tile.water) return tile.morphology === 'coastal' || tile.morphology === 'lake' ? '#397a9b' : '#225776';
-  switch (tile.biome) {
-    case 'tundra': return '#aeb9a2';
-    case 'desert': return '#c5a768';
-    case 'tropical': return '#3f7f4b';
-    case 'grassland': return '#789456';
-    case 'plains': return '#9a985d';
-    default: return '#55745c';
-  }
+  const base = presentation === 'terrain'
+    ? '#327492'
+    : presentation === 'ttrpg'
+      ? GEOGRAPHIC_ATLAS_TTRPG_PALETTE.coastalWater
+      : '#347f9c';
+  return adjustHex(base, physicalFraction * 0.05);
 }
 
 function terrainFill(tile: GeographicTileWindowTile): string {
   if (tile.ice) return '#d8e4e6';
   if (tile.water) {
     const depth = clamp(-tile.elevation, 0, 1);
-    return adjustHex('#275e7a', -depth * 0.18);
+    return adjustHex('#255b77', -depth * 0.18);
   }
   const normalized = clamp((tile.elevation + 0.15) / 0.9, 0, 1);
   if (tile.morphology === 'mountainous') return adjustHex('#7a6d5d', normalized * 0.16);
-  if (tile.morphology === 'rough') return adjustHex('#777563', normalized * 0.12);
-  return adjustHex('#77816b', normalized * 0.1);
+  if (tile.morphology === 'rough') return adjustHex('#7b765f', normalized * 0.12);
+  return adjustHex('#827d62', normalized * 0.1);
 }
 
 function neighborFor(

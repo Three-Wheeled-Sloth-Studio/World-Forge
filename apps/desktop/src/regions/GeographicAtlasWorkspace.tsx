@@ -256,7 +256,9 @@ export function GeographicAtlasWorkspace({
 
   const selectedMacro = preview?.macroAreaSet.macroAreas.find((entry) => entry.id === controller.selectedMacroId) ?? null;
   const selectedChildIndex = controller.partition?.children.findIndex((entry) => entry.id === controller.selectedChildId) ?? -1;
-  const naturalPresentationActive = controller.presentation !== 'terrain' && controller.presentation !== 'overlay';
+  const naturalPresentationActive = controller.presentation === 'auto'
+    || controller.presentation === 'natural'
+    || controller.presentation === 'tiles';
   const compactInspector = current
     ? {
         title: current.label,
@@ -310,6 +312,7 @@ export function GeographicAtlasWorkspace({
                 <>
                   <button type="button" className={naturalPresentationActive ? 'active' : ''} onClick={() => controller.setPresentation('natural')}>Natural</button>
                   <button type="button" className={controller.presentation === 'terrain' ? 'active' : ''} onClick={() => controller.setPresentation('terrain')}>Terrain</button>
+                  <button type="button" className={controller.presentation === 'ttrpg' ? 'active' : ''} onClick={() => controller.setPresentation('ttrpg')}>TTRPG</button>
                 </>
               )}
             </div>

@@ -27,7 +27,7 @@ import {
 } from './geographicTileWindowMap';
 import { drawGeographicChildBoundaryOverlay } from './geographicDrilldownBoundaryOverlay';
 
-export type GeographicDrilldownPresentation = 'auto' | 'overlay' | 'tiles' | 'natural' | 'terrain';
+export type GeographicDrilldownPresentation = 'auto' | 'overlay' | 'tiles' | 'natural' | 'terrain' | 'ttrpg';
 export type ResolvedGeographicDrilldownPresentation =
   | { mode: 'overlay'; tilePresentation: GeographicTileWindowPresentation }
   | { mode: 'tiles'; tilePresentation: GeographicTileWindowPresentation };
@@ -183,6 +183,7 @@ export function useGeographicAtlasController(
       transform,
       partition?.children.map((entry) => ({ id: entry.id, label: entry.label, point: entry.labelPoint })) ?? [],
       selectedChildId,
+      resolvedPresentation.tilePresentation,
     );
   }, [current, partition, presentation, preview, project, selectedChildId, showHexes]);
 
@@ -326,6 +327,7 @@ export function resolveGeographicDrilldownPresentation(
 ): ResolvedGeographicDrilldownPresentation {
   if (presentation === 'overlay') return { mode: 'overlay', tilePresentation: 'natural' };
   if (presentation === 'terrain') return { mode: 'tiles', tilePresentation: 'terrain' };
+  if (presentation === 'ttrpg') return { mode: 'tiles', tilePresentation: 'ttrpg' };
   return { mode: 'tiles', tilePresentation: 'natural' };
 }
 
@@ -334,21 +336,27 @@ function drawLabels(
   transform: GeographicWindowTransform,
   labels: Array<{ id: string; label: string; point: { latitude: number; longitude: number } }>,
   selectedId: string | null,
+  presentation: GeographicTileWindowPresentation,
 ): void {
   const context = canvas.getContext('2d');
   if (!context) return;
+  const ttrpg = presentation === 'ttrpg';
   context.save();
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.font = '600 12px Inter, system-ui, sans-serif';
+  context.font = ttrpg
+    ? '600 13px Georgia, "Times New Roman", serif'
+    : '600 12px Inter, system-ui, sans-serif';
   for (const entry of labels) {
     const point = transform.geoToCanvasPoint(entry.point.latitude, entry.point.longitude);
     if (point.x < -30 || point.x > canvas.width + 30 || point.y < -20 || point.y > canvas.height + 20) continue;
     const text = entry.label.replace(/^(Region|Subregion|Local|Detail)\s+/i, '');
     context.lineWidth = entry.id === selectedId ? 4 : 3;
-    context.strokeStyle = 'rgba(8, 12, 18, 0.9)';
+    context.strokeStyle = ttrpg ? 'rgba(224, 208, 171, 0.92)' : 'rgba(8, 12, 18, 0.9)';
     context.strokeText(text, point.x, point.y);
-    context.fillStyle = entry.id === selectedId ? '#fff4c7' : '#fffdf3';
+    context.fillStyle = ttrpg
+      ? entry.id === selectedId ? '#7b451f' : '#493927'
+      : entry.id === selectedId ? '#fff4c7' : '#fffdf3';
     context.fillText(text, point.x, point.y);
   }
   context.restore();

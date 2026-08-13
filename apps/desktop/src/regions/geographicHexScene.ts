@@ -8,6 +8,7 @@ import type {
   GeographicTileWindow,
   GeographicTileWindowTile,
 } from '@world-forge/shared/geographicTileWindow';
+import { geographicAtlasNaturalBaseColor } from './geographicAtlasPalette';
 import { visibleGeographicAtlasTileIds } from './geographicTileWindowMap';
 
 export type GeographicHexScenePresentation = 'natural' | 'elevation';
@@ -313,27 +314,10 @@ function tileColor(
 ): THREE.Color {
   let color = presentation === 'elevation'
     ? elevationColor(elevation, minElevation, maxElevation)
-    : naturalTileColor(tile);
+    : new THREE.Color(geographicAtlasNaturalBaseColor(tile));
   if (tile.membershipRole === 'context') color = color.clone().multiplyScalar(0.5);
   if (selected) color = color.clone().lerp(new THREE.Color('#ffe69a'), 0.26);
   return color;
-}
-
-function naturalTileColor(tile: GeographicTileWindowTile): THREE.Color {
-  if (tile.ice) return new THREE.Color('#dbe8e8');
-  if (tile.water) {
-    return new THREE.Color(tile.morphology === 'coastal' || tile.morphology === 'lake'
-      ? '#397a9b'
-      : '#225776');
-  }
-  switch (tile.biome) {
-    case 'tundra': return new THREE.Color('#aeb9a2');
-    case 'desert': return new THREE.Color('#c5a768');
-    case 'tropical': return new THREE.Color('#3f7f4b');
-    case 'grassland': return new THREE.Color('#789456');
-    case 'plains': return new THREE.Color('#9a985d');
-    default: return new THREE.Color('#55745c');
-  }
 }
 
 function elevationColor(value: number, minimum: number, maximum: number): THREE.Color {

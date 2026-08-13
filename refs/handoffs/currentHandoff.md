@@ -1,83 +1,83 @@
-# Current Handoff: Infrastructure Baseline and Product Pivot
+# Current Handoff
 
-Updated: 2026-08-07
+Updated: 2026-08-13
 
-Status: **Shared studio guidance reviewed and selectively incorporated; geographic atlas visual iteration is paused at visible version `0.3.71`; no new product PI is selected in this handoff.**
+Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
-## Current operating state
+Branch: `dev`
 
-- repository: `Three-Wheeled-Sloth-Studio/World-Forge`
-- branch: `dev`
-- visible version: `0.3.71`
-- geographic atlas issue `#10` remains open but is parked after repeated visual iteration produced diminishing returns;
-- the complete prior geographic-atlas state is preserved at `refs/handoffs/archive/geographic-atlas-v0.3.71-paused.md`;
-- do not resume atlas rendering work by default; wait for explicit user direction or a clearly related task.
+Tracking issue: `#10`
 
-No runtime behavior, saved-world contract, generator contract, or visible version changes are part of this housekeeping increment.
+## Current checkpoint
 
-## Project-memory entry points
+World Forge has resumed the geographic atlas only for a narrow presentation pass. This is an explicit exception to the broader atlas pause recorded in `refs/handoffs/archive/geographic-atlas-v0.3.71-paused.md`; it is not a restart of open-ended 2.5D renderer experimentation.
 
-Start future implementation work with:
+The checkpoint starts from infrastructure baseline `4bfc5de454428ab25857b63082ed3a42ca341e4a` and contains two presentation changes over the existing canonical tile-window geography:
 
-1. `AGENTS.md`
-2. `refs/README.md`
-3. `refs/project.yaml`
-4. this handoff
-5. the planning, engineering, decision, research, or testing references directly relevant to the requested change
-6. `refs/testing/validationCommands.yaml` before finalizing the increment
+1. Natural/terrain land-water readability hardening.
+2. A first 2D TTRPG/cartographic presentation.
 
-Do not broadly import or recreate the blank Agent Academy template. World Forge already has a mature `refs/` taxonomy; add standardized metadata only where it solves a retrieval or automation need.
+## Land and water readability
 
-## Shared guidance baseline
+Presentation palette ownership is now centralized in `apps/desktop/src/regions/geographicAtlasPalette.ts` for the shared Natural base colors used by both the 2D tile renderer and stepped 3D Natural presentation.
 
-Canonical shared sources:
+The presentation now:
 
-- `Three-Wheeled-Sloth-Studio/TWS-Design-Principles`
-- `Three-Wheeled-Sloth-Studio/Agent-Academy`
-- `Three-Wheeled-Sloth-Studio/TWS-Agentic-Harness`
+- uses warmer, more clearly terrestrial lowland colors;
+- keeps open water and coastal/lake water in clearly separate blue families;
+- recognizes explicit canonical wetland facts (`wet`, bog, marsh, mangrove, or wetland river terminus) as a distinct land color when `tile.water` is false;
+- adds an explicit coastline stroke derived only from canonical tile water identity and tile adjacency;
+- slightly warms low terrain in the analytical Terrain presentation;
+- does not add a second geography classifier or modify canonical tile facts.
 
-Detailed World Forge application and deliberate deferments are recorded in `refs/engineering/studio-principles-application.md`.
+## TTRPG presentation
 
-Key operating rules now captured locally:
+The existing 2D canonical tile renderer now supports a `ttrpg` presentation. The atlas toolbar exposes it as **TTRPG** alongside Natural and Terrain.
 
-- shared guidance is a decision aid, not a compliance checklist;
-- World Forge keeps its single-developer direct-`dev` workflow instead of manufacturing routine draft-PR ceremony;
-- publish coherent checkpoints rather than connector-level file-write commits;
-- the Git-index case-collision guard remains mandatory and runs before build/typecheck, with an explicit early CI check;
-- three consecutive materially non-improving repair attempts trigger architectural reassessment rather than another patch at the same seam;
-- five unsuccessful modification iterations require an explicit human decision, re-scope, or documented reason to continue;
-- tool or adapter failure is a blocker, not evidence of success;
-- independent verification is used where risk justifies it, not as mandatory second-agent ceremony.
+The first product surface includes:
 
-The Python `TWS-Agentic-Harness` is a reference implementation, not a World Forge dependency. World Forge currently needs its feedback-governance concepts, not another orchestration runtime.
+- parchment-like canvas and restrained warm land fills;
+- muted water fills with dark inked coastlines;
+- a secondary water-side coastline hachure for a hand-drawn/cartographic cue;
+- subdued rivers, ridges, child boundaries, and hex lines;
+- darker ink parent boundaries and selection treatment;
+- presentation-aware serif labels with a paper-colored halo;
+- the existing hex toggle, picking, hierarchy navigation, and canonical tile-window generation unchanged.
 
-## CI and diagnostics
+The TTRPG view is intentionally 2D only. The 3D path continues to expose Natural and Elevation, while Natural 3D now consumes the same base palette helper as Natural 2D.
 
-Authoritative repository CI remains `.github/workflows/validate.yml` (`Validate World Forge`). It retains automatic validation on accepted branches, concurrency cancellation, and cheap-to-expensive ordering.
+## Architecture and contract status
 
-The former push-triggered geographic drilldown workflow is now `Geographic Drilldown Diagnostic` and is manual-only. Use it only when geographic work needs a clean remote focused checkpoint. It is not authoritative repository CI and should not run on ordinary `dev` pushes.
+Unchanged:
 
-Project-specific CI and agent behavior is documented in `refs/engineering/ci-and-agent-workflow.md`.
+- `geographic-tile-window-v1` and classifier contracts;
+- geographic hierarchy generation and partitioning;
+- world-relative tile IDs and signatures;
+- saved-world behavior;
+- `.wforge` and `.pworld` contracts;
+- exporter/runtime classification ownership;
+- geographic scene generation and 3D geometry.
 
-## Validation expectations
+This checkpoint changes presentation only. `npm run evaluate:regions` is therefore not required unless a later repair changes generation behavior.
 
-Read `refs/testing/validationCommands.yaml` and run the narrowest useful checks for the change being made.
+## Validation and QA
 
-General expectations:
+Read `refs/testing/geographic-atlas-presentation-qa.md` for the focused visual contract.
 
-- use focused tests while iterating;
-- use `npm run validate` for a coherent implementation checkpoint;
-- use `npm run verify` before declaring a functional/build-facing milestone complete;
-- use `npm audit` when dependencies or security-sensitive build inputs change, not as ritual for every documentation edit;
-- use `npm run evaluate:regions` only when geographic generation behavior changes;
-- never claim validation passed unless it actually ran and produced evidence.
+The relevant automated checkpoint commands are defined by `refs/testing/validationCommands.yaml`. Because this is a meaningful build-facing presentation milestone, exact-head acceptance requires at least the focused palette/presentation tests plus `npm run validate` and `npm run verify`, or authoritative CI evidence that exercises the same or stronger test, typecheck, and build surfaces.
 
-## Parked geographic atlas work
+Exact-head GitHub Actions evidence should be recorded on issue `#10`; do not infer a pass from this handoff alone.
 
-Issue `#10` and the archived `0.3.71` handoff contain the full state of the current atlas implementation, tests, visual target, and remaining QA. Preserve that work as a recoverable branch of product development, but do not spend more effort tuning it until the user explicitly chooses to return.
+## Deliberately deferred
 
-If the atlas is resumed later, begin from the archived handoff and current issue state rather than reconstructing context from chat history.
+Do not turn this narrow pass into another renderer spiral. Deferred items include:
 
-## Next work
+- broad 2.5D redesign or terrain geometry changes;
+- TTRPG-specific 3D rendering;
+- generated place names and collision-aware label placement;
+- settlement, road, political, forest, or illustrated mountain symbol libraries;
+- bespoke paper textures or external art packs;
+- print/export layout;
+- saved presentation state unless product need justifies a contract change.
 
-Await the user's next product or infrastructure priority. Keep the geographic work parked and preserve the new agent/CI/project-memory baseline unless a future task exposes a concrete reason to adjust it.
+If visual QA finds shortcomings, prefer one or two targeted style corrections in the existing presentation seam. Follow the repair-loop breaker in `AGENTS.md` rather than restarting renderer experimentation.
