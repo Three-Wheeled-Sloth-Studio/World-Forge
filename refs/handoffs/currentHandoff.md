@@ -10,83 +10,88 @@ Tracking issue: `#10`
 
 ## Current checkpoint
 
-The narrow geographic presentation pass remains active, but the first checkpoint at `7bc6b0b8775bbb023e365cfd127439aeffbe3d2e` did not satisfy user acceptance for land/water readability.
+The generated-surface land/water readability repair has moved from presentation tuning to a bounded generation regression rollback.
 
-That checkpoint correctly changed the bounded geographic-atlas renderers and added the first 2D TTRPG presentation, but the user reported that freshly generated worlds still showed cyan-looking land. Investigation confirmed that ordinary post-Generate Map and primary-world Globe presentation are owned by `@world-forge/renderer`, not the atlas palette helper.
+Two earlier checkpoints passed automated validation but failed user visual acceptance:
 
-The current repair therefore targets the generated-surface renderer seam only. It does not reopen broad 2.5D work or alter world generation.
+1. `7bc6b0b8775bbb023e365cfd127439aeffbe3d2e` corrected the geographic-atlas palette and added the first 2D TTRPG presentation, but the ordinary post-Generate map uses a different renderer.
+2. `97e1e7ef9229c3b15b802d91b9ec045decfdae10` hardened the ordinary renderer's land/water presentation invariants, but a user screenshot still showed broad pale cyan coverage across generated continental surfaces while the bundled/default Earth reference looked normal.
 
-## Generated-surface land/water correction
+Per the repair-loop breaker in `AGENTS.md`, do not perform another blind palette adjustment. The screenshot and code-history review moved the investigation upstream into generated climate and permanent-ice facts.
 
-`packages/renderer/src/index.ts` already contained a presentation-only normalization layer used to prevent stale non-permanent `ice_cap` cells from painting land as ice. That seam is now generalized to surface presentation consistency.
+## Regression boundary
 
-The intended behavior is:
+The last stored polar-ice visual/diagnostic evidence in `refs/testing/map-lines-polar-ice/` was captured on 2026-07-29. Representative generated Earthlike cases showed bounded land ice, including approximately 0.35 percent for seed `1001001` and 7.6 percent for seed `5336649`, concentrated at high latitude.
 
-- canonical `world.layers.water` is authoritative for whether a rendered cell belongs to the water color family;
-- a water cell with a stale non-ocean biome label presents as ocean;
-- a land cell with a stale ocean biome label is reclassified for presentation with the project's existing shared biome rules;
-- stale non-permanent `ice_cap` land keeps the previously accepted tundra fallback;
-- authoritative source arrays are not rewritten;
-- land colors that fall too close to the active ocean/shelf palette receive warmer terrestrial fallbacks, with the current default wetland family specifically separated from cyan shelf water;
-- the same normalized project/theme feed ordinary Map rendering, primary-world Globe texture generation, point inspection, and simplified SVG presentation.
+On 2026-08-02, commit `9305862028fe83d380652f509185fbc06e57ca98` promoted `mean-centered-power-v1` with a 52 C equator-to-pole contrast from Experimental into `core.performance-foundation`, which is the workflow used by normal desktop generation. The permanent-ice classifier itself was not subsequently changed.
 
-This is a presentation guard over canonical facts, not a second classifier. Reclassification uses `classifyBiomeFromRules` and the project's configured `biomeRules` when available.
+The promotion tests proved determinism and relative warm-versus-cold behavior, but did not impose a generated Earthlike land-ice ceiling or repeat the earlier generated-surface visual acceptance. That left a gap large enough for the current regression to pass CI.
+
+## Current repair
+
+Production `core.performance-foundation` is returned to `legacy-linear-v1`, the last latitude-temperature profile with accepted generated polar-ice evidence. `mean-centered-power-v1` remains available under `core.world-generation-experimental` for future calibration and comparison.
+
+This is intentionally a rollback of one production promotion, not removal of the mean-centered model. Re-promoting it requires generated-world evidence showing that ordinary Earthlike surfaces do not become broadly permanent-ice colored.
+
+New regression coverage must prove:
+
+- production and Experimental select their intended distinct latitude profiles;
+- ordinary 15 C Earthlike production worlds across representative seeds keep land ice below 20 percent;
+- low-latitude land ice remains below 2 percent;
+- warm worlds remain less icy than cold worlds;
+- production remains deterministic.
+
+The renderer-side semantic guard from `97e1e7ef...` remains in place as defense in depth, but is no longer considered the root repair.
 
 ## Atlas and TTRPG status
 
-The earlier atlas work remains in place:
+The earlier bounded atlas work remains accepted as implemented but still awaits broader visual refinement separately:
 
 - centralized Natural atlas palette for 2D and stepped 3D Natural;
 - warmer atlas lowlands and distinct coastal/lake/open-water fills;
-- explicit wetland treatment based on canonical tile facts;
-- coastline strokes derived from canonical water adjacency;
+- explicit wetland treatment from canonical tile facts;
+- coastline strokes from canonical water adjacency;
 - 2D `TTRPG` mode with parchment-like fills, inked coasts, water-side hachures, restrained terrain overlays, and cartographic labels;
 - legacy `tiles` token remains a Natural alias.
 
-Those features were not the source of the post-Generate cyan-land defect.
+Do not reopen broad 2.5D experimentation as part of this climate regression.
 
 ## Architecture and contract status
 
-Unchanged:
+The current repair changes generation behavior only by workflow profile selection. It does not change:
 
-- world generation and deep-time algorithms;
-- geographic tile-window and classifier contracts;
-- hierarchy generation and partitioning;
-- saved-world behavior;
-- `.wforge` and `.pworld` contracts;
+- generation schemas or saved-world formats;
+- geographic tile-window or classifier contracts;
+- hierarchy generation or partitioning algorithms;
+- `.wforge` or `.pworld` package contracts;
 - exporter/runtime geography ownership;
 - geographic scene geometry.
 
-`npm run evaluate:regions` is therefore not required for this repair.
+The generated values for production worlds may change because the production climate profile is deliberately being restored to the prior accepted behavior.
 
 ## Validation and QA
 
 Read:
 
-- `refs/testing/geographic-atlas-presentation-qa.md` for the bounded atlas/TTRPG pass;
-- `refs/testing/generated-surface-land-water-qa.md` for the post-Generate color regression.
+- `refs/testing/generated-surface-land-water-qa.md` for this regression and required visual acceptance;
+- `refs/testing/map-lines-polar-ice/` for the pre-promotion baseline evidence;
+- `refs/testing/geographic-atlas-presentation-qa.md` for the separate atlas/TTRPG presentation pass.
 
-Focused automated coverage belongs in `packages/renderer/src/biomeRendering.test.ts` and must prove that presentation normalization does not mutate authoritative source facts.
+Focused tests:
 
-Before accepting the checkpoint, run the exact-head authoritative validation path, including the complete unit/integration suite, typecheck/build, production harness tests, and production smokes. Record exact-head CI evidence on issue `#10`.
+- `packages/generator-core/src/latitudeTemperatureProfile.test.ts`
+- `packages/generator-core/src/polarClimateIntegration.test.ts`
+- existing renderer presentation tests remain relevant as defense in depth.
 
-Final color acceptance still requires a human visual check of a freshly generated world. Green CI alone is not sufficient because the defect is perceptual.
+Because this repair changes production generation behavior, run the exact-head standard validation gate and `npm run evaluate:regions`. The repository's manual `Geographic Drilldown Diagnostic` workflow includes `npm run evaluate:regions`; use it when a workflow-dispatch path is available.
+
+Final acceptance still requires a human visual check of a freshly generated Earthlike world. Green CI alone is not sufficient.
 
 ## Repair-loop status
 
-- Modification 1: atlas palette/TTRPG checkpoint, automated validation green, user visual acceptance failed because the wrong product surface was fixed.
-- Modification 2: generated-surface renderer normalization and palette separation, currently under validation.
+- Modification 1: atlas palette/TTRPG checkpoint. Automated validation green; visual acceptance failed because the wrong surface was repaired.
+- Modification 2: ordinary renderer normalization/palette separation. Automated validation green; user screenshot still showed broadly pale generated land.
+- Architectural reassessment: completed. Default/reference Earth renders normally, dark ocean renders normally, old polar QA predates the Aug 2 production profile promotion, and the defect is now treated as a generated climate/ice regression rather than a color-choice problem.
+- Modification 3: restore the last visually accepted production latitude profile and add generated Earthlike ice-coverage bounds.
 
-This is still improving the failure model: the second pass has identified and moved to the actual post-Generate rendering owner rather than tuning the atlas again. If this repair does not materially improve the generated surface, do not begin a third palette tweak blindly. Inspect the rendered pixel through point diagnostics and, if Globe-only, the ocean-shell/geometry relationship before modifying again.
-
-## Deliberately deferred
-
-Do not expand this repair into:
-
-- broad 2.5D or globe geometry redesign;
-- generation or biome-model changes without evidence of authoritative-data corruption;
-- TTRPG-specific 3D work;
-- place-name generation or label collision systems;
-- settlements, roads, politics, forest or mountain symbol libraries;
-- print/export layout;
-- saved presentation-state contracts.
+If Modification 3 still fails visual acceptance, do not tune a fourth color or temperature constant. Use point inspection on a pale cell and compare `isWater`, `isIce`, latitude, elevation, temperature, source biome, and final albedo before changing another model.

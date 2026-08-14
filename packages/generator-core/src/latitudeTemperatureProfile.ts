@@ -39,8 +39,11 @@ export const experimentalLatitudeTemperatureProfile = meanCenteredLatitudeTemper
 export function latitudeTemperatureProfileForWorkflow(
   workflowId: GenerationWorkflowId | undefined
 ): LatitudeTemperatureProfile {
-  return workflowId === 'core.performance-foundation'
-    || workflowId === 'core.world-generation-experimental'
+  // The 52 C mean-centered profile remains available for Experimental work, but
+  // production returned to the last visually accepted climate profile after
+  // generated Earthlike worlds showed excessive permanent land ice following
+  // the 2026-08-02 promotion. Re-promote only with generated-surface ice QA.
+  return workflowId === 'core.world-generation-experimental'
     ? meanCenteredLatitudeTemperatureProfile
     : legacyLatitudeTemperatureProfile;
 }
@@ -54,7 +57,7 @@ export function latitudeTemperatureOffsetC(
     return (1 - latitude) * profile.equatorToPoleContrastC - profile.equatorToPoleContrastC / 2;
   }
   // Future calibration may derive the contrast or exponent from axial tilt and eccentricity.
-  // Version 1 remains fixed so accepted worlds retain deterministic climate provenance.
+  // Version 1 remains fixed so experimental comparisons retain deterministic provenance.
   return profile.equatorToPoleContrastC * (sphericalMeanPolarLatitudePower13 - Math.pow(latitude, 1.3));
 }
 
