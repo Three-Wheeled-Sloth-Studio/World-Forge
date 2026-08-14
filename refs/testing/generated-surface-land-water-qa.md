@@ -4,99 +4,101 @@ Updated: 2026-08-14
 
 Tracking: World Forge issue `#10`
 
-## Why this note exists
+## Current failure
 
-Generated Earthlike worlds have repeatedly failed visual acceptance because large continental areas read as pale cyan or waterlogged, while the bundled/default Earth reference renders with normal land/water separation.
+Fresh generated Earthlike worlds have shown broad pale continental coverage while the bundled/reference Earth renders normally. The user's `sol-reference-v1` screenshot after checkpoint `d59d568b17dc42661258c036725c189938df1c24` confirms the pale class is `Ice Cap`, not ocean or shallow shelf.
 
-Two presentation-only repairs were insufficient:
+The dark ocean palette is functioning. This is therefore an authoritative generated ice/biome regression, not a land/water color-selection problem.
 
-- the atlas-only palette/TTRPG checkpoint did not own the ordinary post-Generate surface;
-- the ordinary renderer semantic/palette guard passed automated checks but did not remove the broad pale coverage visible in a fresh generated-world screenshot.
+## Root contract under test
 
-The second visual rejection triggered the repair-loop architecture reassessment required by `AGENTS.md`.
+Deep-time finalization computes an authoritative present-day `primaryWorld.seaLevel` after terrain aging and final ocean reconciliation.
 
-## Current diagnosis
+The later system/orbit reconciliation pass also re-runs permanent-ice classification after stellar/orbital forcing. That pass must use the same authoritative sea-level datum:
 
-The user screenshot shows dark ocean rendering normally while large generated continental areas use a very pale cool color. That pattern is more consistent with generated permanent-ice presentation than with the normal ocean/shelf palette.
-
-The repository's last dedicated map-lines/polar-ice evidence was captured on 2026-07-29, before the production latitude-temperature profile changed. On 2026-08-02, commit `9305862028fe83d380652f509185fbc06e57ca98` promoted the 52 C `mean-centered-power-v1` latitude profile from Experimental into `core.performance-foundation`, the normal desktop generation workflow.
-
-That promotion had deterministic and warm-versus-cold tests, but no explicit Earthlike maximum land-ice coverage and no repeat of the earlier generated-surface visual QA.
-
-The immediate repair therefore restores production to `legacy-linear-v1`, the last profile with accepted generated polar-ice evidence, while retaining `mean-centered-power-v1` under Experimental for future calibration.
-
-## Automated climate regression contract
-
-Focused tests:
-
-```bash
-npx vitest run \
-  packages/generator-core/src/latitudeTemperatureProfile.test.ts \
-  packages/generator-core/src/polarClimateIntegration.test.ts
+```ts
+seaLevel: world.seaLevel
 ```
 
-Production Earthlike acceptance for representative deterministic seeds:
+It must not use the earlier sampled `project.selectedValues.seaLevel`. Permanent-ice classification derives altitude from elevation minus sea level; using the stale sampled value can falsely promote ordinary continental terrain into alpine permanent ice and then `ice_cap` biome presentation.
 
-- average temperature input: 15 C;
-- axial tilt: 23.4 degrees;
-- total permanent land-ice share must remain below 20 percent;
-- permanent land-ice share at absolute normalized latitude <= 0.45 must remain below 2 percent;
-- warm worlds must remain less icy than cold worlds;
-- repeated production generation must remain deterministic;
-- `core.performance-foundation` must select `legacy-linear-v1`;
-- `core.world-generation-experimental` must retain `mean-centered-power-v1`.
+## Rejected repair
 
-The 20 percent ceiling is deliberately broad. It is not an Earth climatology target. It is a regression barrier against the visually dominant pale-ice failure mode while leaving room for colder deterministic Earthlike outcomes.
+Checkpoint `d59d568b...` temporarily restored the old production latitude-temperature profile. Exact user visual QA still showed the failure. That rollback is therefore reverted rather than retained as an unrelated climate behavior change.
 
-## Renderer defense in depth
+The promoted mean-centered production profile returns to its pre-rollback state. The current repair is isolated to the sea-level datum used by post-deep-time ice reconciliation.
 
-The renderer guard introduced after the first failed visual pass remains required:
-
-- canonical `water: true` presents through the water family;
-- canonical `water: false` cannot remain an ocean presentation biome;
-- stale non-permanent `ice_cap` land falls back to tundra;
-- source project arrays remain authoritative and unmodified by presentation normalization;
-- land palette entries that collide perceptually with ocean/shelf colors receive terrestrial presentation fallbacks.
-
-These are semantic safety rails, not the current root fix.
-
-## Checkpoint validation
+## Focused automated regression
 
 Run:
 
 ```bash
-npm run validate
-npm run verify
+npx vitest run \
+  packages/generator-core/src/systemOrbitSeaLevelRegression.test.ts \
+  packages/generator-core/src/systemOrbitPreset.test.ts \
+  packages/generator-core/src/permanentIce.test.ts \
+  packages/generator-core/src/polarClimateIntegration.test.ts
+```
+
+The dedicated `sol-reference-v1` regression must prove:
+
+- normal Sol-like/Earthlike production-style generation completes with a non-frozen sampled average temperature;
+- final reconciled topology ice is exactly what `classifyPermanentIce()` produces when supplied `primaryWorld.seaLevel`;
+- total permanent land-ice share stays below 20 percent;
+- permanent land ice at absolute normalized latitude <= 0.45 stays below 2 percent.
+
+The 20 percent ceiling is intentionally broad. It is a visual-regression barrier, not an Earth climatology target.
+
+## Renderer defense in depth
+
+The renderer safety layer remains required but is not the root repair:
+
+- canonical water cells render through water families;
+- canonical land cells do not remain ocean presentation biomes;
+- stale non-permanent `ice_cap` presentation falls back to tundra;
+- presentation normalization does not rewrite source world facts;
+- land palette entries remain separated from ocean/shelf colors.
+
+## Full validation
+
+Run the standard validation gate after focused tests.
+
+Because the authoritative generated ice field can change, also run:
+
+```bash
 npm run evaluate:regions
 ```
 
-`npm run evaluate:regions` is required for this checkpoint because production generation behavior changes, even though geographic partition algorithms themselves are untouched. The manual `Geographic Drilldown Diagnostic` GitHub workflow also runs this command when workflow dispatch is available.
+when an execution path is available. Geographic partitioning code is not being modified, but region outputs consume generated surface facts.
 
 ## Required visual acceptance
 
 After pulling the exact checkpoint and restarting the app:
 
-1. Generate a fresh Earthlike world in the normal Generator workflow.
-2. Leave Surface season on Annual mean.
-3. Use Map view, Biomes, and the same presentation mode that previously showed the pale coverage.
-4. Confirm open ocean and shelf remain unmistakably water.
-5. Confirm ordinary low- and mid-latitude land is primarily terrestrial biome color rather than pale ice/cyan.
-6. Confirm permanent ice is geographically plausible and concentrated toward high latitude and genuinely cold/high terrain rather than dominating continental interiors.
-7. Switch between Data and Natural presentation and confirm both tell the same land/water/ice story.
-8. Switch to Globe view and confirm the primary-world texture agrees with Map view.
+1. Select Earthlike, Sol-like, and world/star seed `sol-reference-v1`.
+2. Generate using Default 512 x 256 / Detailed production generation.
+3. Open Explore -> Map -> Data -> Biomes.
+4. Confirm open ocean and shelf remain visually water.
+5. Confirm the broad continental interiors that were previously pale Ice Cap now resolve to terrestrial biomes except where permanent ice is actually justified.
+6. Confirm low- and mid-latitude land is not dominated by Ice Cap.
+7. Check Natural presentation and Globe view for the same land/water/ice story.
 
-If suspicious pale land remains, enable point diagnostics and inspect a representative pale cell. Record at minimum:
+If broad Ice Cap survives this checkpoint, use point diagnostics on one pale cell and record:
 
 - `isWater`;
-- `isIce` / `permanentIce`;
+- `isIce` and `permanentIce`;
 - latitude;
+- elevation;
+- `world.seaLevel`;
 - elevation relative to sea level;
 - temperature;
-- biome and topology biome;
-- base biome color and final albedo.
+- topology biome;
+- raster biome;
+- base biome color;
+- final albedo.
 
-Do not make another palette or climate-threshold change without that point-level evidence.
+Do not make another climate, ice-threshold, or palette change without that cell-level evidence.
 
 ## Acceptance boundary
 
-Automated validation proves the climate-profile selection, ice-coverage regression bounds, determinism, build integrity, and renderer invariants. Final closure still requires the human visual pass because the original defect is perceptual and was only exposed by user QA.
+Automated validation can prove the authoritative sea-level datum and broad ice-coverage invariants. The issue remains open until the exact `sol-reference-v1` user-facing visual check passes.

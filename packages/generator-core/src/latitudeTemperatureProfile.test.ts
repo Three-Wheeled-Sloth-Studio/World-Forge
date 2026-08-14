@@ -9,7 +9,7 @@ import {
 } from './latitudeTemperatureProfile';
 
 describe('latitude temperature profiles', () => {
-  it('keeps the experimental latitude offset area-weighted and mean-centered', () => {
+  it('keeps the promoted latitude offset area-weighted and mean-centered', () => {
     for (const resolution of [16, 32, 64]) {
       const topology = buildCubedSphereTopology(resolution);
       let weighted = 0;
@@ -24,8 +24,8 @@ describe('latitude temperature profiles', () => {
     }
   });
 
-  it('keeps production on the last visually accepted profile while Experimental retains the mean-centered candidate', () => {
-    expect(latitudeTemperatureProfileForWorkflow('core.performance-foundation')).toEqual(legacyLatitudeTemperatureProfile);
+  it('uses the promoted profile for Detailed and Experimental while preserving Legacy', () => {
+    expect(latitudeTemperatureProfileForWorkflow('core.performance-foundation')).toEqual(meanCenteredLatitudeTemperatureProfile);
     expect(latitudeTemperatureProfileForWorkflow('core.world-generation-experimental')).toEqual(meanCenteredLatitudeTemperatureProfile);
     expect(latitudeTemperatureProfileForWorkflow('core.live-world')).toEqual(legacyLatitudeTemperatureProfile);
     expect(latitudeTemperatureProfileForWorkflow('core.performance-foundation-derived-control')).toEqual(legacyLatitudeTemperatureProfile);
@@ -33,13 +33,13 @@ describe('latitude temperature profiles', () => {
     expect(latitudeTemperatureOffsetC(1, legacyLatitudeTemperatureProfile)).toBe(-14);
   });
 
-  it('keeps the experimental poles colder without materially changing the equatorial baseline', () => {
+  it('keeps the promoted poles colder without materially changing the equatorial baseline', () => {
     const legacyEquator = latitudeTemperatureOffsetC(0, legacyLatitudeTemperatureProfile);
-    const experimentalEquator = latitudeTemperatureOffsetC(0, meanCenteredLatitudeTemperatureProfile);
+    const promotedEquator = latitudeTemperatureOffsetC(0, meanCenteredLatitudeTemperatureProfile);
     const legacyPole = latitudeTemperatureOffsetC(1, legacyLatitudeTemperatureProfile);
-    const experimentalPole = latitudeTemperatureOffsetC(1, meanCenteredLatitudeTemperatureProfile);
-    expect(Math.abs(experimentalEquator - legacyEquator)).toBeLessThan(2);
-    expect(experimentalPole).toBeLessThan(legacyPole - 10);
+    const promotedPole = latitudeTemperatureOffsetC(1, meanCenteredLatitudeTemperatureProfile);
+    expect(Math.abs(promotedEquator - legacyEquator)).toBeLessThan(2);
+    expect(promotedPole).toBeLessThan(legacyPole - 10);
   });
 
   it('summarizes polar temperature and ice separately by hemisphere and surface', () => {

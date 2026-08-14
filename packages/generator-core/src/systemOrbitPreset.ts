@@ -227,7 +227,7 @@ function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarM
     temperature: layers.temperature,
     wetness: layers.wetness,
     topology,
-    seaLevel: project.selectedValues.seaLevel ?? 0,
+    seaLevel: world.seaLevel,
     axialTiltDeg: dynamics.obliquityMeanDeg,
     orbitalEccentricity: dynamics.eccentricityMean
   });
