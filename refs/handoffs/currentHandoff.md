@@ -1,6 +1,6 @@
 # Current Handoff
 
-Updated: 2026-08-13
+Updated: 2026-08-14
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
@@ -10,74 +10,83 @@ Tracking issue: `#10`
 
 ## Current checkpoint
 
-World Forge has resumed the geographic atlas only for a narrow presentation pass. This is an explicit exception to the broader atlas pause recorded in `refs/handoffs/archive/geographic-atlas-v0.3.71-paused.md`; it is not a restart of open-ended 2.5D renderer experimentation.
+The narrow geographic presentation pass remains active, but the first checkpoint at `7bc6b0b8775bbb023e365cfd127439aeffbe3d2e` did not satisfy user acceptance for land/water readability.
 
-The checkpoint starts from infrastructure baseline `4bfc5de454428ab25857b63082ed3a42ca341e4a` and contains two presentation changes over the existing canonical tile-window geography:
+That checkpoint correctly changed the bounded geographic-atlas renderers and added the first 2D TTRPG presentation, but the user reported that freshly generated worlds still showed cyan-looking land. Investigation confirmed that ordinary post-Generate Map and primary-world Globe presentation are owned by `@world-forge/renderer`, not the atlas palette helper.
 
-1. Natural/terrain land-water readability hardening.
-2. A first 2D TTRPG/cartographic presentation.
+The current repair therefore targets the generated-surface renderer seam only. It does not reopen broad 2.5D work or alter world generation.
 
-## Land and water readability
+## Generated-surface land/water correction
 
-Presentation palette ownership is now centralized in `apps/desktop/src/regions/geographicAtlasPalette.ts` for the shared Natural base colors used by both the 2D tile renderer and stepped 3D Natural presentation.
+`packages/renderer/src/index.ts` already contained a presentation-only normalization layer used to prevent stale non-permanent `ice_cap` cells from painting land as ice. That seam is now generalized to surface presentation consistency.
 
-The presentation now:
+The intended behavior is:
 
-- uses warmer, more clearly terrestrial lowland colors;
-- keeps open water and coastal/lake water in clearly separate blue families;
-- recognizes explicit canonical wetland facts (`wet`, bog, marsh, mangrove, or wetland river terminus) as a distinct land color when `tile.water` is false;
-- adds an explicit coastline stroke derived only from canonical tile water identity and tile adjacency;
-- slightly warms low terrain in the analytical Terrain presentation;
-- does not add a second geography classifier or modify canonical tile facts.
+- canonical `world.layers.water` is authoritative for whether a rendered cell belongs to the water color family;
+- a water cell with a stale non-ocean biome label presents as ocean;
+- a land cell with a stale ocean biome label is reclassified for presentation with the project's existing shared biome rules;
+- stale non-permanent `ice_cap` land keeps the previously accepted tundra fallback;
+- authoritative source arrays are not rewritten;
+- land colors that fall too close to the active ocean/shelf palette receive warmer terrestrial fallbacks, with the current default wetland family specifically separated from cyan shelf water;
+- the same normalized project/theme feed ordinary Map rendering, primary-world Globe texture generation, point inspection, and simplified SVG presentation.
 
-## TTRPG presentation
+This is a presentation guard over canonical facts, not a second classifier. Reclassification uses `classifyBiomeFromRules` and the project's configured `biomeRules` when available.
 
-The existing 2D canonical tile renderer now supports a `ttrpg` presentation. The atlas toolbar exposes it as **TTRPG** alongside Natural and Terrain.
+## Atlas and TTRPG status
 
-The first product surface includes:
+The earlier atlas work remains in place:
 
-- parchment-like canvas and restrained warm land fills;
-- muted water fills with dark inked coastlines;
-- a secondary water-side coastline hachure for a hand-drawn/cartographic cue;
-- subdued rivers, ridges, child boundaries, and hex lines;
-- darker ink parent boundaries and selection treatment;
-- presentation-aware serif labels with a paper-colored halo;
-- the existing hex toggle, picking, hierarchy navigation, and canonical tile-window generation unchanged.
+- centralized Natural atlas palette for 2D and stepped 3D Natural;
+- warmer atlas lowlands and distinct coastal/lake/open-water fills;
+- explicit wetland treatment based on canonical tile facts;
+- coastline strokes derived from canonical water adjacency;
+- 2D `TTRPG` mode with parchment-like fills, inked coasts, water-side hachures, restrained terrain overlays, and cartographic labels;
+- legacy `tiles` token remains a Natural alias.
 
-The TTRPG view is intentionally 2D only. The 3D path continues to expose Natural and Elevation, while Natural 3D now consumes the same base palette helper as Natural 2D.
+Those features were not the source of the post-Generate cyan-land defect.
 
 ## Architecture and contract status
 
 Unchanged:
 
-- `geographic-tile-window-v1` and classifier contracts;
-- geographic hierarchy generation and partitioning;
-- world-relative tile IDs and signatures;
+- world generation and deep-time algorithms;
+- geographic tile-window and classifier contracts;
+- hierarchy generation and partitioning;
 - saved-world behavior;
 - `.wforge` and `.pworld` contracts;
-- exporter/runtime classification ownership;
-- geographic scene generation and 3D geometry.
+- exporter/runtime geography ownership;
+- geographic scene geometry.
 
-This checkpoint changes presentation only. `npm run evaluate:regions` is therefore not required unless a later repair changes generation behavior.
+`npm run evaluate:regions` is therefore not required for this repair.
 
 ## Validation and QA
 
-Read `refs/testing/geographic-atlas-presentation-qa.md` for the focused visual contract.
+Read:
 
-The relevant automated checkpoint commands are defined by `refs/testing/validationCommands.yaml`. Because this is a meaningful build-facing presentation milestone, exact-head acceptance requires at least the focused palette/presentation tests plus `npm run validate` and `npm run verify`, or authoritative CI evidence that exercises the same or stronger test, typecheck, and build surfaces.
+- `refs/testing/geographic-atlas-presentation-qa.md` for the bounded atlas/TTRPG pass;
+- `refs/testing/generated-surface-land-water-qa.md` for the post-Generate color regression.
 
-Exact-head GitHub Actions evidence should be recorded on issue `#10`; do not infer a pass from this handoff alone.
+Focused automated coverage belongs in `packages/renderer/src/biomeRendering.test.ts` and must prove that presentation normalization does not mutate authoritative source facts.
+
+Before accepting the checkpoint, run the exact-head authoritative validation path, including the complete unit/integration suite, typecheck/build, production harness tests, and production smokes. Record exact-head CI evidence on issue `#10`.
+
+Final color acceptance still requires a human visual check of a freshly generated world. Green CI alone is not sufficient because the defect is perceptual.
+
+## Repair-loop status
+
+- Modification 1: atlas palette/TTRPG checkpoint, automated validation green, user visual acceptance failed because the wrong product surface was fixed.
+- Modification 2: generated-surface renderer normalization and palette separation, currently under validation.
+
+This is still improving the failure model: the second pass has identified and moved to the actual post-Generate rendering owner rather than tuning the atlas again. If this repair does not materially improve the generated surface, do not begin a third palette tweak blindly. Inspect the rendered pixel through point diagnostics and, if Globe-only, the ocean-shell/geometry relationship before modifying again.
 
 ## Deliberately deferred
 
-Do not turn this narrow pass into another renderer spiral. Deferred items include:
+Do not expand this repair into:
 
-- broad 2.5D redesign or terrain geometry changes;
-- TTRPG-specific 3D rendering;
-- generated place names and collision-aware label placement;
-- settlement, road, political, forest, or illustrated mountain symbol libraries;
-- bespoke paper textures or external art packs;
+- broad 2.5D or globe geometry redesign;
+- generation or biome-model changes without evidence of authoritative-data corruption;
+- TTRPG-specific 3D work;
+- place-name generation or label collision systems;
+- settlements, roads, politics, forest or mountain symbol libraries;
 - print/export layout;
-- saved presentation state unless product need justifies a contract change.
-
-If visual QA finds shortcomings, prefer one or two targeted style corrections in the existing presentation seam. Follow the repair-loop breaker in `AGENTS.md` rather than restarting renderer experimentation.
+- saved presentation-state contracts.

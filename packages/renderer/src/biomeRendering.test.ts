@@ -5,10 +5,13 @@ import {
   type WorldProject,
 } from '@world-forge/shared';
 import {
+  cleanGameMapTheme,
   landElevationPercentileRange,
   naturalLandBiomeForPresentation,
   naturalSnowTintStrength,
   projectForSurfaceIcePresentation,
+  projectForSurfacePresentation,
+  surfacePresentationTheme,
 } from './index';
 
 describe('biome rendering elevation and snow semantics', () => {
@@ -28,36 +31,12 @@ describe('biome rendering elevation and snow semantics', () => {
   });
 
   it('applies permanent surface ice authority to data-mode land without rewriting source facts', () => {
-    const mapCellCount = 8;
-    const topologyCellCount = 24;
-    const mapIce = new Uint8Array(mapCellCount);
-    const mapWater = new Uint8Array(mapCellCount);
-    const mapBiomes = new Uint8Array(mapCellCount).fill(biomeToCode('grassland'));
-    mapIce[0] = 1;
-    mapBiomes[0] = biomeToCode('ice_cap');
-    mapWater[1] = 1;
-    mapIce[1] = 1;
-    mapBiomes[1] = biomeToCode('ocean');
-
-    const project = {
-      primaryWorld: {
-        seaLevel: 0,
-        mapModel: { resolution: { width: 4, height: 2 } },
-        topology: { resolution: 2 },
-        topologyLayers: {
-          elevation: new Float32Array(topologyCellCount).fill(0.2),
-          water: new Uint8Array(topologyCellCount),
-          temperature: new Float32Array(topologyCellCount).fill(18),
-          ice: new Uint8Array(topologyCellCount),
-        },
-        layers: {
-          elevation: new Float32Array(mapCellCount).fill(0.2),
-          water: mapWater,
-          ice: mapIce,
-          biomes: mapBiomes,
-        },
-      },
-    } as unknown as WorldProject;
+    const project = presentationFixture();
+    project.primaryWorld.layers.ice[0] = 1;
+    project.primaryWorld.layers.biomes[0] = biomeToCode('ice_cap');
+    project.primaryWorld.layers.water[1] = 1;
+    project.primaryWorld.layers.ice[1] = 1;
+    project.primaryWorld.layers.biomes[1] = biomeToCode('ocean');
 
     const presentation = projectForSurfaceIcePresentation(project);
 
@@ -67,6 +46,40 @@ describe('biome rendering elevation and snow semantics', () => {
     expect(codeToBiome(presentation.primaryWorld.layers.biomes[0])).toBe('tundra');
     expect(presentation.primaryWorld.layers.ice[1]).toBe(1);
     expect(codeToBiome(presentation.primaryWorld.layers.biomes[1])).toBe('ocean');
+  });
+
+  it('keeps the canonical water mask authoritative when stale biome labels cross land and water', () => {
+    const project = presentationFixture();
+    project.primaryWorld.layers.biomes[0] = biomeToCode('ocean');
+    project.primaryWorld.layers.water[0] = 0;
+    project.primaryWorld.layers.biomes[1] = biomeToCode('grassland');
+    project.primaryWorld.layers.water[1] = 1;
+
+    const presentation = projectForSurfacePresentation(project);
+
+    expect(codeToBiome(project.primaryWorld.layers.biomes[0])).toBe('ocean');
+    expect(project.primaryWorld.layers.water[0]).toBe(0);
+    expect(codeToBiome(presentation.primaryWorld.layers.biomes[0])).not.toBe('ocean');
+    expect(presentation.primaryWorld.layers.water[0]).toBe(0);
+    expect(codeToBiome(presentation.primaryWorld.layers.biomes[1])).toBe('ocean');
+    expect(presentation.primaryWorld.layers.water[1]).toBe(1);
+  });
+
+  it('keeps water-like land palette entries out of the water color family', () => {
+    const theme = {
+      ...cleanGameMapTheme,
+      colors: {
+        ...cleanGameMapTheme.colors,
+        wetland: '#6f9f78',
+      },
+    };
+
+    const presentation = surfacePresentationTheme(theme);
+
+    expect(presentation.colors.wetland).toBe('#788d62');
+    expect(presentation.colors.ocean).toBe(theme.colors.ocean);
+    expect(presentation.colors.shelf).toBe(theme.colors.shelf);
+    expect(presentation.colors.grassland).toBe(theme.colors.grassland);
   });
 
   it('does not whiten warm highlands as snow', () => {
@@ -115,3 +128,34 @@ describe('biome rendering elevation and snow semantics', () => {
     })).toBe(1);
   });
 });
+
+function presentationFixture(): WorldProject {
+  const mapCellCount = 8;
+  const topologyCellCount = 24;
+  return {
+    config: {
+      biomeRules: undefined,
+    },
+    primaryWorld: {
+      seaLevel: 0,
+      mapModel: { resolution: { width: 4, height: 2 } },
+      topology: { resolution: 2 },
+      topologyLayers: {
+        elevation: new Float32Array(topologyCellCount).fill(0.2),
+        water: new Uint8Array(topologyCellCount),
+        temperature: new Float32Array(topologyCellCount).fill(18),
+        ice: new Uint8Array(topologyCellCount),
+      },
+      layers: {
+        elevation: new Float32Array(mapCellCount).fill(0.2),
+        water: new Uint8Array(mapCellCount),
+        ice: new Uint8Array(mapCellCount),
+        biomes: new Uint8Array(mapCellCount).fill(biomeToCode('grassland')),
+        temperature: new Float32Array(mapCellCount).fill(18),
+        wetness: new Float32Array(mapCellCount).fill(0.4),
+        river: new Float32Array(mapCellCount),
+        lakes: new Uint8Array(mapCellCount),
+      },
+    },
+  } as unknown as WorldProject;
+}
