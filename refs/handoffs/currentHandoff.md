@@ -21,105 +21,96 @@ Accepted implementation checkpoint:
 
 Do not reopen this generation repair without new evidence.
 
-## Current active item: primary-surface source-of-truth repair
+## Rejected presentation checkpoints
 
-Owner visual QA rejected visible version `0.3.75` despite a fully green automated gate:
+Owner screenshot QA rejected both `0.3.75` and `0.3.76` for the same visible defect:
 
-- Data still paints broad continent-shaped areas cyan/ice-like;
-- TTRPG still paints broad continent-shaped areas with the water color family;
-- Natural remains readable enough to conceal the mismatch because its shallow-water treatment blends marine and coastal sediment colors.
+- Data -> Biomes showed broad pale-cyan continent-shaped land;
+- TTRPG -> Biomes showed the same broad land areas as blue-gray/slate rather than parchment;
+- the TTRPG palette itself was present but largely hidden;
+- point inspection was no longer obvious while the right context panel was collapsed.
 
-The reference target establishes the cartographic invariant clearly: parchment land is the base substrate, water is a separate surrounding field, and terrain marks decorate land rather than define the only terrestrial-colored cells.
+The `0.3.76` primary-body source-of-truth repair remains valid multi-body cleanup, but it did not cause this visual defect and must not be cited as its fix.
 
-### Root defect
+## Root cause: scalar river field used as visible paint
 
-The production renderer is body-aware. Before reaching the world renderer it resolves the active body through `projectForWorldBody()` / `worldSurfaceForBody()`.
+The full-world renderer had two river presentation passes:
 
-A materialized `bodyCatalog` can carry its own `surface` for the primary body. That surface is initially the same primary world, but later project updates can replace `project.primaryWorld` while the catalog record retains the older surface object. The existing primary-body lookup preferred the catalog copy.
+1. `drawRiverChannels()` converted the scalar `primaryWorld.layers.river` hydrology field into cell-to-cell strokes for every land cell above a low `0.08` threshold.
+2. `drawRivers()` then drew the explicit authoritative `primaryWorld.rivers` paths.
 
-This creates a split-brain primary surface:
+The first pass is the visual failure. It used very high-opacity river paint over a broad scalar drainage field:
 
-- renderer-level tests against `project.primaryWorld` can pass;
-- production body-aware rendering can still receive the stale catalog surface;
-- multi-body save paths that read the catalog can also observe the stale copy.
+- Data shadow alpha: `0.62`; channel alpha: `0.86`; channel color comes from the pale-cyan Data river theme.
+- TTRPG shadow alpha: `0.62`; channel alpha: `0.86`; channel color `#58787d`.
 
-The primary record is useful for durable multi-body projection, because `projectForWorldBody()` temporarily reuses the `primaryWorld` field when projecting a secondary body. The repair must therefore distinguish a real secondary-body projection from an ordinary root project instead of simply deleting the catalog surface.
+Screenshot pixel comparison matched this composite closely: ordinary terrestrial base colors driven through the two river-field paint passes produce the observed Data cyan and TTRPG slate families.
 
-### Required contract
+This also violates the already-established geographic river contract in `geographicRiverTileProjection.test.ts`: authoritative paths must not be replaced by or inflated from the sampled scalar river field.
 
-For a normal/root project:
+## Active checkpoint: v0.3.77
 
-- `project.primaryWorld` is authoritative for the primary body;
-- reading a materialized body catalog normalizes its primary record to the current `project.primaryWorld`;
-- explicitly writing the primary surface through `withWorldBodySurface()` also updates `project.primaryWorld`.
+The repair boundary is presentation-only:
 
-For a project object that is intentionally projecting a surfaced secondary body through `primaryWorld`:
+- normal full-world canvas presentation suppresses legacy scalar-river painting;
+- visible rivers come only from deterministic `primaryWorld.rivers` paths;
+- Data, Natural, and TTRPG share that contract;
+- scalar `layers.river` remains available for hydrology, classification, diagnostics, and generation logic;
+- no generation, water, sea-level, biome, geographic partition, saved-world, `.wforge`, or `.pworld` contract changes;
+- point inspection should auto-expand the right context panel when a new inspected point is created, so QA can see the existing water/ice/river facts immediately.
 
-- the durable primary surface remains the primary body catalog record;
-- switching/projecting back to the primary must recover that durable surface;
-- secondary-body surfaces remain catalog-owned and unchanged.
+The legacy low-level renderer retains its scalar channel routine for compatibility, but the supported presentation wrapper no longer enables it. Do not re-enable scalar river geometry in ordinary presentation without a deliberate diagnostic mode and a separate visual contract.
 
-The projection check is based on an active non-primary body whose catalog surface has the same stable surface identity as the current `project.primaryWorld`.
+## Focused regression contract
 
-## Current checkpoint target
+Renderer regression coverage must prove:
 
-Visible version: `0.3.76`.
+- a project with `world.rivers = []` and scalar river fields filled with `1` produces no visible river strokes when river display is enabled;
+- Data output with scalar-only river support is identical whether the river display toggle is on or off;
+- TTRPG output with scalar-only river support is identical whether the river display toggle is on or off;
+- explicit authoritative river paths still produce visible strokes.
 
-Focused regression coverage must include:
+## Manual visual acceptance
 
-- stale primary catalog snapshot + current root `primaryWorld` -> current root surface wins;
-- production body-aware projection uses the current root primary surface;
-- projected secondary body still preserves and can recover the durable primary;
-- explicit primary-surface writes synchronize the root project and catalog view;
-- existing secondary-body package roundtrip behavior remains green.
+Use the same owner world that exposed the defect if possible. No regeneration is required.
 
-## TTRPG visual contract
+Data -> Biomes:
 
-Do not make another palette change until the source-of-truth repair is visually evaluated.
+- former cyan continent interiors must expose their underlying terrestrial biome colors;
+- actual rivers remain narrow explicit lines;
+- actual water remains blue.
 
-The accepted target remains:
+TTRPG -> Biomes:
 
-- land reads first as warm parchment/paper;
-- water reads as a clearly separate cooler/darker wash;
-- coastline is a dark ink separator;
-- rivers are restrained;
-- biome coloration is subtle and stays within the land family;
-- terrain symbols sit on top of land rather than creating the only warm patches.
+- land must read as warm parchment/tan at first glance;
+- water must remain a distinct cooler/darker field;
+- river ink must be sparse enough that it cannot recolor whole drainage basins;
+- coastline remains legible.
 
-## Bounded TTRPG symbols
+Point inspector:
 
-Phase 1 symbol work remains paused until full-world Data/TTRPG land-water identity is visually accepted.
-
-Existing rules remain:
-
-- mountain family from canonical mountainous/rugged/ridge/high-relief facts;
-- hills from canonical rough/relative relief facts;
-- pine forest, rainforest, swamp, and volcano from canonical features/details;
-- deterministic sparse placement with collision limiting;
-- reefs reserved until a canonical reef fact exists;
-- castle/tower/village/compass reserved for later map-dressing/world-fact work.
+- with the inspection/search control active, clicking a map point creates the marker;
+- if the right panel is collapsed, the first new point inspection expands it automatically;
+- the existing inspector fields should make `water / lake / ice` and scalar `river` values visible for any remaining suspicious pixel.
 
 ## Validation contract
 
-This repair changes shared multi-body surface resolution but does not change generation or geographic partitioning:
+This is build-facing presentation work:
 
-- focused shared world-body tests;
-- focused production body-aware presentation test;
-- existing multi-body exporter/package tests;
+- focused renderer river-presentation regression tests;
 - full exact-head unit/integration gate;
 - type-check and production build;
 - production harness tests and smokes.
 
-`npm run evaluate:regions` is not required unless generation or geographic partitioning changes.
+`npm run evaluate:regions` is not required because generation and geographic partitioning are unchanged.
 
 Manual visual acceptance remains mandatory. Automated green does not supersede screenshot rejection.
 
 ## Guardrails
 
-- Do not change sea level, shelf shaping, or water generation without new evidence after this production-state repair.
-- Do not create a second geography, terrain, or hierarchy model.
-- Do not mutate generated surface facts to solve presentation.
-- Preserve secondary-body projection and package roundtrip behavior.
+- Do not create a second geography, hydrology, or terrain model.
+- Canonical `primaryWorld.rivers` owns visible river path geometry.
+- Scalar `layers.river` is supporting hydrology data, not permission to paint a continuous cartographic channel network.
+- Preserve accepted generation behavior and Natural behavior except for removal of the diffuse scalar-river wash.
 - Do not reopen broad 2.5D/PBR work.
-- Preserve Natural while Data/TTRPG correctness is evaluated.
-- Do not claim `0.3.76` visually fixed until owner screenshot acceptance.
+- Do not claim the Data/TTRPG visual defect fixed until owner screenshot acceptance.

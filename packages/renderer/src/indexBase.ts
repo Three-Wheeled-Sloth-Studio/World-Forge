@@ -16,6 +16,7 @@ import {
   type MapTheme,
   type RenderOptions,
 } from './legacyRenderer';
+import { drawAuthoritativeRiverPaths } from './authoritativeRiverPresentation';
 
 export * from './legacyRenderer';
 
@@ -108,12 +109,32 @@ export function renderWorldToCanvas(
   visible?: RenderOptions,
 ): void {
   const mode = visible?.mode ?? (visible?.heightmap ? 'elevation' : 'biomes');
+  const presentationProject = mode === 'biomes' ? projectForSurfacePresentation(project) : project;
+  const presentationTheme = mode === 'biomes' ? surfacePresentationTheme(theme) : theme ?? cleanGameMapTheme;
+  const showAuthoritativeRivers = visible?.rivers ?? true;
+  const baseVisible: RenderOptions = visible
+    ? { ...visible, rivers: false }
+    : { rivers: false, plates: false, heightmap: false };
+
+  // The scalar river layer is a hydrology signal, not visible cartographic
+  // geometry. Rendering it cell-by-cell at high opacity turns diffuse drainage
+  // support into a map-wide cyan/slate wash. The visible river layer is owned by
+  // the explicit, deterministic world.rivers paths instead.
   renderLegacyWorldToCanvas(
     canvas,
-    mode === 'biomes' ? projectForSurfacePresentation(project) : project,
-    mode === 'biomes' ? surfacePresentationTheme(theme) : theme,
-    visible,
+    presentationProject,
+    presentationTheme,
+    baseVisible,
   );
+
+  if (showAuthoritativeRivers) {
+    drawAuthoritativeRiverPaths(
+      canvas,
+      presentationProject.primaryWorld,
+      presentationTheme,
+      visible?.renderMode ?? 'data',
+    );
+  }
 }
 
 export function inspectWorldPoint(

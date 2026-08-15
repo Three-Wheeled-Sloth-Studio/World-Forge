@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Download, FileJson, Hexagon, Image, Layers, MapPin, PanelRightClose, PanelRightOpen, Sparkles } from 'lucide-react';
 import { GenerationConfig, HexTileFeature, WorldProject, civ7StyleHexTileProfile, hexTileMapPresets } from '@world-forge/shared';
 import { ShellStatusControls } from '../shell/ShellStatusControls';
@@ -129,11 +129,13 @@ export function RightPanel(props: RightPanelProps) {
     onDownloadHexGridSvg, onDownloadHexTileJson, onDownloadVttPackage,
   } = props;
   const [drilldownActive, setDrilldownActive] = useState(false);
+  const previousPointInspectionRef = useRef(false);
   const geographicWorkspaceActive = Boolean(project && !developerMode && workspaceMode === 'explore');
+  const hasPointInspection = Boolean(inspectorContent);
   const context = resolveRightPanelContext({
     workspaceMode,
     developerMode,
-    hasPointInspection: Boolean(inspectorContent),
+    hasPointInspection,
     drilldownActive,
     hasHexInspection: Boolean(hexInspection),
   });
@@ -142,7 +144,22 @@ export function RightPanel(props: RightPanelProps) {
     if (!geographicWorkspaceActive) setDrilldownActive(false);
   }, [geographicWorkspaceActive]);
 
-  const collapsedLabel = context === 'diagnostics' ? 'Diagnostics' : context === 'export' ? 'Export' : context === 'build' ? 'Build' : 'Explore';
+  useEffect(() => {
+    if (hasPointInspection && !previousPointInspectionRef.current && collapsed) {
+      onCollapsedChange(false);
+    }
+    previousPointInspectionRef.current = hasPointInspection;
+  }, [collapsed, hasPointInspection, onCollapsedChange]);
+
+  const collapsedLabel = context === 'diagnostics'
+    ? 'Diagnostics'
+    : context === 'export'
+      ? 'Export'
+      : context === 'build'
+        ? 'Build'
+        : context === 'point'
+          ? 'Point'
+          : 'Explore';
   const exportEntries = [
     { label: 'PNG', task: pngTask },
     { label: 'SVG', task: svgTask },
