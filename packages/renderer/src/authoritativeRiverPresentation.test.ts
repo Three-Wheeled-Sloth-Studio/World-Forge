@@ -68,6 +68,22 @@ function scalarOnlyRiverProject() {
   return project;
 }
 
+function explicitRiverProject() {
+  const project = generatedProject('authoritative-river-presentation');
+  const path = Array.from({ length: 8 }, (_, index) => index);
+  for (const index of path) {
+    project.primaryWorld.layers.water[index] = 0;
+  }
+  project.primaryWorld.rivers = [{
+    id: 'test-authoritative-river',
+    path,
+    sourceIndex: path[0],
+    mouthIndex: path[path.length - 1],
+    terminus: 'basin',
+  }];
+  return project;
+}
+
 function renderProject(project: ReturnType<typeof generatedProject>, renderMode: 'data' | 'ttrpg', rivers: boolean) {
   const canvas = new MemoryCanvas();
   renderWorldToCanvas(canvas as unknown as HTMLCanvasElement, project, undefined, {
@@ -100,8 +116,6 @@ describe('authoritative full-world river presentation', () => {
   });
 
   it('still draws explicit authoritative river paths', () => {
-    const project = generatedProject('authoritative-river-presentation');
-    expect(project.primaryWorld.rivers.some((river) => river.path.length >= 8)).toBe(true);
-    expect(renderProject(project, 'data', true).strokeCount).toBeGreaterThan(0);
+    expect(renderProject(explicitRiverProject(), 'data', true).strokeCount).toBeGreaterThan(0);
   });
 });
