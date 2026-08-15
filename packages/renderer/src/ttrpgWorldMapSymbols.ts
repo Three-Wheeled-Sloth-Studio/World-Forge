@@ -80,11 +80,16 @@ export function ttrpgWorldMapSymbolPlacements(
 
   candidates.sort((left, right) => right.priority - left.priority || left.tieBreaker - right.tieBreaker);
   const maximum = clampInt(Math.round((targetWidth * targetHeight) / 9800), 28, 78);
+  const familyCap = Math.max(7, Math.ceil(maximum * 0.25));
+  const familyCounts = new Map<TtrpgWorldMapSymbolKind, number>();
   const accepted: TtrpgWorldMapSymbolPlacement[] = [];
   for (const candidate of candidates) {
     if (accepted.length >= maximum) break;
+    const cap = candidate.kind === 'swamp' ? Math.max(5, Math.floor(familyCap * 0.75)) : familyCap;
+    if ((familyCounts.get(candidate.kind) ?? 0) >= cap) continue;
     if (accepted.some((placed) => overlaps(candidate, placed))) continue;
     accepted.push(candidate);
+    familyCounts.set(candidate.kind, (familyCounts.get(candidate.kind) ?? 0) + 1);
   }
   return accepted.sort((left, right) => left.priority - right.priority || left.tieBreaker - right.tieBreaker);
 }
