@@ -6,6 +6,7 @@ import {
   workspaceModeOptions,
   type WorkspaceMode
 } from './workspaceModes';
+import { worldPresentationOptions } from './workspacePresentations';
 import { useDismissiblePopover } from '../shared/useDismissiblePopover';
 import { formatGenerationDuration } from '../generation/generationTiming';
 import './workspaceToolbar.css';
@@ -220,9 +221,10 @@ export function WorldWorkspace({
                   <button type="button" className={`icon-button ${viewMode === 'system' ? 'active' : ''}`} aria-label="System view" aria-pressed={viewMode === 'system'} title="System view" onClick={() => onViewModeChange('system')}><Orbit size={16} /></button>
                 </div>
                 {viewMode !== 'system' && <>
-                  <select aria-label="Presentation" value={renderMode} onChange={(event) => onRenderModeChange(event.target.value as RenderMode)} disabled={visibleMapMode !== 'biomes'}>
-                    <option value="data">Data</option>
-                    <option value="natural">Natural</option>
+                  <select aria-label="Presentation" value={renderMode as string} onChange={(event) => onRenderModeChange(event.target.value as RenderMode)} disabled={visibleMapMode !== 'biomes'}>
+                    {worldPresentationOptions.map((option) => (
+                      <option key={option.value} value={option.value} disabled={option.mapOnly && viewMode !== 'map'}>{option.label}</option>
+                    ))}
                   </select>
                   <select id="map-mode" aria-label="Map subject" value={visibleMapMode} onChange={(event) => onMapModeChange(event.target.value as MapMode)}>
                     <option value="biomes">Biomes</option>

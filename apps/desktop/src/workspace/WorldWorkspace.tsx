@@ -3,6 +3,10 @@ import {
   WorldWorkspace as BaseWorldWorkspace,
   type WorldWorkspaceProps,
 } from './WorldWorkspaceBase';
+import {
+  isTtrpgWorldPresentation,
+  supportsTtrpgWorldPresentation,
+} from './workspacePresentations';
 
 export type {
   WorkspaceGlobeDebugMode,
@@ -11,35 +15,12 @@ export type {
 } from './WorldWorkspaceBase';
 
 export function WorldWorkspace(props: WorldWorkspaceProps) {
-  const ttrpgActive = (props.renderMode as string) === 'ttrpg';
-  const supportsTtrpg = props.viewMode === 'map' && props.mapMode === 'biomes';
+  const ttrpgActive = isTtrpgWorldPresentation(props.renderMode as string);
+  const supportsTtrpg = supportsTtrpgWorldPresentation(props.viewMode, props.mapMode);
 
   useEffect(() => {
     if (ttrpgActive && !supportsTtrpg) props.onRenderModeChange('natural');
   }, [props.onRenderModeChange, supportsTtrpg, ttrpgActive]);
 
-  const displayActions = (
-    <>
-      {supportsTtrpg && (
-        <button
-          type="button"
-          className={`explore-layer-toggle ttrpg-world-map-toggle ${ttrpgActive ? 'active' : ''}`}
-          aria-pressed={ttrpgActive}
-          onClick={() => props.onRenderModeChange((ttrpgActive ? 'natural' : 'ttrpg') as typeof props.renderMode)}
-        >
-          <span>Hand-drawn map</span>
-          <small>{ttrpgActive ? 'On' : 'Off'}</small>
-        </button>
-      )}
-      {props.displayActions}
-    </>
-  );
-
-  return (
-    <BaseWorldWorkspace
-      {...props}
-      renderMode={ttrpgActive ? 'natural' : props.renderMode}
-      displayActions={displayActions}
-    />
-  );
+  return <BaseWorldWorkspace {...props} />;
 }

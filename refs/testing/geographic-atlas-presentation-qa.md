@@ -17,15 +17,38 @@ This QA note covers the hand-drawn/TTRPG presentation at two scales:
 
 It does not authorize geography, hierarchy, saved-world, `.wforge`, or `.pworld` contract changes.
 
-## Accepted baseline
+## Accepted baseline and rejected checkpoints
 
 The user accepted the restrained TTRPG palette and coastline treatment on 2026-08-15.
 
 The first terrain-token checkpoint `c1dcccde5834e549a1166b6aeb4aab25f689425a` failed visual acceptance despite green CI:
 
 - no illustration symbols appeared in the supplied coastal macro-area screenshots;
-- generated numeric hierarchy labels remained visible;
-- Hexes on/off was materially clearer than the prior pass and does not need another broad redesign.
+- generated numeric hierarchy labels remained visible.
+
+A later full-world renderer checkpoint also failed UI acceptance because the ordinary Explore toolbar still exposed only `Data` and `Natural`; the hand-drawn renderer existed but was hidden behind a Layers display toggle and toolbar state was masking `ttrpg` back to `natural`. The screenshot also showed the visible badge still at `v0.3.71`.
+
+## Full-world TTRPG selector contract
+
+For visible build `0.3.72`, the normal Explore toolbar is the authoritative presentation control.
+
+In Map + Biomes:
+
+- the Presentation selector must visibly contain `Data`, `Natural`, and `TTRPG`;
+- selecting `TTRPG` must immediately switch the full-world map to the parchment theme;
+- `TTRPG` must not be hidden in Layers as a separate toggle;
+- switching away from Map + Biomes must return unsupported TTRPG state to Natural;
+- the header badge must read `v0.3.72`, making stale/local builds obvious.
+
+Initial full-world visual acceptance requires:
+
+- muted parchment land palette;
+- muted water distinct from land;
+- dark outlined coastline;
+- canonical rivers retained;
+- no world-scale illustration-token placement yet.
+
+Natural/Data views must remain available and unchanged when TTRPG is off.
 
 ## Corrective symbol contract
 
@@ -53,24 +76,12 @@ TTRPG should not display generated diagnostic-looking labels such as `Region 138
 
 Meaningful future names remain eligible for the serif cartographic treatment.
 
-## Full-world hand-drawn option
-
-The normal world map should expose a `Hand-drawn map` display option for Biomes in Map view.
-
-Initial full-world acceptance requires:
-
-- muted parchment land palette;
-- muted water distinct from land;
-- dark outlined coastline;
-- canonical rivers retained;
-- no world-scale illustration-token placement yet.
-
-Natural/Data views must remain available and unchanged when the hand-drawn option is off.
-
 ## Automated coverage
 
 Focused tests should verify:
 
+- the ordinary world presentation option list is exactly `Data`, `Natural`, `TTRPG`;
+- TTRPG is restricted to Map + Biomes;
 - the bundled sprite URL resolves through the module graph;
 - semantic sprite coordinates remain stable;
 - explicit mountainous facts still select mountain-family artwork deterministically;
@@ -85,6 +96,13 @@ Focused tests should verify:
 This is build-facing. Exact-head type-check/build, production harnesses, and production smokes are required. `npm run evaluate:regions` is not required unless generation or partitioning changes.
 
 ## Manual visual matrix
+
+Top-level world map:
+
+- header shows `v0.3.72`;
+- Explore -> Map -> Biomes -> Presentation visibly offers `TTRPG`;
+- choosing TTRPG produces the parchment world map without opening Layers;
+- switching back to Natural/Data restores the existing presentation.
 
 Use the same coastal macro-area sample that exposed the failed symbol checkpoint.
 
@@ -101,14 +119,9 @@ Bounded TTRPG, Hexes on:
 - the same symbol placement remains stable;
 - grid is clearly visible but subordinate to coast and illustrations.
 
-Full-world hand-drawn map:
-
-- option is available from the ordinary world-map display controls;
-- palette/coast treatment reads as the same cartographic family as bounded TTRPG;
-- switching back to Natural/Data restores the existing presentation.
-
 ## Deferred
 
+- persistence of TTRPG as the default presentation across a full application reload if current workspace preference normalization still collapses unknown presentation tokens;
 - reef placement until a canonical reef fact exists;
 - world-scale terrain-token density and placement until bounded symbols are visually accepted;
 - castle, tower, village, and compass placement;
