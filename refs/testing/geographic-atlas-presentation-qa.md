@@ -10,76 +10,110 @@ Tracking: World Forge issue `#10`
 
 ## Scope
 
-This note covers the bounded 2D atlas presentation pass:
+This QA note covers the hand-drawn/TTRPG presentation at two scales:
 
-1. keep land, coast, wetland, lake, and open water immediately distinguishable;
-2. provide a useful hand-drawn/TTRPG cartographic presentation over canonical geographic tile-window facts;
-3. enrich TTRPG presentation with restrained terrain symbols without creating a parallel geography model.
+1. bounded geographic drilldown using canonical `GeographicTileWindow` facts;
+2. the ordinary full-world map using a presentation theme over canonical world layers.
 
-It does not reopen broad 2.5D work, change geographic generation, change hierarchy partitioning, or alter saved-world, `.wforge`, or `.pworld` contracts.
+It does not authorize geography, hierarchy, saved-world, `.wforge`, or `.pworld` contract changes.
 
 ## Accepted baseline
 
-User screenshot review on 2026-08-15 accepted the TTRPG mode's subtle parchment/terrain colors and strong coastline treatment. The same review found that Hexes on/off was visually too similar, numeric hierarchy labels looked diagnostic, and the map needed hand-drawn terrain marks.
+The user accepted the restrained TTRPG palette and coastline treatment on 2026-08-15.
 
-## Phase 1 symbol contract
+The first terrain-token checkpoint `c1dcccde5834e549a1166b6aeb4aab25f689425a` failed visual acceptance despite green CI:
 
-The stippled symbol pack supplied by the project owner is stored as one optimized transparent sprite behind semantic icon IDs. Placement must remain deterministic and presentation-only.
+- no illustration symbols appeared in the supplied coastal macro-area screenshots;
+- generated numeric hierarchy labels remained visible;
+- Hexes on/off was materially clearer than the prior pass and does not need another broad redesign.
 
-Symbols may be shown only when supported by canonical tile facts:
+## Corrective symbol contract
 
-- mountainous -> mountain-family artwork;
-- rough -> hills;
-- explicit forest/taiga -> pine forest;
-- explicit rainforest -> rainforest;
-- explicit wetland facts -> swamp;
-- explicit volcano -> volcano.
+The owner-supplied stippled sprite must be bundled by the frontend build rather than referenced only through a runtime public path.
 
-Reef artwork is reserved but not placed in Phase 1 because `GeographicTileWindow` currently exposes no reef fact. Generic aquatic/coastal water must not be promoted into a fictional reef. Settlement and compass artwork is reserved for later map-dressing work.
+Terrain-symbol selection remains presentation-only. It may use:
+
+- canonical morphology;
+- canonical ridge edges;
+- canonical elevation;
+- canonical slope;
+- canonical forest/taiga/rainforest details;
+- canonical wetland facts;
+- canonical volcano detail.
+
+At coarse macro scale, relative elevation/slope ranking within the visible canonical tile window may choose which already-real relief receives illustration symbols. This is presentation ranking, not terrain reclassification.
+
+Collision handling and a bounded per-window symbol cap should control density. Do not randomly discard most valid relief candidates before collision handling.
+
+Reef artwork remains reserved because the canonical tile contract does not expose a reef fact. Castle, tower, village, and compass artwork remain reserved for later world-fact/map-dressing work.
+
+## Numeric labels
+
+TTRPG should not display generated diagnostic-looking labels such as `Region 138`, `Local 4`, or their stripped numeric forms. The final TTRPG redraw must occur after the base controller's paint so those labels are actually removed.
+
+Meaningful future names remain eligible for the serif cartographic treatment.
+
+## Full-world hand-drawn option
+
+The normal world map should expose a `Hand-drawn map` display option for Biomes in Map view.
+
+Initial full-world acceptance requires:
+
+- muted parchment land palette;
+- muted water distinct from land;
+- dark outlined coastline;
+- canonical rivers retained;
+- no world-scale illustration-token placement yet.
+
+Natural/Data views must remain available and unchanged when the hand-drawn option is off.
 
 ## Automated coverage
 
-Focused tests should cover:
+Focused tests should verify:
 
-- semantic sprite entries are stable;
-- symbol selection is deterministic from canonical tile facts;
-- ordinary flat land and generic water do not acquire unsupported symbols;
-- generated numeric hierarchy labels are suppressed only in TTRPG mode;
-- Natural/Terrain behavior and existing tile-window interaction remain green;
-- existing palette, river, hierarchy, and selection tests remain green.
+- the bundled sprite URL resolves through the module graph;
+- semantic sprite coordinates remain stable;
+- explicit mountainous facts still select mountain-family artwork deterministically;
+- macro-scale high-relief canonical samples can select mountain/hill artwork even when center morphology is `flat`;
+- genuinely flat low-relief windows do not invent relief symbols;
+- explicit forest, rainforest, wetland, and volcano facts select their expected symbols;
+- generic coastal/aquatic water does not invent reefs;
+- generated numeric hierarchy labels are rejected;
+- the full-world TTRPG theme keeps land/water distinct with dark coast and muted river colors;
+- existing Natural/Terrain, tile-window, hierarchy, and interaction tests stay green.
 
-This is a build-facing presentation milestone, so run the repository validation contract. `npm run evaluate:regions` is not required unless generation or partitioning behavior changes.
+This is build-facing. Exact-head type-check/build, production harnesses, and production smokes are required. `npm run evaluate:regions` is not required unless generation or partitioning changes.
 
-## TTRPG visual checks
+## Manual visual matrix
 
-Use at least one coastal macro/region and one interior region/local view. Test Hexes both off and on.
+Use the same coastal macro-area sample that exposed the failed symbol checkpoint.
 
-Confirm:
+Bounded TTRPG, Hexes off:
 
-- parchment and terrain colors remain restrained;
-- open/coastal/lake water remains immediately distinguishable from land;
-- the inked coastline remains the strongest natural edge;
-- terrain symbols add a hand-drawn map language without becoming a dense sticker field;
-- mountain symbols follow mountain/ridge structure rather than appearing on ordinary plains;
-- forests, rainforest, wetlands, and volcanoes appear only where canonical facts support them;
-- rivers and ridge accents remain visible over terrain symbols;
-- parent and child boundaries remain legible above symbols;
-- generated numeric child labels are gone in TTRPG mode;
-- meaningful names, when available, retain the serif cartographic label treatment;
-- Hexes-on is clearly visible and useful for tabletop play;
-- Hexes-off reads as a cleaner player-facing map;
-- switching Natural/Terrain/TTRPG does not change IDs, hierarchy membership, picking, or navigation.
+- at least some terrain illustrations are visible where relief/vegetation facts support them;
+- symbols do not cover coastlines or major rivers;
+- numeric child labels are gone;
+- coastline remains dominant;
+- map remains readable rather than becoming an icon field.
 
-## Deliberately deferred
+Bounded TTRPG, Hexes on:
 
-- reef symbols until a canonical reef fact exists;
-- castle, tower, village, and compass-rose placement;
-- generated place names and collision-aware label solving;
-- roads, politics, resources, and settlements as world facts;
-- TTRPG-specific 3D presentation;
-- broad 2.5D/PBR renderer iteration;
+- the same symbol placement remains stable;
+- grid is clearly visible but subordinate to coast and illustrations.
+
+Full-world hand-drawn map:
+
+- option is available from the ordinary world-map display controls;
+- palette/coast treatment reads as the same cartographic family as bounded TTRPG;
+- switching back to Natural/Data restores the existing presentation.
+
+## Deferred
+
+- reef placement until a canonical reef fact exists;
+- world-scale terrain-token density and placement until bounded symbols are visually accepted;
+- castle, tower, village, and compass placement;
+- generated names and collision-aware label solving;
+- politics, roads, resources, settlement simulation;
+- TTRPG 3D;
+- broad 2.5D/PBR work;
 - print/export layout.
-
-## Acceptance evidence
-
-Record exact-head automated validation on issue `#10`. Manual visual QA should record the seed, hierarchy path, viewport, presentation, Hexes state, and screenshots. Do not convert missing browser evidence into a visual pass.

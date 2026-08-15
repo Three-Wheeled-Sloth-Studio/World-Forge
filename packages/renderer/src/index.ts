@@ -1,122 +1,34 @@
-import {
-  biomeToCode,
-  classifyBiomeFromRules,
-  codeToBiome,
-  defaultBiomeClassificationRules,
-  type Biome,
-  type BiomeClassificationRule,
-  type WorldProject,
-} from '@world-forge/shared';
+import type { WorldProject } from '@world-forge/shared';
 import {
   cleanGameMapTheme,
-  createDerivedRenderLayers,
-  inspectWorldPoint as inspectLegacyWorldPoint,
-  renderWorldToCanvas as renderLegacyWorldToCanvas,
-  worldToSvg as legacyWorldToSvg,
+  inspectWorldPoint as inspectBaseWorldPoint,
+  renderWorldToCanvas as renderBaseWorldToCanvas,
+  worldToSvg as baseWorldToSvg,
   type MapTheme,
   type RenderOptions,
-} from './legacyRenderer';
+} from './indexBase';
 
-export * from './legacyRenderer';
+export * from './indexBase';
 
-const surfacePresentationCache = new WeakMap<WorldProject, WorldProject>();
-
-const terrestrialFallbackColors: Record<string, string> = {
-  tundra: '#b9baa0',
-  desert: '#d2b86f',
-  grassland: '#91a65e',
-  forest: '#50784b',
-  rainforest: '#326a46',
-  mountain: '#80766a',
-  wetland: '#788d62',
+export const ttrpgWorldMapTheme: MapTheme = {
+  name: 'TTRPG Parchment Map',
+  colors: {
+    oceanDeep: '#607f85',
+    ocean: '#76969a',
+    shelf: '#91aa9f',
+    ice: '#e8e1cf',
+    tundra: '#c9c3a5',
+    desert: '#d4b97f',
+    grassland: '#b6ae73',
+    forest: '#96996b',
+    rainforest: '#858d62',
+    mountain: '#998970',
+    wetland: '#9d9e70',
+    river: '#55797c',
+    riverShadow: '#405d60',
+    coastline: '#4a3a29',
+  },
 };
-
-export function projectForSurfacePresentation(project: WorldProject): WorldProject {
-  const cached = surfacePresentationCache.get(project);
-  if (cached) return cached;
-
-  const world = project.primaryWorld;
-  const derived = createDerivedRenderLayers(world);
-  const ice = new Uint8Array(world.layers.ice);
-  const biomes = new Uint8Array(world.layers.biomes);
-  const configuredRules = (project.config as typeof project.config & { biomeRules?: BiomeClassificationRule[] })?.biomeRules;
-  const rules = configuredRules?.length ? configuredRules : defaultBiomeClassificationRules;
-  const { width, height } = world.mapModel.resolution;
-  let changed = false;
-
-  for (let index = 0; index < biomes.length; index += 1) {
-    const water = world.layers.water[index] === 1;
-    const currentBiome = codeToBiome(biomes[index]);
-
-    if (water) {
-      if (currentBiome !== 'ocean') {
-        biomes[index] = biomeToCode('ocean');
-        changed = true;
-      }
-      continue;
-    }
-
-    const permanentIce = derived.surfacePermanentIce[index] === 1 ? 1 : 0;
-    if (ice[index] !== permanentIce) {
-      ice[index] = permanentIce;
-      changed = true;
-    }
-
-    if (permanentIce === 0 && currentBiome === 'ice_cap') {
-      biomes[index] = biomeToCode('tundra');
-      changed = true;
-      continue;
-    }
-
-    if (permanentIce === 0 && currentBiome === 'ocean') {
-      const replacement = reclassifyCanonicalLand(project, index, width, height, rules);
-      if (replacement !== currentBiome) {
-        biomes[index] = biomeToCode(replacement);
-        changed = true;
-      }
-    }
-  }
-
-  const presentationProject = changed
-    ? {
-        ...project,
-        primaryWorld: {
-          ...world,
-          layers: {
-            ...world.layers,
-            ice,
-            biomes,
-          },
-        },
-      }
-    : project;
-  surfacePresentationCache.set(project, presentationProject);
-  return presentationProject;
-}
-
-export function projectForSurfaceIcePresentation(project: WorldProject): WorldProject {
-  return projectForSurfacePresentation(project);
-}
-
-export function surfacePresentationTheme(theme: MapTheme = cleanGameMapTheme): MapTheme {
-  const colors = { ...theme.colors };
-  const waterColors = ['oceanDeep', 'ocean', 'shelf']
-    .map((key) => parseThemeColor(colors[key]))
-    .filter((color): color is [number, number, number] => color !== null);
-
-  for (const [key, fallback] of Object.entries(terrestrialFallbackColors)) {
-    const candidate = parseThemeColor(colors[key]);
-    if (!candidate || waterColors.some((water) => colorDistance(candidate, water) < 82)) {
-      colors[key] = fallback;
-    }
-  }
-
-  return {
-    ...theme,
-    name: `${theme.name} / surface-separated`,
-    colors,
-  };
-}
 
 export function renderWorldToCanvas(
   canvas: HTMLCanvasElement,
@@ -125,68 +37,36 @@ export function renderWorldToCanvas(
   visible?: RenderOptions,
 ): void {
   const mode = visible?.mode ?? (visible?.heightmap ? 'elevation' : 'biomes');
-  renderLegacyWorldToCanvas(
-    canvas,
-    mode === 'biomes' ? projectForSurfacePresentation(project) : project,
-    mode === 'biomes' ? surfacePresentationTheme(theme) : theme,
-    visible,
-  );
+  const ttrpg = mode === 'biomes' && (visible?.renderMode as string | undefined) === 'ttrpg';
+  if (!ttrpg) {
+    renderBaseWorldToCanvas(canvas, project, theme, visible);
+    return;
+  }
+
+  renderBaseWorldToCanvas(canvas, project, ttrpgWorldMapTheme, {
+    ...visible,
+    renderMode: 'data',
+    coastlineTreatment: 'outlined',
+  });
 }
 
 export function inspectWorldPoint(
   project: WorldProject,
-  input: Parameters<typeof inspectLegacyWorldPoint>[1],
+  input: Parameters<typeof inspectBaseWorldPoint>[1],
   theme?: MapTheme,
-  renderMode?: Parameters<typeof inspectLegacyWorldPoint>[3],
-  mapMode?: Parameters<typeof inspectLegacyWorldPoint>[4],
-): ReturnType<typeof inspectLegacyWorldPoint> {
-  return inspectLegacyWorldPoint(
-    projectForSurfacePresentation(project),
+  renderMode?: Parameters<typeof inspectBaseWorldPoint>[3],
+  mapMode?: Parameters<typeof inspectBaseWorldPoint>[4],
+): ReturnType<typeof inspectBaseWorldPoint> {
+  const ttrpg = (renderMode as string | undefined) === 'ttrpg' && (mapMode ?? 'biomes') === 'biomes';
+  return inspectBaseWorldPoint(
+    project,
     input,
-    surfacePresentationTheme(theme),
-    renderMode,
+    ttrpg ? ttrpgWorldMapTheme : theme,
+    ttrpg ? 'data' : renderMode,
     mapMode,
   );
 }
 
-export function worldToSvg(project: WorldProject, theme?: MapTheme): string {
-  return legacyWorldToSvg(projectForSurfacePresentation(project), surfacePresentationTheme(theme));
-}
-
-function reclassifyCanonicalLand(
-  project: WorldProject,
-  index: number,
-  width: number,
-  height: number,
-  rules: BiomeClassificationRule[],
-): Biome {
-  const world = project.primaryWorld;
-  const y = Math.floor(index / Math.max(1, width));
-  const latitude = Math.PI / 2 - ((y + 0.5) / Math.max(1, height)) * Math.PI;
-  const classified = classifyBiomeFromRules({
-    water: false,
-    ice: false,
-    temperatureC: world.layers.temperature[index] ?? 14,
-    elevationAboveSeaLevel: (world.layers.elevation[index] ?? world.seaLevel) - world.seaLevel,
-    lake: world.layers.lakes[index] === 1,
-    river: world.layers.river[index] ?? 0,
-    wetness: world.layers.wetness[index] ?? 0.4,
-    polarLatitude: Math.abs(latitude) / (Math.PI / 2),
-  }, rules);
-  if (classified === 'ocean') return 'grassland';
-  if (classified === 'ice_cap') return 'tundra';
-  return classified;
-}
-
-function parseThemeColor(value: string | undefined): [number, number, number] | null {
-  if (!value || !/^#[0-9a-f]{6}$/i.test(value)) return null;
-  return [
-    Number.parseInt(value.slice(1, 3), 16),
-    Number.parseInt(value.slice(3, 5), 16),
-    Number.parseInt(value.slice(5, 7), 16),
-  ];
-}
-
-function colorDistance(left: [number, number, number], right: [number, number, number]): number {
-  return Math.hypot(left[0] - right[0], left[1] - right[1], left[2] - right[2]);
+export function worldToSvg(project: WorldProject, theme: MapTheme = cleanGameMapTheme): string {
+  return baseWorldToSvg(project, theme);
 }

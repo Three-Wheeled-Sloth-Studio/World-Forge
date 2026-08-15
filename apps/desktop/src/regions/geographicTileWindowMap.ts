@@ -12,6 +12,7 @@ import {
 import {
   ttrpgMapIconSpriteEntry,
   ttrpgMapIconSpriteImage,
+  ttrpgMapReliefContextForTiles,
   ttrpgMapSymbolForTile,
   type TtrpgMapSymbolPlacement,
 } from './ttrpgMapSymbols';
@@ -102,12 +103,15 @@ function drawTtrpgMapSymbols(context: CanvasRenderingContext2D, geometry: TileGe
   const sprite = ttrpgMapIconSpriteImage();
   if (!sprite) return;
 
-  const parentCount = geometry.filter((entry) => entry.tile.membershipRole === 'parent').length;
-  const maximumSymbols = clampInteger(Math.round(parentCount / 24), 10, 48);
+  const parentTiles = geometry
+    .filter((entry) => entry.tile.membershipRole === 'parent')
+    .map((entry) => entry.tile);
+  const relief = ttrpgMapReliefContextForTiles(parentTiles);
+  const maximumSymbols = clampInteger(Math.round(parentTiles.length / 24), 12, 52);
   const candidates: SymbolCandidate[] = [];
 
   for (const entry of geometry) {
-    const placement = ttrpgMapSymbolForTile(entry.tile);
+    const placement = ttrpgMapSymbolForTile(entry.tile, relief);
     if (!placement) continue;
     const flatToFlat = entry.radius * SQRT_THREE;
     const width = flatToFlat * placement.widthHexes;

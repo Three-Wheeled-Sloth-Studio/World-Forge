@@ -39,39 +39,47 @@ export function useGeographicAtlasController(
       || !preview
       || !controller.current
       || !controller.canvasRef.current
-    ) return;
+    ) return undefined;
 
-    const childMembership = controller.partition?.membership.childIndexByTopologyCell ?? null;
-    const selectedChildIndex = controller.partition?.children.findIndex(
-      (entry) => entry.id === controller.selectedChildId,
-    ) ?? -1;
-    const tileWindow = generateGeographicTileWindow({
-      project,
-      topology: preview.regionPreview.topology,
-      scale: controller.current.scale,
-      extent: controller.current.extent,
-      parentMembership: controller.current.membership,
-      childMembership,
+    // The base controller also paints labels in a passive effect. Redraw on the next
+    // frame so the TTRPG pass is definitively last: it clears generated numeric labels,
+    // then adds only meaningful cartographic names and any loaded terrain symbols.
+    const frame = window.requestAnimationFrame(() => {
+      if (!controller.canvasRef.current || !controller.current) return;
+      const childMembership = controller.partition?.membership.childIndexByTopologyCell ?? null;
+      const selectedChildIndex = controller.partition?.children.findIndex(
+        (entry) => entry.id === controller.selectedChildId,
+      ) ?? -1;
+      const tileWindow = generateGeographicTileWindow({
+        project,
+        topology: preview.regionPreview.topology,
+        scale: controller.current.scale,
+        extent: controller.current.extent,
+        parentMembership: controller.current.membership,
+        childMembership,
+      });
+      const transform = renderGeographicTileWindowToCanvas(
+        controller.canvasRef.current,
+        tileWindow,
+        {
+          presentation: 'ttrpg',
+          showHexes: controller.showHexes,
+          selectedChildIndex: selectedChildIndex >= 0 ? selectedChildIndex : null,
+        },
+      );
+      drawMeaningfulTtrpgLabels(
+        controller.canvasRef.current,
+        transform,
+        controller.partition?.children.map((entry) => ({
+          id: entry.id,
+          label: entry.label,
+          point: entry.labelPoint,
+        })) ?? [],
+        controller.selectedChildId,
+      );
     });
-    const transform = renderGeographicTileWindowToCanvas(
-      controller.canvasRef.current,
-      tileWindow,
-      {
-        presentation: 'ttrpg',
-        showHexes: controller.showHexes,
-        selectedChildIndex: selectedChildIndex >= 0 ? selectedChildIndex : null,
-      },
-    );
-    drawMeaningfulTtrpgLabels(
-      controller.canvasRef.current,
-      transform,
-      controller.partition?.children.map((entry) => ({
-        id: entry.id,
-        label: entry.label,
-        point: entry.labelPoint,
-      })) ?? [],
-      controller.selectedChildId,
-    );
+
+    return () => window.cancelAnimationFrame(frame);
   }, [
     assetRevision,
     controller.current,
