@@ -10,7 +10,7 @@ Tracking: World Forge issue `#10`
 
 ## Scope
 
-This QA note covers full-world Data/TTRPG readability, authoritative river presentation, TTRPG inland-water/terminus readability, and deterministic world-scale TTRPG terrain symbols.
+This QA note covers full-world Data/TTRPG readability, authoritative river presentation, TTRPG inland-water/terminus readability, deterministic world-scale TTRPG terrain symbols, and the generation-quality default recenter.
 
 It does not authorize generation, geography, hierarchy, saved-world, `.wforge`, or `.pworld` contract changes.
 
@@ -28,11 +28,11 @@ The accepted contract remains:
 - `primaryWorld.layers.river` is scalar hydrology support;
 - only explicit `primaryWorld.rivers` paths create ordinary visible river geometry.
 
-## v0.3.78 cartographic refinement
+## v0.3.79 cartographic refinement
 
 ### World-scale terrain symbols
 
-TTRPG full-world presentation must add bounded deterministic symbols derived from canonical surface facts.
+TTRPG full-world presentation adds bounded deterministic symbols derived from canonical surface facts.
 
 Current allowed symbol families:
 
@@ -48,6 +48,7 @@ Acceptance:
 - symbols are visible at normal fit-to-window scale;
 - density is enough to communicate terrain without obscuring the substrate;
 - mountain and vegetation symbols appear in corresponding terrain regions;
+- per-family caps prevent mountains or wetlands from starving the rest of the terrain vocabulary;
 - no symbols are placed on canonical ocean, lake, or ice sample cells;
 - major authoritative river paths remain readable through/around the symbol field;
 - placement is deterministic for the same project and target resolution.
@@ -70,18 +71,38 @@ TTRPG acceptance:
 
 If an inspected river's recorded terminus is itself inconsistent with its authoritative path, treat that as new hydrology evidence and investigate separately. Do not infer a generation defect from presentation alone.
 
+## Generation-quality default recenter
+
+Semantic Default is now 1024 x 512.
+
+Acceptance:
+
+- Build -> Generation quality displays `Default 1024 x 512`;
+- 512 x 256 remains visible as `Standard 512 x 256`;
+- Fast, High, and Ultra remain available;
+- a brand-new workspace is recentered once to 1024 x 512;
+- a persisted workspace still on the old 512 x 256 semantic Default is recentered once;
+- a persisted High/Ultra selection is not silently downgraded;
+- after recentering, selecting Standard or another quality remains sticky across ordinary subsequent renders/saves;
+- topology resolution continues to follow the existing quality-selection callback;
+- changing the default does not mutate an already generated project.
+
 ## Focused automated regressions
 
-Required renderer tests:
+Required tests:
 
 - scalar-only river fields cannot create visible Data geometry;
 - scalar-only river fields cannot create extra TTRPG river geometry;
 - explicit authoritative river paths remain visible;
 - non-ocean terminus metadata remains available to presentation;
 - world-scale symbol placement is deterministic and bounded;
+- terrain-family caps preserve useful symbol variety;
 - symbol sample cells exclude ocean, ice, and canonical lakes;
 - TTRPG canonical-lake presentation survives the shared surface-repair pass;
-- TTRPG lake presentation leaves the source biome and canonical marine water mask unchanged.
+- TTRPG lake presentation leaves the source biome and canonical marine water mask unchanged;
+- generation-quality labels identify 1024 x 512 as Default and 512 x 256 as Standard;
+- fresh and old-Default workspaces recenter once;
+- explicit persisted higher-quality choices are preserved.
 
 Existing geographic tile-window river/symbol tests must remain green.
 
@@ -111,23 +132,11 @@ Check at fit-to-window and one zoomed view:
 
 Use at least one continent with visible inland drainage and mixed relief/vegetation.
 
-## Generation-quality follow-up QA
-
-The requested default-quality recenter is separate from this renderer change.
-
-When implemented:
-
-- semantic Default should be 1024 x 512;
-- 512 x 256 remains available as a lower/faster option;
-- higher resolutions remain available;
-- topology resolution continues to follow the normal quality-selection contract;
-- changing the default must not change saved-world/replay semantics for an already generated project.
-
 ## Validation
 
-This is build-facing presentation work. Exact-head unit/integration tests, type-check/build, production harnesses, and production smokes are required.
+This is build-facing presentation/UI-default work. Exact-head unit/integration tests, type-check/build, production harnesses, and production smokes are required.
 
-`npm run evaluate:regions` is not required because generation and geographic partitioning are unchanged.
+`npm run evaluate:regions` is not required because generation algorithms and geographic partitioning are unchanged.
 
 Manual screenshot acceptance remains mandatory.
 

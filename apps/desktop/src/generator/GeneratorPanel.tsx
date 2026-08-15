@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChevronDown, RefreshCw, Shuffle } from 'lucide-react';
 import {
   generationWorkflowDescriptor,
@@ -15,6 +15,12 @@ import { parameterControlBounds, type GenerationConfig } from '@world-forge/shar
 import type { WorkspaceMode } from '../workspace/workspaceModes';
 import { formatGenerationDuration, type GenerationRunSummary } from '../generation/generationTiming';
 import { GenerationStageTimeChart } from './GenerationStageTimeChart';
+import {
+  defaultGenerationQualityOption,
+  generationQualityLabel,
+  markGenerationQualityDefaultRecentered,
+  shouldRecenterGenerationQuality,
+} from './generationQualityDefaults';
 import {
   generationActionLabel,
   generationParameterDistribution,
@@ -147,6 +153,17 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
   const starSeed = extended.seeds?.star || config.seed;
   const starPreset = starPresetOptions.find((option) => option.id === starPresetId) ?? starPresetOptions[0];
   const generationAction = generationActionLabel(hasCurrentProject, isGenerating);
+  const defaultQuality = defaultGenerationQualityOption(resolutionOptions);
+  const defaultRecenterAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (defaultRecenterAttemptedRef.current) return;
+    defaultRecenterAttemptedRef.current = true;
+    if (!defaultQuality) return;
+    if (!shouldRecenterGenerationQuality(config.outputResolution)) return;
+    markGenerationQualityDefaultRecentered();
+    onGenerationQualityChange(defaultQuality);
+  }, [config.outputResolution, defaultQuality, onGenerationQualityChange]);
 
   const updateWorkflow = (workflowId: GenerationWorkflowId) => onConfigChange({
     ...config,
@@ -250,7 +267,11 @@ export function GeneratorPanel(props: GeneratorPanelProps) {
                 if (resolution) onGenerationQualityChange(resolution);
               }}
             >
-              {resolutionOptions.map((option) => <option key={option.label} value={`${option.width}x${option.height}`}>{option.label}</option>)}
+              {resolutionOptions.map((option) => (
+                <option key={option.label} value={`${option.width}x${option.height}`}>
+                  {generationQualityLabel(option)}
+                </option>
+              ))}
             </select>
           </label>
         </div>
