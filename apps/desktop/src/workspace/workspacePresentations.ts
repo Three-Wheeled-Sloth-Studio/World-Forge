@@ -3,7 +3,7 @@ import type { MapMode } from '@world-forge/renderer';
 export const worldPresentationOptions = [
   { value: 'data', label: 'Data', mapOnly: false },
   { value: 'natural', label: 'Natural', mapOnly: false },
-  { value: 'ttrpg', label: 'TTRPG', mapOnly: true },
+  { value: 'ttrpg', label: 'TTRPG', mapOnly: false },
 ] as const;
 
 export function isTtrpgWorldPresentation(renderMode: string): boolean {
@@ -11,5 +11,5 @@ export function isTtrpgWorldPresentation(renderMode: string): boolean {
 }
 
 export function supportsTtrpgWorldPresentation(viewMode: 'map' | 'globe' | 'system', mapMode: MapMode): boolean {
-  return viewMode === 'map' && mapMode === 'biomes';
+  return (viewMode === 'map' || viewMode === 'globe') && mapMode === 'biomes';
 }

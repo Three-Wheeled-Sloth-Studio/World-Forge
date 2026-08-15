@@ -19,8 +19,6 @@ import {
 
 export * from './legacyRenderer';
 
-const surfacePresentationCache = new WeakMap<WorldProject, WorldProject>();
-
 const terrestrialFallbackColors: Record<string, string> = {
   tundra: '#b9baa0',
   desert: '#d2b86f',
@@ -32,9 +30,6 @@ const terrestrialFallbackColors: Record<string, string> = {
 };
 
 export function projectForSurfacePresentation(project: WorldProject): WorldProject {
-  const cached = surfacePresentationCache.get(project);
-  if (cached) return cached;
-
   const world = project.primaryWorld;
   const derived = createDerivedRenderLayers(world);
   const ice = new Uint8Array(world.layers.ice);
@@ -42,56 +37,44 @@ export function projectForSurfacePresentation(project: WorldProject): WorldProje
   const configuredRules = (project.config as typeof project.config & { biomeRules?: BiomeClassificationRule[] })?.biomeRules;
   const rules = configuredRules?.length ? configuredRules : defaultBiomeClassificationRules;
   const { width, height } = world.mapModel.resolution;
-  let changed = false;
 
   for (let index = 0; index < biomes.length; index += 1) {
     const water = world.layers.water[index] === 1;
     const currentBiome = codeToBiome(biomes[index]);
 
     if (water) {
-      if (currentBiome !== 'ocean') {
-        biomes[index] = biomeToCode('ocean');
-        changed = true;
-      }
+      biomes[index] = biomeToCode('ocean');
       continue;
     }
 
     const permanentIce = derived.surfacePermanentIce[index] === 1 ? 1 : 0;
-    if (ice[index] !== permanentIce) {
-      ice[index] = permanentIce;
-      changed = true;
-    }
+    ice[index] = permanentIce;
 
     if (permanentIce === 0 && currentBiome === 'ice_cap') {
       biomes[index] = biomeToCode('tundra');
-      changed = true;
       continue;
     }
 
     if (permanentIce === 0 && currentBiome === 'ocean') {
-      const replacement = reclassifyCanonicalLand(project, index, width, height, rules);
-      if (replacement !== currentBiome) {
-        biomes[index] = biomeToCode(replacement);
-        changed = true;
-      }
+      biomes[index] = biomeToCode(reclassifyCanonicalLand(project, index, width, height, rules));
     }
   }
 
-  const presentationProject = changed
-    ? {
-        ...project,
-        primaryWorld: {
-          ...world,
-          layers: {
-            ...world.layers,
-            ice,
-            biomes,
-          },
-        },
-      }
-    : project;
-  surfacePresentationCache.set(project, presentationProject);
-  return presentationProject;
+  // Presentation layers must never alias the mutable source project. Enrichment
+  // can update source layers after an earlier render, and returning the source
+  // object here would allow stale ice/biome state to leak into later Data or
+  // TTRPG frames while Natural recomputes its own derived surface facts.
+  return {
+    ...project,
+    primaryWorld: {
+      ...world,
+      layers: {
+        ...world.layers,
+        ice,
+        biomes,
+      },
+    },
+  };
 }
 
 export function projectForSurfaceIcePresentation(project: WorldProject): WorldProject {

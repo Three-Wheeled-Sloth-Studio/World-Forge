@@ -10,45 +10,75 @@ Tracking: World Forge issue `#10`
 
 ## Scope
 
-This QA note covers the hand-drawn/TTRPG presentation at two scales:
+This QA note covers the hand-drawn/TTRPG presentation at two scales plus the shared full-world surface-presentation seam:
 
 1. bounded geographic drilldown using canonical `GeographicTileWindow` facts;
-2. ordinary full-world Map -> Biomes presentation.
+2. ordinary full-world Map -> Biomes presentation;
+3. ordinary full-world Globe -> Biomes presentation.
 
 It does not authorize geography, hierarchy, saved-world, `.wforge`, or `.pworld` contract changes.
 
-## Accepted visual direction
+## Repair-loop reassessment
 
-The user accepted the restrained TTRPG palette and coastline treatment on 2026-08-15.
+Repeated visual passes demonstrated that Data and TTRPG were not consuming one stable presentation snapshot. Natural remained readable while Data could show cyan land and TTRPG could collapse land and water into a similar slate family.
 
-The first token checkpoint failed visual acceptance because symbols were not visible and generated numeric labels remained. Later corrective work bundled the token sprite through Vite, broadened macro-scale relief selection using canonical elevation/slope/ridge facts, and moved TTRPG to the top-level Presentation selector.
+The presentation seam is now the acceptance target, not another palette-only patch.
 
-## Current full-world regression
+## Surface-presentation isolation contract
 
-Visual QA on visible version `0.3.72` shows:
+For every biome render:
 
-- Natural view renders generated land correctly;
-- TTRPG view paints some of the same dry land with the muted water/teal color family;
-- corresponding screenshot pixels confirm a real presentation mismatch rather than a subjective color preference.
+- canonical `water` is authoritative;
+- the renderer receives presentation-owned `ice` and `biomes` arrays;
+- presentation arrays must not alias mutable generated-world arrays;
+- dry land must not inherit a stale `ocean` label;
+- non-permanent land must not retain stale `ice_cap` display state;
+- later source-project updates must not mutate an already-rendered presentation snapshot;
+- a later render must recompute from current source facts rather than reuse a stale presentation object.
 
-### Acceptance rule
+Focused automated coverage must verify the layer detachment and recomputation behavior.
 
-For full-world TTRPG rendering, canonical water state is authoritative at the last presentation seam:
+## Full-world Data acceptance
 
-- `water === true` may use ocean/shelf/deep-water colors;
-- `water === false` must never use an ocean biome color;
-- a stale `ocean` biome on dry land must fall back to a terrestrial presentation color without mutating source world data;
-- point inspection must resolve through the same TTRPG presentation normalization as the canvas.
+Map -> Biomes -> Data:
 
-Focused automated coverage must explicitly verify:
+- dry land is visually terrestrial, never broad cyan/ice-like fill caused by stale presentation state;
+- actual permanent ice remains pale;
+- canonical water remains blue;
+- switching away and back after enrichment does not change land/water identity incorrectly.
 
-- `ocean + dry land -> terrestrial presentation`;
-- `land biome + water -> ocean presentation`;
-- ordinary dry land remains its own biome;
-- TTRPG land colors remain distinct from the water color family;
-- Natural/Data renderer tests remain green.
+## Full-world TTRPG acceptance
 
-Visible corrected build should report `v0.3.73` so browser QA can distinguish it from the rejected `v0.3.72` checkpoint.
+TTRPG should read as an old hand-drawn parchment map:
+
+- warm parchment land family;
+- cool, darker blue-gray water wash;
+- dark ink coastline;
+- muted river ink;
+- subtle biome differences within land;
+- land/water separation obvious at a glance before inspecting biome color.
+
+Automated palette coverage should enforce a substantial color-distance floor between every TTRPG land color and every TTRPG water color after surface-theme protection.
+
+Map -> Biomes -> TTRPG:
+
+- no dry land uses water-family fill;
+- water and land are immediately distinguishable;
+- coastline remains dominant and legible;
+- rivers remain restrained;
+- switching Natural -> TTRPG -> Data does not mutate world facts.
+
+Globe -> Biomes -> TTRPG:
+
+- TTRPG is selectable in the same Presentation control;
+- the globe uses the TTRPG surface texture rather than silently reverting to Natural;
+- land/water distinction remains obvious on the sphere.
+
+## Natural reference
+
+Natural is currently the readability reference, not the final visual target. It may remain somewhat pixelated at preview scale, but this repair must not regress its existing land/water readability.
+
+Pixel-smoothing or higher-quality resampling is a separate presentation increment after Data/TTRPG correctness is accepted.
 
 ## Bounded TTRPG symbol contract
 
@@ -66,28 +96,7 @@ At coarse macro scale, relative elevation/slope ranking within the visible canon
 
 Reef artwork remains reserved because the canonical tile contract does not expose a reef fact. Castle, tower, village, and compass artwork remain reserved for later world-fact/map-dressing work.
 
-## Manual visual matrix
-
-Full-world Map -> Biomes -> TTRPG:
-
-- no dry land uses ocean/teal fill;
-- muted parchment land palette remains readable;
-- water remains clearly distinct;
-- outlined coastline stays legible;
-- canonical rivers remain visible;
-- switching Natural -> TTRPG -> Natural does not alter world facts.
-
-Bounded Atlas -> TTRPG, Hexes off:
-
-- terrain illustrations appear where canonical relief/vegetation facts support them;
-- symbols do not cover coastlines or major rivers;
-- generated numeric hierarchy labels are absent;
-- coastline remains dominant.
-
-Bounded Atlas -> TTRPG, Hexes on:
-
-- symbol placement remains stable;
-- grid is clearly visible but subordinate to coast and illustrations.
+Resume bounded symbol QA only after the full-world surface-presentation checkpoint is visually accepted.
 
 ## Validation
 
@@ -97,13 +106,18 @@ This is build-facing presentation work. Exact-head unit/integration tests, type-
 
 Manual visual acceptance remains mandatory.
 
+## Version marker
+
+Use `v0.3.75` for this architecture-reset QA pass. The repository prior checkpoint reports `0.3.73`, while owner browser QA reported `0.3.74`; skipping to `0.3.75` avoids an ambiguous visual checkpoint.
+
 ## Deferred
 
+- Natural-view resampling/pixel-smoothing;
 - reef placement until a canonical reef fact exists;
 - world-scale terrain-token density until bounded symbols are accepted;
 - castle, tower, village, and compass placement;
 - generated names and collision-aware label solving;
 - politics, roads, resources, settlement simulation;
-- TTRPG 3D;
+- TTRPG-specific globe shell/atmosphere styling unless globe QA shows it is needed;
 - broad 2.5D/PBR work;
 - print/export layout.

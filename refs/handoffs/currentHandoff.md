@@ -19,32 +19,52 @@ Accepted implementation checkpoint:
 - exact-seed regression: Sol-like / Earthlike `sol-reference-v1`
 - human visual acceptance: 2026-08-15
 
-Do not reopen this repair without new evidence.
+Do not reopen this generation repair without new evidence.
 
-## Current active item: hand-drawn/TTRPG presentation
+## Current active item: presentation architecture reset
 
-The restrained TTRPG palette and coastline treatment are accepted as the visual direction. The owner-supplied stippled terrain-token pack is normalized and bundled for bounded geographic drilldown.
+Repeated visual QA showed that the full-world presentation problem is not a simple palette tweak:
 
-Recent checkpoints:
+- Natural is readable and preserves land/water identity;
+- Data can still show broad cyan/ice-like land after later project updates;
+- TTRPG can avoid literal blue land yet collapse warm land and cool water into a similar slate family;
+- TTRPG is available on the flat world map but not the globe.
 
-- `c1dcccde5834e549a1166b6aeb4aab25f689425a`: first token pass; rejected because no symbols appeared and numeric labels remained.
-- `55b773968877632334a77b30291832468b5fa36f` / `9b6e10a6b8db5192e56d202581718e848aa4688e`: corrected token bundling/selection and added full-world TTRPG rendering path.
-- `7ab3c04de4ec0906b42a8eb9fe8c471347b655b8`: exposed `TTRPG` directly in the top-level Presentation selector and bumped visible version to `0.3.72`.
+The repair loop has therefore crossed the threshold for architectural reassessment. Do not add another last-mile recolor filter on top of the existing wrappers.
 
-User visual QA on `0.3.72` found a new top-level defect: Natural renders the same generated world correctly, but TTRPG paints some dry land with the muted ocean/teal color family. Pixel comparison confirms this is a real mode-path mismatch, not a subjective palette concern.
+### Root presentation defect
 
-### Required correction
+`projectForSurfacePresentation()` previously cached presentation projects in a `WeakMap`. When the source already appeared clean, it returned and cached the original `WorldProject` and original `ice` / `biomes` arrays. Later enrichment could update those mutable source arrays. Data and TTRPG could then consume changed source display layers while Natural continued to derive much of its surface state independently.
 
-The TTRPG full-world renderer must enforce the canonical water mask at the final presentation seam:
+The next checkpoint removes that aliasing behavior:
 
-- water cell -> ocean presentation;
-- dry land cell -> never ocean presentation, even if a stale biome label survives an upstream cache or projection step;
-- no source world facts are mutated;
-- Natural/Data behavior outside TTRPG remains unchanged.
+- no surface-presentation project cache;
+- every biome presentation receives independent `ice` and `biomes` arrays derived from current canonical facts;
+- canonical `water` remains authoritative;
+- stale dry-land `ocean` and stale non-permanent `ice_cap` labels are repaired only in the presentation copy;
+- generated source facts are never mutated.
 
-The corrective implementation should normalize the project through the existing surface-presentation path and add a TTRPG-specific last-mile safety guard before Data-style painting. Point inspection should use the same presentation project so diagnostics match pixels.
+### TTRPG visual contract
 
-Visible version for the correction: `0.3.73`.
+TTRPG should emulate an old hand-drawn parchment map, not a desaturated satellite view:
+
+- warm parchment land family;
+- cooler and materially darker blue-gray water wash;
+- dark ink coastline;
+- muted rivers;
+- subtle biome coloration within the land family;
+- land/water distinction readable before individual biome differences.
+
+The water and land palette families should remain separated by a substantial RGB distance after `surfacePresentationTheme()` protection.
+
+### Globe availability
+
+TTRPG is a world presentation, not an Atlas-only or flat-map-only mode. It should be selectable for both:
+
+- Map -> Biomes;
+- Globe -> Biomes.
+
+System view remains outside this presentation contract.
 
 ## Bounded TTRPG symbols
 
@@ -57,13 +77,14 @@ Phase 1 symbol rules remain:
 - reefs reserved until a canonical reef fact exists;
 - castle/tower/village/compass reserved for later map-dressing/world-fact work.
 
-The next manual symbol check should use the same coastal macro-area sample with Hexes off and on after the top-level color regression is cleared.
+The next manual symbol check should resume only after the full-world Data/TTRPG readability problem is visually accepted.
 
 ## Validation contract
 
 This is a build-facing presentation repair:
 
-- focused TTRPG presentation tests;
+- focused surface-presentation isolation tests;
+- focused TTRPG palette and availability tests;
 - full exact-head unit/integration gate;
 - type-check and production build;
 - production harness tests and smokes.
@@ -72,6 +93,10 @@ This is a build-facing presentation repair:
 
 Manual visual acceptance remains mandatory. Automated green does not supersede screenshot rejection.
 
+## Version marker
+
+The repository checkpoint before this repair reports `0.3.73`, while owner browser QA reported `0.3.74`. Use visible version `0.3.75` for the architecture-reset checkpoint so browser QA is unambiguous.
+
 ## Guardrails
 
 - Do not create a second geography, terrain, or hierarchy model.
@@ -79,4 +104,5 @@ Manual visual acceptance remains mandatory. Automated green does not supersede s
 - Do not mutate generated world facts to solve a presentation problem.
 - Do not infer reefs from shallow water.
 - Do not reopen broad 2.5D/PBR work.
-- Preserve Natural and Terrain behavior.
+- Preserve accepted Natural behavior while this repair is evaluated.
+- Do not claim Data or TTRPG visually fixed until owner screenshot acceptance.

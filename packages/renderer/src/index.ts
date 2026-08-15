@@ -14,20 +14,20 @@ export * from './indexBase';
 export const ttrpgWorldMapTheme: MapTheme = {
   name: 'TTRPG Parchment Map',
   colors: {
-    oceanDeep: '#607f85',
-    ocean: '#76969a',
-    shelf: '#91aa9f',
-    ice: '#e8e1cf',
-    tundra: '#c9c3a5',
-    desert: '#d4b97f',
-    grassland: '#b6ae73',
-    forest: '#96996b',
-    rainforest: '#858d62',
-    mountain: '#998970',
-    wetland: '#9d9e70',
-    river: '#55797c',
+    oceanDeep: '#3f5963',
+    ocean: '#496971',
+    shelf: '#4f7078',
+    ice: '#eee7d4',
+    tundra: '#d4c9aa',
+    desert: '#d8bd86',
+    grassland: '#c8b77e',
+    forest: '#aaa171',
+    rainforest: '#9b9368',
+    mountain: '#b49a7a',
+    wetland: '#a8aa78',
+    river: '#58787d',
     riverShadow: '#405d60',
-    coastline: '#4a3a29',
+    coastline: '#4a3828',
   },
 };
 
@@ -39,17 +39,16 @@ export function ttrpgBiomeForSurfacePresentation(biome: string, water: boolean):
 export function projectForTtrpgWorldMapPresentation(project: WorldProject): WorldProject {
   const normalized = projectForSurfacePresentation(project);
   const world = normalized.primaryWorld;
-  let biomes: Uint8Array | undefined;
+  const biomes = new Uint8Array(world.layers.biomes);
 
-  for (let index = 0; index < world.layers.biomes.length; index += 1) {
-    const current = codeToBiome(world.layers.biomes[index]);
+  for (let index = 0; index < biomes.length; index += 1) {
+    const current = codeToBiome(biomes[index]);
     const presentation = ttrpgBiomeForSurfacePresentation(current, world.layers.water[index] === 1);
-    if (presentation === current) continue;
-    biomes ??= new Uint8Array(world.layers.biomes);
-    biomes[index] = biomeToCode(presentation as Parameters<typeof biomeToCode>[0]);
+    if (presentation !== current) {
+      biomes[index] = biomeToCode(presentation as Parameters<typeof biomeToCode>[0]);
+    }
   }
 
-  if (!biomes) return normalized;
   return {
     ...normalized,
     primaryWorld: {
