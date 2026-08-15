@@ -56,7 +56,11 @@ export function projectForSurfacePresentation(project: WorldProject): WorldProje
       continue;
     }
 
-    if (permanentIce === 0 && currentBiome === 'ocean') {
+    // Explicit lake identity is a canonical inland-water fact even though the
+    // marine water mask remains false. Presentation layers may intentionally
+    // style that lake as water without having the generic land-repair seam turn
+    // it back into terrestrial terrain on a second projection pass.
+    if (permanentIce === 0 && currentBiome === 'ocean' && world.layers.lakes[index] === 0) {
       biomes[index] = biomeToCode(reclassifyCanonicalLand(project, index, width, height, rules));
     }
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from '@world-forge/generator-core';
+import { authoritativeRiverTerminiForPresentation } from './authoritativeRiverPresentation';
 import { renderWorldToCanvas } from './index';
 
 class MemoryCanvas {
@@ -111,11 +112,27 @@ describe('authoritative full-world river presentation', () => {
     const project = scalarOnlyRiverProject();
     const withRivers = renderProject(project, 'ttrpg', true);
     const withoutRivers = renderProject(project, 'ttrpg', false);
-    expect(withRivers.strokeCount).toBe(0);
+    expect(withRivers.strokeCount).toBe(withoutRivers.strokeCount);
     expect(withRivers.pixels).toEqual(withoutRivers.pixels);
   });
 
   it('still draws explicit authoritative river paths', () => {
     expect(renderProject(explicitRiverProject(), 'data', true).strokeCount).toBeGreaterThan(0);
+  });
+
+  it('keeps non-ocean termini explicit for cartographic endpoint treatment', () => {
+    const project = explicitRiverProject();
+    project.primaryWorld.rivers.push({
+      id: 'test-ocean-river',
+      path: Array.from({ length: 8 }, (_, index) => 64 + index),
+      sourceIndex: 64,
+      mouthIndex: 71,
+      terminus: 'ocean',
+    });
+    expect(authoritativeRiverTerminiForPresentation(project.primaryWorld)).toEqual([{
+      riverId: 'test-authoritative-river',
+      terminus: 'basin',
+      mouthIndex: 7,
+    }]);
   });
 });

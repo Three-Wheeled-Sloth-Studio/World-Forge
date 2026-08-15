@@ -1,8 +1,22 @@
-import type { PrimaryWorld } from '@world-forge/shared';
+import type { PrimaryWorld, River } from '@world-forge/shared';
 import { splitWrappedRiverPath, type MapTheme, type RenderMode } from './legacyRenderer';
 
 export function authoritativeRiverPathsForPresentation(world: Pick<PrimaryWorld, 'rivers'>) {
   return world.rivers.filter((river) => river.path.length >= 8);
+}
+
+export function authoritativeRiverTerminiForPresentation(world: Pick<PrimaryWorld, 'rivers'>): Array<{
+  riverId: string;
+  terminus: Exclude<River['terminus'], 'ocean'>;
+  mouthIndex: number;
+}> {
+  return authoritativeRiverPathsForPresentation(world)
+    .filter((river): river is typeof river & { terminus: Exclude<River['terminus'], 'ocean'> } => river.terminus !== 'ocean')
+    .map((river) => ({
+      riverId: river.id,
+      terminus: river.terminus,
+      mouthIndex: river.path[river.path.length - 1] ?? river.mouthIndex,
+    }));
 }
 
 export function drawAuthoritativeRiverPaths(
@@ -19,6 +33,7 @@ export function drawAuthoritativeRiverPaths(
   const scaleX = canvas.width / Math.max(1, width);
   const scaleY = canvas.height / Math.max(1, height);
   const natural = renderMode === 'natural';
+  const ttrpg = theme.name.includes('TTRPG Parchment Map');
   const shadowColor = natural ? '#123b35' : theme.colors.riverShadow;
   const channelColor = natural ? '#4f7f69' : theme.colors.river;
 
@@ -51,8 +66,46 @@ export function drawAuthoritativeRiverPaths(
       drawSmoothPath(ctx, points);
       ctx.stroke();
     }
+
+    if (ttrpg && river.terminus !== 'ocean' && river.terminus !== 'lake') {
+      const lastSegment = segments[segments.length - 1];
+      const endpoint = lastSegment?.[lastSegment.length - 1];
+      if (endpoint) drawTtrpgRiverTerminus(ctx, endpoint.x, endpoint.y, river.terminus, theme, Math.max(scaleX, scaleY));
+    }
   }
   ctx.restore();
+}
+
+function drawTtrpgRiverTerminus(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  terminus: Exclude<River['terminus'], 'ocean' | 'lake'>,
+  theme: MapTheme,
+  mapScale: number,
+): void {
+  const radius = Math.max(2.4, Math.min(5.2, mapScale * 2.4));
+  ctx.strokeStyle = terminus === 'wetland' ? theme.colors.river : theme.colors.coastline;
+  ctx.globalAlpha = terminus === 'wetland' ? 0.76 : 0.7;
+  ctx.lineWidth = Math.max(0.8, radius * 0.28);
+  ctx.beginPath();
+
+  if (terminus === 'wetland') {
+    ctx.moveTo(x - radius * 1.1, y + radius * 0.45);
+    ctx.quadraticCurveTo(x - radius * 0.55, y, x, y + radius * 0.42);
+    ctx.quadraticCurveTo(x + radius * 0.55, y + radius * 0.82, x + radius * 1.1, y + radius * 0.42);
+    for (const offset of [-0.55, 0, 0.55]) {
+      const reedX = x + offset * radius;
+      ctx.moveTo(reedX, y + radius * 0.3);
+      ctx.lineTo(reedX, y - radius * 0.7);
+    }
+  } else {
+    ctx.moveTo(x - radius, y);
+    ctx.quadraticCurveTo(x, y - radius * 0.7, x + radius, y);
+    ctx.quadraticCurveTo(x, y + radius * 0.7, x - radius, y);
+    ctx.closePath();
+  }
+  ctx.stroke();
 }
 
 function drawSmoothPath(ctx: CanvasRenderingContext2D, points: Array<{ x: number; y: number }>): void {

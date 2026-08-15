@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { surfacePresentationTheme, ttrpgBiomeForSurfacePresentation, ttrpgWorldMapTheme } from './index';
+import { createDefaultConfig, generateProject } from '@world-forge/generator-core';
+import { biomeToCode, codeToBiome } from '@world-forge/shared';
+import {
+  projectForSurfacePresentation,
+  projectForTtrpgWorldMapPresentation,
+  surfacePresentationTheme,
+  ttrpgBiomeForSurfacePresentation,
+  ttrpgWorldMapTheme,
+} from './index';
 
 describe('top-level TTRPG world map presentation', () => {
   it('keeps warm parchment land materially distinct from the cool water wash', () => {
@@ -17,11 +25,29 @@ describe('top-level TTRPG world map presentation', () => {
     expect(theme.colors.river).toBe('#58787d');
   });
 
-  it('keeps the canonical water mask authoritative at the final TTRPG biome seam', () => {
+  it('keeps canonical ocean water authoritative while showing explicit lake cells as cartographic water', () => {
     expect(ttrpgBiomeForSurfacePresentation('ocean', false)).toBe('grassland');
     expect(ttrpgBiomeForSurfacePresentation('forest', false)).toBe('forest');
     expect(ttrpgBiomeForSurfacePresentation('grassland', true)).toBe('ocean');
     expect(ttrpgBiomeForSurfacePresentation('ocean', true)).toBe('ocean');
+    expect(ttrpgBiomeForSurfacePresentation('wetland', false, true)).toBe('ocean');
+    expect(ttrpgBiomeForSurfacePresentation('grassland', false, true)).toBe('ocean');
+  });
+
+  it('preserves TTRPG lake water styling through the shared surface-repair pass without changing the marine water mask', () => {
+    const project = generateProject(createDefaultConfig('ttrpg-lake-presentation', { width: 64, height: 32 }));
+    const index = project.primaryWorld.layers.water.findIndex((value) => value === 0);
+    expect(index).toBeGreaterThanOrEqual(0);
+    project.primaryWorld.layers.lakes[index] = 1;
+    project.primaryWorld.layers.biomes[index] = biomeToCode('wetland');
+
+    const ttrpg = projectForTtrpgWorldMapPresentation(project);
+    const repaired = projectForSurfacePresentation(ttrpg);
+
+    expect(repaired.primaryWorld.layers.water[index]).toBe(0);
+    expect(repaired.primaryWorld.layers.lakes[index]).toBe(1);
+    expect(codeToBiome(repaired.primaryWorld.layers.biomes[index])).toBe('ocean');
+    expect(codeToBiome(project.primaryWorld.layers.biomes[index])).toBe('wetland');
   });
 });
 

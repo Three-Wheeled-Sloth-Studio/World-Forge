@@ -10,104 +10,118 @@ Tracking: World Forge issue `#10`
 
 ## Scope
 
-This QA note covers the full-world Data/TTRPG readability defect, the canonical river presentation seam, and the existing bounded geographic TTRPG view.
+This QA note covers full-world Data/TTRPG readability, authoritative river presentation, TTRPG inland-water/terminus readability, and deterministic world-scale TTRPG terrain symbols.
 
 It does not authorize generation, geography, hierarchy, saved-world, `.wforge`, or `.pworld` contract changes.
 
-## Owner rejection evidence
+## Accepted v0.3.77 baseline
 
-Visible builds `0.3.75` and `0.3.76` were rejected by owner screenshots:
+Owner visual QA accepted the scalar-river repair:
 
-- Data -> Biomes retained broad pale-cyan continent-shaped land;
-- TTRPG -> Biomes retained broad blue-gray/slate continent-shaped land;
-- TTRPG did not read as parchment despite the configured parchment palette;
-- point inspection was not obvious while the right context panel remained collapsed.
+- Data -> Biomes looks correct;
+- TTRPG is materially improved;
+- broad cyan/slate continent washes are gone;
+- high runoff/river density remains in underlying hydrology data without becoming area paint.
 
-The repeated palette/source-of-truth repairs did not materially change those pixels, so another color-only repair is prohibited without new evidence.
+The accepted contract remains:
 
-## Confirmed presentation defect
+- `primaryWorld.layers.river` is scalar hydrology support;
+- only explicit `primaryWorld.rivers` paths create ordinary visible river geometry.
 
-Full-world presentation previously rendered rivers twice:
+## v0.3.78 cartographic refinement
 
-1. a scalar river-field pass from `primaryWorld.layers.river` using a low signal threshold;
-2. explicit authoritative paths from `primaryWorld.rivers`.
+### World-scale terrain symbols
 
-The scalar pass used high-opacity channel paint and could cover large fractions of terrestrial drainage basins. Screenshot color reconstruction showed that the Data and TTRPG paint stacks closely reproduce the observed cyan and slate land colors.
+TTRPG full-world presentation must add bounded deterministic symbols derived from canonical surface facts.
 
-The authoritative river-path contract already exists elsewhere in the product: a sampled scalar river field must not be expanded into a tile-wide visible network.
+Current allowed symbol families:
 
-## v0.3.77 river presentation contract
+- mountains;
+- hills;
+- forest;
+- rainforest;
+- swamp/wetland;
+- compass rose as non-semantic map furniture.
 
-For ordinary world presentation:
+Acceptance:
 
-- only explicit `primaryWorld.rivers` paths may create visible river strokes;
-- `primaryWorld.layers.river` remains scalar hydrology data and must not create visible geometry by itself;
-- Data, Natural, and TTRPG all use the same river geometry source;
-- changing presentation changes styling only, not river ownership;
-- turning visible rivers off removes explicit river strokes without changing biome/water/terrain fill;
-- enabling visible rivers on a scalar-only fixture must not change the rendered pixels.
+- symbols are visible at normal fit-to-window scale;
+- density is enough to communicate terrain without obscuring the substrate;
+- mountain and vegetation symbols appear in corresponding terrain regions;
+- no symbols are placed on canonical ocean, lake, or ice sample cells;
+- major authoritative river paths remain readable through/around the symbol field;
+- placement is deterministic for the same project and target resolution.
 
-## Automated regression requirements
+Do not infer reefs, castles, towers, villages, roads, politics, or settlements without canonical facts.
 
-The focused renderer fixture must include an intentionally pathological scalar-only world:
+### Inland river destinations
 
-- `world.rivers = []`;
-- map scalar river field filled with `1`;
-- topology scalar river field filled with `1`.
+The hydrology model already distinguishes `ocean`, `lake`, `wetland`, and `basin` termini and maintains `layers.lakes` separately from the marine `layers.water` mask.
 
-Required assertions:
+TTRPG acceptance:
 
-- Data with Rivers ON produces zero river strokes and matches Data with Rivers OFF;
-- TTRPG with Rivers ON produces zero river strokes and matches TTRPG with Rivers OFF;
-- a deterministic generated world containing an explicit river path still emits visible river strokes.
+- explicit canonical lake cells read as cool water even when `layers.water === 0`;
+- changing their presentation does not mutate the source project or marine water mask;
+- a river with a lake terminus visually reaches a lake rather than apparently stopping in ordinary land;
+- wetland termini receive a restrained wetland/reed endpoint cue;
+- basin termini receive a restrained closed-basin cue;
+- ordinary ocean termini need no extra marker;
+- Data remains unchanged by TTRPG-specific lake/terminus styling.
 
-Existing geographic river tests must remain green, especially the contract that scalar river support does not become a tile-wide network.
+If an inspected river's recorded terminus is itself inconsistent with its authoritative path, treat that as new hydrology evidence and investigate separately. Do not infer a generation defect from presentation alone.
 
-## Data visual acceptance
+## Focused automated regressions
 
-Map -> Biomes -> Data, with Rivers ON:
+Required renderer tests:
 
-- terrestrial cells expose terrestrial biome colors rather than a pale-cyan wash;
-- ocean, shelf, and lake water remain visibly water;
-- permanent ice remains pale only where canonical/presentation ice is present;
-- visible rivers are narrow path features rather than area fills;
-- toggling Rivers OFF should remove river lines, not reveal an entirely different continent color underneath.
+- scalar-only river fields cannot create visible Data geometry;
+- scalar-only river fields cannot create extra TTRPG river geometry;
+- explicit authoritative river paths remain visible;
+- non-ocean terminus metadata remains available to presentation;
+- world-scale symbol placement is deterministic and bounded;
+- symbol sample cells exclude ocean, ice, and canonical lakes;
+- TTRPG canonical-lake presentation survives the shared surface-repair pass;
+- TTRPG lake presentation leaves the source biome and canonical marine water mask unchanged.
 
-## TTRPG visual acceptance
+Existing geographic tile-window river/symbol tests must remain green.
 
-Map -> Biomes -> TTRPG, with Rivers ON:
+## Data control view
 
-- warm parchment/tan land is the dominant terrestrial substrate;
-- cooler, darker water remains a separate surrounding field;
-- dark coastline is clearly legible;
-- muted river ink is sparse and path-like;
-- broad land areas never collapse into the river-ink blue-gray family;
-- land/water separation is obvious before inspecting individual biome differences.
+Map -> Biomes -> Data, Rivers ON:
 
-Globe -> Biomes -> TTRPG should inherit the same surface texture contract after Map acceptance.
+- terrestrial cells retain the accepted terrestrial biome colors;
+- ocean and shelves remain blue;
+- visible rivers are narrow authoritative paths;
+- turning Rivers OFF removes paths without changing continent fill.
 
-## Point inspector acceptance
+## TTRPG visual matrix
 
-The point inspector is part of this QA loop because visual classification disputes need direct facts.
+Check at fit-to-window and one zoomed view:
 
-- activate the point-inspection/search control;
-- click a map point without dragging;
-- a marker must appear;
-- a newly created inspection must auto-expand a collapsed right context panel;
-- the inspector must show the existing biome, topology biome, water/lake/ice state, sea deltas, scalar river value, and rendered color fields;
-- copyable JSON remains available for exact follow-up evidence.
+- warm parchment/tan land substrate;
+- cooler/darker marine water;
+- explicit inland lakes visibly water-like;
+- dark legible coastlines;
+- mountain/hill symbols;
+- forest/rainforest symbols;
+- wetland symbols;
+- readable authoritative river paths;
+- intentional-looking lake/wetland/basin destinations;
+- compass furniture restrained enough not to compete with geography.
 
-## Natural reference
+Use at least one continent with visible inland drainage and mixed relief/vegetation.
 
-Natural remains a readability reference. This repair may remove diffuse scalar-river tint from Natural, but must not otherwise alter its geography, water mask, biome classification, or canonical river paths.
+## Generation-quality follow-up QA
 
-## Bounded TTRPG symbol contract
+The requested default-quality recenter is separate from this renderer change.
 
-Terrain-symbol selection remains presentation-only. It may use canonical morphology, ridge edges, elevation, slope, forest/rainforest details, wetland facts, and volcano detail.
+When implemented:
 
-Reef artwork remains reserved until a canonical reef fact exists. Castle, tower, village, and compass artwork remain reserved for later map-dressing/world-fact work.
-
-Resume bounded symbol QA only after the full-world Data/TTRPG substrate is visually accepted.
+- semantic Default should be 1024 x 512;
+- 512 x 256 remains available as a lower/faster option;
+- higher resolutions remain available;
+- topology resolution continues to follow the normal quality-selection contract;
+- changing the default must not change saved-world/replay semantics for an already generated project.
 
 ## Validation
 
@@ -119,11 +133,9 @@ Manual screenshot acceptance remains mandatory.
 
 ## Deferred
 
-- Natural-view resampling/pixel-smoothing;
 - reef placement until a canonical reef fact exists;
-- world-scale terrain-token density until bounded symbols are accepted;
-- castle, tower, village, compass, generated names, and label collision solving;
+- settlement/castle/tower/village symbols until corresponding world facts exist;
+- generated names and label collision solving;
 - politics, roads, resources, and settlement simulation;
-- TTRPG-specific globe shell/atmosphere styling unless globe QA shows it is needed;
 - broad 2.5D/PBR work;
-- print/export layout.
+- print/export layout beyond reuse of the ordinary TTRPG renderer.

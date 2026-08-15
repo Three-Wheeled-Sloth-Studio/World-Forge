@@ -8,8 +8,10 @@ import {
   type MapTheme,
   type RenderOptions,
 } from './indexBase';
+import { drawTtrpgWorldMapSymbols } from './ttrpgWorldMapSymbols';
 
 export * from './indexBase';
+export * from './ttrpgWorldMapSymbols';
 
 export const ttrpgWorldMapTheme: MapTheme = {
   name: 'TTRPG Parchment Map',
@@ -31,8 +33,8 @@ export const ttrpgWorldMapTheme: MapTheme = {
   },
 };
 
-export function ttrpgBiomeForSurfacePresentation(biome: string, water: boolean): string {
-  if (water) return 'ocean';
+export function ttrpgBiomeForSurfacePresentation(biome: string, water: boolean, lake = false): string {
+  if (water || lake) return 'ocean';
   return biome === 'ocean' ? 'grassland' : biome;
 }
 
@@ -43,7 +45,11 @@ export function projectForTtrpgWorldMapPresentation(project: WorldProject): Worl
 
   for (let index = 0; index < biomes.length; index += 1) {
     const current = codeToBiome(biomes[index]);
-    const presentation = ttrpgBiomeForSurfacePresentation(current, world.layers.water[index] === 1);
+    const presentation = ttrpgBiomeForSurfacePresentation(
+      current,
+      world.layers.water[index] === 1,
+      world.layers.lakes[index] === 1,
+    );
     if (presentation !== current) {
       biomes[index] = biomeToCode(presentation as Parameters<typeof biomeToCode>[0]);
     }
@@ -74,6 +80,7 @@ export function renderWorldToCanvas(
     return;
   }
 
+  const ttrpgProject = projectForTtrpgWorldMapPresentation(project);
   const ttrpgOptions: RenderOptions = {
     rivers: visible?.rivers ?? true,
     plates: visible?.plates ?? false,
@@ -85,9 +92,14 @@ export function renderWorldToCanvas(
   };
   renderBaseWorldToCanvas(
     canvas,
-    projectForTtrpgWorldMapPresentation(project),
+    ttrpgProject,
     ttrpgWorldMapTheme,
     ttrpgOptions,
+  );
+  drawTtrpgWorldMapSymbols(
+    canvas,
+    ttrpgProject.primaryWorld,
+    ttrpgWorldMapTheme.colors.coastline,
   );
 }
 

@@ -8,109 +8,122 @@ Branch: `dev`
 
 Tracking issue: `#10`
 
-## Accepted generated-surface repair
+## Accepted v0.3.77 river-field repair
 
-The broad pale `Ice Cap` regression on freshly generated Earthlike worlds is resolved and visually accepted.
+Owner QA accepted the root presentation repair:
 
-Accepted implementation checkpoint:
+- Data -> Biomes now reads correctly;
+- TTRPG is materially improved and the parchment substrate is visible;
+- the previous cyan/slate continent wash was caused by rendering the scalar `primaryWorld.layers.river` hydrology field as high-opacity visible geometry;
+- ordinary full-world presentation now renders only explicit authoritative `primaryWorld.rivers` paths.
 
-- commit: `0c2af70265fd862d34bbc517c84e3b24a8657892`
-- root defect: final permanent-ice reconciliation used the earlier sampled sea-level parameter instead of authoritative present-day `primaryWorld.seaLevel`
-- exact-seed regression: Sol-like / Earthlike `sol-reference-v1`
-- human visual acceptance: 2026-08-15
+Keep high river density in the simulation. Do not re-enable the scalar runoff field as cartographic paint.
 
-Do not reopen this generation repair without new evidence.
+## Active checkpoint: v0.3.78 TTRPG cartographic refinement
 
-## Rejected presentation checkpoints
+Owner QA exposed two remaining TTRPG presentation gaps after the substrate became readable:
 
-Owner screenshot QA rejected both `0.3.75` and `0.3.76` for the same visible defect:
+1. the full-world map had no terrain-symbol layer at all; the existing bundled TTRPG icon path only served geographic tile-window maps;
+2. many valid inland river termini looked like unexplained dead ends because canonical `layers.lakes` cells were classified/presented as wetland-colored land rather than visible water on the full-world TTRPG map.
 
-- Data -> Biomes showed broad pale-cyan continent-shaped land;
-- TTRPG -> Biomes showed the same broad land areas as blue-gray/slate rather than parchment;
-- the TTRPG palette itself was present but largely hidden;
-- point inspection was no longer obvious while the right context panel was collapsed.
+This increment is presentation-only:
 
-The `0.3.76` primary-body source-of-truth repair remains valid multi-body cleanup, but it did not cause this visual defect and must not be cited as its fix.
+- add deterministic world-scale vector symbols for mountains, hills, forests, rainforest, and wetlands;
+- derive symbol placement only from canonical world biome/elevation/water/ice/lake facts and authoritative river paths;
+- keep symbols bounded, non-overlapping, and away from explicit river paths;
+- add a restrained compass rose as map furniture;
+- present canonical lake-mask cells as cool cartographic water in TTRPG without changing the canonical marine `water` mask;
+- preserve that lake presentation through the shared surface-repair seam;
+- give true non-lake inland river termini a small TTRPG endpoint cue: wetland reeds/waves for wetland termini and a closed-basin mark for basin termini;
+- leave Data and Natural lake/river semantics unchanged.
 
-## Root cause: scalar river field used as visible paint
+No geography, hydrology generation, water mask, sea-level, biome generation, partition, saved-world, `.wforge`, or `.pworld` contract changes are authorized by this increment.
 
-The full-world renderer had two river presentation passes:
+## River semantics
 
-1. `drawRiverChannels()` converted the scalar `primaryWorld.layers.river` hydrology field into cell-to-cell strokes for every land cell above a low `0.08` threshold.
-2. `drawRivers()` then drew the explicit authoritative `primaryWorld.rivers` paths.
+The hydrology model already records explicit river termini (`ocean`, `lake`, `wetland`, `basin`) and maintains a separate canonical `layers.lakes` mask.
 
-The first pass is the visual failure. It used very high-opacity river paint over a broad scalar drainage field:
+The apparent dead-end issue is primarily a presentation mismatch:
 
-- Data shadow alpha: `0.62`; channel alpha: `0.86`; channel color comes from the pale-cyan Data river theme.
-- TTRPG shadow alpha: `0.62`; channel alpha: `0.86`; channel color `#58787d`.
+- ocean termini already enter visible marine water;
+- lake termini may end on `layers.lakes === 1` while `layers.water === 0`, so the previous full-world renderer showed the destination as ordinary wetland/land;
+- wetland and basin termini are valid inland outcomes and need a visible cartographic cue rather than pretending every river must reach the sea.
 
-Screenshot pixel comparison matched this composite closely: ordinary terrestrial base colors driven through the two river-field paint passes produce the observed Data cyan and TTRPG slate families.
+Do not rewrite river routing unless browser/inspection evidence shows an authoritative path whose recorded terminus is itself incorrect.
 
-This also violates the already-established geographic river contract in `geographicRiverTileProjection.test.ts`: authoritative paths must not be replaced by or inflated from the sampled scalar river field.
+## TTRPG symbol guardrails
 
-## Active checkpoint: v0.3.77
+World-scale symbols are illustrative presentation, not new world facts.
 
-The repair boundary is presentation-only:
+Allowed inputs:
 
-- normal full-world canvas presentation suppresses legacy scalar-river painting;
-- visible rivers come only from deterministic `primaryWorld.rivers` paths;
-- Data, Natural, and TTRPG share that contract;
-- scalar `layers.river` remains available for hydrology, classification, diagnostics, and generation logic;
-- no generation, water, sea-level, biome, geographic partition, saved-world, `.wforge`, or `.pworld` contract changes;
-- point inspection should auto-expand the right context panel when a new inspected point is created, so QA can see the existing water/ice/river facts immediately.
+- canonical biome;
+- projected elevation;
+- water, ice, and lake masks;
+- explicit authoritative river paths for avoidance.
 
-The legacy low-level renderer retains its scalar channel routine for compatibility, but the supported presentation wrapper no longer enables it. Do not re-enable scalar river geometry in ordinary presentation without a deliberate diagnostic mode and a separate visual contract.
+Current symbols:
+
+- mountain;
+- hills;
+- forest;
+- rainforest;
+- swamp/wetland;
+- compass rose.
+
+Do not infer settlements, castles, towers, villages, reefs, roads, political boundaries, or names without corresponding canonical facts.
 
 ## Focused regression contract
 
-Renderer regression coverage must prove:
+Automated coverage must prove:
 
-- a project with `world.rivers = []` and scalar river fields filled with `1` produces no visible river strokes when river display is enabled;
-- Data output with scalar-only river support is identical whether the river display toggle is on or off;
-- TTRPG output with scalar-only river support is identical whether the river display toggle is on or off;
-- explicit authoritative river paths still produce visible strokes.
+- world-scale TTRPG symbol placement is deterministic and bounded;
+- symbols never occupy canonical ocean, ice, or lake sample cells;
+- TTRPG lake styling changes presentation only and does not mutate the canonical marine water mask or source project;
+- a second shared surface-presentation pass does not silently convert the TTRPG lake back to land;
+- scalar-only river fields still cannot create visible river geometry;
+- explicit authoritative paths remain visible;
+- non-ocean termini remain available to the cartographic endpoint layer.
 
 ## Manual visual acceptance
 
-Use the same owner world that exposed the defect if possible. No regeneration is required.
-
-Data -> Biomes:
-
-- former cyan continent interiors must expose their underlying terrestrial biome colors;
-- actual rivers remain narrow explicit lines;
-- actual water remains blue.
+No regeneration is required for the presentation checks.
 
 TTRPG -> Biomes:
 
-- land must read as warm parchment/tan at first glance;
-- water must remain a distinct cooler/darker field;
-- river ink must be sparse enough that it cannot recolor whole drainage basins;
-- coastline remains legible.
+- mountain/forest/wetland iconography should be immediately visible but not carpet the map;
+- icons must follow plausible terrain regions and avoid covering major river lines;
+- inland lake termini should visibly end in small cool-water lake areas where the canonical lake mask exists;
+- true basin/wetland termini should have a subtle intentional endpoint mark;
+- land must remain warm parchment/tan and water clearly cooler/darker.
 
-Point inspector:
+Data -> Biomes remains the control and should retain the accepted v0.3.77 appearance.
 
-- with the inspection/search control active, clicking a map point creates the marker;
-- if the right panel is collapsed, the first new point inspection expands it automatically;
-- the existing inspector fields should make `water / lake / ice` and scalar `river` values visible for any remaining suspicious pixel.
+## Generation-quality follow-up
+
+Owner also requested moving the semantic default generation quality from the old blockier 512 x 256 setting to the current Large 1024 x 512 setting as the speed/quality balance point.
+
+That is a separate UI/default-selection change and should not be mixed into hydrology or TTRPG world-fact logic. Preserve lower and higher quality options for explicit user choice.
 
 ## Validation contract
 
 This is build-facing presentation work:
 
-- focused renderer river-presentation regression tests;
+- focused TTRPG world-symbol/lake/terminus regression tests;
 - full exact-head unit/integration gate;
 - type-check and production build;
 - production harness tests and smokes.
 
 `npm run evaluate:regions` is not required because generation and geographic partitioning are unchanged.
 
-Manual visual acceptance remains mandatory. Automated green does not supersede screenshot rejection.
+Manual visual acceptance remains mandatory.
 
 ## Guardrails
 
 - Do not create a second geography, hydrology, or terrain model.
 - Canonical `primaryWorld.rivers` owns visible river path geometry.
-- Scalar `layers.river` is supporting hydrology data, not permission to paint a continuous cartographic channel network.
-- Preserve accepted generation behavior and Natural behavior except for removal of the diffuse scalar-river wash.
+- Scalar `layers.river` is supporting hydrology data, not visible cartographic geometry.
+- `layers.lakes` remains the canonical inland-lake fact; TTRPG may style it as water without changing `layers.water`.
+- Symbols must remain derived presentation over canonical facts.
+- Preserve accepted Data behavior.
 - Do not reopen broad 2.5D/PBR work.
-- Do not claim the Data/TTRPG visual defect fixed until owner screenshot acceptance.
