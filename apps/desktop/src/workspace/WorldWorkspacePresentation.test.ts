@@ -11,11 +11,12 @@ describe('world presentation options', () => {
     expect(worldPresentationOptions.map((option) => option.label)).toEqual(['Data', 'Natural', 'TTRPG']);
   });
 
-  it('keeps TTRPG as a Map + Biomes presentation rather than a globe/system mode', () => {
+  it('keeps TTRPG as a Biomes presentation for map and globe, not system or analytical layers', () => {
     expect(supportsTtrpgWorldPresentation('map', 'biomes')).toBe(true);
-    expect(supportsTtrpgWorldPresentation('globe', 'biomes')).toBe(false);
+    expect(supportsTtrpgWorldPresentation('globe', 'biomes')).toBe(true);
     expect(supportsTtrpgWorldPresentation('system', 'biomes')).toBe(false);
     expect(supportsTtrpgWorldPresentation('map', 'elevation')).toBe(false);
+    expect(supportsTtrpgWorldPresentation('globe', 'elevation')).toBe(false);
   });
 
   it('recognizes the runtime TTRPG presentation token', () => {
