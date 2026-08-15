@@ -15,8 +15,8 @@ import {
   mapProjectForActiveBody,
 } from './bodyAwarePresentation';
 
-function surface(id: string): PrimaryWorld {
-  return { id, name: id } as PrimaryWorld;
+function surface(id: string, name = id): PrimaryWorld {
+  return { id, name } as PrimaryWorld;
 }
 
 function project(): MultiBodyWorldProject {
@@ -114,6 +114,16 @@ describe('active-body renderer projection', () => {
 
     expect(rendered.projectId).toBe('system-1');
     expect(rendered.primaryWorld.id).toBe('mars');
+  });
+
+  it('uses the current primary surface when the catalog still contains an older primary snapshot', () => {
+    const source = project();
+    source.primaryWorld = surface('earth', 'Earth current');
+    const primaryRecord = source.bodyCatalog?.bodies.find((body) => body.bodyId === 'earth');
+    if (primaryRecord) primaryRecord.surface = surface('earth', 'Earth stale');
+
+    expect(activeBodyProject(source).primaryWorld.name).toBe('Earth current');
+    expect(mapProjectForActiveBody(source)?.primaryWorld.name).toBe('Earth current');
   });
 
   it('uses the session body selected by the system viewer', () => {

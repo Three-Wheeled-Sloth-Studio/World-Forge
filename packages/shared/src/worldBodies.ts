@@ -60,7 +60,7 @@ export type MultiBodyWorldProject = WorldProject & {
 
 export function readWorldBodyCatalog(project: WorldProject): WorldBodyCatalogV1 {
   const candidate = (project as MultiBodyWorldProject).bodyCatalog;
-  if (isWorldBodyCatalog(candidate)) return candidate;
+  if (isWorldBodyCatalog(candidate)) return normalizePrimaryCatalogSurface(project, candidate);
   return fallbackCatalog(project);
 }
 
@@ -127,13 +127,51 @@ export function withWorldBodySurface(
   const bodies = existingIndex < 0
     ? [...catalog.bodies, record]
     : catalog.bodies.map((body, index) => index === existingIndex ? record : body);
-  return { ...project, bodyCatalog: { ...catalog, bodies } };
+  const replacePrimaryWorld = input.bodyId === catalog.primaryBodyId
+    && !isSecondaryBodyProjection(project, catalog);
+  return {
+    ...project,
+    primaryWorld: replacePrimaryWorld ? input.surface : project.primaryWorld,
+    bodyCatalog: { ...catalog, bodies },
+  };
 }
 
 export function isWorldBodyCatalog(value: unknown): value is WorldBodyCatalogV1 {
   if (!isRecord(value) || value.schema !== WORLD_BODY_CATALOG_SCHEMA) return false;
   if (!cleanText(value.primaryBodyId) || !cleanText(value.activeBodyId) || !Array.isArray(value.bodies)) return false;
   return value.bodies.every((body) => isWorldBodyRecord(body));
+}
+
+function normalizePrimaryCatalogSurface(
+  project: WorldProject,
+  catalog: WorldBodyCatalogV1,
+): WorldBodyCatalogV1 {
+  const primaryIndex = catalog.bodies.findIndex((body) => body.bodyId === catalog.primaryBodyId);
+  if (primaryIndex < 0) return catalog;
+  const primaryRecord = catalog.bodies[primaryIndex];
+  const authoritativeSurface = isSecondaryBodyProjection(project, catalog)
+    ? primaryRecord.surface ?? project.primaryWorld
+    : project.primaryWorld;
+  if (primaryRecord.surface === authoritativeSurface) return catalog;
+  const bodies = catalog.bodies.map((body, index) => index === primaryIndex
+    ? { ...body, surface: authoritativeSurface }
+    : body);
+  return { ...catalog, bodies };
+}
+
+function isSecondaryBodyProjection(
+  project: WorldProject,
+  catalog: WorldBodyCatalogV1,
+): boolean {
+  if (catalog.activeBodyId === catalog.primaryBodyId) return false;
+  const activeRecord = catalog.bodies.find((body) => body.bodyId === catalog.activeBodyId);
+  const activeSurface = activeRecord?.surface;
+  if (!activeSurface) return false;
+  return activeSurface === project.primaryWorld || sameSurfaceIdentity(activeSurface, project.primaryWorld);
+}
+
+function sameSurfaceIdentity(left: PrimaryWorld, right: PrimaryWorld): boolean {
+  return Boolean(left.id && right.id && left.id === right.id);
 }
 
 function fallbackCatalog(project: WorldProject): WorldBodyCatalogV1 {

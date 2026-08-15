@@ -21,54 +21,76 @@ Accepted implementation checkpoint:
 
 Do not reopen this generation repair without new evidence.
 
-## Current active item: presentation architecture reset
+## Current active item: primary-surface source-of-truth repair
 
-Repeated visual QA showed that the full-world presentation problem is not a simple palette tweak:
+Owner visual QA rejected visible version `0.3.75` despite a fully green automated gate:
 
-- Natural is readable and preserves land/water identity;
-- Data can still show broad cyan/ice-like land after later project updates;
-- TTRPG can avoid literal blue land yet collapse warm land and cool water into a similar slate family;
-- TTRPG is available on the flat world map but not the globe.
+- Data still paints broad continent-shaped areas cyan/ice-like;
+- TTRPG still paints broad continent-shaped areas with the water color family;
+- Natural remains readable enough to conceal the mismatch because its shallow-water treatment blends marine and coastal sediment colors.
 
-The repair loop has therefore crossed the threshold for architectural reassessment. Do not add another last-mile recolor filter on top of the existing wrappers.
+The reference target establishes the cartographic invariant clearly: parchment land is the base substrate, water is a separate surrounding field, and terrain marks decorate land rather than define the only terrestrial-colored cells.
 
-### Root presentation defect
+### Root defect
 
-`projectForSurfacePresentation()` previously cached presentation projects in a `WeakMap`. When the source already appeared clean, it returned and cached the original `WorldProject` and original `ice` / `biomes` arrays. Later enrichment could update those mutable source arrays. Data and TTRPG could then consume changed source display layers while Natural continued to derive much of its surface state independently.
+The production renderer is body-aware. Before reaching the world renderer it resolves the active body through `projectForWorldBody()` / `worldSurfaceForBody()`.
 
-The next checkpoint removes that aliasing behavior:
+A materialized `bodyCatalog` can carry its own `surface` for the primary body. That surface is initially the same primary world, but later project updates can replace `project.primaryWorld` while the catalog record retains the older surface object. The existing primary-body lookup preferred the catalog copy.
 
-- no surface-presentation project cache;
-- every biome presentation receives independent `ice` and `biomes` arrays derived from current canonical facts;
-- canonical `water` remains authoritative;
-- stale dry-land `ocean` and stale non-permanent `ice_cap` labels are repaired only in the presentation copy;
-- generated source facts are never mutated.
+This creates a split-brain primary surface:
 
-### TTRPG visual contract
+- renderer-level tests against `project.primaryWorld` can pass;
+- production body-aware rendering can still receive the stale catalog surface;
+- multi-body save paths that read the catalog can also observe the stale copy.
 
-TTRPG should emulate an old hand-drawn parchment map, not a desaturated satellite view:
+The primary record is useful for durable multi-body projection, because `projectForWorldBody()` temporarily reuses the `primaryWorld` field when projecting a secondary body. The repair must therefore distinguish a real secondary-body projection from an ordinary root project instead of simply deleting the catalog surface.
 
-- warm parchment land family;
-- cooler and materially darker blue-gray water wash;
-- dark ink coastline;
-- muted rivers;
-- subtle biome coloration within the land family;
-- land/water distinction readable before individual biome differences.
+### Required contract
 
-The water and land palette families should remain separated by a substantial RGB distance after `surfacePresentationTheme()` protection.
+For a normal/root project:
 
-### Globe availability
+- `project.primaryWorld` is authoritative for the primary body;
+- reading a materialized body catalog normalizes its primary record to the current `project.primaryWorld`;
+- explicitly writing the primary surface through `withWorldBodySurface()` also updates `project.primaryWorld`.
 
-TTRPG is a world presentation, not an Atlas-only or flat-map-only mode. It should be selectable for both:
+For a project object that is intentionally projecting a surfaced secondary body through `primaryWorld`:
 
-- Map -> Biomes;
-- Globe -> Biomes.
+- the durable primary surface remains the primary body catalog record;
+- switching/projecting back to the primary must recover that durable surface;
+- secondary-body surfaces remain catalog-owned and unchanged.
 
-System view remains outside this presentation contract.
+The projection check is based on an active non-primary body whose catalog surface has the same stable surface identity as the current `project.primaryWorld`.
+
+## Current checkpoint target
+
+Visible version: `0.3.76`.
+
+Focused regression coverage must include:
+
+- stale primary catalog snapshot + current root `primaryWorld` -> current root surface wins;
+- production body-aware projection uses the current root primary surface;
+- projected secondary body still preserves and can recover the durable primary;
+- explicit primary-surface writes synchronize the root project and catalog view;
+- existing secondary-body package roundtrip behavior remains green.
+
+## TTRPG visual contract
+
+Do not make another palette change until the source-of-truth repair is visually evaluated.
+
+The accepted target remains:
+
+- land reads first as warm parchment/paper;
+- water reads as a clearly separate cooler/darker wash;
+- coastline is a dark ink separator;
+- rivers are restrained;
+- biome coloration is subtle and stays within the land family;
+- terrain symbols sit on top of land rather than creating the only warm patches.
 
 ## Bounded TTRPG symbols
 
-Phase 1 symbol rules remain:
+Phase 1 symbol work remains paused until full-world Data/TTRPG land-water identity is visually accepted.
+
+Existing rules remain:
 
 - mountain family from canonical mountainous/rugged/ridge/high-relief facts;
 - hills from canonical rough/relative relief facts;
@@ -77,32 +99,27 @@ Phase 1 symbol rules remain:
 - reefs reserved until a canonical reef fact exists;
 - castle/tower/village/compass reserved for later map-dressing/world-fact work.
 
-The next manual symbol check should resume only after the full-world Data/TTRPG readability problem is visually accepted.
-
 ## Validation contract
 
-This is a build-facing presentation repair:
+This repair changes shared multi-body surface resolution but does not change generation or geographic partitioning:
 
-- focused surface-presentation isolation tests;
-- focused TTRPG palette and availability tests;
+- focused shared world-body tests;
+- focused production body-aware presentation test;
+- existing multi-body exporter/package tests;
 - full exact-head unit/integration gate;
 - type-check and production build;
 - production harness tests and smokes.
 
-`npm run evaluate:regions` is not required because this repair must not change generation or geographic partitioning.
+`npm run evaluate:regions` is not required unless generation or geographic partitioning changes.
 
 Manual visual acceptance remains mandatory. Automated green does not supersede screenshot rejection.
 
-## Version marker
-
-The repository checkpoint before this repair reports `0.3.73`, while owner browser QA reported `0.3.74`. Use visible version `0.3.75` for the architecture-reset checkpoint so browser QA is unambiguous.
-
 ## Guardrails
 
+- Do not change sea level, shelf shaping, or water generation without new evidence after this production-state repair.
 - Do not create a second geography, terrain, or hierarchy model.
-- Canonical water facts remain authoritative.
-- Do not mutate generated world facts to solve a presentation problem.
-- Do not infer reefs from shallow water.
+- Do not mutate generated surface facts to solve presentation.
+- Preserve secondary-body projection and package roundtrip behavior.
 - Do not reopen broad 2.5D/PBR work.
-- Preserve accepted Natural behavior while this repair is evaluated.
-- Do not claim Data or TTRPG visually fixed until owner screenshot acceptance.
+- Preserve Natural while Data/TTRPG correctness is evaluated.
+- Do not claim `0.3.76` visually fixed until owner screenshot acceptance.
