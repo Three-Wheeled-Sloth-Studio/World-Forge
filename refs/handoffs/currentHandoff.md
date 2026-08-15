@@ -21,77 +21,62 @@ Accepted implementation checkpoint:
 
 Do not reopen this repair without new evidence.
 
-## Current active item: hand-drawn/TTRPG map presentation
+## Current active item: hand-drawn/TTRPG presentation
 
-The restrained TTRPG palette and coastline treatment remain directionally accepted, but the illustration-token layer and world-level presentation are still under visual QA.
+The restrained TTRPG palette and coastline treatment are accepted as the visual direction. The owner-supplied stippled terrain-token pack is normalized and bundled for bounded geographic drilldown.
 
-Two screenshot-driven corrections have now been identified:
+Recent checkpoints:
 
-1. The first token checkpoint `c1dcccde5834e549a1166b6aeb4aab25f689425a` produced no visible symbols and left generated numeric hierarchy labels visible.
-2. The later full-world renderer checkpoint existed in code, but the ordinary Explore toolbar still showed only `Data` and `Natural`, while the visible app badge remained `v0.3.71`. `WorldWorkspace.tsx` was explicitly masking runtime `ttrpg` back to `natural` before rendering the toolbar.
+- `c1dcccde5834e549a1166b6aeb4aab25f689425a`: first token pass; rejected because no symbols appeared and numeric labels remained.
+- `55b773968877632334a77b30291832468b5fa36f` / `9b6e10a6b8db5192e56d202581718e848aa4688e`: corrected token bundling/selection and added full-world TTRPG rendering path.
+- `7ab3c04de4ec0906b42a8eb9fe8c471347b655b8`: exposed `TTRPG` directly in the top-level Presentation selector and bumped visible version to `0.3.72`.
 
-The current correction therefore treats TTRPG as a first-class top-level presentation choice rather than a hidden Layers toggle.
+User visual QA on `0.3.72` found a new top-level defect: Natural renders the same generated world correctly, but TTRPG paints some dry land with the muted ocean/teal color family. Pixel comparison confirms this is a real mode-path mismatch, not a subjective palette concern.
 
-Expected visible behavior for the next build:
+### Required correction
 
-- visible version `0.3.72`;
-- ordinary Explore -> Map -> Biomes Presentation selector contains `Data`, `Natural`, and `TTRPG`;
-- `TTRPG` is available only for Map + Biomes and resets to Natural if the user changes to an unsupported view/subject;
-- the old buried `Hand-drawn map` Layers toggle is removed;
-- selecting TTRPG uses the already-added full-world parchment theme and outlined coastline renderer;
-- bounded geographic Atlas TTRPG remains a separate presentation of the same canonical facts.
+The TTRPG full-world renderer must enforce the canonical water mask at the final presentation seam:
 
-## Bounded TTRPG symbol correction
+- water cell -> ocean presentation;
+- dry land cell -> never ocean presentation, even if a stale biome label survives an upstream cache or projection step;
+- no source world facts are mutated;
+- Natural/Data behavior outside TTRPG remains unchanged.
 
-The symbol correction remains:
+The corrective implementation should normalize the project through the existing surface-presentation path and add a TTRPG-specific last-mile safety guard before Data-style painting. Point inspection should use the same presentation project so diagnostics match pixels.
 
-- bundle the supplied sprite through Vite so a successful production build proves the asset URL exists;
-- use canonical morphology first, then canonical visible-window elevation, slope, and ridge facts to select macro-scale relief symbols;
-- let collision handling and a window density cap do the sparsening instead of randomly rejecting most qualifying terrain;
-- redraw the final TTRPG frame after the base controller effect so generated numeric labels are actually cleared;
-- keep reefs reserved until a canonical reef fact exists;
-- keep settlement/map-furniture symbols reserved for later.
+Visible version for the correction: `0.3.73`.
 
-## Supplied token pack
+## Bounded TTRPG symbols
 
-Normalized owner-supplied tokens include:
+Phase 1 symbol rules remain:
 
-- mountain chain variants;
-- hills;
-- pine forest;
-- rainforest;
-- swamp;
-- reefs / reef cluster;
-- volcano;
-- castle;
-- tower;
-- walled village;
-- compass rose.
+- mountain family from canonical mountainous/rugged/ridge/high-relief facts;
+- hills from canonical rough/relative relief facts;
+- pine forest, rainforest, swamp, and volcano from canonical features/details;
+- deterministic sparse placement with collision limiting;
+- reefs reserved until a canonical reef fact exists;
+- castle/tower/village/compass reserved for later map-dressing/world-fact work.
 
-Phase 1 may place only symbols supported by canonical facts. Reefs, settlements, and map furniture remain reserved until their underlying facts or placement contract exist.
+The next manual symbol check should use the same coastal macro-area sample with Hexes off and on after the top-level color regression is cleared.
 
 ## Validation contract
 
-This is a build-facing presentation milestone:
+This is a build-facing presentation repair:
 
-- run focused workspace presentation and TTRPG symbol/presentation tests;
-- run the repository exact-head validation gate;
-- type-check and production build must pass;
-- production harness and smokes must stay green.
+- focused TTRPG presentation tests;
+- full exact-head unit/integration gate;
+- type-check and production build;
+- production harness tests and smokes.
 
-`npm run evaluate:regions` is not required because this work must not change geography generation or partitioning.
+`npm run evaluate:regions` is not required because this repair must not change generation or geographic partitioning.
 
-Manual visual acceptance is still mandatory. Verify both:
-
-1. Explore -> Map -> Biomes visibly offers `TTRPG` and the badge reads `v0.3.72`;
-2. the same coastal macro-area sample shows bounded TTRPG symbols with Hexes both off and on.
+Manual visual acceptance remains mandatory. Automated green does not supersede screenshot rejection.
 
 ## Guardrails
 
 - Do not create a second geography, terrain, or hierarchy model.
-- Derive illustration placement only from canonical facts.
-- Do not infer reefs from generic shallow/coastal water.
-- Do not add politics, roads, resources, settlements, or generated names to solve a cartographic-style problem.
+- Canonical water facts remain authoritative.
+- Do not mutate generated world facts to solve a presentation problem.
+- Do not infer reefs from shallow water.
 - Do not reopen broad 2.5D/PBR work.
-- Preserve Natural and Data/Terrain behavior.
-- Automated green does not supersede screenshot rejection.
+- Preserve Natural and Terrain behavior.

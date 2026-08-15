@@ -1,7 +1,8 @@
-import type { WorldProject } from '@world-forge/shared';
+import { biomeToCode, codeToBiome, type WorldProject } from '@world-forge/shared';
 import {
   cleanGameMapTheme,
   inspectWorldPoint as inspectBaseWorldPoint,
+  projectForSurfacePresentation,
   renderWorldToCanvas as renderBaseWorldToCanvas,
   worldToSvg as baseWorldToSvg,
   type MapTheme,
@@ -30,6 +31,37 @@ export const ttrpgWorldMapTheme: MapTheme = {
   },
 };
 
+export function ttrpgBiomeForSurfacePresentation(biome: string, water: boolean): string {
+  if (water) return 'ocean';
+  return biome === 'ocean' ? 'grassland' : biome;
+}
+
+export function projectForTtrpgWorldMapPresentation(project: WorldProject): WorldProject {
+  const normalized = projectForSurfacePresentation(project);
+  const world = normalized.primaryWorld;
+  let biomes: Uint8Array | undefined;
+
+  for (let index = 0; index < world.layers.biomes.length; index += 1) {
+    const current = codeToBiome(world.layers.biomes[index]);
+    const presentation = ttrpgBiomeForSurfacePresentation(current, world.layers.water[index] === 1);
+    if (presentation === current) continue;
+    biomes ??= new Uint8Array(world.layers.biomes);
+    biomes[index] = biomeToCode(presentation as Parameters<typeof biomeToCode>[0]);
+  }
+
+  if (!biomes) return normalized;
+  return {
+    ...normalized,
+    primaryWorld: {
+      ...world,
+      layers: {
+        ...world.layers,
+        biomes,
+      },
+    },
+  };
+}
+
 export function renderWorldToCanvas(
   canvas: HTMLCanvasElement,
   project: WorldProject,
@@ -52,7 +84,12 @@ export function renderWorldToCanvas(
     mode: visible?.mode,
     targetResolution: visible?.targetResolution,
   };
-  renderBaseWorldToCanvas(canvas, project, ttrpgWorldMapTheme, ttrpgOptions);
+  renderBaseWorldToCanvas(
+    canvas,
+    projectForTtrpgWorldMapPresentation(project),
+    ttrpgWorldMapTheme,
+    ttrpgOptions,
+  );
 }
 
 export function inspectWorldPoint(
@@ -64,7 +101,7 @@ export function inspectWorldPoint(
 ): ReturnType<typeof inspectBaseWorldPoint> {
   const ttrpg = (renderMode as string | undefined) === 'ttrpg' && (mapMode ?? 'biomes') === 'biomes';
   return inspectBaseWorldPoint(
-    project,
+    ttrpg ? projectForTtrpgWorldMapPresentation(project) : project,
     input,
     ttrpg ? ttrpgWorldMapTheme : theme,
     ttrpg ? 'data' : renderMode,
