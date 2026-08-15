@@ -3,28 +3,30 @@ import type {
   GeographicTileWindow,
   GeographicTileWindowTile,
 } from '@world-forge/shared/geographicTileWindow';
-import { worldHexCoordinateForLatLon } from '@world-forge/generator-core/geographicAdaptiveScale';
-import { estimatedRiverWidthMiles } from '@world-forge/generator-core/geographicRiverTileProjection';
 import {
-  GEOGRAPHIC_ATLAS_TTRPG_PALETTE,
-  geographicAtlasNaturalBaseColor,
-  geographicAtlasTtrpgBaseColor,
-} from './geographicAtlasPalette';
+  renderGeographicTileWindowToCanvas as renderBaseGeographicTileWindowToCanvas,
+  visibleGeographicAtlasTileIds,
+  type GeographicTileWindowCanvasTransform,
+  type GeographicTileWindowRenderOptions,
+} from './geographicTileWindowMapBase';
 import {
-  createGeographicWindowTransform,
-  type GeographicWindowTransform,
-} from './geographicWindowedMap';
+  ttrpgMapIconSpriteEntry,
+  ttrpgMapIconSpriteImage,
+  ttrpgMapSymbolForTile,
+  type TtrpgMapSymbolPlacement,
+} from './ttrpgMapSymbols';
 
-export type GeographicTileWindowPresentation = 'natural' | 'terrain' | 'ttrpg';
+export * from './geographicTileWindowMapBase';
 
-export type GeographicTileWindowCanvasTransform = GeographicWindowTransform & {
-  tileAtCanvasPoint: (x: number, y: number) => GeographicTileWindowTile | null;
-};
-
-export type GeographicTileWindowRenderOptions = {
-  presentation: GeographicTileWindowPresentation;
-  showHexes: boolean;
-  selectedChildIndex?: number | null;
+const SQRT_THREE = Math.sqrt(3);
+const EDGE_ORDER: HexTileEdge[] = ['ne', 'e', 'se', 'sw', 'w', 'nw'];
+const EDGE_VERTICES: Record<HexTileEdge, [number, number]> = {
+  ne: [0, 1],
+  e: [1, 2],
+  se: [2, 3],
+  sw: [3, 4],
+  w: [4, 5],
+  nw: [5, 0],
 };
 
 type TileGeometry = {
@@ -35,25 +37,12 @@ type TileGeometry = {
   vertices: Array<[number, number]>;
 };
 
-const SQRT_THREE = Math.sqrt(3);
-const RIVER_RGB = '68, 178, 226';
-const TTRPG_RIVER_RGB = '72, 112, 116';
-const EDGE_ORDER: HexTileEdge[] = ['ne', 'e', 'se', 'sw', 'w', 'nw'];
-const EDGE_INDEX: Record<HexTileEdge, number> = {
-  ne: 0,
-  e: 1,
-  se: 2,
-  sw: 3,
-  w: 4,
-  nw: 5,
-};
-const EDGE_VERTICES: Record<HexTileEdge, [number, number]> = {
-  ne: [0, 1],
-  e: [1, 2],
-  se: [2, 3],
-  sw: [3, 4],
-  w: [4, 5],
-  nw: [5, 0],
+type DrawBounds = { left: number; top: number; right: number; bottom: number };
+
+type SymbolCandidate = {
+  entry: TileGeometry;
+  placement: TtrpgMapSymbolPlacement;
+  bounds: DrawBounds;
 };
 
 export function renderGeographicTileWindowToCanvas(
@@ -61,264 +50,169 @@ export function renderGeographicTileWindowToCanvas(
   window: GeographicTileWindow,
   options: GeographicTileWindowRenderOptions,
 ): GeographicTileWindowCanvasTransform {
-  const width = clampInteger(window.extent.columns * 48, 840, 1500);
-  const height = clampInteger(window.extent.rows * 42, 560, 1000);
-  canvas.width = width;
-  canvas.height = height;
+  const transform = renderBaseGeographicTileWindowToCanvas(canvas, window, options);
+  if (options.presentation !== 'ttrpg') return transform;
+
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('Unable to acquire geographic tile-window canvas context.');
-
-  context.clearRect(0, 0, width, height);
-  context.fillStyle = options.presentation === 'ttrpg' ? GEOGRAPHIC_ATLAS_TTRPG_PALETTE.paper : '#071019';
-  context.fillRect(0, 0, width, height);
-
-  const layout = createLayout(window, width, height);
+  if (!context) return transform;
+  const geometry = buildVisibleGeometry(window, canvas.width, canvas.height);
   const byCoordinate = new Map(window.tiles.map((tile) => [`${tile.q},${tile.r}`, tile]));
-  const visibleIds = visibleGeographicAtlasTileIds(window);
-  const geometry = window.tiles
-    .filter((tile) => visibleIds.has(tile.id))
-    .map((tile) => tileGeometry(tile, window, layout));
 
-  for (const entry of geometry) drawTileFill(context, entry, options, window);
-  drawContextVeil(context, geometry, options.presentation);
-  if (options.showHexes) drawHexLines(context, geometry, options.presentation);
-  drawCoastlines(context, geometry, byCoordinate, window, options.presentation);
-  drawTerrainEdges(context, geometry, window, options.presentation);
-  drawChildBoundaries(context, geometry, byCoordinate, window, options.presentation);
-  drawParentBoundary(context, geometry, byCoordinate, window, options.presentation);
+  drawTtrpgMapSymbols(context, geometry);
+  redrawRidges(context, geometry);
+  if (options.showHexes) drawStrongTtrpgHexes(context, geometry);
+  redrawCoastlines(context, geometry, byCoordinate, window);
+  redrawChildBoundaries(context, geometry, byCoordinate, window);
+  redrawParentBoundary(context, geometry, byCoordinate, window);
 
-  return createTileCanvasTransform(window, width, height, geometry);
+  return transform;
 }
 
-export function createGeographicTileWindowCanvasTransform(
-  window: GeographicTileWindow,
-  width: number,
-  height: number,
-): GeographicTileWindowCanvasTransform {
-  const layout = createLayout(window, width, height);
-  const visibleIds = visibleGeographicAtlasTileIds(window);
-  const geometry = window.tiles
-    .filter((tile) => visibleIds.has(tile.id))
-    .map((tile) => tileGeometry(tile, window, layout));
-  return createTileCanvasTransform(window, width, height, geometry);
-}
-
-export function visibleGeographicAtlasTileIds(window: GeographicTileWindow): Set<string> {
-  const byCoordinate = new Map(window.tiles.map((tile) => [`${tile.q},${tile.r}`, tile]));
-  const visible = new Set(window.tiles
-    .filter((tile) => tile.membershipRole === 'parent')
-    .map((tile) => tile.id));
-  let frontier = window.tiles.filter((tile) => tile.membershipRole === 'parent');
-  const contextRings = clampInteger(window.extent.contextPaddingHexes, 0, 2);
-
-  for (let ring = 0; ring < contextRings; ring += 1) {
-    const nextFrontier: GeographicTileWindowTile[] = [];
-    for (const tile of frontier) {
-      for (const edge of EDGE_ORDER) {
-        const neighbor = neighborFor(tile, edge, byCoordinate, window);
-        if (!neighbor || visible.has(neighbor.id)) continue;
-        visible.add(neighbor.id);
-        nextFrontier.push(neighbor);
-      }
-    }
-    frontier = nextFrontier;
-  }
-  return visible;
-}
-
-export function atlasRiverDisplayWidthFraction(
-  riverStrength: number,
-  nominalHexWidthMiles: number,
-  navigable: boolean,
-): number {
-  const physicalFraction = estimatedRiverWidthMiles(riverStrength) / Math.max(0.1, nominalHexWidthMiles);
-  if (physicalFraction >= 1) return 1;
-  return navigable
-    ? clamp(0.12 + physicalFraction * 1.9, 0.12, 0.65)
-    : clamp(0.045 + physicalFraction * 0.68, 0.045, 0.22);
-}
-
-export function riverBoundaryRouteVertexIndices(
-  startEdge: HexTileEdge,
-  endEdge: HexTileEdge,
-  preferClockwiseOnTie: boolean,
-): number[] {
-  if (startEdge === endEdge) return [];
-  const startIndex = EDGE_INDEX[startEdge];
-  const endIndex = EDGE_INDEX[endEdge];
-
-  const clockwise: number[] = [];
-  let clockwiseVertex = (startIndex + 1) % 6;
-  while (true) {
-    clockwise.push(clockwiseVertex);
-    if (clockwiseVertex === endIndex) break;
-    clockwiseVertex = (clockwiseVertex + 1) % 6;
-  }
-
-  const counterClockwise: number[] = [];
-  let counterClockwiseVertex = startIndex;
-  const counterClockwiseTarget = (endIndex + 1) % 6;
-  while (true) {
-    counterClockwise.push(counterClockwiseVertex);
-    if (counterClockwiseVertex === counterClockwiseTarget) break;
-    counterClockwiseVertex = mod(counterClockwiseVertex - 1, 6);
-  }
-
-  if (clockwise.length < counterClockwise.length) return clockwise;
-  if (counterClockwise.length < clockwise.length) return counterClockwise;
-  return preferClockwiseOnTie ? clockwise : counterClockwise;
-}
-
-function createTileCanvasTransform(
-  window: GeographicTileWindow,
-  width: number,
-  height: number,
-  geometry: TileGeometry[],
-): GeographicTileWindowCanvasTransform {
-  const fallback = createGeographicWindowTransform(width, height, window.extent, window.scale);
-  const byCoordinate = new Map(geometry.map((entry) => [`${entry.tile.q},${entry.tile.r}`, entry]));
-  const hitTest = (x: number, y: number): TileGeometry | null => {
-    let nearest: TileGeometry | null = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    for (const entry of geometry) {
-      if (Math.abs(x - entry.centerX) > entry.radius || Math.abs(y - entry.centerY) > entry.radius) continue;
-      if (!pointInPolygon(x, y, entry.vertices)) continue;
-      const distance = (x - entry.centerX) ** 2 + (y - entry.centerY) ** 2;
-      if (distance < nearestDistance) {
-        nearest = entry;
-        nearestDistance = distance;
-      }
-    }
-    return nearest;
-  };
-
-  return {
-    ...fallback,
-    tileAtCanvasPoint: (x, y) => hitTest(x, y)?.tile ?? null,
-    canvasPointToGeo: (x, y) => {
-      const tile = hitTest(x, y)?.tile;
-      return tile
-        ? { latitude: tile.latitude, longitude: tile.longitude }
-        : fallback.canvasPointToGeo(x, y);
-    },
-    geoToCanvasPoint: (latitude, longitude) => {
-      const coordinate = worldHexCoordinateForLatLon(
-        latitude,
-        longitude,
-        window.scale.worldColumns,
-        window.scale.worldRows,
-      );
-      const entry = byCoordinate.get(`${coordinate.q},${coordinate.r}`);
-      return entry
-        ? { x: entry.centerX, y: entry.centerY }
-        : fallback.geoToCanvasPoint(latitude, longitude);
-    },
-  };
-}
-
-function createLayout(window: GeographicTileWindow, width: number, height: number) {
+function buildVisibleGeometry(window: GeographicTileWindow, width: number, height: number): TileGeometry[] {
   const horizontalFit = (width - 28) / (SQRT_THREE * (window.extent.columns + 0.5));
   const verticalFit = (height - 28) / (1.5 * Math.max(0, window.extent.rows - 1) + 2);
   const radius = Math.max(5, Math.min(horizontalFit, verticalFit));
   const hexWidth = SQRT_THREE * radius;
   const gridWidth = hexWidth * (window.extent.columns + 0.5);
   const gridHeight = radius * (1.5 * Math.max(0, window.extent.rows - 1) + 2);
-  return {
-    radius,
-    hexWidth,
-    originX: (width - gridWidth) / 2 + hexWidth / 2,
-    originY: (height - gridHeight) / 2 + radius,
-  };
+  const originX = (width - gridWidth) / 2 + hexWidth / 2;
+  const originY = (height - gridHeight) / 2 + radius;
+  const visibleIds = visibleGeographicAtlasTileIds(window);
+
+  return window.tiles
+    .filter((tile) => visibleIds.has(tile.id))
+    .map((tile) => {
+      const column = mod(tile.q - window.extent.qMin, window.scale.worldColumns);
+      const row = tile.r - window.extent.rMin;
+      const centerX = originX + column * hexWidth + (tile.r % 2) * (hexWidth / 2);
+      const centerY = originY + row * radius * 1.5;
+      const vertices: Array<[number, number]> = [];
+      for (let index = 0; index < 6; index += 1) {
+        const angle = (-90 + index * 60) * Math.PI / 180;
+        vertices.push([
+          centerX + Math.cos(angle) * radius,
+          centerY + Math.sin(angle) * radius,
+        ]);
+      }
+      return { tile, centerX, centerY, radius, vertices };
+    });
 }
 
-function tileGeometry(
-  tile: GeographicTileWindowTile,
-  window: GeographicTileWindow,
-  layout: ReturnType<typeof createLayout>,
-): TileGeometry {
-  const column = mod(tile.q - window.extent.qMin, window.scale.worldColumns);
-  const row = tile.r - window.extent.rMin;
-  const centerX = layout.originX + column * layout.hexWidth + (tile.r % 2) * (layout.hexWidth / 2);
-  const centerY = layout.originY + row * layout.radius * 1.5;
-  const vertices: Array<[number, number]> = [];
-  for (let index = 0; index < 6; index += 1) {
-    const angle = (-90 + index * 60) * Math.PI / 180;
-    vertices.push([
-      centerX + Math.cos(angle) * layout.radius,
-      centerY + Math.sin(angle) * layout.radius,
-    ]);
-  }
-  return { tile, centerX, centerY, radius: layout.radius, vertices };
-}
+function drawTtrpgMapSymbols(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
+  const sprite = ttrpgMapIconSpriteImage();
+  if (!sprite) return;
 
-function drawTileFill(
-  context: CanvasRenderingContext2D,
-  entry: TileGeometry,
-  options: GeographicTileWindowRenderOptions,
-  window: GeographicTileWindow,
-): void {
-  context.beginPath();
-  tracePolygon(context, entry.vertices);
-  context.fillStyle = tileFill(entry.tile, options.presentation, window);
-  context.fill();
+  const parentCount = geometry.filter((entry) => entry.tile.membershipRole === 'parent').length;
+  const maximumSymbols = clampInteger(Math.round(parentCount / 24), 10, 48);
+  const candidates: SymbolCandidate[] = [];
 
-  if (entry.tile.childIndex !== null && entry.tile.childIndex === options.selectedChildIndex) {
-    context.fillStyle = options.presentation === 'ttrpg'
-      ? 'rgba(121, 75, 39, 0.2)'
-      : 'rgba(255, 232, 151, 0.28)';
-    context.fill();
-  }
-}
-
-function drawContextVeil(
-  context: CanvasRenderingContext2D,
-  geometry: TileGeometry[],
-  presentation: GeographicTileWindowPresentation,
-): void {
-  context.fillStyle = presentation === 'ttrpg'
-    ? 'rgba(75, 56, 37, 0.16)'
-    : 'rgba(3, 7, 12, 0.36)';
   for (const entry of geometry) {
-    if (entry.tile.membershipRole === 'parent') continue;
-    context.beginPath();
-    tracePolygon(context, entry.vertices);
-    context.fill();
+    const placement = ttrpgMapSymbolForTile(entry.tile);
+    if (!placement) continue;
+    const flatToFlat = entry.radius * SQRT_THREE;
+    const width = flatToFlat * placement.widthHexes;
+    const height = width * 0.75;
+    const centerY = entry.centerY + flatToFlat * placement.verticalOffsetHexes;
+    candidates.push({
+      entry,
+      placement,
+      bounds: {
+        left: entry.centerX - width / 2,
+        top: centerY - height / 2,
+        right: entry.centerX + width / 2,
+        bottom: centerY + height / 2,
+      },
+    });
   }
+
+  candidates.sort((left, right) =>
+    right.placement.priority - left.placement.priority
+    || left.placement.tieBreaker - right.placement.tieBreaker
+    || left.entry.tile.id.localeCompare(right.entry.tile.id));
+
+  const occupied: DrawBounds[] = [];
+  let drawn = 0;
+  context.save();
+  context.imageSmoothingEnabled = true;
+  for (const candidate of candidates) {
+    if (drawn >= maximumSymbols) break;
+    const padded = expandRectangle(candidate.bounds, 2.5);
+    if (occupied.some((bounds) => rectanglesOverlap(padded, bounds))) continue;
+    const source = ttrpgMapIconSpriteEntry(candidate.placement.iconId);
+    const { left, top, right, bottom } = candidate.bounds;
+    context.globalAlpha = candidate.placement.opacity;
+    context.drawImage(
+      sprite,
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+      left,
+      top,
+      right - left,
+      bottom - top,
+    );
+    occupied.push(padded);
+    drawn += 1;
+  }
+  context.restore();
 }
 
-function drawParentBoundary(
-  context: CanvasRenderingContext2D,
-  geometry: TileGeometry[],
-  byCoordinate: Map<string, GeographicTileWindowTile>,
-  window: GeographicTileWindow,
-  presentation: GeographicTileWindowPresentation,
-): void {
-  context.strokeStyle = presentation === 'ttrpg'
-    ? 'rgba(62, 46, 31, 0.96)'
-    : 'rgba(255, 255, 246, 0.98)';
-  context.lineWidth = presentation === 'ttrpg' ? 2.5 : 3.1;
+function redrawRidges(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
+  context.save();
+  context.strokeStyle = 'rgba(79, 60, 39, 0.76)';
+  context.lineWidth = 1.6;
+  context.lineCap = 'round';
   context.lineJoin = 'round';
   for (const entry of geometry) {
-    if (entry.tile.membershipRole !== 'parent') continue;
-    for (const edge of EDGE_ORDER) {
-      const neighbor = neighborFor(entry.tile, edge, byCoordinate, window);
-      if (neighbor?.membershipRole === 'parent') continue;
-      strokeEdge(context, entry.vertices, edge);
-    }
+    for (const edge of entry.tile.ridgeEdges) strokeEdge(context, entry.vertices, edge);
   }
+  context.restore();
 }
 
-function drawChildBoundaries(
+function drawStrongTtrpgHexes(context: CanvasRenderingContext2D, geometry: TileGeometry[]): void {
+  context.save();
+  context.strokeStyle = 'rgba(74, 58, 41, 0.4)';
+  context.lineWidth = 0.9;
+  for (const entry of geometry) {
+    context.beginPath();
+    tracePolygon(context, entry.vertices);
+    context.stroke();
+  }
+  context.restore();
+}
+
+function redrawCoastlines(
   context: CanvasRenderingContext2D,
   geometry: TileGeometry[],
   byCoordinate: Map<string, GeographicTileWindowTile>,
   window: GeographicTileWindow,
-  presentation: GeographicTileWindowPresentation,
 ): void {
-  context.strokeStyle = presentation === 'ttrpg'
-    ? 'rgba(96, 72, 45, 0.58)'
-    : 'rgba(247, 210, 123, 0.74)';
-  context.lineWidth = presentation === 'ttrpg' ? 1.1 : 1.4;
+  context.save();
+  context.strokeStyle = 'rgba(68, 52, 35, 0.96)';
+  context.lineWidth = 2.15;
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  for (const entry of geometry) {
+    if (entry.tile.water) continue;
+    for (const edge of EDGE_ORDER) {
+      if (neighborFor(entry.tile, edge, byCoordinate, window)?.water) {
+        strokeEdge(context, entry.vertices, edge);
+      }
+    }
+  }
+  context.restore();
+}
+
+function redrawChildBoundaries(
+  context: CanvasRenderingContext2D,
+  geometry: TileGeometry[],
+  byCoordinate: Map<string, GeographicTileWindowTile>,
+  window: GeographicTileWindow,
+): void {
+  context.save();
+  context.strokeStyle = 'rgba(96, 72, 45, 0.62)';
+  context.lineWidth = 1.15;
   context.lineJoin = 'round';
   for (const entry of geometry) {
     const childIndex = entry.tile.childIndex;
@@ -329,317 +223,28 @@ function drawChildBoundaries(
       strokeEdge(context, entry.vertices, edge);
     }
   }
-}
-
-function drawCoastlines(
-  context: CanvasRenderingContext2D,
-  geometry: TileGeometry[],
-  byCoordinate: Map<string, GeographicTileWindowTile>,
-  window: GeographicTileWindow,
-  presentation: GeographicTileWindowPresentation,
-): void {
-  context.save();
-  context.lineJoin = 'round';
-  context.lineCap = 'round';
-  context.strokeStyle = presentation === 'ttrpg'
-    ? 'rgba(68, 52, 35, 0.96)'
-    : 'rgba(226, 220, 187, 0.82)';
-  context.lineWidth = presentation === 'ttrpg' ? 2.15 : 1.35;
-  for (const entry of geometry) {
-    if (entry.tile.water) continue;
-    for (const edge of EDGE_ORDER) {
-      const neighbor = neighborFor(entry.tile, edge, byCoordinate, window);
-      if (!neighbor?.water) continue;
-      strokeEdge(context, entry.vertices, edge);
-    }
-  }
-  if (presentation === 'ttrpg') drawTtrpgWaterHachures(context, geometry, byCoordinate, window);
   context.restore();
 }
 
-function drawTtrpgWaterHachures(
+function redrawParentBoundary(
   context: CanvasRenderingContext2D,
   geometry: TileGeometry[],
   byCoordinate: Map<string, GeographicTileWindowTile>,
   window: GeographicTileWindow,
 ): void {
-  context.strokeStyle = 'rgba(65, 88, 89, 0.48)';
-  context.lineWidth = 0.8;
+  context.save();
+  context.strokeStyle = 'rgba(62, 46, 31, 0.98)';
+  context.lineWidth = 2.55;
+  context.lineJoin = 'round';
   for (const entry of geometry) {
-    if (!entry.tile.water) continue;
+    if (entry.tile.membershipRole !== 'parent') continue;
     for (const edge of EDGE_ORDER) {
       const neighbor = neighborFor(entry.tile, edge, byCoordinate, window);
-      if (!neighbor || neighbor.water) continue;
-      const [leftIndex, rightIndex] = EDGE_VERTICES[edge];
-      const left = entry.vertices[leftIndex];
-      const right = entry.vertices[rightIndex];
-      const inset = 0.18;
-      context.beginPath();
-      context.moveTo(
-        left[0] + (entry.centerX - left[0]) * inset,
-        left[1] + (entry.centerY - left[1]) * inset,
-      );
-      context.lineTo(
-        right[0] + (entry.centerX - right[0]) * inset,
-        right[1] + (entry.centerY - right[1]) * inset,
-      );
-      context.stroke();
-    }
-  }
-}
-
-function drawTerrainEdges(
-  context: CanvasRenderingContext2D,
-  geometry: TileGeometry[],
-  window: GeographicTileWindow,
-  presentation: GeographicTileWindowPresentation,
-): void {
-  for (const entry of geometry) {
-    for (const edge of entry.tile.ridgeEdges) {
-      context.strokeStyle = presentation === 'ttrpg'
-        ? 'rgba(79, 60, 39, 0.72)'
-        : entry.tile.ice
-          ? 'rgba(215, 229, 235, 0.9)'
-          : 'rgba(76, 55, 39, 0.92)';
-      context.lineWidth = presentation === 'ttrpg' ? 1.55 : 2.1;
+      if (neighbor?.membershipRole === 'parent') continue;
       strokeEdge(context, entry.vertices, edge);
     }
-    drawRiverNetwork(context, entry, window, presentation);
-  }
-}
-
-function drawRiverNetwork(
-  context: CanvasRenderingContext2D,
-  entry: TileGeometry,
-  window: GeographicTileWindow,
-  presentation: GeographicTileWindowPresentation,
-): void {
-  const dominant = riverDominatesTile(entry.tile);
-  const minorEdges = entry.tile.minorRiverEdges.filter((edge) => !entry.tile.navigableRiverEdges.includes(edge));
-  const riverRgb = presentation === 'ttrpg' ? TTRPG_RIVER_RGB : RIVER_RGB;
-  if (minorEdges.length > 0) {
-    drawRiverConnections(
-      context,
-      entry,
-      minorEdges,
-      riverLineWidth(entry, window, false),
-      `rgba(${riverRgb}, 0.72)`,
-      false,
-    );
-  }
-  if (entry.tile.navigableRiverEdges.length > 0) {
-    drawRiverConnections(
-      context,
-      entry,
-      entry.tile.navigableRiverEdges,
-      riverLineWidth(entry, window, true),
-      `rgba(${riverRgb}, 0.96)`,
-      dominant,
-    );
-  }
-  drawRiverEndpointMarkers(context, entry, window, presentation);
-}
-
-function drawRiverConnections(
-  context: CanvasRenderingContext2D,
-  entry: TileGeometry,
-  edges: HexTileEdge[],
-  lineWidth: number,
-  strokeStyle: string,
-  dominant: boolean,
-): void {
-  const uniqueEdges = [...new Set(edges)].sort((left, right) => EDGE_INDEX[left] - EDGE_INDEX[right]);
-  if (uniqueEdges.length === 0) return;
-  context.save();
-  context.strokeStyle = strokeStyle;
-  context.lineWidth = lineWidth;
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-
-  if (dominant) drawCenterRiverConnections(context, entry, uniqueEdges);
-  else drawBoundaryRiverConnections(context, entry, uniqueEdges);
-  context.restore();
-}
-
-function drawCenterRiverConnections(
-  context: CanvasRenderingContext2D,
-  entry: TileGeometry,
-  edges: HexTileEdge[],
-): void {
-  for (const edge of edges) {
-    const midpoint = edgeMidpoint(entry, edge);
-    context.beginPath();
-    context.moveTo(midpoint.x, midpoint.y);
-    context.lineTo(entry.centerX, entry.centerY);
-    context.stroke();
-  }
-}
-
-function drawBoundaryRiverConnections(
-  context: CanvasRenderingContext2D,
-  entry: TileGeometry,
-  edges: HexTileEdge[],
-): void {
-  if (edges.length === 1) {
-    const edge = edges[0];
-    const midpoint = edgeMidpoint(entry, edge);
-    const [leftVertex, rightVertex] = EDGE_VERTICES[edge];
-    const targetVertex = hashUnit(`river-edge-stub:${entry.tile.q}:${entry.tile.r}:${edge}`) < 0.5
-      ? leftVertex
-      : rightVertex;
-    context.beginPath();
-    context.moveTo(midpoint.x, midpoint.y);
-    context.lineTo(entry.vertices[targetVertex][0], entry.vertices[targetVertex][1]);
-    context.stroke();
-    return;
-  }
-
-  const root = edges[0];
-  for (let index = 1; index < edges.length; index += 1) {
-    const target = edges[index];
-    const preferClockwise = hashUnit(
-      `river-edge-route:${entry.tile.q}:${entry.tile.r}:${root}:${target}`,
-    ) < 0.5;
-    const vertices = riverBoundaryRouteVertexIndices(root, target, preferClockwise);
-    const start = edgeMidpoint(entry, root);
-    const end = edgeMidpoint(entry, target);
-    context.beginPath();
-    context.moveTo(start.x, start.y);
-    for (const vertex of vertices) context.lineTo(entry.vertices[vertex][0], entry.vertices[vertex][1]);
-    context.lineTo(end.x, end.y);
-    context.stroke();
-  }
-}
-
-function drawRiverEndpointMarkers(
-  context: CanvasRenderingContext2D,
-  entry: TileGeometry,
-  window: GeographicTileWindow,
-  presentation: GeographicTileWindowPresentation,
-): void {
-  const allEdges = [...new Set([...entry.tile.minorRiverEdges, ...entry.tile.navigableRiverEdges])];
-  const width = riverLineWidth(entry, window, entry.tile.navigableRiverEdges.length > 0);
-  const riverRgb = presentation === 'ttrpg' ? TTRPG_RIVER_RGB : RIVER_RGB;
-  context.save();
-  context.fillStyle = `rgba(${riverRgb}, 0.96)`;
-  context.strokeStyle = presentation === 'ttrpg'
-    ? 'rgba(53, 78, 79, 0.72)'
-    : 'rgba(22, 80, 105, 0.72)';
-  context.lineWidth = Math.max(0.7, width * 0.12);
-
-  if (entry.tile.riverSource && allEdges.length > 0) {
-    const edge = allEdges[0];
-    const [left, right] = EDGE_VERTICES[edge];
-    const vertex = hashUnit(`river-source:${entry.tile.q}:${entry.tile.r}:${edge}`) < 0.5 ? left : right;
-    const [x, y] = entry.vertices[vertex];
-    context.beginPath();
-    context.arc(x, y, Math.max(1.8, width * 0.28), 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
-  }
-
-  for (const edge of entry.tile.riverMouthEdges) {
-    const midpoint = edgeMidpoint(entry, edge);
-    context.beginPath();
-    context.arc(midpoint.x, midpoint.y, Math.max(2.2, width * 0.38), 0, Math.PI * 2);
-    context.fill();
-  }
-
-  if (entry.tile.riverTerminus && entry.tile.riverMouthEdges.length === 0 && allEdges.length > 0) {
-    const edge = allEdges[allEdges.length - 1];
-    const midpoint = edgeMidpoint(entry, edge);
-    context.beginPath();
-    context.ellipse(midpoint.x, midpoint.y, Math.max(2.8, width * 0.5), Math.max(1.8, width * 0.3), 0, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
   }
   context.restore();
-}
-
-function edgeMidpoint(entry: TileGeometry, edge: HexTileEdge): { x: number; y: number } {
-  const [left, right] = EDGE_VERTICES[edge];
-  return {
-    x: (entry.vertices[left][0] + entry.vertices[right][0]) / 2,
-    y: (entry.vertices[left][1] + entry.vertices[right][1]) / 2,
-  };
-}
-
-function riverLineWidth(
-  entry: TileGeometry,
-  window: GeographicTileWindow,
-  navigable: boolean,
-): number {
-  const widthFraction = atlasRiverDisplayWidthFraction(
-    entry.tile.riverStrength,
-    window.scale.nominalHexWidthMiles,
-    navigable,
-  );
-  const flatToFlatWidth = entry.radius * SQRT_THREE;
-  return Math.max(navigable ? 1.2 : 0.72, widthFraction * flatToFlatWidth);
-}
-
-function riverDominatesTile(tile: GeographicTileWindowTile): boolean {
-  return tile.navigableRiverCenter && tile.navigableRiverEdges.length > 0;
-}
-
-function drawHexLines(
-  context: CanvasRenderingContext2D,
-  geometry: TileGeometry[],
-  presentation: GeographicTileWindowPresentation,
-): void {
-  context.strokeStyle = presentation === 'ttrpg'
-    ? 'rgba(74, 58, 41, 0.2)'
-    : 'rgba(236, 225, 192, 0.22)';
-  context.lineWidth = presentation === 'ttrpg' ? 0.6 : 0.7;
-  for (const entry of geometry) {
-    context.beginPath();
-    tracePolygon(context, entry.vertices);
-    context.stroke();
-  }
-}
-
-function tileFill(
-  tile: GeographicTileWindowTile,
-  presentation: GeographicTileWindowPresentation,
-  window: GeographicTileWindow,
-): string {
-  if (riverDominatesTile(tile)) return riverDominantFill(tile, presentation, window);
-  if (presentation === 'ttrpg') return geographicAtlasTtrpgBaseColor(tile);
-  if (presentation === 'terrain') return terrainFill(tile);
-  const base = geographicAtlasNaturalBaseColor(tile);
-  const elevationLift = clamp((tile.elevation + 0.35) * 0.2, -0.07, 0.13);
-  const wetnessLift = tile.water ? 0 : clamp((tile.wetness - 0.5) * 0.045, -0.025, 0.025);
-  return adjustHex(base, elevationLift + wetnessLift);
-}
-
-function riverDominantFill(
-  tile: GeographicTileWindowTile,
-  presentation: GeographicTileWindowPresentation,
-  window: GeographicTileWindow,
-): string {
-  const physicalFraction = clamp(
-    estimatedRiverWidthMiles(tile.riverStrength) / Math.max(0.1, window.scale.nominalHexWidthMiles),
-    0,
-    1,
-  );
-  const base = presentation === 'terrain'
-    ? '#327492'
-    : presentation === 'ttrpg'
-      ? GEOGRAPHIC_ATLAS_TTRPG_PALETTE.coastalWater
-      : '#347f9c';
-  return adjustHex(base, physicalFraction * 0.05);
-}
-
-function terrainFill(tile: GeographicTileWindowTile): string {
-  if (tile.ice) return '#d8e4e6';
-  if (tile.water) {
-    const depth = clamp(-tile.elevation, 0, 1);
-    return adjustHex('#255b77', -depth * 0.18);
-  }
-  const normalized = clamp((tile.elevation + 0.15) / 0.9, 0, 1);
-  if (tile.morphology === 'mountainous') return adjustHex('#7a6d5d', normalized * 0.16);
-  if (tile.morphology === 'rough') return adjustHex('#7b765f', normalized * 0.12);
-  return adjustHex('#827d62', normalized * 0.1);
 }
 
 function neighborFor(
@@ -663,7 +268,11 @@ function neighborFor(
   return byCoordinate.get(`${q},${r}`);
 }
 
-function strokeEdge(context: CanvasRenderingContext2D, vertices: Array<[number, number]>, edge: HexTileEdge): void {
+function strokeEdge(
+  context: CanvasRenderingContext2D,
+  vertices: Array<[number, number]>,
+  edge: HexTileEdge,
+): void {
   const [left, right] = EDGE_VERTICES[edge];
   context.beginPath();
   context.moveTo(vertices[left][0], vertices[left][1]);
@@ -679,39 +288,24 @@ function tracePolygon(context: CanvasRenderingContext2D, vertices: Array<[number
   context.closePath();
 }
 
-function pointInPolygon(x: number, y: number, vertices: Array<[number, number]>): boolean {
-  let inside = false;
-  for (let index = 0, previous = vertices.length - 1; index < vertices.length; previous = index, index += 1) {
-    const [x1, y1] = vertices[index];
-    const [x2, y2] = vertices[previous];
-    const intersects = ((y1 > y) !== (y2 > y))
-      && x < ((x2 - x1) * (y - y1)) / (y2 - y1) + x1;
-    if (intersects) inside = !inside;
-  }
-  return inside;
+function expandRectangle(bounds: DrawBounds, amount: number): DrawBounds {
+  return {
+    left: bounds.left - amount,
+    top: bounds.top - amount,
+    right: bounds.right + amount,
+    bottom: bounds.bottom + amount,
+  };
 }
 
-function adjustHex(value: string, amount: number): string {
-  const numeric = Number.parseInt(value.slice(1), 16);
-  const shift = Math.round(amount * 255);
-  const red = clampInteger((numeric >> 16) + shift, 0, 255);
-  const green = clampInteger(((numeric >> 8) & 0xff) + shift, 0, 255);
-  const blue = clampInteger((numeric & 0xff) + shift, 0, 255);
-  return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
-}
-
-function hashUnit(value: string): number {
-  let hash = 0x811c9dc5;
-  for (const character of value) hash = Math.imul(hash ^ character.charCodeAt(0), 0x01000193) >>> 0;
-  return hash / 0xffffffff;
+function rectanglesOverlap(left: DrawBounds, right: DrawBounds): boolean {
+  return left.left < right.right
+    && left.right > right.left
+    && left.top < right.bottom
+    && left.bottom > right.top;
 }
 
 function mod(value: number, divisor: number): number {
   return ((value % divisor) + divisor) % divisor;
-}
-
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.max(minimum, Math.min(maximum, value));
 }
 
 function clampInteger(value: number, minimum: number, maximum: number): number {

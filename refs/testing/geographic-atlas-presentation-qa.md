@@ -1,6 +1,6 @@
 # Geographic Atlas Presentation QA
 
-Updated: 2026-08-13
+Updated: 2026-08-15
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
@@ -10,66 +10,76 @@ Tracking: World Forge issue `#10`
 
 ## Scope
 
-This note covers the narrow presentation pass that intentionally overrides the prior atlas pause for two concrete goals:
+This note covers the bounded 2D atlas presentation pass:
 
-1. make land, coast, wetland, lake, and open water immediately distinguishable;
-2. provide a first useful 2D TTRPG/cartographic presentation over canonical geographic tile-window facts.
+1. keep land, coast, wetland, lake, and open water immediately distinguishable;
+2. provide a useful hand-drawn/TTRPG cartographic presentation over canonical geographic tile-window facts;
+3. enrich TTRPG presentation with restrained terrain symbols without creating a parallel geography model.
 
-It does not reopen the broad 2.5D spike, change geographic generation, change hierarchy partitioning, or alter saved-world, `.wforge`, or `.pworld` contracts.
+It does not reopen broad 2.5D work, change geographic generation, change hierarchy partitioning, or alter saved-world, `.wforge`, or `.pworld` contracts.
+
+## Accepted baseline
+
+User screenshot review on 2026-08-15 accepted the TTRPG mode's subtle parchment/terrain colors and strong coastline treatment. The same review found that Hexes on/off was visually too similar, numeric hierarchy labels looked diagnostic, and the map needed hand-drawn terrain marks.
+
+## Phase 1 symbol contract
+
+The stippled symbol pack supplied by the project owner is stored as one optimized transparent sprite behind semantic icon IDs. Placement must remain deterministic and presentation-only.
+
+Symbols may be shown only when supported by canonical tile facts:
+
+- mountainous -> mountain-family artwork;
+- rough -> hills;
+- explicit forest/taiga -> pine forest;
+- explicit rainforest -> rainforest;
+- explicit wetland facts -> swamp;
+- explicit volcano -> volcano.
+
+Reef artwork is reserved but not placed in Phase 1 because `GeographicTileWindow` currently exposes no reef fact. Generic aquatic/coastal water must not be promoted into a fictional reef. Settlement and compass artwork is reserved for later map-dressing work.
 
 ## Automated coverage
 
 Focused tests should cover:
 
-- Natural palette separation between ordinary lowland land, coastal water, and open water;
-- explicit wetland facts remaining land-colored when `tile.water` is false;
-- TTRPG palette selection without changing canonical tile classification;
-- TTRPG presentation resolution through the existing canonical tile renderer at every drilldown level;
-- existing geographic tile-window, interaction, river, hierarchy, and 3D scene tests remaining green.
+- semantic sprite entries are stable;
+- symbol selection is deterministic from canonical tile facts;
+- ordinary flat land and generic water do not acquire unsupported symbols;
+- generated numeric hierarchy labels are suppressed only in TTRPG mode;
+- Natural/Terrain behavior and existing tile-window interaction remain green;
+- existing palette, river, hierarchy, and selection tests remain green.
 
-Before accepting the checkpoint, run the repository validation contract in `refs/testing/validationCommands.yaml`. This is a build-facing functional milestone, so `npm run validate` and `npm run verify` are relevant. `npm run evaluate:regions` is not required unless the implementation changes geographic generation or partitioning behavior.
+This is a build-facing presentation milestone, so run the repository validation contract. `npm run evaluate:regions` is not required unless generation or partitioning behavior changes.
 
-## Natural presentation visual checks
+## TTRPG visual checks
 
-At one coastal macro area and at least one region/local drilldown, confirm:
+Use at least one coastal macro/region and one interior region/local view. Test Hexes both off and on.
 
-- open water reads unmistakably blue;
-- coastal water and lakes remain visibly water but are distinguishable from deep/open water;
-- grassland, plains, tundra, desert, tropical terrain, and fallback land tones read as land rather than muted water;
-- wet or marshy land remains visibly land when the canonical tile says `water: false`;
-- coastlines have an explicit readable edge rather than relying only on adjacent fill colors;
-- rivers still read as water features without causing ordinary wetland tiles to look submerged;
-- Natural 2D and Natural 3D use the same base land/water palette decision;
-- hierarchy boundaries, selection, labels, and hex toggling do not move when the presentation changes.
+Confirm:
 
-## TTRPG presentation visual checks
-
-Switch the 2D atlas to **TTRPG** and confirm:
-
-- the map has a deliberate parchment/cartographic surface rather than the dark simulation/debug surface;
-- land uses restrained warm fills;
-- water uses muted cool fills with clear inked coastlines;
-- a secondary water-side coast hachure is visible without becoming dense texture noise;
-- ridges and rivers remain legible but visually subordinate to the coastline and parent boundary;
-- child/internal boundaries are restrained and do not overwhelm terrain;
-- labels use a dark serif cartographic treatment with a light paper-colored halo;
-- selected children remain visible without neon/debug-like highlighting;
-- hexes can still be toggled on for tabletop use and off for a cleaner player-facing map;
-- switching among Natural, Terrain, and TTRPG does not change tile IDs, hierarchy membership, picking, or navigation.
+- parchment and terrain colors remain restrained;
+- open/coastal/lake water remains immediately distinguishable from land;
+- the inked coastline remains the strongest natural edge;
+- terrain symbols add a hand-drawn map language without becoming a dense sticker field;
+- mountain symbols follow mountain/ridge structure rather than appearing on ordinary plains;
+- forests, rainforest, wetlands, and volcanoes appear only where canonical facts support them;
+- rivers and ridge accents remain visible over terrain symbols;
+- parent and child boundaries remain legible above symbols;
+- generated numeric child labels are gone in TTRPG mode;
+- meaningful names, when available, retain the serif cartographic label treatment;
+- Hexes-on is clearly visible and useful for tabletop play;
+- Hexes-off reads as a cleaner player-facing map;
+- switching Natural/Terrain/TTRPG does not change IDs, hierarchy membership, picking, or navigation.
 
 ## Deliberately deferred
 
-This first TTRPG view does not attempt:
-
-- generated place names or label collision solving;
-- illustrated mountain, forest, settlement, road, or political symbol sets;
-- bespoke paper textures or external art assets;
-- print/export layout;
-- a TTRPG-specific 3D mode;
-- a new geography or terrain classifier.
-
-Those should be added only when they can consume the same canonical geographic facts and remain presentation-only.
+- reef symbols until a canonical reef fact exists;
+- castle, tower, village, and compass-rose placement;
+- generated place names and collision-aware label solving;
+- roads, politics, resources, and settlements as world facts;
+- TTRPG-specific 3D presentation;
+- broad 2.5D/PBR renderer iteration;
+- print/export layout.
 
 ## Acceptance evidence
 
-Record exact-head automated validation on issue `#10`. Manual visual QA should record the seed, hierarchy path, browser/window size, presentation, and any screenshot paths. Do not convert missing browser evidence into a visual pass.
+Record exact-head automated validation on issue `#10`. Manual visual QA should record the seed, hierarchy path, viewport, presentation, Hexes state, and screenshots. Do not convert missing browser evidence into a visual pass.

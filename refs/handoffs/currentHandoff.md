@@ -20,70 +20,69 @@ Accepted implementation checkpoint:
 - tests: 135 files / 488 tests green
 - type-check, production build, harness tests, and production smokes green
 
-Root defect: post-deep-time system/orbit reconciliation re-ran permanent-ice classification against `project.selectedValues.seaLevel`, an earlier sampled generation parameter, instead of authoritative present-day `primaryWorld.seaLevel`. Because alpine permanent ice depends on elevation above sea level, the stale datum could promote ordinary continental terrain into permanent ice and then stamp `ice_cap` back into topology and raster biomes.
-
-The accepted repair passes `world.seaLevel` to the final permanent-ice classification. The temporary production latitude-profile rollback from `d59d568b...` was reverted because exact visual QA disproved it as the root cause.
-
-A dedicated regression test covers the reported Sol-like / Earthlike `sol-reference-v1` path and proves the reconciled ice field matches a fresh classification using authoritative final sea level, with broad and low-latitude land-ice ceilings.
-
-Human visual acceptance was completed on 2026-08-15: the user regenerated the reported `sol-reference-v1` case and confirmed the result looks good.
-
-`npm run evaluate:regions` remains unclaimed for that checkpoint because the available GitHub connector does not expose the manual workflow dispatch path. Geographic region and harness tests passed in the standard exact-head suite.
+Root defect: post-deep-time system/orbit reconciliation re-ran permanent-ice classification against an earlier sampled sea-level parameter instead of authoritative present-day `primaryWorld.seaLevel`. The accepted repair uses `world.seaLevel`. Human visual acceptance was completed on 2026-08-15 with the reported Sol-like / Earthlike `sol-reference-v1` case.
 
 ## Current active item: TTRPG/cartographic atlas presentation
 
-With the generated-surface regression closed, work returns to the bounded atlas presentation pass introduced at `7bc6b0b8775bbb023e365cfd127439aeffbe3d2e`.
+The first 2D `TTRPG` presentation remains a presentation-only view over canonical `GeographicTileWindow` facts. User screenshot review accepted the subdued parchment/terrain palette and inked coastline, but identified three refinement needs:
 
-The first 2D `TTRPG` presentation is already implemented over canonical `GeographicTileWindow` facts. It currently provides:
+- Hexes on/off was too subtle;
+- generated numeric child labels made the map read like a diagnostic surface;
+- the map needed restrained hand-drawn terrain symbols.
 
-- parchment-colored map surface;
-- restrained warm land palette;
-- muted cool open/coastal/lake water;
-- explicit inked coastlines;
-- secondary water-side coast hachures;
-- canonical rivers and ridge accents;
-- restrained child boundaries and heavier parent boundary;
-- cartographic serif labels with a paper-colored halo;
-- selected-child treatment without debug/neon styling;
-- optional world-anchored hex lines;
-- unchanged tile IDs, hierarchy membership, picking, and navigation.
+The project owner supplied a normalized stippled map token set on 2026-08-15. The Phase 1 implementation uses an optimized sprite and semantic asset manifest rather than scattering filenames through renderer code.
 
-The next work is visual acceptance and bounded refinement of that presentation, not a new renderer or geography model.
+### Phase 1 symbol behavior
 
-Read:
+Eligible symbols are derived only from facts already present on canonical tiles:
 
-- `refs/testing/geographic-atlas-presentation-qa.md`
-- `refs/handoffs/archive/geographic-atlas-v0.3.71-paused.md`
-- `refs/handoffs/geographic-drilldown-rendering-roadmap.md`
+- mountainous terrain -> mountain-chain family;
+- mountainous + forest/taiga -> mountain-with-trees family;
+- rough terrain -> hills;
+- explicit forest/taiga detail -> pine forest;
+- explicit rainforest detail -> rainforest;
+- explicit wetland facts -> swamp;
+- explicit volcano detail -> volcano.
 
-Primary code seams:
+Placement is deterministic from stable tile IDs, sparse, collision-limited, and bounded per visible window. Icons are drawn only inside the selected parent map and never mutate source facts. Large illustration tokens are skipped on canonical river tiles so river paths remain readable.
 
-- `apps/desktop/src/regions/geographicAtlasPalette.ts`
-- `apps/desktop/src/regions/geographicTileWindowMap.ts`
-- `apps/desktop/src/regions/useGeographicAtlasController.ts`
-- `apps/desktop/src/regions/GeographicAtlasWorkspace.tsx`
+The asset manifest also reserves reef, settlement, and compass artwork. Reef placement is deliberately deferred because the current canonical tile contract has no reef fact; generic aquatic/coastal water is not sufficient evidence to assert a reef. Castle, tower, village, and compass rose remain a later map-dressing increment.
 
-## TTRPG acceptance path
+### TTRPG cleanup
 
-Use a bounded geographic drilldown, remain in `2D map`, and select `TTRPG`. Check at least one coastal region and one region/local interior with Hexes both on and off.
+- existing subtle palette and coastline treatment remain unchanged;
+- Hexes-on receives a stronger ink grid while Hexes-off remains clean;
+- generated labels such as `Region 138`, `Subregion 4`, `Local 22`, and `Detail 3` are suppressed in TTRPG mode;
+- meaningful future names continue to use the existing cartographic serif treatment;
+- Natural and Terrain presentations remain unchanged.
 
-Acceptance should focus on whether the presentation reads as a clean hand-drawn/tabletop cartographic map rather than merely a recolored debug hex map:
+## Validation
 
-- land and water separation is immediate;
-- coastline is the strongest natural feature edge;
-- coast hachures add cartographic character without noise;
-- rivers and ridges remain legible but subordinate;
-- hierarchy boundaries remain clear but restrained;
-- labels fit the parchment/ink language;
-- optional hexes are useful for tabletop play without dominating the clean map when disabled.
+Focused coverage should include:
 
-If refinement is needed, keep it presentation-only and derive any additional marks from existing canonical tile facts. Do not create a second terrain or geography classifier.
+```bash
+npx vitest run \
+  apps/desktop/src/regions/ttrpgMapSymbols.test.ts \
+  apps/desktop/src/regions/geographicTileWindowMap.test.ts \
+  apps/desktop/src/regions/geographicAtlasPresentation.test.ts
+```
+
+Then run the standard exact-head build-facing validation gate. `npm run evaluate:regions` is not required for this Phase 1 symbol pass because it does not change generation, geographic classification, or partition behavior.
+
+Manual visual acceptance is still required. Re-open the same coastal TTRPG sample with Hexes off and on and verify:
+
+- hand-drawn symbols are present but sparse;
+- major terrain patterns remain readable beneath the symbols;
+- icons do not overwhelm coasts, rivers, or hierarchy boundaries;
+- Hexes-on is visibly different from Hexes-off;
+- generated numeric labels no longer clutter the map;
+- the existing subtle palette and coastline remain intact.
 
 ## Guardrails
 
-- Do not reopen broad 2.5D or PBR experimentation as part of this pass.
-- Do not change geographic hierarchy, tile IDs, membership, generation, or saved-world contracts for visual styling.
-- Do not add politics, settlements, roads, resources, or generated names to solve a cartographic-style problem.
-- Do not imitate a copyrighted game's map assets or exact visual style.
+- Do not reopen broad 2.5D or PBR work as part of this pass.
+- Do not add a second geography or terrain classifier.
+- Do not infer specific terrain features that are absent from canonical facts merely because an icon exists.
+- Do not change hierarchy, tile IDs, membership, generation, `.wforge`, `.pworld`, or saved-world contracts for styling.
 - Preserve Natural/Terrain behavior while refining TTRPG.
-- Follow the repair-loop breaker: after repeated non-improving visual changes, stop tweaking and reassess from screenshot evidence.
+- Settlement symbols and decorative map furniture remain later work unless explicitly reopened.
