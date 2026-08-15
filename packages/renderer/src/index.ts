@@ -43,11 +43,16 @@ export function renderWorldToCanvas(
     return;
   }
 
-  renderBaseWorldToCanvas(canvas, project, ttrpgWorldMapTheme, {
-    ...visible,
-    renderMode: 'data',
+  const ttrpgOptions: RenderOptions = {
+    rivers: visible?.rivers ?? true,
+    plates: visible?.plates ?? false,
+    heightmap: visible?.heightmap ?? false,
     coastlineTreatment: 'outlined',
-  });
+    renderMode: 'data',
+    mode: visible?.mode,
+    targetResolution: visible?.targetResolution,
+  };
+  renderBaseWorldToCanvas(canvas, project, ttrpgWorldMapTheme, ttrpgOptions);
 }
 
 export function inspectWorldPoint(
