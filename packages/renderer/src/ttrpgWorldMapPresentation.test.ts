@@ -10,11 +10,14 @@ import {
 } from './index';
 
 describe('top-level TTRPG world map presentation', () => {
-  it('keeps warm parchment land materially distinct from the cool water wash', () => {
+  it('keeps warm parchment land materially distinct from the lighter cool-water wash', () => {
     const theme = surfacePresentationTheme(ttrpgWorldMapTheme);
     const water = [theme.colors.oceanDeep, theme.colors.ocean, theme.colors.shelf];
     const land = [theme.colors.tundra, theme.colors.desert, theme.colors.grassland, theme.colors.forest, theme.colors.rainforest, theme.colors.mountain, theme.colors.wetland];
 
+    expect(theme.colors.oceanDeep).toBe('#4a6b79');
+    expect(theme.colors.ocean).toBe('#527685');
+    expect(theme.colors.shelf).toBe('#567e91');
     expect(new Set(water).size).toBe(3);
     for (const landColor of land) {
       for (const waterColor of water) {

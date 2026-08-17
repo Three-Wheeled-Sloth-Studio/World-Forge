@@ -16,9 +16,9 @@ export * from './ttrpgWorldMapSymbols';
 export const ttrpgWorldMapTheme: MapTheme = {
   name: 'TTRPG Parchment Map',
   colors: {
-    oceanDeep: '#3f5963',
-    ocean: '#496971',
-    shelf: '#4f7078',
+    oceanDeep: '#4a6b79',
+    ocean: '#527685',
+    shelf: '#567e91',
     ice: '#eee7d4',
     tundra: '#d4c9aa',
     desert: '#d8bd86',
