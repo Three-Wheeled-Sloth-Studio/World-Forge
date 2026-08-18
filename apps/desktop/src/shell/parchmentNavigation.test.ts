@@ -12,6 +12,22 @@ describe('resolveParchmentNavigation', () => {
     expect(navigation.accountUrl).toBe('http://localhost:5273/login');
   });
 
+  it('keeps a standalone local World Forge session on local Parchment Worlds', () => {
+    const navigation = resolveParchmentNavigation('http://localhost:5173/');
+
+    expect(navigation.landingUrl).toBe('http://localhost:5273/');
+    expect(navigation.projectsUrl).toBe('http://localhost:5273/projects');
+  });
+
+  it('keeps a directly opened hosted World Forge tool on the same environment', () => {
+    const navigation = resolveParchmentNavigation(
+      'https://dev-parchmentworlds.theanaloggamingsociety.org/apps/world-forge/',
+    );
+
+    expect(navigation.landingUrl).toBe('https://dev-parchmentworlds.theanaloggamingsociety.org/');
+    expect(navigation.projectsUrl).toBe('https://dev-parchmentworlds.theanaloggamingsociety.org/projects');
+  });
+
   it('uses the configured fallback when no handoff is present', () => {
     const navigation = resolveParchmentNavigation('http://localhost:5173/', 'https://example.test');
 
