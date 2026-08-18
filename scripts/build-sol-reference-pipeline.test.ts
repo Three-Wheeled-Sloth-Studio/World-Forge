@@ -1,17 +1,27 @@
 import path from 'node:path';
+import { topologyResolutionForOutput } from '@world-forge/shared';
 import { describe, expect, it } from 'vitest';
 import {
   buildSolReferencePipelineCommands,
   parseSolReferencePipelineOptions,
 } from './build-sol-reference-pipeline';
+import {
+  MAINTAINED_EARTH_REFERENCE_RESOLUTION,
+  MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION,
+} from './reference-resolution';
 
 describe('Sol reference pipeline', () => {
-  it('uses the accepted Earth and Jupiter integration baseline by default', () => {
+  it('uses the maintained Ultra Earth reference baseline by default', () => {
     const repositoryRoot = path.resolve('/workspace/world-forge');
     const options = parseSolReferencePipelineOptions([], repositoryRoot, repositoryRoot);
-    expect(options.earthWidth).toBe(512);
-    expect(options.earthHeight).toBe(256);
-    expect(options.topologyResolution).toBe(64);
+    expect(MAINTAINED_EARTH_REFERENCE_RESOLUTION).toEqual({ width: 4096, height: 2048 });
+    expect(MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION).toBe(
+      topologyResolutionForOutput(MAINTAINED_EARTH_REFERENCE_RESOLUTION),
+    );
+    expect(MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION).toBe(1024);
+    expect(options.earthWidth).toBe(4096);
+    expect(options.earthHeight).toBe(2048);
+    expect(options.topologyResolution).toBe(1024);
     expect(options.bodyBundleDirectories).toEqual([]);
     expect(options.outputFile).toBe(path.join(repositoryRoot, '.local', 'reference-data', 'sol-earth-reference.wforge'));
 
@@ -21,9 +31,9 @@ describe('Sol reference pipeline', () => {
       'prepare-jupiter',
       'build-sol-package',
     ]);
-    expect(commands[0].args).toContain('512');
-    expect(commands[0].args).toContain('256');
-    expect(commands[0].args).toContain('64');
+    expect(commands[0].args).toContain('4096');
+    expect(commands[0].args).toContain('2048');
+    expect(commands[0].args).toContain('1024');
     expect(commands[2]).toMatchObject({ command: 'node-test' });
     expect(commands[2].args).toEqual([
       path.join(repositoryRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),

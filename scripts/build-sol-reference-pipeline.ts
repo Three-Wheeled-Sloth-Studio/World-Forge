@@ -3,6 +3,10 @@ import { spawn } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  MAINTAINED_EARTH_REFERENCE_RESOLUTION,
+  MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION,
+} from './reference-resolution';
 
 export const SOL_REFERENCE_PIPELINE_REPORT_SCHEMA = 'world-forge-sol-reference-pipeline-report-v1' as const;
 
@@ -36,9 +40,9 @@ export function parseSolReferencePipelineOptions(
   cwd = process.cwd(),
   repositoryRoot = defaultRepositoryRoot,
 ): SolReferencePipelineOptions {
-  let earthWidth = 512;
-  let earthHeight = 256;
-  let topologyResolution = 64;
+  let earthWidth = MAINTAINED_EARTH_REFERENCE_RESOLUTION.width;
+  let earthHeight = MAINTAINED_EARTH_REFERENCE_RESOLUTION.height;
+  let topologyResolution = MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION;
   let earthBundleDirectory = path.join(repositoryRoot, '.local', 'reference-data', 'earth-etopo');
   let jupiterBundleDirectory = path.join(repositoryRoot, '.local', 'reference-data', 'jupiter-cassini');
   const bodyBundleDirectories: string[] = [];
