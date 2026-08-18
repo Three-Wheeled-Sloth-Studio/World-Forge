@@ -1,4 +1,4 @@
-# Next Dev Prompt: Ultra Earth Acceptance and Payload Follow-up
+# Next Dev Prompt: Ultra Earth Visual Acceptance and Payload Follow-up
 
 Continue implementation in:
 
@@ -8,13 +8,14 @@ Work directly on `dev`.
 
 ## Starting point
 
-The Ultra Earth reference is no longer a planning target. The source-backed fixture and complete Sol package have been built successfully at the maintained target.
+The Ultra Earth source/package path is proven, and the first owner-QA presentation defects have been repaired.
 
-Implementation checkpoint before the current documentation update:
+Validated code checkpoint before the current documentation update:
 
-- commit: `72bb0366e13fb01c0ddd26b881079c398e58eb1f`
-- Ultra Earth acceptance run: `32138808622`
-- focused reference regressions passed
+- commit: `400223bd70227459bff8fbf30c4a4202e0a38789`
+- visible runtime: `0.3.81`
+- Ultra Earth acceptance run: `32155132659`
+- focused Globe-resolution, Parchment-navigation, and reference-pipeline regressions passed
 - full `npm run verify` passed
 
 Read first:
@@ -71,7 +72,7 @@ Parchment run `32137360931` successfully generated and inspected the enriched st
 - generation: `1:03.30` and about `6.9 GiB` peak RSS;
 - normal package-reader inspection: `14.66 s` and about `2.0 GiB` peak RSS.
 
-### Browser path
+### Browser package path
 
 Parchment browser run `32139014646` proved:
 
@@ -84,45 +85,71 @@ Parchment browser run `32139014646` proved:
 
 The run's final red status was a diagnostic assertion bug: it looked for a standalone `Earth` label even though the Ultra surface was already loaded. Use the loaded-surface contract, not that obsolete assertion.
 
+### Owner-QA presentation repair
+
+The first local QA pass on v0.3.80 found two real presentation/navigation issues and one expected control behavior:
+
+- Globe hard-coded the primary surface texture to `2048 x 1024`, hiding half the Ultra linear detail.
+- standalone local World Forge navigation fell back to production Parchment Worlds when no handoff query parameter existed.
+- Map preview still defaults to `1024 x 512`; that is an intentional preview setting, not the loaded Earth resolution.
+
+v0.3.81 fixes the first two:
+
+- primary Globe textures now derive from the source surface, capped at the maintained 4096-pixel product edge and the browser/GPU texture limit;
+- ordinary lower-resolution worlds are not upscaled;
+- local `localhost:5173` World Forge navigation resolves local Parchment Worlds on port `5273`;
+- directly opened hosted World Forge stays on its current dev, QA, or production origin.
+
+Run `32155132659` passed focused coverage and full repository verification on exact code head `400223bd70227459bff8fbf30c4a4202e0a38789`.
+
 ## Immediate priority
 
-Finish presentation acceptance on the already-working Ultra package.
+Finish owner visual acceptance on v0.3.81. Do not start payload optimization until the visual baseline is accepted or the owner explicitly redirects scope.
 
-### A. Complete browser presentation evidence
+### A. Repull and verify the right build
 
-Use the corrected Parchment browser diagnostic or an equivalent focused path to verify, on the same loaded Ultra Earth package:
+- repull `World-Forge/dev` and `Parchment-Worlds/dev`;
+- launch the full local Parchment Worlds stack for the integrated path;
+- confirm World Forge reports `0.3.81`;
+- import/use the maintained Sol starter;
+- do not Regenerate Earth from the Quick Build panel during this acceptance pass.
 
-- Natural Map activates and renders;
-- Globe activates and renders the same Earth surface;
-- geographic drill-down enables against the active Earth project rather than falling back to stale or another-body data;
-- capture screenshots for Natural Map, Globe, and geographic drill-down;
-- record package-handoff and presentation-switch timing.
+The Quick Build `Standard 512 x 256` selector describes the next ordinary generation request. It does not describe the imported Ultra Earth.
 
-Do not rebuild the scientific source bundle merely to rerun presentation QA unless the source package itself changes.
+### B. Natural Map at source resolution
 
-### B. Owner visual acceptance
+In Explore:
 
-Review the screenshots/browser output for the intended recognizable-Earth checks:
+- switch to Map view;
+- select `Natural` presentation;
+- set preview detail to `Source resolution` rather than the default 1024 x 512 preview;
+- inspect recognizable continents, coastlines, major islands, deserts, humid tropical regions, ice, and mountain regions.
 
-- Africa, Eurasia, the Americas, Australia, Antarctica, and major islands;
-- Sahara and Arabian arid regions;
-- Amazon, Congo, and Southeast Asian humid tropical regions;
-- appropriate Antarctica/Greenland permanent ice;
-- major mountain regions driven by imported elevation;
-- visibly improved coastline detail over the old 512 x 256 integration baseline;
-- agreement between Map and Globe on land/water and broad biome identity.
+This is the correct flat-map comparison against the old 512 x 256 reference integration.
 
-Do not overclaim real hydrography, measured precipitation, real ecological land cover, complete temperature climatology, tectonics, winds, or currents.
+### C. Globe
 
-### C. Body continuity
+Switch to Globe without changing the loaded project or active Earth body.
 
-If not already evident in the final browser pass, verify at least one non-Earth accepted body, preferably Jupiter or Mars, in the same Sol project after Earth has loaded.
+The source-aware path should use `4096 x 2048` for Ultra Earth on normal hardware. The helper intentionally falls back proportionally if the browser reports a lower maximum texture size.
+
+Confirm:
+
+- Map and Globe agree on land/water and broad biome identity;
+- coastline and island detail is materially improved over the old integration;
+- no new seam, texture, lighting, or interaction regression was introduced.
+
+### D. Geographic drill-down and body continuity
+
+- enable geographic drill-down against Earth and inspect representative regions;
+- confirm at least one non-Earth accepted body, preferably Jupiter or Mars, remains available in the same Sol project;
+- distinguish body-capability limitations from Earth-resolution defects.
 
 ## Measured payload architecture problem
 
 Do not treat this as a reason to reduce Earth resolution.
 
-The current package works, but the costs are now concrete:
+The current package works, but the costs are concrete:
 
 - `.wforge` is about 193.5 MB compressed;
 - inspected ZIP content is about 1.325 GB because high-volume typed layers are serialized as JSON number arrays;
@@ -154,7 +181,7 @@ For World Forge product changes:
 npm run verify
 ```
 
-Run focused tests first when changing reference-pipeline, package, body-awareness, or serialization code.
+Run focused tests first when changing reference-pipeline, presentation-resolution, package, body-awareness, or serialization code.
 
 `npm run evaluate:regions` is required only if geographic partitioning or tile-window generation behavior changes.
 
@@ -179,6 +206,6 @@ The Ultra baseline can be closed when:
 - the complete 23-body Sol package remains intact;
 - exact-head automated validation is green;
 - browser QA proves Parchment import/reload and World Forge package handoff;
-- Natural Map, Globe, and geographic drill-down are accepted against the Ultra Earth surface;
+- owner QA accepts Natural Map at Source resolution, source-aware Globe, and geographic drill-down against the Ultra Earth surface;
 - another accepted Sol body remains available;
 - measured payload costs and the follow-on architecture decision are recorded without lowering the baseline to hide the cost.
