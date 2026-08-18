@@ -6,6 +6,7 @@ import type { SystemSimulationClock } from '../simulation/systemSimulationClock'
 import { bodyArtifactForBody } from '@world-forge/generation-runtime/enrichment/bodyGenerationLifecycle';
 import { createGeneratedBodyObject, generatedBodyMaterialMode } from '../system/generatedBodyPresentation';
 import { resolveGlobeBodyTarget } from './globeBodyTarget';
+import { globeTextureResolutionForSource } from './globeTextureResolution';
 import { SystemSimulationControls } from './SystemSimulationControls';
 import {
   deterministicStarDirections,
@@ -170,6 +171,10 @@ export function GlobeViewer({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(orbitalContext ? 0x02050a : 0x000000, orbitalContext ? 1 : 0);
     host.replaceChildren(renderer.domElement);
+    const globeTextureResolution = globeTextureResolutionForSource(
+      project.primaryWorld.mapModel.resolution,
+      renderer.capabilities.maxTextureSize,
+    );
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
@@ -196,7 +201,7 @@ export function GlobeViewer({
     if (target?.mode === 'generated-system-body' && target.artifact) {
       globe = createGeneratedBodyObject(target.artifact, 1, { detail: 'inspection' });
     } else {
-      baseGlobeCanvas = createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode);
+      baseGlobeCanvas = createGlobeTexture(project, mapMode, renderMode, mapTheme, showRivers, showPlates, globeDebugMode, globeTextureResolution);
       seasonalGlobeCanvas = copyCanvas(baseGlobeCanvas);
       if (seasonalPresentationEnabled && seasonalSurface) {
         applySeasonalSurfaceToCanvas(seasonalGlobeCanvas, project, seasonalSurface, simulationClock.getSnapshot().dayOfYear);
@@ -221,8 +226,11 @@ export function GlobeViewer({
     globe.receiveShadow = true;
     planetSpinGroup.add(globe);
     globeMeshRef.current = globe;
+    const primaryTextureDetail = baseGlobeCanvas
+      ? `primary-${baseGlobeCanvas.width}x${baseGlobeCanvas.height}`
+      : 'none';
     host.dataset.globeSurfaceTextureDetail = String(
-      globe.userData.generatedBodyTextureDetail ?? (isPrimarySurface ? 'primary-2048x1024' : 'none')
+      globe.userData.generatedBodyTextureDetail ?? (isPrimarySurface ? primaryTextureDetail : 'none')
     );
 
     if (isPrimarySurface && diagnosticModeRef.current && inspectionRecord) {
@@ -874,7 +882,16 @@ function copyCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   return canvas;
 }
 
-function createGlobeTexture(project: WorldProject, mapMode: MapMode, renderMode: RenderMode, mapTheme: MapTheme, showRivers: boolean, showPlates: boolean, globeDebugMode: GlobeDebugMode): HTMLCanvasElement {
+function createGlobeTexture(
+  project: WorldProject,
+  mapMode: MapMode,
+  renderMode: RenderMode,
+  mapTheme: MapTheme,
+  showRivers: boolean,
+  showPlates: boolean,
+  globeDebugMode: GlobeDebugMode,
+  targetResolution: { width: number; height: number },
+): HTMLCanvasElement {
   if (globeDebugMode === 'gyres') {
     return createGyreDebugTexture(project);
   }
@@ -903,7 +920,7 @@ function createGlobeTexture(project: WorldProject, mapMode: MapMode, renderMode:
     coastlineTreatment: 'toned',
     renderMode,
     mode,
-    targetResolution: { width: 2048, height: 1024 }
+    targetResolution
   });
   normalizeHorizontalTextureSeam(canvas, 1);
   return canvas;
