@@ -222,9 +222,20 @@ export async function runSolReferencePipeline(
   const startedAt = Date.now();
   const commands = buildSolReferencePipelineCommands(options, env);
   const stageTimings: Array<{ stage: SolReferencePipelineCommand['stage']; elapsedMs: number }> = [];
+  let earthBundleEvidence: Awaited<ReturnType<typeof referenceBundleEvidence>> | null = null;
 
   for (const command of commands) {
-    if (command.stage === 'build-sol-package') await validatePreparedEarthBundle(options);
+    if (command.stage === 'build-sol-package') {
+      await validatePreparedEarthBundle(options);
+      earthBundleEvidence = await referenceBundleEvidence(
+        options.earthBundleDirectory,
+        options.repositoryRoot,
+      );
+      console.log(`\nPrepared Earth bundle bytes: ${earthBundleEvidence.byteLength}`);
+      for (const file of earthBundleEvidence.files) {
+        console.log(`  ${file.path}: ${file.byteLength} bytes`);
+      }
+    }
     console.log(`\n[${command.stage}] ${command.command} ${command.args.map(quoteForLog).join(' ')}`);
     const stageStartedAt = Date.now();
     await runCommand(command, options.repositoryRoot, env);
@@ -262,6 +273,7 @@ export async function runSolReferencePipeline(
     },
     inputs: {
       earthManifest: fileEvidence(earthManifestPath, earthManifest, options.repositoryRoot),
+      earthBundle: earthBundleEvidence,
       jupiterManifest: fileEvidence(jupiterManifestPath, jupiterManifest, options.repositoryRoot),
       bodyManifests: bodyManifestPaths.map((manifestPath, index) => (
         fileEvidence(manifestPath, bodyManifests[index], options.repositoryRoot)
@@ -293,6 +305,44 @@ async function validatePreparedEarthBundle(options: SolReferencePipelineOptions)
     throw new Error(`Prepared Earth manifest is not valid JSON: ${detail}`);
   }
   validatePreparedEarthManifest(manifest, options);
+}
+
+async function referenceBundleEvidence(directory: string, repositoryRoot: string) {
+  const manifestPath = path.join(directory, 'manifest.json');
+  const manifestBytes = await readFile(manifestPath);
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(manifestBytes.toString('utf8'));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Reference bundle manifest is not valid JSON: ${detail}`);
+  }
+  if (!isRecord(manifest) || !isRecord(manifest.layers)) {
+    throw new Error('Reference bundle manifest is missing its layer map.');
+  }
+
+  const layerFiles = [...new Set(Object.values(manifest.layers).flatMap((layer) => {
+    if (!isRecord(layer) || typeof layer.file !== 'string' || !layer.file.trim()) return [];
+    return [safeBundleRelativePath(layer.file)];
+  }))].sort();
+  const layerEvidence = await Promise.all(layerFiles.map(async (relativePath) => {
+    const filePath = path.join(directory, relativePath);
+    return fileEvidence(filePath, await readFile(filePath), repositoryRoot);
+  }));
+  const manifestEvidence = fileEvidence(manifestPath, manifestBytes, repositoryRoot);
+  return {
+    path: portablePath(path.relative(repositoryRoot, directory) || '.'),
+    byteLength: manifestEvidence.byteLength + layerEvidence.reduce((total, file) => total + file.byteLength, 0),
+    files: [manifestEvidence, ...layerEvidence],
+  };
+}
+
+function safeBundleRelativePath(value: string): string {
+  const normalized = path.normalize(value);
+  if (path.isAbsolute(normalized) || normalized === '..' || normalized.startsWith(`..${path.sep}`)) {
+    throw new Error(`Reference bundle layer path must remain inside the bundle: ${value}`);
+  }
+  return normalized;
 }
 
 function fileEvidence(filePath: string, bytes: Uint8Array, repositoryRoot: string) {
