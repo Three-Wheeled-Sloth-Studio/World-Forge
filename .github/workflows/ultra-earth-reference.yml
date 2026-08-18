@@ -10,10 +10,11 @@ on:
 
 concurrency:
   group: ultra-earth-reference-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   rebuild-reference:
@@ -205,15 +206,84 @@ jobs:
             .local/reference-data/sol-earth-reference.wforge.pipeline.json
             Parchment-Worlds/apps/web/public/starter-projects/sol-system.pworld
 
+      - name: Post diagnostic summary to issue 124
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          summary='.local/reference-data/diagnostics/issue-summary.md'
+          mkdir -p "$(dirname "$summary")"
+          {
+            echo '## Ultra Earth reference diagnostic'
+            echo
+            echo "Run: [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+            echo "Commit: \`${GITHUB_SHA}\`"
+            echo "Sol pipeline status: \`${{ steps.sol.outputs.status || 'not-run' }}\`"
+            echo "Parchment publish status: \`${{ steps.parchment.outputs.status || 'not-run' }}\`"
+            echo
+            if [[ -f .local/reference-data/earth-etopo/manifest.json ]]; then
+              echo '### Earth bundle'
+              echo '```json'
+              jq '{resolution, topologyResolution, summary}' .local/reference-data/earth-etopo/manifest.json
+              echo '```'
+              echo
+            fi
+            if [[ -f .local/reference-data/diagnostics/sol-pipeline.time.txt ]]; then
+              echo '### Sol pipeline resource evidence'
+              echo '```text'
+              grep -E 'Elapsed|Maximum resident set size|File system inputs|File system outputs|Exit status' \
+                .local/reference-data/diagnostics/sol-pipeline.time.txt || true
+              echo '```'
+              echo
+            fi
+            if [[ -f .local/reference-data/sol-earth-reference.wforge ]]; then
+              echo '### Sol package'
+              echo '```text'
+              stat --printf='bytes=%s\n' .local/reference-data/sol-earth-reference.wforge
+              sha256sum .local/reference-data/sol-earth-reference.wforge
+              echo '```'
+              echo
+            fi
+            starter='Parchment-Worlds/apps/web/public/starter-projects/sol-system.pworld'
+            if [[ -f "$starter" ]]; then
+              echo '### Parchment starter'
+              echo '```text'
+              stat --printf='bytes=%s\n' "$starter"
+              sha256sum "$starter"
+              echo '```'
+              echo
+            fi
+            if [[ "${{ steps.sol.outputs.status || '1' }}" != '0' ]]; then
+              echo '### Failure tail'
+              echo '```text'
+              tail -n 80 .local/reference-data/diagnostics/sol-pipeline.stderr.log 2>/dev/null \
+                || tail -n 80 .local/reference-data/diagnostics/sol-pipeline.log 2>/dev/null \
+                || true
+              echo '```'
+              echo
+            elif [[ "${{ steps.parchment.outputs.status || '1' }}" != '0' ]]; then
+              echo '### Parchment failure tail'
+              echo '```text'
+              tail -n 80 .local/reference-data/diagnostics/publish-parchment.stderr.log 2>/dev/null \
+                || tail -n 80 .local/reference-data/diagnostics/publish-parchment.log 2>/dev/null \
+                || true
+              echo '```'
+              echo
+            fi
+            echo "Evidence artifact: \`ultra-earth-reference-evidence-${GITHUB_RUN_ID}\` (7-day retention)."
+          } > "$summary"
+          gh issue comment 124 --repo "$GITHUB_REPOSITORY" --body-file "$summary"
+
       - name: Enforce diagnostic result
         if: always()
         shell: bash
         run: |
           if [[ "${{ steps.sol.outputs.status || '1' }}" != '0' ]]; then
-            echo 'Ultra Earth Sol package build failed; inspect uploaded evidence.' >&2
+            echo 'Ultra Earth Sol package build failed; inspect issue #124 and uploaded evidence.' >&2
             exit 1
           fi
           if [[ "${{ steps.parchment.outputs.status || '1' }}" != '0' ]]; then
-            echo 'Parchment Sol starter publication failed; inspect uploaded evidence.' >&2
+            echo 'Parchment Sol starter publication failed; inspect issue #124 and uploaded evidence.' >&2
             exit 1
           fi
