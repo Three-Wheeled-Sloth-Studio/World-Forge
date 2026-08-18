@@ -2,11 +2,6 @@ name: Ultra Earth Reference Diagnostic
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - dev
-    paths:
-      - '.github/workflows/ultra-earth-reference.yml'
 
 concurrency:
   group: ultra-earth-reference-${{ github.ref }}
@@ -24,7 +19,6 @@ jobs:
     env:
       WORLD_FORGE_SOURCE_COMMIT: ${{ github.sha }}
       NODE_OPTIONS: --max-old-space-size=12288
-      PARCHMENT_WORLDS_LOCAL_PATH: Parchment-Worlds
 
     steps:
       - name: Announce diagnostic run
@@ -54,40 +48,11 @@ jobs:
       - name: Install reference ETL dependencies
         run: python -m pip install -r tools/reference-etl/requirements.txt
 
-      - name: Record runner baseline
-        shell: bash
-        run: |
-          mkdir -p .local/reference-data/diagnostics
-          {
-            echo "commit=${GITHUB_SHA}"
-            echo "runner_os=${RUNNER_OS}"
-            echo "node=$(node --version)"
-            echo "npm=$(npm --version)"
-            echo "python=$(python --version 2>&1)"
-            echo
-            echo "== memory =="
-            free -h
-            echo
-            echo "== storage =="
-            df -h .
-          } | tee .local/reference-data/diagnostics/runner-baseline.txt
-
       - name: Run focused reference-pipeline tests
         run: npx vitest run scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
 
       - name: Prepare Mars reference bundle
-        id: mars
-        shell: bash
-        run: |
-          mkdir -p .local/reference-data/diagnostics
-          set +e
-          /usr/bin/time -v -o .local/reference-data/diagnostics/prepare-mars.time.txt \
-            npm run reference:prepare-mars \
-            > >(tee .local/reference-data/diagnostics/prepare-mars.log) \
-            2> >(tee .local/reference-data/diagnostics/prepare-mars.stderr.log >&2)
-          status=$?
-          echo "status=${status}" >> "$GITHUB_OUTPUT"
-          exit "$status"
+        run: npm run reference:prepare-mars
 
       - name: Rebuild Ultra Earth and complete Sol package
         id: sol
@@ -103,7 +68,6 @@ jobs:
             2> >(tee .local/reference-data/diagnostics/sol-pipeline.stderr.log >&2)
           status=$?
           echo "status=${status}" >> "$GITHUB_OUTPUT"
-          echo "Sol pipeline exit status: ${status}"
           exit "$status"
 
       - name: Record World Forge build evidence
@@ -113,82 +77,24 @@ jobs:
           mkdir -p .local/reference-data/diagnostics
           {
             echo "# Ultra Earth reference diagnostic"
+            echo "commit=${GITHUB_SHA}"
+            echo "sol_pipeline_status=${{ steps.sol.outputs.status || 'not-run' }}"
             echo
-            echo "commit: ${GITHUB_SHA}"
-            echo "sol_pipeline_status: ${{ steps.sol.outputs.status || 'not-run' }}"
-            echo
-            echo "## Memory after pipeline"
+            echo "## memory"
             free -h
             echo
-            echo "## Storage after pipeline"
+            echo "## storage"
             df -h .
             echo
-            echo "## Prepared/reference files"
+            echo "## prepared/reference files"
             find .local/reference-data -maxdepth 3 -type f -printf '%s\t%p\n' 2>/dev/null | sort -nr || true
             echo
-            echo "## Directory totals"
-            du -sh .local/reference-data/* 2>/dev/null | sort -h || true
-            echo
-            echo "## Earth manifest"
-            if [[ -f .local/reference-data/earth-etopo/manifest.json ]]; then
-              cat .local/reference-data/earth-etopo/manifest.json
-            else
-              echo "missing"
-            fi
-            echo
-            echo "## Sol package"
             if [[ -f .local/reference-data/sol-earth-reference.wforge ]]; then
+              echo "## Sol package"
               stat --printf='bytes=%s\n' .local/reference-data/sol-earth-reference.wforge
               sha256sum .local/reference-data/sol-earth-reference.wforge
-            else
-              echo "missing"
             fi
           } | tee .local/reference-data/diagnostics/world-forge-evidence.txt
-
-      - name: Checkout Parchment Worlds
-        if: steps.sol.outputs.status == '0'
-        uses: actions/checkout@v6
-        with:
-          repository: Three-Wheeled-Sloth-Studio/Parchment-Worlds
-          ref: dev
-          path: Parchment-Worlds
-
-      - name: Install Parchment Worlds dependencies
-        if: steps.sol.outputs.status == '0'
-        working-directory: Parchment-Worlds
-        run: npm ci
-
-      - name: Publish Sol starter through canonical publisher
-        id: parchment
-        if: steps.sol.outputs.status == '0'
-        continue-on-error: true
-        shell: bash
-        run: |
-          mkdir -p .local/reference-data/diagnostics
-          set +e
-          /usr/bin/time -v -o .local/reference-data/diagnostics/publish-parchment.time.txt \
-            npm run reference:publish-sol-starter \
-            > >(tee .local/reference-data/diagnostics/publish-parchment.log) \
-            2> >(tee .local/reference-data/diagnostics/publish-parchment.stderr.log >&2)
-          status=$?
-          echo "status=${status}" >> "$GITHUB_OUTPUT"
-          echo "Parchment publisher exit status: ${status}"
-          exit "$status"
-
-      - name: Record Parchment starter evidence
-        if: always() && steps.sol.outputs.status == '0'
-        shell: bash
-        run: |
-          starter='Parchment-Worlds/apps/web/public/starter-projects/sol-system.pworld'
-          {
-            echo "parchment_publish_status: ${{ steps.parchment.outputs.status || 'not-run' }}"
-            if [[ -f "$starter" ]]; then
-              stat --printf='pworld_bytes=%s\n' "$starter"
-              sha256sum "$starter"
-            else
-              echo "pworld_missing=true"
-            fi
-          } | tee .local/reference-data/diagnostics/parchment-evidence.txt
 
       - name: Upload diagnostic evidence
         if: always()
@@ -202,16 +108,8 @@ jobs:
           path: |
             .local/reference-data/diagnostics/
             .local/reference-data/earth-etopo/manifest.json
-            .local/reference-data/earth-etopo/elevation-meters.f32
-            .local/reference-data/earth-etopo/water-mask.u8
-            .local/reference-data/earth-etopo/biome-codes.u8
-            .local/reference-data/earth-etopo/wetness.f32
-            .local/reference-data/earth-etopo/ice-mask.u8
-            .local/reference-data/jupiter-cassini/manifest.json
-            .local/reference-data/mars-mola-viking/manifest.json
             .local/reference-data/sol-earth-reference.wforge
             .local/reference-data/sol-earth-reference.wforge.pipeline.json
-            Parchment-Worlds/apps/web/public/starter-projects/sol-system.pworld
 
       - name: Post diagnostic summary to issue 124
         if: always()
@@ -227,7 +125,6 @@ jobs:
             echo "Run: [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
             echo "Commit: \`${GITHUB_SHA}\`"
             echo "Sol pipeline status: \`${{ steps.sol.outputs.status || 'not-run' }}\`"
-            echo "Parchment publish status: \`${{ steps.parchment.outputs.status || 'not-run' }}\`"
             echo
             if [[ -f .local/reference-data/earth-etopo/manifest.json ]]; then
               echo '### Earth bundle'
@@ -237,7 +134,7 @@ jobs:
               echo
             fi
             if [[ -f .local/reference-data/diagnostics/sol-pipeline.time.txt ]]; then
-              echo '### Sol pipeline resource evidence'
+              echo '### Sol pipeline resources'
               echo '```text'
               grep -E 'Elapsed|Maximum resident set size|File system inputs|File system outputs|Exit status' \
                 .local/reference-data/diagnostics/sol-pipeline.time.txt || true
@@ -250,34 +147,9 @@ jobs:
               stat --printf='bytes=%s\n' .local/reference-data/sol-earth-reference.wforge
               sha256sum .local/reference-data/sol-earth-reference.wforge
               echo '```'
-              echo
             fi
-            starter='Parchment-Worlds/apps/web/public/starter-projects/sol-system.pworld'
-            if [[ -f "$starter" ]]; then
-              echo '### Parchment starter'
-              echo '```text'
-              stat --printf='bytes=%s\n' "$starter"
-              sha256sum "$starter"
-              echo '```'
-              echo
-            fi
-            if [[ "${{ steps.sol.outputs.status || '1' }}" != '0' ]]; then
-              echo '### Failure tail'
-              echo '```text'
-              tail -n 80 .local/reference-data/diagnostics/sol-pipeline.stderr.log 2>/dev/null \
-                || tail -n 80 .local/reference-data/diagnostics/sol-pipeline.log 2>/dev/null \
-                || true
-              echo '```'
-              echo
-            elif [[ "${{ steps.parchment.outputs.status || '1' }}" != '0' ]]; then
-              echo '### Parchment failure tail'
-              echo '```text'
-              tail -n 80 .local/reference-data/diagnostics/publish-parchment.stderr.log 2>/dev/null \
-                || tail -n 80 .local/reference-data/diagnostics/publish-parchment.log 2>/dev/null \
-                || true
-              echo '```'
-              echo
-            fi
+            echo
+            echo 'Parchment starter generation is intentionally tested in the private Parchment-Worlds repository, where its repository-scoped token has access.'
             echo "Evidence artifact: \`ultra-earth-reference-evidence-${GITHUB_RUN_ID}\` (7-day retention)."
           } > "$summary"
           gh issue comment 124 --repo "$GITHUB_REPOSITORY" --body-file "$summary"
@@ -288,9 +160,5 @@ jobs:
         run: |
           if [[ "${{ steps.sol.outputs.status || '1' }}" != '0' ]]; then
             echo 'Ultra Earth Sol package build failed; inspect issue #124 and uploaded evidence.' >&2
-            exit 1
-          fi
-          if [[ "${{ steps.parchment.outputs.status || '1' }}" != '0' ]]; then
-            echo 'Parchment Sol starter publication failed; inspect issue #124 and uploaded evidence.' >&2
             exit 1
           fi
