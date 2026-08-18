@@ -7,6 +7,10 @@ on:
       - dev
     paths:
       - '.github/workflows/ultra-earth-acceptance.yml'
+      - 'apps/desktop/src/appVersion.ts'
+      - 'apps/desktop/src/globe/**'
+      - 'apps/desktop/src/shell/parchmentNavigation.ts'
+      - 'apps/desktop/src/shell/parchmentNavigation.test.ts'
 
 concurrency:
   group: ultra-earth-acceptance-${{ github.ref }}
@@ -42,8 +46,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run focused reference regressions
-        run: npx vitest run scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
+      - name: Run focused Ultra regressions
+        run: npx vitest run apps/desktop/src/globe/globeTextureResolution.test.ts apps/desktop/src/shell/parchmentNavigation.test.ts scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
 
       - name: Run repository verification
         run: npm run verify
@@ -59,4 +63,4 @@ jobs:
           else
             result='failed'
           fi
-          gh issue comment 124 --repo "$GITHUB_REPOSITORY" --body "Ultra Earth acceptance verification [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) ${result} for commit \`${GITHUB_SHA}\`. Focused reference regressions and \`npm run verify\` were included."
+          gh issue comment 124 --repo "$GITHUB_REPOSITORY" --body "Ultra Earth acceptance verification [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) ${result} for commit \`${GITHUB_SHA}\`. Focused Ultra regressions and \`npm run verify\` were included."
