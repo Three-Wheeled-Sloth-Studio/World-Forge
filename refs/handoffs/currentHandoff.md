@@ -6,198 +6,214 @@ Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-## Accepted runtime baseline before the Ultra Earth increment
+## Current checkpoint
 
-The last fully accepted runtime/presentation checkpoint remains:
+The Ultra Earth reference implementation is now source-built, package-built, and repository-validated.
+
+Current implementation head before this documentation checkpoint:
+
+- commit: `72bb0366e13fb01c0ddd26b881079c398e58eb1f`
+- accepted visible runtime baseline remains: `0.3.80`
+- Ultra Earth acceptance run: `32138808622`
+- focused reference-pipeline regressions passed
+- full `npm run verify` passed
+
+The original v0.3.80 runtime checkpoint remains:
 
 - commit: `b0197a4669d605ecd771810f589feae109bb94e3`
-- visible version: `0.3.80`
 - Validate World Forge run `#844` / run id `31980878852`
 - 143 test files passed
 - 517 tests passed
 - typecheck/build, production harness tests, and both production smokes green
 
-The TTRPG presentation debts from that checkpoint remain deferred:
+## Ultra Earth resolution contract
 
-1. ocean presentation is still too dark/heavy for the desired light watercolor direction;
-2. some terrain icons still need better anchoring/alignment semantics.
+The maintained Earth reference target is now explicit and tested:
 
-Do not reopen those during the Earth reference increment unless the owner explicitly asks.
+- raster: `4096 x 2048`
+- topology: `1024`
 
-## Current Ultra Earth implementation checkpoint
+The topology value is not an Earth-specific constant. It is produced by the existing shared `topologyResolutionForOutput(...)` policy. The earlier handoff estimate of 512 was incorrect; the canonical helper resolves 4096 x 2048 to 1024.
 
-Current implementation head for this increment:
+Implemented seams:
 
-- `f9e8f73afdf0a71003dbf80030dd4a7afcf581f0` - `chore: report Earth reference bundle size`
+- `scripts/reference-resolution.ts`
+- `scripts/build-sol-reference-pipeline.ts`
+- `scripts/build-sol-reference-pipeline.test.ts`
 
-Preceded by:
+The source-to-package pipeline now:
 
-- `5762eb03bf107c94284546bf64b19a01b2e67404` - `feat: establish Ultra Earth reference target`
-- `d9201cea5bee0f925c81906823f771f69fc04277` - `fix: validate maintained Earth reference inputs`
+- defaults the maintained Earth reference to Ultra;
+- derives topology from the shared policy unless an explicit comparison override is supplied;
+- rejects stale prepared Earth bundles with the wrong raster or topology dimensions;
+- rejects prepared Earth bundles missing elevation, water, biome, wetness, or permanent-ice layers;
+- records stage timings, bundle sizes, and digests.
 
-### WP0 completed
+Ordinary fictional-world generation defaults were not changed.
 
-The maintained Earth reference target is now explicit and consumed by the normal Sol source-to-package pipeline:
+## Measured source-backed Earth build
 
-- raster: `4096 x 2048`;
-- topology: `1024`;
-- topology is derived through the existing shared `topologyResolutionForOutput(...)` policy, not a second Earth-only rule;
-- explicit comparison raster sizes also use the shared topology policy unless `--topology-resolution` is intentionally supplied;
-- ordinary generated-world defaults are unchanged.
+Authoritative source-build evidence:
 
-The previous handoff's `512` topology value was only an expectation. The actual shared policy is:
+- World Forge Actions run: `32136329836`
+- source commit: `b9977e298bb8bec2168d824c5b241517e5c2d50b`
+- source ETL completed successfully
+- complete Sol package assembly completed successfully
 
-```ts
-Math.max(16, Math.round(Math.min(width, height) / 2))
-```
+Earth bundle:
 
-For `4096 x 2048`, the canonical result is therefore `1024`.
+- raster: `4096 x 2048`
+- topology: `1024`
+- normalized bundle bytes: `92,277,263`
+- elevation: `33,554,432` bytes
+- water mask: `8,388,608` bytes
+- biome codes: `8,388,608` bytes
+- wetness: `33,554,432` bytes
+- permanent ice: `8,388,608` bytes
+- manifest: `2,575` bytes
 
-### Stale prepared-data protection
+Measured Earth summary:
 
-Before package assembly, `scripts/build-sol-reference-pipeline.ts` now rejects a prepared Earth bundle unless it matches the requested target and contains the maintained minimum source-backed layer set:
+- minimum elevation: `-10250.2744 m`
+- maximum elevation: `6320.3843 m`
+- water share: `0.6590461`
+- Koppen class count: `31`
+- desert land share: `0.1178108`
+- rainforest land share: `0.0427358`
+- mountain land share: `0.0220696`
+- mean land wetness: `0.3274100`
 
-- elevation;
-- derived water mask;
-- Koppen-backed biome codes;
-- derived wetness;
-- permanent ice.
+Stage timings:
 
-This prevents `--prepared-only` workflows, including the Parchment publisher, from silently relabeling an older lower-resolution Earth cache as the Ultra reference.
+- Earth ETL: `56,884 ms`
+- Jupiter preparation: `383 ms`
+- Sol package assembly: `50,033 ms`
+- total pipeline report: `107,494 ms`
+- measured wall time: `1:48.23`
+- measured peak RSS: `5,921,352 kB`, about 5.65 GiB
 
-### Cost evidence instrumentation
+The build retained the accepted source semantics:
 
-The Sol pipeline report now records:
-
-- total elapsed time;
-- elapsed time per pipeline stage;
-- Earth bundle total byte size;
-- per-file Earth bundle byte size and SHA-256;
-- final `.wforge` byte size and SHA-256, as before.
-
-The Earth bundle evidence is also printed before package assembly. If package creation becomes the failure point, the normalized source-bundle size remains visible in the build log.
-
-## Source-resolution rationale
-
-The current source stack remains sufficient for Ultra without inventing detail:
-
-- NOAA ETOPO 2022 v1 60 arc-second global Ice Surface elevation/bathymetry, approximately `21600 x 10800` native angular sampling;
-- Beck et al. Koppen-Geiger 1991-2020 climate classification at 1 km, materially finer than the `4096 x 2048` target.
-
-The limiting question is now package/runtime cost, not source resolution.
-
-## Important eager-memory signal
-
-The existing import path eagerly materializes both projected map layers and cubed-sphere topology layers.
-
-At the maintained target:
-
-- map raster cells: `8,388,608`;
-- topology cells at resolution 1024: `6,291,456`.
-
-From the current typed-array contracts alone, before source arrays, JS object overhead, JSON conversion, ZIP buffers, renderer copies, or browser duplication:
-
-- projected Map layers are approximately `400 MiB`;
-- topology-layer arrays are approximately `228 MiB`;
-- cubed-sphere geometry/neighbors are approximately `240 MiB` during import/build.
-
-These are contract-derived preflight estimates, not measured peak-process memory. They are evidence that the Ultra run may expose the eager-loading/JSON-package boundary already anticipated by the reference-system roadmap.
-
-Do not lower the target preemptively. Run the source build on a suitable machine and record the actual first failure or measured cost. If package assembly or browser loading is the blocker, treat payload/lazy-loading architecture as the follow-on problem.
-
-## Next active work
-
-Authoritative continuation prompt:
-
-- `refs/handoffs/next-dev-prompt.md`
-
-The next work starts at WP1, not WP0.
-
-### WP1 - build the real normalized Earth bundle
-
-Run the documented ETOPO/Koppen ETL at the maintained defaults. The default Sol source pipeline now supplies `4096 x 2048` and topology `1024` automatically.
-
-### WP2 - assemble the complete Sol package
-
-Mars is an explicit prepared body input. A complete source rebuild should use the existing normal commands in this order:
-
-```bash
-python -m pip install -r tools/reference-etl/requirements.txt
-npm run reference:prepare-mars
-npm run reference:pipeline-sol -- --body-input .local/reference-data/mars-mola-viking
-```
-
-The source pipeline prepares Earth and Jupiter and then assembles the multi-body package with the prepared Mars bundle. Do not omit the Mars `--body-input` when creating the maintained Sol package.
-
-### WP3 - World Forge browser acceptance
-
-Verify Earth Map, Globe, Explorer, save/reopen, active-body continuity, and at least Jupiter and Mars in the same project.
-
-### WP4 - Parchment starter
-
-After the complete `.wforge` is accepted, republish through:
-
-```bash
-npm run reference:publish-sol-starter
-```
-
-The publisher uses the prepared Mars bundle and now refuses a stale Earth bundle.
-
-### WP5 - measure cost
-
-Capture:
-
-- Earth ETL elapsed time;
-- prepared bundle dimensions and file sizes;
-- package build elapsed time;
-- final `.wforge` size and digest;
-- `.pworld` size when rebuilt;
-- browser import/open time;
-- save/reopen time;
-- approximate memory impact where practical;
-- Map and Globe responsiveness.
-
-## Validation boundary at this checkpoint
-
-Do not claim this checkpoint is fully validated yet.
-
-The current execution environment could write through the GitHub connector but could not obtain a normal local Git checkout or execute the source ETL/package build. Exact-head push CI was not available through the connector's commit-status surface at the time of handoff.
-
-Required before accepting the milestone:
-
-```bash
-npm run verify
-```
-
-Also run focused tests for:
-
-- `scripts/build-sol-reference-pipeline.test.ts`;
-- package roundtrip/body-awareness tests touched by the rebuilt fixture;
-- starter-publisher behavior.
-
-Browser QA is mandatory before the Ultra Earth reference is accepted.
-
-## Earth semantic boundary
-
-Retain the existing reference semantics:
-
-- elevation/bathymetry from ETOPO;
+- NOAA ETOPO 2022 elevation and bathymetry;
 - water mask derived from elevation and sea level;
-- broad biome identity derived from source-backed Koppen-Geiger classes;
+- Koppen-Geiger-backed broad biome identity;
 - wetness derived from Koppen classes;
-- permanent ice derived from EF;
+- EF-derived permanent ice;
 - mountains driven by imported elevation.
 
-Do not claim that hydrography, measured precipitation, detailed land cover, tectonics, real wind/current fields, or complete temperature climatology are solved by this increment.
+No new hydrography, measured precipitation, full temperature climatology, tectonic, wind, current, or land-cover source was added.
+
+## Complete Sol package
+
+The successful Ultra build remained one multi-body Sol project:
+
+- body count: `23`
+- Earth: geographic Tier 3 surface at `4096 x 2048`
+- Jupiter: accepted `768 x 384` RGB565 atmospheric appearance
+- Mars: accepted `512 x 256` prepared Viking/MOLA Tier 2 surface with 2 assets
+
+Measured `.wforge` from run `32136329836`:
+
+- bytes: `193,507,559`
+- SHA-256: `ee6d98314fe7447c42ca8545abb7fa7e2acf8b95fddaba3be3683c80c6b16915`
+
+The digest is evidence for that exact source commit, not a promise that future rebuilds have an identical digest. The package embeds source/build metadata.
+
+Inspection of that package found approximately `1.325 GB` of uncompressed ZIP content. The largest entries are JSON numeric-array layer payloads. This confirms that current serialization, not source fidelity, is now the main scale concern.
+
+## Parchment Worlds starter evidence
+
+Because Parchment Worlds is private, starter generation is measured from that repository using its own repository-scoped Actions token.
+
+Authoritative Parchment diagnostic:
+
+- Parchment run: `32137360931`
+- World Forge package bytes: `193,507,559`
+- generated `.pworld` bytes: `258,172,374`
+- `.pworld` SHA-256: `f4ce8d3b354bc47b976ebfccbe9f695619b10483738cafe31c86c1e44462b74e`
+- starter generation wall time: `1:03.30`
+- starter generation peak RSS: `7,233,688 kB`
+- normal package-reader inspection: `14.66 s`
+- package-reader peak RSS: `2,102,408 kB`
+
+The size increase from the nested `.wforge` to `.pworld` is the current JSON/base64 attachment envelope. This is measured architecture debt, not a reason to lower Earth resolution.
+
+## Browser evidence
+
+Parchment browser run `32139014646` successfully performed the expensive parts of the real product path:
+
+- review measured starter: `8.558 s`
+- import into Parchment: `14.499 s`
+- reload imported project: `16.460 s`
+- JS heap after review: `791,584,316` bytes
+- JS heap after import: `275,142,820` bytes
+- JS heap after reload: `274,855,776` bytes
+
+The same run successfully transferred the embedded Ultra `.wforge` into World Forge. The loaded iframe reported:
+
+- `4096 x 2048 generated map from 1024 cubed-sphere source topology`
+- project: `Sol System`
+- map scale: `4096 x 2048`
+- ocean share: `65.90460538864136%`
+- planet size: `1 Earth radii`
+- axial tilt: `23.439 deg`
+- eccentricity: `0.0167`
+- Luna present
+- Earth biome counts populated
+
+The workflow marked that run failed only because its probe expected a literal standalone `Earth` label after the package had already loaded. The diagnostic criterion has been corrected to use the loaded-surface contract and is being extended to Natural Map, Globe, and geographic drill-down screenshots.
+
+Do not treat the run's final red status as package-load failure.
+
+## Validation
+
+World Forge exact-head acceptance:
+
+- commit: `72bb0366e13fb01c0ddd26b881079c398e58eb1f`
+- run: `32138808622`
+- focused reference regressions: green
+- `npm run verify`: green
+
+Heavy source rebuilds are intentionally manual diagnostics now. They are not part of ordinary push CI.
+
+Diagnostic workflows:
+
+- `.github/workflows/ultra-earth-reference.yml`
+- `.github/workflows/ultra-earth-acceptance.yml`
+
+Parchment owns its private-repository starter and browser diagnostics.
+
+## Architecture conclusion
+
+Ultra 4096 x 2048 is source-supported and technically operational. The higher resolution exposed a real payload problem rather than a source problem.
+
+Current measured costs are high enough to justify a separate payload-strategy increment:
+
+1. stop expanding high-volume typed numeric layers into JSON arrays inside `.wforge`;
+2. preserve backward-compatible readers while adding compact binary layer entries;
+3. then measure staged/lazy body and layer decode against the new package shape;
+4. independently remove Parchment's base64 expansion for large binary attachments if the post-`.wforge` measurements still justify it.
+
+Do not begin that rewrite silently. It is now evidence-backed follow-on architecture work and should be explicitly scoped.
+
+## Remaining acceptance work
+
+The Ultra baseline still needs final presentation acceptance rather than more source or package plumbing:
+
+- inspect the automated Natural Map, Globe, and geographic drill-down screenshots from the corrected browser diagnostic;
+- perform owner visual QA for recognizable continents, deserts, humid regions, ice, mountains, and coastline improvement;
+- confirm another packaged body such as Jupiter or Mars in the same browser session if the owner wants the milestone fully closed;
+- record final browser timing and visual evidence after the corrected diagnostic completes.
+
+Save/reopen at the Parchment project level is proven by import plus reload. Exact World Forge edit/save-back of the Ultra package remains worth a focused check if package mutation is part of the acceptance pass.
 
 ## Guardrails
 
 - One Sol system remains one World Forge project.
-- Preserve deterministic body IDs and Parchment bindings.
+- Preserve deterministic body identity and Parchment bindings.
 - Do not create a second resolution policy.
+- Do not lower the Ultra reference merely to reduce payload cost.
 - Do not change ordinary generated-world defaults.
-- Do not drop Jupiter or Mars while rebuilding Earth.
-- Do not create an Earth-only maintained `.wforge`.
-- Do not replace imported Earth layers with procedural climate output.
-- Do not silently lower the Ultra target to avoid observing package or memory cost.
-- Do not broaden into climate calibration, hydrography ingestion, renderer rewrites, or TTRPG polish without concrete blocker evidence and owner approval.
+- Do not drop Jupiter, Mars, or accepted body assets.
+- Do not broaden into climate calibration, hydrography import, renderer rewrite, or TTRPG polish as part of this baseline.
+- Keep the deferred v0.3.80 TTRPG water-wash and icon-alignment debts parked.

@@ -1,7 +1,7 @@
 # Earth reference-data sources and ETL notes
 
 Updated: 2026-08-18
-Status: Source-backed elevation/climate-region ETL implemented; maintained Ultra 4096 x 2048 contract established; real Ultra source build, package measurement, and browser acceptance still pending
+Status: Source-backed Ultra 4096 x 2048 Earth baseline built successfully; canonical topology is 1024; complete Sol package and Parchment import path measured; final owner visual acceptance remains open
 
 Related:
 
@@ -14,35 +14,25 @@ Related:
 
 ## Product boundary
 
-This document carries source, processing, redistribution, fidelity, and cost notes for the maintained Earth reference.
+This document carries source, processing, redistribution, fidelity, and measured-cost notes for the maintained Earth reference.
 
-The runtime `.wforge` project records lightweight layer-origin and capability information. Full scientific provenance, source URLs, mapping rules, and redistribution notes remain here and in the normalized ETL manifest.
+The runtime `.wforge` project records lightweight layer-origin and capability information. Full scientific provenance, source URLs, mapping rules, redistribution notes, and fidelity limits remain here and in the normalized ETL manifest.
 
-## Maintained Earth target
+## Maintained baseline
 
-The maintained first-party Earth reference target is now:
+The accepted maintained reference target is:
 
-- raster: `4096 x 2048`, the existing World Forge Ultra tier;
-- cubed-sphere topology: `1024`;
-- one Earth body inside the existing multi-body Sol project, not a separate Earth-only project.
+- raster: `4096 x 2048`;
+- projection: global EPSG:4326 equirectangular;
+- canonical cubed-sphere topology resolution: `1024`.
 
-The topology value is derived through the shared `topologyResolutionForOutput(...)` policy:
+The topology value is produced by the existing shared `topologyResolutionForOutput(...)` helper. It is not an Earth-specific constant.
 
-```ts
-Math.max(16, Math.round(Math.min(width, height) / 2))
-```
+The earlier planning estimate of topology 512 was wrong. For a 4096 x 2048 output, the shared helper resolves to 1024.
 
-For `4096 x 2048`, that policy resolves to `1024`.
+## Why Ultra is source-supported
 
-Implementation checkpoints establishing this contract:
-
-- `5762eb03bf107c94284546bf64b19a01b2e67404`
-- `d9201cea5bee0f925c81906823f771f69fc04277`
-- `f9e8f73afdf0a71003dbf80030dd4a7afcf581f0`
-
-The Sol pipeline now rejects a prepared Earth bundle with stale dimensions/topology or without the maintained minimum elevation, water, biome, wetness, and permanent-ice layer set.
-
-## Elevation and bathymetry: NOAA ETOPO 2022
+### Elevation and bathymetry: NOAA ETOPO 2022
 
 Official product page:
 
@@ -53,9 +43,7 @@ Default source file:
 - ETOPO 2022 v1, 60 arc-second, global Ice Surface elevation GeoTIFF
 - `https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/60s_surface_elev_gtif/ETOPO_2022_v1_60s_N90W180_surface.tif`
 
-NOAA describes ETOPO 2022 as an integrated global topography, bathymetry, and shoreline model. The Ice Surface product is used so Greenland and Antarctica represent the present visible upper surface rather than subglacial bedrock.
-
-The 60 arc-second global grid is approximately `21600 x 10800`, materially finer than the maintained `4096 x 2048` output. Ultra therefore does not require upsampling beyond the coarser source's useful angular information content.
+NOAA describes ETOPO 2022 as an integrated global topography, bathymetry, and shoreline model. The Ice Surface product is used so Greenland and Antarctica represent the visible upper surface rather than subglacial bedrock.
 
 Citation:
 
@@ -63,7 +51,9 @@ Citation:
 - ETOPO 2022 Global Relief Model
 - DOI `10.25921/fd45-gt74`
 
-## Climate regions: Koppen-Geiger 1991-2020
+The 60 arc-second global source is approximately 21600 x 10800 in angular sampling, materially finer than the World Forge Ultra target.
+
+### Climate regions: Koppen-Geiger 1991-2020
 
 Default source file:
 
@@ -78,9 +68,11 @@ Primary publication:
 
 - Beck, H. E. et al. High-resolution 1 km Koppen-Geiger climate classification maps for 1901-2099. Scientific Data 10, 724 (2023).
 
-The 1 km climate source is also materially finer than the maintained global Ultra raster.
-
 The Stanford distribution identifies the dataset as CC BY 4.0. Release packaging must include the required attribution and retain the source note when derived Earth fixtures are distributed.
+
+The 1 km source is also materially finer than a 4096 x 2048 global target.
+
+The maintained Ultra baseline therefore does not upsample beyond the useful information content of the current source stack. Payload/runtime cost, not scientific source resolution, is the limiting concern.
 
 ## Implemented transform
 
@@ -88,20 +80,15 @@ Tool:
 
 - `tools/reference-etl/prepare_etopo_earth.py`
 
-Install ETL dependencies:
+Maintained source-to-package path:
 
 ```bash
 python -m pip install -r tools/reference-etl/requirements.txt
-```
-
-For the maintained complete Sol rebuild, prepare Mars and run the source-to-package pipeline rather than building an Earth-only fixture:
-
-```bash
 npm run reference:prepare-mars
 npm run reference:pipeline-sol -- --body-input .local/reference-data/mars-mola-viking
 ```
 
-The Sol pipeline supplies the maintained Earth dimensions/topology to the Earth ETL, prepares Jupiter, validates the prepared Earth manifest, and assembles Mars as an explicit body input.
+The Sol reference pipeline now supplies the maintained Earth resolution and topology explicitly from the shared reference-resolution contract.
 
 The Earth ETL:
 
@@ -110,13 +97,13 @@ The Earth ETL:
 3. reprojects both sources to a shared global EPSG:4326 equirectangular grid;
 4. resamples continuous elevation bilinearly and categorical climate classes with nearest-neighbor sampling;
 5. writes Float32 elevation in meters and a derived water mask;
-6. maps the 30 Koppen-Geiger subclasses into World Forge's compact biome taxonomy;
+6. maps the 30 named Koppen-Geiger subclasses plus source nodata/fallback behavior into World Forge's compact biome taxonomy;
 7. derives a representative wetness index from each climate class;
 8. derives permanent ice from the EF class;
 9. overrides non-ice land above the configurable mountain threshold, default 2500 meters, as mountain;
 10. records source and derivation metadata in the normalized manifest.
 
-Use `--skip-koppen` only for an elevation-only compatibility build. It is not suitable for the maintained recognizable-Earth fixture, and the Sol pipeline now rejects the resulting incomplete bundle before package assembly.
+Use `--skip-koppen` only for an elevation-only compatibility build. It recreates the older placeholder-biome behavior and is not suitable for the maintained recognizable-Earth fixture.
 
 ## Koppen-Geiger mapping
 
@@ -138,71 +125,141 @@ World Forge currently carries a deliberately compact global biome vocabulary. Cl
 
 This is a recognizable-world transform, not a claim that Koppen climate classes and ecological biomes are identical. The mapping is explicit, deterministic, and replaceable when World Forge gains a richer ecological taxonomy.
 
+## Measured Ultra build
+
+Authoritative source-build run:
+
+- World Forge Actions run `32136329836`
+- source commit `b9977e298bb8bec2168d824c5b241517e5c2d50b`
+
+Prepared Earth bundle:
+
+- resolution: `4096 x 2048`
+- topology resolution: `1024`
+- total normalized bytes: `92,277,263`
+
+Layer bytes:
+
+| File | Bytes |
+| --- | ---: |
+| elevation-meters.f32 | 33,554,432 |
+| water-mask.u8 | 8,388,608 |
+| biome-codes.u8 | 8,388,608 |
+| wetness.f32 | 33,554,432 |
+| ice-mask.u8 | 8,388,608 |
+| manifest.json | 2,575 |
+
+Measured summary:
+
+| Metric | Value |
+| --- | ---: |
+| Minimum elevation | -10250.2744 m |
+| Maximum elevation | 6320.3843 m |
+| Water share | 0.6590461 |
+| Koppen class count including fallback/nodata code | 31 |
+| Desert land share | 0.1178108 |
+| Rainforest land share | 0.0427358 |
+| Mountain land share | 0.0220696 |
+| Mean land wetness | 0.3274100 |
+
+Measured stage cost:
+
+| Stage | Time |
+| --- | ---: |
+| Earth ETL | 56,884 ms |
+| Jupiter preparation | 383 ms |
+| Sol package assembly | 50,033 ms |
+| Pipeline report total | 107,494 ms |
+| `/usr/bin/time` wall clock | 1:48.23 |
+
+Peak RSS for the complete source-to-package run was `5,921,352 kB`, about 5.65 GiB.
+
 ## Current layer fidelity
 
 | Layer | Current origin | Current fidelity |
 | --- | --- | --- |
-| Elevation and bathymetry | Imported from ETOPO | Recognizable global relief |
-| Ocean/land water mask | Derived from ETOPO elevation and zero-meter sea level | Suitable for current global coastline proof |
-| Topology projection | Derived from imported raster | Canonical cubed-sphere support |
-| Temperature | Derived placeholder | Not yet a real Earth temperature climatology |
+| Elevation and bathymetry | Imported from ETOPO | Recognizable global relief at Ultra raster resolution |
+| Ocean/land water mask | Derived from ETOPO elevation and zero-meter sea level | Source-backed coastline mask |
+| Topology projection | Derived from imported raster | Canonical 1024 cubed-sphere support |
+| Temperature | Derived placeholder | Not a real Earth temperature climatology |
 | Wetness | Derived from imported Koppen-Geiger class | Recognizable broad hydroclimate regions, not measured precipitation |
-| Biomes | Derived from imported Koppen-Geiger class | Recognizable broad regions including Sahara, Arabian, Australian, and other arid zones |
+| Biomes | Derived from imported Koppen-Geiger class | Recognizable broad climate/biome identity |
 | Permanent ice | Derived from Koppen-Geiger EF | Broad permanent-ice classification |
 | Rivers and lakes | Empty placeholder | Real hydrography import remains pending |
 | Wind and currents | Empty placeholder | Real climatology or derived circulation remains pending |
 
-## Normalized bundle size at Ultra
+## Complete Sol package cost
 
-The maintained Earth ETL writes five required binary layers before the manifest:
+The Ultra Earth remains inside one complete Sol project with the accepted Jupiter and Mars assets.
 
-- elevation: Float32, 4 bytes/cell;
-- water mask: Uint8, 1 byte/cell;
-- biome codes: Uint8, 1 byte/cell;
-- wetness: Float32, 4 bytes/cell;
-- permanent ice: Uint8, 1 byte/cell.
+Measured package from run `32136329836`:
 
-At `4096 x 2048`, there are `8,388,608` raster cells. The five required binaries therefore total exactly `92,274,688` bytes, or `88 MiB`, before the small JSON manifest.
+- bodies: `23`
+- compressed `.wforge`: `193,507,559` bytes
+- run-specific SHA-256: `ee6d98314fe7447c42ca8545abb7fa7e2acf8b95fddaba3be3683c80c6b16915`
 
-This is a format-derived expectation, not the final measured prepared-bundle result. The pipeline now records actual per-file sizes and digests when the real bundle is built.
+The digest includes build/source metadata and is evidence for that exact run rather than a universal content hash.
 
-## Eager import/package cost signal
+Inspection of the built ZIP found approximately `1.325 GB` of uncompressed content. High-volume map and topology typed arrays are currently converted to JSON number arrays before ZIP compression. Examples from the measured package include large elevation, temperature, and topology JSON entries.
 
-The normalized source bundle is not the largest current cost. `importReferenceBodyRaster(...)` eagerly expands the Earth reference into the full runtime Map and topology layer contracts.
+This is now the primary World Forge payload issue exposed by Ultra.
 
-At the maintained target:
+## Parchment package cost
 
-- raster cells: `8,388,608`;
-- topology cells at resolution 1024: `6,291,456`.
+Parchment Worlds run `32137360931` generated the enriched Sol starter through the normal package generator and then inspected it through the normal package reader.
 
-From the current typed-array definitions, before source-array duplication, JS objects, JSON conversion, ZIP buffers, renderer copies, or browser persistence:
+Measured output:
 
-- projected Map layers are approximately `400 MiB`;
-- topology-layer arrays are approximately `228 MiB`;
-- cubed-sphere positions/latitudes/longitudes/area weights/neighbors are approximately `240 MiB` while the topology is materialized.
+- nested `.wforge`: `193,507,559` bytes
+- `.pworld`: `258,172,374` bytes
+- `.pworld` SHA-256: `f4ce8d3b354bc47b976ebfccbe9f695619b10483738cafe31c86c1e44462b74e`
+- starter generation: `1:03.30`
+- starter generation peak RSS: `7,233,688 kB`
+- normal package inspection: `14.66 s`
+- package inspection peak RSS: `2,102,408 kB`
 
-These values are static contract-derived preflight estimates, not measured peak RSS or browser heap. They identify the likely architecture boundary to observe during the first Ultra build.
+The current Parchment package stores the nested binary package as base64 within the JSON package envelope. Ultra therefore exposes a second avoidable payload expansion after World Forge packaging.
 
-The current exporter also converts typed arrays to ordinary number arrays for JSON layer serialization before ZIP compression. The real build must therefore measure both memory pressure and package behavior rather than extrapolating from the 88 MiB normalized input alone.
+## Browser measurements
 
-Do not respond to this evidence by silently lowering the maintained Earth target or splitting Earth out of Sol. If the real run fails at eager materialization or JSON serialization, record the exact failure and treat binary/lazy payload architecture as the follow-on decision.
+Parchment browser run `32139014646` successfully reviewed, imported, reloaded, and transferred the measured Ultra starter into World Forge.
 
-## Acceptance checks for the refreshed Earth fixture
+Measured Parchment browser costs:
 
-The rebuilt Sol package must prove:
+- review: `8.558 s`
+- import: `14.499 s`
+- reload: `16.460 s`
+- JS heap after review: `791,584,316` bytes
+- JS heap after import: `275,142,820` bytes
+- JS heap after reload: `274,855,776` bytes
+
+The embedded World Forge surface then reported the maintained Ultra contract and Earth facts:
+
+- `4096 x 2048` raster;
+- `1024` cubed-sphere topology;
+- `Sol System` project;
+- `65.90460538864136%` ocean;
+- `1 Earth radii`;
+- `23.439 deg` axial tilt;
+- `0.0167` eccentricity;
+- Luna present;
+- Earth biome counts populated.
+
+That proves the package handoff reached the imported Earth surface. A follow-up diagnostic is using explicit Map, Globe, and geographic-drilldown controls and screenshots for final presentation evidence.
+
+## Acceptance checks
+
+The final visual acceptance pass should confirm:
 
 - Africa, Eurasia, the Americas, Australia, Antarctica, and major islands remain recognizable;
-- coastlines materially benefit from the higher raster resolution;
-- the Sahara and Arabian deserts read as large contiguous desert regions;
-- interior Australia, western North America, the Atacama region, and central Asian arid regions remain represented;
-- Amazon, Congo, and Southeast Asian humid tropical regions do not collapse into generic grassland;
-- permanent ice remains visible in Antarctica and Greenland without turning all high-latitude terrain into ice;
-- mountains remain driven by imported elevation rather than climate class;
-- Map and Globe use the same refreshed Earth surface;
-- Explorer addresses Earth through the normal active-body path;
-- `.wforge` save and reopen preserve the new arrays and body identity;
-- Jupiter and Mars remain usable in the same package;
-- layer-origin metadata describes biome and wetness as derived from imported climate classes, not directly observed ecological biomes.
+- Sahara and Arabian deserts read as broad contiguous arid regions;
+- interior Australia, western North America, the Atacama region, and central Asian arid regions are represented appropriately for the compact biome vocabulary;
+- Amazon, Congo, and Southeast Asian humid tropical regions remain visible;
+- permanent ice is concentrated in Antarctica and Greenland rather than flooding ordinary high-latitude terrain;
+- mountains remain driven by imported elevation;
+- coastlines visibly benefit from the Ultra raster over the old 512 x 256 integration fixture;
+- Map and Globe agree on land/water and broad biome identity;
+- geographic drill-down remains on the active Earth project.
 
 ## Remaining source layers
 
@@ -216,17 +273,18 @@ Still requiring separate selection and implementation:
 - prevailing winds and ocean currents;
 - seasonal surface imagery or albedo presentation.
 
-## Measurement status
+Do not describe any of these as solved by the Ultra rebuild.
 
-Still pending on a machine/environment that can execute the full source and browser workflow:
+## Payload follow-up
 
-- actual Earth ETL elapsed time;
-- actual prepared-bundle byte total and digests;
-- package-build elapsed time;
-- final `.wforge` size and digest;
-- `.pworld` size after republishing;
-- process/browser memory measurements;
-- browser import/open and save/reopen timings;
-- Map, Globe, and Explorer responsiveness at Ultra.
+The Ultra result should not be downgraded to hide package cost.
 
-Do not convert the static estimates above into claimed runtime measurements.
+The evidence supports a separate payload-strategy increment, preferably in this order:
+
+1. encode high-volume typed map/topology arrays as binary `.wforge` entries instead of JSON number arrays;
+2. keep backward-compatible package reading while the new binary representation rolls in;
+3. re-measure size, import, save/reopen, and browser memory;
+4. add staged/lazy body or layer decode only where post-binary measurements justify it;
+5. remove Parchment base64 expansion for large binary attachments if its remaining cost still justifies a container change.
+
+One logical Sol system must remain one project throughout that work.

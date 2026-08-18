@@ -1,4 +1,4 @@
-# Next Dev Prompt: Ultra Earth Reference Baseline
+# Next Dev Prompt: Ultra Earth Acceptance and Payload Follow-up
 
 Continue implementation in:
 
@@ -6,282 +6,179 @@ Continue implementation in:
 
 Work directly on `dev`.
 
-## Current starting point
+## Starting point
 
-The last fully accepted runtime/presentation baseline before this increment is:
+The Ultra Earth reference is no longer a planning target. The source-backed fixture and complete Sol package have been built successfully at the maintained target.
 
-- commit: `b0197a4669d605ecd771810f589feae109bb94e3`
-- visible version: `0.3.80`
-- Validate World Forge run `#844` / run id `31980878852`
-- 143 test files passed
-- 517 tests passed
-- typecheck/build, production harness tests, and both production smokes green
+Implementation checkpoint before the current documentation update:
 
-The current Ultra Earth implementation checkpoint is:
+- commit: `72bb0366e13fb01c0ddd26b881079c398e58eb1f`
+- Ultra Earth acceptance run: `32138808622`
+- focused reference regressions passed
+- full `npm run verify` passed
 
-- `f9e8f73afdf0a71003dbf80030dd4a7afcf581f0`
-
-Read intervening commits before writing if `dev` has moved.
-
-## Read first
+Read first:
 
 1. `AGENTS.md`
 2. `refs/README.md`
 3. `refs/project.yaml`
 4. `refs/handoffs/currentHandoff.md`
-5. `refs/handoffs/reference-system-etl-and-multi-body-navigation.md`
-6. `refs/research/reference-data/earth-reference-data.md`
+5. `refs/research/reference-data/earth-reference-data.md`
+6. `refs/handoffs/reference-system-etl-and-multi-body-navigation.md`
 7. `refs/planning/reference-system-etl-and-multi-body-navigation.md`
 8. `refs/testing/validationCommands.yaml`
-9. `scripts/reference-resolution.ts`
-10. `scripts/build-sol-reference-pipeline.ts`
-11. `scripts/build-earth-reference.ts`
-12. `scripts/publish-sol-starter.ts`
-13. `tools/reference-etl/prepare_etopo_earth.py`
-14. World Forge issue #124
-15. Parchment Worlds issue #22 if the sibling repository is available
+9. World Forge issue #124
+10. Parchment Worlds issue #22 when sibling access is available
 
-## Primary goal
+## Accepted Ultra contract
 
-Complete the maintained Earth reference baseline at the highest standard World Forge map resolution honestly supported by the current source data:
+- Earth raster: `4096 x 2048`
+- Earth cubed-sphere topology: `1024`
 
-- Earth raster: **Ultra 4096 x 2048**
-- Earth cubed-sphere topology: **1024**
+The topology value is derived by the existing shared `topologyResolutionForOutput(...)` helper. Do not restore the old 512 estimate and do not add an Earth-specific topology rule.
 
-The topology value is no longer an estimate. The existing canonical shared policy is:
+The ordinary fictional-world default remains unchanged.
 
-```ts
-Math.max(16, Math.round(Math.min(width, height) / 2))
-```
+## What is already proven
 
-Therefore `topologyResolutionForOutput({ width: 4096, height: 2048 })` resolves to `1024`.
+### Source ETL and full Sol package
 
-Do not add another topology rule and do not reduce this value merely because the resulting package is expensive. If it exposes an architecture limit, measure and document that limit.
+World Forge run `32136329836` successfully built:
 
-## Source-resolution rationale
+- source-backed Earth at `4096 x 2048`;
+- topology `1024`;
+- Jupiter's accepted atmospheric appearance;
+- Mars's accepted Viking/MOLA prepared surface;
+- one complete 23-body Sol `.wforge`.
 
-The current Earth ETL uses:
+Measured Earth normalized bundle:
 
-- NOAA ETOPO 2022 v1 60 arc-second global Ice Surface elevation/bathymetry;
-- Beck et al. Koppen-Geiger 1991-2020 climate classification at 1 km.
+- `92,277,263` bytes total.
 
-ETOPO 60 arc-second global sampling is approximately `21600 x 10800`, and the Koppen-Geiger source is also materially finer than `4096 x 2048`. Ultra therefore remains source-honest without adding a new GIS-only resolution tier.
+Measured package:
 
-The open questions are package size, memory, load/save behavior, and integration cost.
+- `.wforge`: `193,507,559` bytes;
+- run-specific SHA-256: `ee6d98314fe7447c42ca8545abb7fa7e2acf8b95fddaba3be3683c80c6b16915`;
+- source-to-package wall time: `1:48.23`;
+- peak RSS: about `5.65 GiB`.
 
-## WP0 is complete - do not redo it unless validation fails
+### Parchment package path
 
-Implemented on `dev`:
+Parchment run `32137360931` successfully generated and inspected the enriched starter through the normal package code:
 
-- `scripts/reference-resolution.ts` defines the maintained `4096 x 2048` Earth target;
-- the Sol source pipeline derives topology through the existing shared policy;
-- comparison raster overrides also derive topology canonically unless explicitly overridden;
-- the maintained default resolves to topology `1024`;
-- ordinary generated-world defaults are unchanged;
-- the pipeline rejects stale Earth bundles with the wrong dimensions or topology;
-- the pipeline rejects bundles missing elevation, water, biome, wetness, or permanent-ice layers;
-- the pipeline records stage elapsed times;
-- the pipeline records Earth bundle total/per-file size and digests before package assembly;
-- the Parchment prepared-package path inherits the stale-Earth guard.
+- `.pworld`: `258,172,374` bytes;
+- SHA-256: `f4ce8d3b354bc47b976ebfccbe9f695619b10483738cafe31c86c1e44462b74e`;
+- generation: `1:03.30` and about `6.9 GiB` peak RSS;
+- normal package-reader inspection: `14.66 s` and about `2.0 GiB` peak RSS.
 
-Relevant commits:
+### Browser path
 
-- `5762eb03bf107c94284546bf64b19a01b2e67404`
-- `d9201cea5bee0f925c81906823f771f69fc04277`
-- `f9e8f73afdf0a71003dbf80030dd4a7afcf581f0`
+Parchment browser run `32139014646` proved:
 
-Do not claim these commits have completed the real source build or browser acceptance. They have not.
+- starter review;
+- normal import;
+- IndexedDB/project reload;
+- embedded `.wforge` transfer into World Forge;
+- loaded Ultra surface at `4096 x 2048` from topology `1024`;
+- one-project Sol context with Luna and Earth physical/geographic metrics intact.
 
-## Important cost signal before WP1
+The run's final red status was a diagnostic assertion bug: it looked for a standalone `Earth` label even though the Ultra surface was already loaded. Use the loaded-surface contract, not that obsolete assertion.
 
-At the maintained target:
+## Immediate priority
 
-- map raster cells: `8,388,608`;
-- cubed-sphere topology cells: `6,291,456`.
+Finish presentation acceptance on the already-working Ultra package.
 
-From current typed-array contracts alone, the eager import/build path allocates approximately:
+### A. Complete browser presentation evidence
 
-- `400 MiB` for projected Map layers;
-- `228 MiB` for topology-layer arrays;
-- `240 MiB` for cubed-sphere positions/latitudes/longitudes/weights/neighbors while constructing/importing the reference.
+Use the corrected Parchment browser diagnostic or an equivalent focused path to verify, on the same loaded Ultra Earth package:
 
-This excludes source arrays, JS object overhead, JSON conversion, ZIP buffers, renderer copies, and browser duplication.
+- Natural Map activates and renders;
+- Globe activates and renders the same Earth surface;
+- geographic drill-down enables against the active Earth project rather than falling back to stale or another-body data;
+- capture screenshots for Natural Map, Globe, and geographic drill-down;
+- record package-handoff and presentation-switch timing.
 
-These are static contract-derived estimates, not measured peak-process memory. They are a reason to collect evidence, not permission to lower the target or start a lazy-loading rewrite before the first real run.
+Do not rebuild the scientific source bundle merely to rerun presentation QA unless the source package itself changes.
 
-## Required continuation sequence
+### B. Owner visual acceptance
 
-### WP1 - rebuild the normalized Earth source bundle
+Review the screenshots/browser output for the intended recognizable-Earth checks:
 
-Run the normal source ETL at the maintained default target.
+- Africa, Eurasia, the Americas, Australia, Antarctica, and major islands;
+- Sahara and Arabian arid regions;
+- Amazon, Congo, and Southeast Asian humid tropical regions;
+- appropriate Antarctica/Greenland permanent ice;
+- major mountain regions driven by imported elevation;
+- visibly improved coastline detail over the old 512 x 256 integration baseline;
+- agreement between Map and Globe on land/water and broad biome identity.
 
-Install ETL dependencies if needed:
+Do not overclaim real hydrography, measured precipitation, real ecological land cover, complete temperature climatology, tectonics, winds, or currents.
 
-```bash
-python -m pip install -r tools/reference-etl/requirements.txt
-```
+### C. Body continuity
 
-Then run either the Earth adapter directly or, preferably, the full Sol source pipeline described under WP2.
+If not already evident in the final browser pass, verify at least one non-Earth accepted body, preferably Jupiter or Mars, in the same Sol project after Earth has loaded.
 
-The prepared Earth bundle must contain at minimum:
+## Measured payload architecture problem
 
-- ETOPO elevation/bathymetry;
-- derived water mask;
-- Koppen-Geiger-backed biome classification;
-- derived wetness;
-- permanent ice;
-- imported/derived provenance in the manifest.
+Do not treat this as a reason to reduce Earth resolution.
 
-Do not use `--skip-koppen` for the maintained fixture. The pipeline now rejects that incomplete result before packaging.
+The current package works, but the costs are now concrete:
 
-### WP2 - rebuild the complete Sol `.wforge`
+- `.wforge` is about 193.5 MB compressed;
+- inspected ZIP content is about 1.325 GB because high-volume typed layers are serialized as JSON number arrays;
+- World Forge source-to-package build peaks around 5.65 GiB RSS;
+- Parchment base64-expands the nested package to about 258.2 MB;
+- Parchment starter generation peaks around 6.9 GiB RSS;
+- browser starter review is roughly 8 seconds with about 792 MB JS heap;
+- import/reload are roughly 14 to 16 seconds in the measured Chromium runner.
 
-Preserve the currently accepted non-Earth content. The maintained package must include Earth, Jupiter, Mars, and the existing system catalog/body records.
+This is enough evidence to justify a separate payload-strategy PI, but do not silently absorb that rewrite into Ultra acceptance.
 
-Prepare Mars if its local bundle is not already current:
+## Recommended payload follow-up after explicit scope approval
 
-```bash
-npm run reference:prepare-mars
-```
+Sequence the architecture work by largest structural waste first:
 
-Then run the source-to-package pipeline with Mars explicitly attached:
+1. Add compact binary layer entries to `.wforge` for typed numeric arrays instead of JSON number arrays.
+2. Keep the existing reader compatible with current packages while introducing a versioned binary reader/writer path.
+3. Re-measure package size, import time, save/reopen time, and browser memory.
+4. Only then add staged/lazy layer/body decode if measurements still require it.
+5. Independently replace Parchment's base64 binary attachment envelope with a binary-capable container or side-entry representation if the remaining cost still justifies it.
 
-```bash
-npm run reference:pipeline-sol -- --body-input .local/reference-data/mars-mola-viking
-```
-
-The pipeline prepares Earth and Jupiter, validates the Earth bundle, and assembles the multi-body package with Mars.
-
-Do not run the default source pipeline without the Mars `--body-input` and then treat that result as the maintained complete Sol package.
-
-Capture from the generated pipeline report and logs:
-
-- Earth dimensions;
-- topology resolution;
-- Earth bundle per-file and total byte size;
-- Earth/Jupiter/Mars input evidence;
-- per-stage elapsed time;
-- total elapsed time;
-- final `.wforge` byte size and SHA-256.
-
-If package assembly fails due memory, JSON expansion, or process limits, preserve the successful WP1 evidence and record the exact failure. Do not silently rerun at a lower resolution.
-
-### WP3 - World Forge browser acceptance
-
-If package assembly succeeds, verify through the normal body-aware application path:
-
-- Earth recognizable in Data and Natural Map modes;
-- Globe uses the same refreshed Earth surface;
-- Explorer/geographic drilldown opens against Earth without stale or wrong-body fallback;
-- active-body behavior remains correct across System, Globe, Map, and Explorer;
-- `.wforge` save/reopen preserves Earth arrays and body identity;
-- Jupiter still works;
-- Mars still works.
-
-Do not create Earth-specific renderer paths merely to make Ultra load.
-
-### WP4 - republish and verify the Parchment Worlds starter
-
-After the World Forge package is accepted, run:
-
-```bash
-npm run reference:publish-sol-starter
-```
-
-The publisher reassembles from prepared bundles and now rejects a stale lower-resolution Earth bundle.
-
-When the sibling Parchment repository is available, verify through the normal starter path:
-
-- Sol starter opens;
-- Earth opens at Ultra;
-- at least one other packaged body opens;
-- nested `.wforge` survives export/re-import;
-- record `.pworld` byte size.
-
-Do not claim the previously deferred all-body Globe visual baseline is fixed by this work. Issue #22 remains open for those presentation debts.
-
-### WP5 - measure the cost instead of guessing
-
-Record:
-
-- source ETL time;
-- package-build time;
-- normalized Earth bundle size;
-- `.wforge` size;
-- `.pworld` size;
-- browser import/open time;
-- save/reopen time;
-- approximate memory impact where practical;
-- Map and Globe responsiveness;
-- whether eager package loading becomes a material problem.
-
-If the first failing boundary is eager in-memory materialization or JSON layer serialization, document that evidence as the next architecture problem. Do not implement lazy loading in this increment unless the owner explicitly approves that follow-on after seeing the evidence.
-
-## Earth acceptance checks
-
-Retain or improve the accepted recognizable-Earth checks:
-
-- Africa, Eurasia, the Americas, Australia, Antarctica, and major islands recognizable;
-- Sahara and Arabian deserts broad and contiguous;
-- Amazon, Congo, and Southeast Asian humid tropical regions visible;
-- permanent ice concentrated appropriately in Antarctica/Greenland;
-- imported elevation drives major mountain regions;
-- coastlines materially benefit from the higher raster resolution;
-- Map and Globe agree on land/water and broad biome identity.
-
-Do not claim the current reference includes real hydrography, measured precipitation, detailed land cover, tectonic plates, real winds/currents, or complete temperature climatology.
+The goal is one logical Parchment project and one logical World Forge system package. Do not solve payload scale by splitting Earth from Sol.
 
 ## Validation
 
-Run focused tests first, then follow `refs/testing/validationCommands.yaml`.
-
-At minimum before accepting the milestone:
+For World Forge product changes:
 
 ```bash
-npx vitest run scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
 npm run verify
 ```
 
-Run package/body-awareness tests relevant to any additional code touched.
+Run focused tests first when changing reference-pipeline, package, body-awareness, or serialization code.
 
-`npm run evaluate:regions` is required only if geographic partitioning or tile-window generation changes.
+`npm run evaluate:regions` is required only if geographic partitioning or tile-window generation behavior changes.
 
-Browser QA is mandatory before acceptance.
-
-## Current validation boundary
-
-The checkpoint that established WP0 was written through the GitHub connector in an environment where a normal local Git checkout and source ETL execution were unavailable. Do not infer local test, source-build, or browser success from the commits alone.
-
-If repository push CI is green on the exact current head, record the run ID in `refs/handoffs/currentHandoff.md`. Otherwise run the required validation locally before continuing acceptance.
+Heavy scientific rebuild workflows should remain manual diagnostics unless there is a clear reason to put them back on ordinary push CI.
 
 ## Guardrails
 
-- One Sol system remains one World Forge project.
-- Do not split Ultra Earth into a separate `.wforge`.
-- Do not drop Jupiter, Mars, or accepted body records/assets.
-- Do not create a second resolution policy.
-- Do not change ordinary generated-world defaults.
-- Do not feed imported Koppen/biome/wetness/ice into the generic climate-calibration candidate path.
-- Do not start new Earth source ingestion merely because Ultra is larger; current sources already support it.
-- Do not lower Ultra to avoid package or memory evidence.
-- Do not broaden into climate calibration, hydrography import, lazy-loading implementation, renderer rewrites, or TTRPG polish without concrete blocker evidence and owner approval.
-- Preserve deterministic IDs, body identity, package contracts, and Parchment bindings.
+- One Sol system remains one project.
+- Keep Earth at Ultra `4096 x 2048` unless the owner explicitly changes the product target.
+- Keep canonical topology at `1024` unless the shared global policy itself is intentionally revised.
+- Do not change ordinary fictional-world generation defaults.
+- Do not drop Jupiter or Mars.
+- Do not create Earth-specific renderers or package formats.
+- Do not broaden into climate calibration, new source ingestion, hydrography, renderer rewrites, or deferred TTRPG polish during acceptance.
+- Preserve stable body IDs and Parchment bindings.
 
-## Deferred presentation TODOs
+## Definition of done for the Ultra baseline
 
-Keep parked unless explicitly reopened:
+The Ultra baseline can be closed when:
 
-1. TTRPG water wash is still too dark/heavy.
-2. TTRPG terrain-icon anchoring/alignment still needs improvement.
-
-## Definition of done
-
-This increment is done only when:
-
-1. the real maintained Earth bundle is `4096 x 2048` with topology `1024`;
-2. the complete Sol `.wforge` preserves Earth, Jupiter, Mars, and the body catalog;
-3. measured size/time/memory/load evidence is recorded;
-4. the Parchment starter embeds the rebuilt package;
-5. automated validation is green;
-6. browser QA passes Map, Globe, Explorer, save/reopen, active-body continuity, and Parchment entry;
-7. `refs/research/reference-data/earth-reference-data.md` and `refs/handoffs/currentHandoff.md` contain the final measured evidence and exact accepted commit/run IDs.
+- the source-backed `4096 x 2048` Earth fixture remains the maintained build target;
+- the complete 23-body Sol package remains intact;
+- exact-head automated validation is green;
+- browser QA proves Parchment import/reload and World Forge package handoff;
+- Natural Map, Globe, and geographic drill-down are accepted against the Ultra Earth surface;
+- another accepted Sol body remains available;
+- measured payload costs and the follow-on architecture decision are recorded without lowering the baseline to hide the cost.
