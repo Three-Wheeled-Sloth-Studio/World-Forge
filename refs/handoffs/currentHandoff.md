@@ -1,155 +1,142 @@
 # Current Handoff
 
-Updated: 2026-08-15
+Updated: 2026-08-18
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-Tracking issue: `#10`
+## Accepted runtime baseline
 
-## Accepted v0.3.77 river-field repair
+Accepted implementation/presentation checkpoint before this documentation handoff:
 
-Owner QA accepted the root presentation repair:
+- commit: `b0197a4669d605ecd771810f589feae109bb94e3`
+- visible version: `0.3.80`
+- Validate World Forge run `#844` / run id `31980878852`
+- 143 test files passed
+- 517 tests passed
+- typecheck/build, production harness tests, and both production smokes green
 
-- Data -> Biomes now reads correctly;
-- TTRPG is materially improved and the parchment substrate is visible;
-- the previous cyan/slate continent wash was caused by rendering the scalar `primaryWorld.layers.river` hydrology field as high-opacity visible geometry;
-- ordinary full-world presentation now renders only explicit authoritative `primaryWorld.rivers` paths.
+The current TTRPG direction is good enough to park. Owner QA on v0.3.80 identified two minor presentation debts that should remain deferred during the next increment:
 
-Keep high river density in the simulation. Do not re-enable the scalar runoff field as cartographic paint.
+1. TTRPG ocean is still too dark/heavy; desired direction is a very light, subtle watercolor wash.
+2. TTRPG terrain icons are visibly misaligned in places; future work should improve anchoring/placement semantics without changing canonical geography.
 
-## Active checkpoint: v0.3.79
+Do not spend the next increment polishing these unless the Earth baseline work is complete and the owner explicitly reopens them.
 
-This checkpoint contains two narrow follow-ups from the accepted v0.3.77 baseline.
+## Next active priority
 
-### TTRPG cartographic refinement
+The next implementation focus is a **maintained Earth reference rebuild at Ultra 4096 x 2048**, using the current source-backed Earth ETL and normal Sol/Parchment packaging path.
 
-Owner QA exposed two remaining presentation gaps after the substrate became readable:
+Authoritative execution prompt:
 
-1. the full-world map had no terrain-symbol layer; the existing bundled TTRPG icon path only served geographic tile-window maps;
-2. many valid inland river termini looked like unexplained dead ends because canonical `layers.lakes` cells were presented as wetland-colored land rather than visible water on the full-world TTRPG map.
+- `refs/handoffs/next-dev-prompt.md`
 
-The implemented boundary is presentation-only:
+Relevant reference-system context:
 
-- deterministic world-scale vector symbols for mountains, hills, forests, rainforest, and wetlands;
-- symbol placement derives only from canonical biome/elevation/water/ice/lake facts and authoritative river paths;
-- bounded per-family density prevents one high-priority terrain type from consuming the entire symbol budget;
-- symbols avoid canonical water/ice/lake sample cells and keep away from explicit river paths;
-- restrained compass rose as non-semantic map furniture;
-- canonical lake-mask cells read as cool cartographic water in TTRPG without changing the canonical marine `water` mask;
-- TTRPG lake styling survives the shared surface-repair seam rather than being converted back to terrestrial terrain;
-- true non-lake inland river termini receive small endpoint cues: wetland reeds/waves for wetland termini and a closed-basin mark for basin termini;
-- Data and Natural lake/river semantics remain unchanged.
+- `refs/handoffs/reference-system-etl-and-multi-body-navigation.md`
+- `refs/research/reference-data/earth-reference-data.md`
+- `refs/planning/reference-system-etl-and-multi-body-navigation.md`
+- World Forge issue #124
+- Parchment Worlds issue #22
 
-### Generation-quality default recenter
+## Earth target and source ceiling
 
-Owner requested moving the semantic default generation quality from the old blockier 512 x 256 setting to the current Large 1024 x 512 setting as the speed/quality balance point.
+World Forge's standard map resolutions top out at:
 
-Implemented behavior:
+- Ultra 4096 x 2048.
 
-- 1024 x 512 is now displayed as `Default`;
-- 512 x 256 remains available as `Standard`;
-- Fast, High, and Ultra choices remain available;
-- a brand-new workspace is recentered once from the legacy startup quality to 1024 x 512;
-- a persisted workspace still using the old 512 x 256 semantic Default is migrated once to 1024 x 512;
-- explicitly persisted higher-quality choices are preserved;
-- after the one-time recenter, users remain free to choose 512 x 256 or any other available quality without being forced back to Default.
+The current Earth source stack supports that target without exceeding source fidelity:
 
-The recenter uses the existing workspace-storage presence plus a versioned local migration marker. It does not change generation algorithms, project schemas, saved-world/replay contracts, or the behavior of an already generated world.
+- NOAA ETOPO 2022 v1 60 arc-second global Ice Surface elevation/bathymetry, approximately 21600 x 10800 native angular sampling;
+- Beck et al. Koppen-Geiger 1991-2020 1 km climate classification, materially finer than the 4096 x 2048 target.
 
-## River semantics
+The Earth reference target for the next increment is therefore:
 
-The hydrology model already records explicit river termini (`ocean`, `lake`, `wetland`, `basin`) and maintains a separate canonical `layers.lakes` mask.
+- map raster: 4096 x 2048;
+- topology resolution: expected 512, but resolve through the existing canonical output-to-topology policy/helper rather than creating a new hardcoded rule.
 
-The apparent dead-end issue is primarily a presentation mismatch:
+Do not add a new Earth-only resolution tier above Ultra.
 
-- ocean termini enter visible marine water;
-- lake termini may end on `layers.lakes === 1` while `layers.water === 0`, so the earlier renderer could show the destination as ordinary wetland/land;
-- wetland and basin termini are valid inland outcomes and now receive cartographic cues rather than pretending every river must reach the sea.
+## Pipeline mismatch to address
 
-Do not rewrite river routing unless browser/inspection evidence shows an authoritative path whose recorded terminus is itself incorrect.
+Current defaults are inconsistent:
 
-## TTRPG symbol guardrails
+- `tools/reference-etl/prepare_etopo_earth.py` defaults to 2048 x 1024 with topology 256;
+- `scripts/build-sol-reference-pipeline.ts` defaults to 512 x 256 with topology 64;
+- the ordinary desktop generated-world default is now 1024 x 512;
+- Ultra 4096 x 2048 is the highest existing standard map option.
 
-World-scale symbols are illustrative presentation, not new world facts.
+The next developer should establish one explicit, tested maintained-Earth reference target consumed by the normal source-to-package pipeline. Do not change the ordinary fictional-world generation default as collateral work.
 
-Allowed inputs:
+## Package/integration boundary
 
-- canonical biome;
-- projected elevation;
-- water, ice, and lake masks;
-- explicit authoritative river paths for avoidance.
+The high-resolution Earth must remain part of the existing one-project Sol system.
 
-Current symbols:
+Rebuild through the normal multi-body pipeline and preserve currently accepted non-Earth content, including:
 
-- mountain;
-- hills;
-- forest;
-- rainforest;
-- swamp/wetland;
-- compass rose.
+- Jupiter presentation assets;
+- currently packaged Mars reference assets;
+- stable body catalog identity and Parchment bindings.
 
-Do not infer settlements, castles, towers, villages, reefs, roads, political boundaries, or names without corresponding canonical facts.
+Do not produce an Earth-only `.wforge` as the maintained output.
 
-## Focused regression contract
+After rebuilding the World Forge package, republish the normal Parchment Worlds Sol starter through `npm run reference:publish-sol-starter` or the current canonical equivalent.
 
-Automated coverage must prove:
+## Required evidence
 
-- world-scale TTRPG symbol placement is deterministic and bounded;
-- symbol families remain balanced enough that high-priority mountains/wetlands cannot starve forest/rainforest vocabulary;
-- symbols never occupy canonical ocean, ice, or lake sample cells;
-- TTRPG lake styling changes presentation only and does not mutate the canonical marine water mask or source project;
-- a second shared surface-presentation pass does not silently convert the TTRPG lake back to land;
-- scalar-only river fields still cannot create visible river geometry;
-- explicit authoritative paths remain visible;
-- non-ocean termini remain available to the cartographic endpoint layer;
-- 1024 x 512 is the semantic Default quality;
-- fresh workspaces and persisted old-Default workspaces are recentered once;
-- explicit saved High/Ultra choices are not downgraded by the migration.
+Capture at minimum:
 
-## Manual visual acceptance
+- Earth source bundle dimensions;
+- canonical topology resolution;
+- ETL/build time;
+- normalized layer/bundle sizes;
+- final `.wforge` byte size and digest;
+- rebuilt `.pworld` size when available;
+- browser open/import responsiveness;
+- save/reopen behavior;
+- Map, Globe, and Explorer behavior on Earth;
+- confirmation that another packaged Sol body still works after the rebuild.
 
-No regeneration is required for the TTRPG presentation checks.
+If 4096 x 2048 exposes a package-size, eager-loading, or memory problem, record the evidence and identify the architecture follow-up. Do not silently lower the Earth baseline merely to avoid measuring the cost.
 
-TTRPG -> Biomes:
+## Earth acceptance boundary
 
-- mountain/forest/wetland iconography should be immediately visible but not carpet the map;
-- symbols should show multiple terrain families where the world contains them;
-- symbols must follow plausible terrain regions and avoid covering major river lines;
-- inland lake termini should visibly end in small cool-water lake areas where the canonical lake mask exists;
-- true basin/wetland termini should have a subtle intentional endpoint mark;
-- land must remain warm parchment/tan and water clearly cooler/darker.
+Keep the existing imported-reference semantics:
 
-Data -> Biomes remains the control and should retain the accepted v0.3.77 appearance.
+- elevation/bathymetry from ETOPO;
+- water mask derived from elevation/sea level;
+- broad climate/biome identity derived from source-backed Koppen-Geiger classes;
+- wetness derived from Koppen classes;
+- permanent ice derived from EF;
+- mountains driven by imported elevation.
 
-Generation quality:
+Do not turn this increment into the separate Earth climate-calibration benchmark.
 
-- open Build and confirm the selector presents `Default 1024 x 512` and `Standard 512 x 256`;
-- on an existing workspace that was still using the old 512 x 256 Default, first load after this checkpoint should recenter to 1024 x 512;
-- selecting Standard or a higher quality afterward must stick rather than being automatically reverted.
+Do not claim missing source layers are solved. Real hydrography, measured precipitation, full temperature climatology, detailed land cover, tectonic plates, winds, and currents remain separate source-ingestion work unless explicitly reopened.
 
-## Validation contract
+## Validation
 
-This is build-facing presentation/UI-default work:
+Follow `refs/testing/validationCommands.yaml`.
 
-- focused TTRPG world-symbol/lake/terminus regression tests;
-- focused generation-quality default/migration tests;
-- full exact-head unit/integration gate;
-- type-check and production build;
-- production harness tests and smokes.
+For the completed Earth reference milestone, run at least:
 
-`npm run evaluate:regions` is not required because generation algorithms and geographic partitioning are unchanged.
+```bash
+npm run verify
+```
 
-Manual visual acceptance remains mandatory.
+Also run focused reference-pipeline, package roundtrip, body-awareness, and starter-publisher tests touched by the increment.
+
+`npm run evaluate:regions` is required only if geographic partitioning/tile-window generation behavior changes.
+
+Browser QA is mandatory before the rebuilt Earth baseline is accepted.
 
 ## Guardrails
 
-- Do not create a second geography, hydrology, or terrain model.
-- Canonical `primaryWorld.rivers` owns visible river path geometry.
-- Scalar `layers.river` is supporting hydrology data, not visible cartographic geometry.
-- `layers.lakes` remains the canonical inland-lake fact; TTRPG may style it as water without changing `layers.water`.
-- Symbols must remain derived presentation over canonical facts.
-- Preserve accepted Data behavior.
-- Quality recentering changes the default selection, not the generator algorithm or saved generated worlds.
-- Do not reopen broad 2.5D/PBR work.
+- One Sol system remains one World Forge project.
+- Preserve deterministic body identity and package/Parchment bindings.
+- Do not create a second resolution policy.
+- Do not change ordinary generated-world defaults.
+- Do not drop Jupiter, Mars, or accepted body assets while rebuilding Earth.
+- Do not start new source ingestion merely because higher resolution is being requested; the existing ETOPO/Koppen sources already support Ultra.
+- Do not broaden into lazy-loading implementation, climate calibration, hydrography import, renderer rewrite, or additional TTRPG polish without concrete blocker evidence and owner approval.
