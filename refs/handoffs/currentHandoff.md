@@ -8,12 +8,20 @@ Branch: `dev`
 
 ## Current checkpoint
 
-The Ultra Earth reference implementation is now source-built, package-built, and repository-validated.
+The Ultra Earth reference implementation is source-built, package-built, repository-validated, and now includes the first owner-QA presentation repair.
 
-Current implementation head before this documentation checkpoint:
+Current validated code checkpoint before this documentation update:
+
+- commit: `400223bd70227459bff8fbf30c4a4202e0a38789`
+- visible runtime: `0.3.81`
+- Ultra Earth acceptance run: `32155132659`
+- focused Ultra presentation, navigation, and reference-pipeline regressions passed
+- full `npm run verify` passed
+
+The previous source/package acceptance checkpoint remains:
 
 - commit: `72bb0366e13fb01c0ddd26b881079c398e58eb1f`
-- accepted visible runtime baseline remains: `0.3.80`
+- visible runtime: `0.3.80`
 - Ultra Earth acceptance run: `32138808622`
 - focused reference-pipeline regressions passed
 - full `npm run verify` passed
@@ -28,7 +36,7 @@ The original v0.3.80 runtime checkpoint remains:
 
 ## Ultra Earth resolution contract
 
-The maintained Earth reference target is now explicit and tested:
+The maintained Earth reference target is explicit and tested:
 
 - raster: `4096 x 2048`
 - topology: `1024`
@@ -50,6 +58,41 @@ The source-to-package pipeline now:
 - records stage timings, bundle sizes, and digests.
 
 Ordinary fictional-world generation defaults were not changed.
+
+## Presentation QA repair in v0.3.81
+
+Owner QA on the first v0.3.80 local Parchment import correctly exposed that the Ultra data contract and the visible presentation path were not the same thing.
+
+Three distinct behaviors were identified:
+
+1. The loaded Earth really is `4096 x 2048`, but the primary-world Globe texture was hard-coded to `2048 x 1024`.
+2. Flat Explore Map intentionally defaults its preview to `1024 x 512`; `Source resolution` is available in the preview-detail control and must be selected when visually judging the Ultra raster.
+3. Standalone local World Forge navigation fell back to the production Parchment Worlds origin when no `pwReturnUrl` handoff parameter was present.
+
+The v0.3.81 repair now:
+
+- derives primary-world Globe texture size from the loaded source surface rather than forcing 2048 x 1024;
+- preserves up to the maintained 4096-pixel product edge while respecting the browser/GPU maximum texture size;
+- does not upscale ordinary lower-resolution generated worlds;
+- reports the actual primary Globe texture dimensions in the existing diagnostic dataset;
+- keeps a standalone `localhost:5173` World Forge session pointed at local Parchment Worlds on port `5273`;
+- keeps directly opened hosted `/apps/world-forge/` sessions on the same dev, QA, or production origin instead of falling back across environments.
+
+The left-side Quick Build `Standard 512 x 256` selector remains the default for the next ordinary regeneration. It does not describe or downsample the already-loaded source-backed Earth. Do not click Regenerate while visually accepting the imported Sol reference unless intentionally replacing Earth with a generated world.
+
+Focused coverage lives in:
+
+- `apps/desktop/src/globe/globeTextureResolution.ts`
+- `apps/desktop/src/globe/globeTextureResolution.test.ts`
+- `apps/desktop/src/shell/parchmentNavigation.ts`
+- `apps/desktop/src/shell/parchmentNavigation.test.ts`
+
+Exact-head validation for the repair:
+
+- commit: `400223bd70227459bff8fbf30c4a4202e0a38789`
+- run: `32155132659`
+- focused Ultra regressions: green
+- full `npm run verify`: green
 
 ## Measured source-backed Earth build
 
@@ -167,7 +210,14 @@ Do not treat the run's final red status as package-load failure.
 
 ## Validation
 
-World Forge exact-head acceptance:
+Current World Forge exact-head acceptance:
+
+- commit: `400223bd70227459bff8fbf30c4a4202e0a38789`
+- run: `32155132659`
+- focused Globe-resolution, navigation, and reference regressions: green
+- `npm run verify`: green
+
+Previous source/package exact-head acceptance:
 
 - commit: `72bb0366e13fb01c0ddd26b881079c398e58eb1f`
 - run: `32138808622`
@@ -181,11 +231,13 @@ Diagnostic workflows:
 - `.github/workflows/ultra-earth-reference.yml`
 - `.github/workflows/ultra-earth-acceptance.yml`
 
+The Ultra acceptance workflow now also runs automatically when the Globe-resolution or Parchment-navigation acceptance seams change.
+
 Parchment owns its private-repository starter and browser diagnostics.
 
 ## Architecture conclusion
 
-Ultra 4096 x 2048 is source-supported and technically operational. The higher resolution exposed a real payload problem rather than a source problem.
+Ultra 4096 x 2048 is source-supported and technically operational. The higher resolution exposed a real payload problem rather than a source problem, and owner QA additionally exposed a fixed-resolution presentation cap that is now repaired.
 
 Current measured costs are high enough to justify a separate payload-strategy increment:
 
@@ -198,12 +250,14 @@ Do not begin that rewrite silently. It is now evidence-backed follow-on architec
 
 ## Remaining acceptance work
 
-The Ultra baseline still needs final presentation acceptance rather than more source or package plumbing:
+The Ultra baseline now needs a fresh owner visual pass on v0.3.81 rather than more source or package plumbing:
 
-- inspect the automated Natural Map, Globe, and geographic drill-down screenshots from the corrected browser diagnostic;
-- perform owner visual QA for recognizable continents, deserts, humid regions, ice, mountains, and coastline improvement;
-- confirm another packaged body such as Jupiter or Mars in the same browser session if the owner wants the milestone fully closed;
-- record final browser timing and visual evidence after the corrected diagnostic completes.
+- repull World Forge and confirm the visible runtime is `0.3.81`;
+- in Map view, select `Natural` presentation and `Source resolution` preview detail before judging coastline/raster fidelity;
+- in Globe view, confirm the same Natural surface visibly benefits from the source-aware texture path;
+- enable geographic drill-down and inspect representative regions;
+- confirm another packaged body such as Jupiter or Mars in the same browser session;
+- record any real visual defects separately from known package-size/load-time costs.
 
 Save/reopen at the Parchment project level is proven by import plus reload. Exact World Forge edit/save-back of the Ultra package remains worth a focused check if package mutation is part of the acceptance pass.
 
