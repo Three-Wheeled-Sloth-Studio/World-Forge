@@ -3,10 +3,8 @@ import { spawn } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  MAINTAINED_EARTH_REFERENCE_RESOLUTION,
-  MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION,
-} from './reference-resolution';
+import { topologyResolutionForOutput } from '@world-forge/shared';
+import { MAINTAINED_EARTH_REFERENCE_RESOLUTION } from './reference-resolution';
 
 export const SOL_REFERENCE_PIPELINE_REPORT_SCHEMA = 'world-forge-sol-reference-pipeline-report-v1' as const;
 
@@ -32,6 +30,14 @@ export interface SolReferencePipelineCommand {
   args: string[];
 }
 
+const REQUIRED_EARTH_REFERENCE_LAYERS = [
+  'elevationMeters',
+  'waterMask',
+  'biomeCodes',
+  'wetness',
+  'iceMask',
+] as const;
+
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultRepositoryRoot = path.resolve(scriptDirectory, '..');
 
@@ -42,7 +48,7 @@ export function parseSolReferencePipelineOptions(
 ): SolReferencePipelineOptions {
   let earthWidth = MAINTAINED_EARTH_REFERENCE_RESOLUTION.width;
   let earthHeight = MAINTAINED_EARTH_REFERENCE_RESOLUTION.height;
-  let topologyResolution = MAINTAINED_EARTH_REFERENCE_TOPOLOGY_RESOLUTION;
+  let topologyResolution: number | null = null;
   let earthBundleDirectory = path.join(repositoryRoot, '.local', 'reference-data', 'earth-etopo');
   let jupiterBundleDirectory = path.join(repositoryRoot, '.local', 'reference-data', 'jupiter-cassini');
   const bodyBundleDirectories: string[] = [];
@@ -112,7 +118,7 @@ export function parseSolReferencePipelineOptions(
     repositoryRoot: path.resolve(repositoryRoot),
     earthWidth,
     earthHeight,
-    topologyResolution,
+    topologyResolution: topologyResolution ?? topologyResolutionForOutput({ width: earthWidth, height: earthHeight }),
     earthBundleDirectory,
     jupiterBundleDirectory,
     bodyBundleDirectories,
@@ -174,16 +180,55 @@ export function buildSolReferencePipelineCommands(
   return commands;
 }
 
+export function validatePreparedEarthManifest(
+  manifest: unknown,
+  expected: Pick<SolReferencePipelineOptions, 'earthWidth' | 'earthHeight' | 'topologyResolution'>,
+): void {
+  if (!isRecord(manifest) || manifest.schema !== 'world-forge-reference-raster-bundle-v1' || manifest.bodyId !== 'earth') {
+    throw new Error('Prepared Earth bundle must use the Earth reference raster bundle contract.');
+  }
+  const resolution = manifest.resolution;
+  if (
+    !isRecord(resolution)
+    || resolution.width !== expected.earthWidth
+    || resolution.height !== expected.earthHeight
+  ) {
+    const actual = isRecord(resolution) ? `${String(resolution.width)} x ${String(resolution.height)}` : 'unknown';
+    throw new Error(
+      `Prepared Earth bundle resolution ${actual} does not match requested ${expected.earthWidth} x ${expected.earthHeight}. Rerun the Earth source ETL.`,
+    );
+  }
+  if (manifest.topologyResolution !== expected.topologyResolution) {
+    throw new Error(
+      `Prepared Earth topology ${String(manifest.topologyResolution)} does not match requested ${expected.topologyResolution}. Rerun the Earth source ETL.`,
+    );
+  }
+  if (!isRecord(manifest.layers)) {
+    throw new Error('Prepared Earth bundle is missing its layer manifest.');
+  }
+  for (const layerName of REQUIRED_EARTH_REFERENCE_LAYERS) {
+    if (!isRecord(manifest.layers[layerName])) {
+      throw new Error(
+        `Prepared Earth bundle is missing required source-backed layer "${layerName}". Rerun the Earth source ETL with Koppen-Geiger enabled.`,
+      );
+    }
+  }
+}
+
 export async function runSolReferencePipeline(
   options: SolReferencePipelineOptions,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<void> {
   const startedAt = Date.now();
   const commands = buildSolReferencePipelineCommands(options, env);
+  const stageTimings: Array<{ stage: SolReferencePipelineCommand['stage']; elapsedMs: number }> = [];
 
   for (const command of commands) {
+    if (command.stage === 'build-sol-package') await validatePreparedEarthBundle(options);
     console.log(`\n[${command.stage}] ${command.command} ${command.args.map(quoteForLog).join(' ')}`);
+    const stageStartedAt = Date.now();
     await runCommand(command, options.repositoryRoot, env);
+    stageTimings.push({ stage: command.stage, elapsedMs: Date.now() - stageStartedAt });
   }
 
   const earthManifestPath = path.join(options.earthBundleDirectory, 'manifest.json');
@@ -224,6 +269,7 @@ export async function runSolReferencePipeline(
     },
     output: fileEvidence(options.outputFile, packageBytes, options.repositoryRoot),
     stages: commands.map((command) => command.stage),
+    stageTimings,
   };
 
   await mkdir(path.dirname(options.reportFile), { recursive: true });
@@ -234,6 +280,19 @@ export async function runSolReferencePipeline(
   console.log(`Package digest: ${sha256Label(packageBytes)}`);
   console.log(`Prepared body bundles: ${bodyManifestPaths.length}`);
   console.log(`Pipeline report: ${options.reportFile}`);
+}
+
+async function validatePreparedEarthBundle(options: SolReferencePipelineOptions): Promise<void> {
+  const manifestPath = path.join(options.earthBundleDirectory, 'manifest.json');
+  await requireFile(manifestPath, 'Prepared Earth manifest');
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Prepared Earth manifest is not valid JSON: ${detail}`);
+  }
+  validatePreparedEarthManifest(manifest, options);
 }
 
 function fileEvidence(filePath: string, bytes: Uint8Array, repositoryRoot: string) {
@@ -299,6 +358,10 @@ function positiveInteger(value: string, name: string): number {
 function cleanText(value: unknown): string | null {
   const text = typeof value === 'string' ? value.trim() : '';
   return text || null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function quoteForLog(value: string): string {
