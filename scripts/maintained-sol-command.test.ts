@@ -8,6 +8,7 @@ import {
   maintainedSolBuildCommands,
   referencePipInstallArgs,
   referencePythonPaths,
+  retryReferenceSetupOperation,
   type MaintainedSolBuildCommand,
 } from './build-maintained-sol-reference.js';
 
@@ -84,6 +85,19 @@ describe('maintained Sol reference command', () => {
       '-r',
       'requirements.txt',
     ]);
+  });
+
+  it('retries the dependency bootstrap process after pip exits', async () => {
+    let attempts = 0;
+    const sleep = vi.fn(async () => undefined);
+    await retryReferenceSetupOperation(async () => {
+      attempts += 1;
+      if (attempts < 3) throw new Error('pip timed out');
+    }, { sleep, attempts: 3, label: 'Reference Python dependency install' });
+
+    expect(attempts).toBe(3);
+    expect(sleep).toHaveBeenNthCalledWith(1, 5_000);
+    expect(sleep).toHaveBeenNthCalledWith(2, 10_000);
   });
 
   it('retries transient source-pipeline failures without re-preparing Mars', async () => {
