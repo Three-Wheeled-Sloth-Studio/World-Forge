@@ -6,6 +6,7 @@ import {
   buildMaintainedSolReference,
   childLaunchPlan,
   maintainedSolBuildCommands,
+  referencePipInstallArgs,
   referencePythonPaths,
   type MaintainedSolBuildCommand,
 } from './build-maintained-sol-reference.js';
@@ -68,6 +69,21 @@ describe('maintained Sol reference command', () => {
     });
     expect(referencePythonPaths('C:\\repo', 'win32').python)
       .toBe(path.join('C:\\repo', '.local', 'reference-python', 'Scripts', 'python.exe'));
+  });
+
+  it('gives pip enough timeout and transport retries for slow reference dependency downloads', () => {
+    expect(referencePipInstallArgs('requirements.txt')).toEqual([
+      '-m',
+      'pip',
+      'install',
+      '--disable-pip-version-check',
+      '--timeout',
+      '120',
+      '--retries',
+      '10',
+      '-r',
+      'requirements.txt',
+    ]);
   });
 
   it('retries transient source-pipeline failures without re-preparing Mars', async () => {
