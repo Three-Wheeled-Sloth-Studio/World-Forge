@@ -1,4 +1,4 @@
-# Next Dev Prompt: Ultra Earth Visual Acceptance and Payload Follow-up
+# Next Dev Prompt: Ultra Earth Owner Acceptance and Payload Follow-up
 
 Continue implementation in:
 
@@ -8,14 +8,14 @@ Work directly on `dev`.
 
 ## Starting point
 
-The Ultra Earth source/package path is proven, and the first owner-QA presentation defects have been repaired.
+The maintained Ultra Earth source/package path, v0.3.81 presentation repair, and unified local/hosted Sol-reference build path are implemented.
 
 Validated code checkpoint before the current documentation update:
 
-- commit: `400223bd70227459bff8fbf30c4a4202e0a38789`
+- commit: `57f1442b120d71c2545ec4ac265023d08d50b0b8`
 - visible runtime: `0.3.81`
-- Ultra Earth acceptance run: `32155132659`
-- focused Globe-resolution, Parchment-navigation, and reference-pipeline regressions passed
+- Ultra Earth acceptance run: `32864307205`
+- focused canonical-Sol, Globe, navigation, and reference regressions passed
 - full `npm run verify` passed
 
 Read first:
@@ -31,181 +31,161 @@ Read first:
 9. World Forge issue #124
 10. Parchment Worlds issue #22 when sibling access is available
 
-## Accepted Ultra contract
+## Accepted contracts
 
-- Earth raster: `4096 x 2048`
-- Earth cubed-sphere topology: `1024`
+Maintained Earth:
 
-The topology value is derived by the existing shared `topologyResolutionForOutput(...)` helper. Do not restore the old 512 estimate and do not add an Earth-specific topology rule.
+- raster: `4096 x 2048`
+- canonical topology: `1024`
 
-The ordinary fictional-world default remains unchanged.
+Ordinary fictional generation remains independent:
 
-## What is already proven
+- ordinary current default quality: `1024 x 512`
+- `512 x 256` is the lower `Standard` tier
 
-### Source ETL and full Sol package
+For an imported package, World Forge loads the package's own generation config. A genuine Ultra Sol import should therefore show `Ultra 4096 x 2048` and right-panel `Map scale 4096 x 2048`. If both say 512 x 256, an old package was loaded.
 
-World Forge run `32136329836` successfully built:
+## Unified Sol-reference build
 
-- source-backed Earth at `4096 x 2048`;
-- topology `1024`;
-- Jupiter's accepted atmospheric appearance;
-- Mars's accepted Viking/MOLA prepared surface;
-- one complete 23-body Sol `.wforge`.
+Do not restore the old manual recipe of separate Mars preparation plus a hand-written Sol pipeline invocation.
 
-Measured Earth normalized bundle:
+The one first-party World Forge entry point is:
 
-- `92,277,263` bytes total.
+```text
+npm run reference:build-sol
+```
 
-Measured package:
+It owns:
 
-- `.wforge`: `193,507,559` bytes;
-- run-specific SHA-256: `ee6d98314fe7447c42ca8545abb7fa7e2acf8b95fddaba3be3683c80c6b16915`;
-- source-to-package wall time: `1:48.23`;
-- peak RSS: about `5.65 GiB`.
+- Mars preparation;
+- maintained Earth/Jupiter source ETL;
+- Earth `4096 x 2048` / topology `1024` validation;
+- complete Sol package assembly;
+- `.wforge` and `.pipeline.json` evidence;
+- bounded retry of transient source-pipeline failures.
 
-### Parchment package path
+Parchment local startup now validates/reuses an existing maintained package or invokes this command automatically from a configured/sibling World Forge checkout before generating the starter.
 
-Parchment run `32137360931` successfully generated and inspected the enriched starter through the normal package code:
+The intended owner workflow for sibling checkouts is simply:
 
-- `.pworld`: `258,172,374` bytes;
-- SHA-256: `f4ce8d3b354bc47b976ebfccbe9f695619b10483738cafe31c86c1e44462b74e`;
-- generation: `1:03.30` and about `6.9 GiB` peak RSS;
-- normal package-reader inspection: `14.66 s` and about `2.0 GiB` peak RSS.
+```text
+cd Parchment-Worlds
+git pull
+npm run dev
+```
 
-### Browser package path
+The first startup with no valid reference may take several minutes; later startups reuse the validated local package.
 
-Parchment browser run `32139014646` proved:
+Parchment focused preparation acceptance run `32863452205` passed valid reuse, missing-package build orchestration, stale-512 replacement, and project-model typecheck.
 
-- starter review;
-- normal import;
-- IndexedDB/project reload;
-- embedded `.wforge` transfer into World Forge;
-- loaded Ultra surface at `4096 x 2048` from topology `1024`;
-- one-project Sol context with Luna and Earth physical/geographic metrics intact.
-
-The run's final red status was a diagnostic assertion bug: it looked for a standalone `Earth` label even though the Ultra surface was already loaded. Use the loaded-surface contract, not that obsolete assertion.
-
-### Owner-QA presentation repair
-
-The first local QA pass on v0.3.80 found two real presentation/navigation issues and one expected control behavior:
-
-- Globe hard-coded the primary surface texture to `2048 x 1024`, hiding half the Ultra linear detail.
-- standalone local World Forge navigation fell back to production Parchment Worlds when no handoff query parameter existed.
-- Map preview still defaults to `1024 x 512`; that is an intentional preview setting, not the loaded Earth resolution.
-
-v0.3.81 fixes the first two:
-
-- primary Globe textures now derive from the source surface, capped at the maintained 4096-pixel product edge and the browser/GPU texture limit;
-- ordinary lower-resolution worlds are not upscaled;
-- local `localhost:5173` World Forge navigation resolves local Parchment Worlds on port `5273`;
-- directly opened hosted World Forge stays on its current dev, QA, or production origin.
-
-Run `32155132659` passed focused coverage and full repository verification on exact code head `400223bd70227459bff8fbf30c4a4202e0a38789`.
+Hosted Parchment deployment uses the same canonical command from the matching World Forge branch. Do not create a second hosted-only reference recipe.
 
 ## Immediate priority
 
-Finish owner visual acceptance on v0.3.81. Do not start payload optimization until the visual baseline is accepted or the owner explicitly redirects scope.
+Finish owner visual acceptance before opening payload optimization unless the owner explicitly redirects scope.
 
-### A. Repull and verify the right build
+### Fresh local integrated import
 
-- repull `World-Forge/dev` and `Parchment-Worlds/dev`;
-- launch the full local Parchment Worlds stack for the integrated path;
-- confirm World Forge reports `0.3.81`;
-- import/use the maintained Sol starter;
-- do not Regenerate Earth from the Quick Build panel during this acceptance pass.
+Use a fresh Parchment Sol starter after the automatic reference preparation completes. An already-imported project containing the old 512 `.wforge` is permanently old data and is not a valid Ultra acceptance fixture.
 
-The Quick Build `Standard 512 x 256` selector describes the next ordinary generation request. It does not describe the imported Ultra Earth.
+Expected first checks:
 
-### B. Natural Map at source resolution
+- World Forge runtime `0.3.81`;
+- Generation Quality `Ultra 4096 x 2048`;
+- Map scale `4096 x 2048`.
 
-In Explore:
+Do not click Regenerate during this acceptance pass.
 
-- switch to Map view;
-- select `Natural` presentation;
-- set preview detail to `Source resolution` rather than the default 1024 x 512 preview;
-- inspect recognizable continents, coastlines, major islands, deserts, humid tropical regions, ice, and mountain regions.
+### Natural Map
 
-This is the correct flat-map comparison against the old 512 x 256 reference integration.
+Use:
 
-### C. Globe
+`Explore -> Layers -> Display -> Preview -> Source resolution`
 
-Switch to Globe without changing the loaded project or active Earth body.
+Then select `Natural` presentation and inspect recognizable continents, major islands, deserts, humid tropical regions, ice, mountains, and coastline improvement.
 
-The source-aware path should use `4096 x 2048` for Ultra Earth on normal hardware. The helper intentionally falls back proportionally if the browser reports a lower maximum texture size.
+The Preview control affects presentation resolution only. It cannot invent detail if the source package itself is 512 x 256.
 
-Confirm:
+### Globe
 
-- Map and Globe agree on land/water and broad biome identity;
-- coastline and island detail is materially improved over the old integration;
-- no new seam, texture, lighting, or interaction regression was introduced.
+The v0.3.81 primary Globe texture now follows source resolution up to the maintained 4096-pixel edge and the browser/GPU texture limit. Ordinary lower-resolution worlds are not upscaled.
 
-### D. Geographic drill-down and body continuity
+Confirm Map and Globe agree on land/water and broad biome identity and that no seam/interaction regression appeared.
 
-- enable geographic drill-down against Earth and inspect representative regions;
-- confirm at least one non-Earth accepted body, preferably Jupiter or Mars, remains available in the same Sol project;
-- distinguish body-capability limitations from Earth-resolution defects.
+### Geographic drill-down and body continuity
 
-## Measured payload architecture problem
+- enable geographic drill-down against Earth;
+- inspect representative regions;
+- confirm at least one non-Earth accepted body, preferably Mars or Jupiter, remains available and displays in the same Sol project.
 
-Do not treat this as a reason to reduce Earth resolution.
+## Proven source/package evidence
 
-The current package works, but the costs are concrete:
+Accepted World Forge source build run `32136329836`:
 
-- `.wforge` is about 193.5 MB compressed;
-- inspected ZIP content is about 1.325 GB because high-volume typed layers are serialized as JSON number arrays;
-- World Forge source-to-package build peaks around 5.65 GiB RSS;
-- Parchment base64-expands the nested package to about 258.2 MB;
-- Parchment starter generation peaks around 6.9 GiB RSS;
-- browser starter review is roughly 8 seconds with about 792 MB JS heap;
-- import/reload are roughly 14 to 16 seconds in the measured Chromium runner.
+- Earth `4096 x 2048`, topology `1024`;
+- complete 23-body Sol project;
+- `.wforge`: `193,507,559` bytes;
+- source-to-package wall time: `1:48.23`;
+- peak RSS: about `5.65 GiB`.
 
-This is enough evidence to justify a separate payload-strategy PI, but do not silently absorb that rewrite into Ultra acceptance.
+Accepted Parchment package run `32137360931`:
 
-## Recommended payload follow-up after explicit scope approval
+- `.pworld`: `258,172,374` bytes;
+- generation peak RSS: about `6.9 GiB`;
+- normal package-reader inspection: `14.66 s`, about `2.0 GiB` peak RSS.
 
-Sequence the architecture work by largest structural waste first:
+Browser run `32139014646` proved starter review, import, reload, package handoff, and loaded Ultra Earth. Its final red result was an obsolete assertion after successful load.
 
-1. Add compact binary layer entries to `.wforge` for typed numeric arrays instead of JSON number arrays.
-2. Keep the existing reader compatible with current packages while introducing a versioned binary reader/writer path.
-3. Re-measure package size, import time, save/reopen time, and browser memory.
-4. Only then add staged/lazy layer/body decode if measurements still require it.
-5. Independently replace Parchment's base64 binary attachment envelope with a binary-capable container or side-entry representation if the remaining cost still justifies it.
+## Payload architecture problem
 
-The goal is one logical Parchment project and one logical World Forge system package. Do not solve payload scale by splitting Earth from Sol.
+Do not reduce Earth resolution to address payload cost.
+
+The measured structural waste remains:
+
+- `.wforge` high-volume typed layers are expanded into JSON numeric arrays before ZIP compression;
+- Parchment base64-expands the compressed `.wforge` inside JSON `.pworld`;
+- build/import memory and time are consequently high.
+
+After explicit owner approval, recommended sequence is:
+
+1. binary typed-layer entries in `.wforge`;
+2. backward-compatible current-package reader;
+3. remeasure package size, save/reopen, import time, and browser memory;
+4. staged/lazy hydration only if still justified;
+5. then reconsider Parchment's base64 attachment envelope.
+
+Do not split Earth from Sol.
 
 ## Validation
 
 For World Forge product changes:
 
-```bash
+```text
 npm run verify
 ```
 
-Run focused tests first when changing reference-pipeline, presentation-resolution, package, body-awareness, or serialization code.
+Run focused reference/build/presentation tests first when touching those seams.
 
-`npm run evaluate:regions` is required only if geographic partitioning or tile-window generation behavior changes.
-
-Heavy scientific rebuild workflows should remain manual diagnostics unless there is a clear reason to put them back on ordinary push CI.
+Heavy scientific source rebuilds remain diagnostic/maintained-fixture work, not ordinary push CI.
 
 ## Guardrails
 
 - One Sol system remains one project.
-- Keep Earth at Ultra `4096 x 2048` unless the owner explicitly changes the product target.
-- Keep canonical topology at `1024` unless the shared global policy itself is intentionally revised.
-- Do not change ordinary fictional-world generation defaults.
-- Do not drop Jupiter or Mars.
-- Do not create Earth-specific renderers or package formats.
-- Do not broaden into climate calibration, new source ingestion, hydrography, renderer rewrites, or deferred TTRPG polish during acceptance.
+- Keep Earth at `4096 x 2048` / topology `1024` unless the owner deliberately changes the target.
+- Keep ordinary generated-world defaults independent.
 - Preserve stable body IDs and Parchment bindings.
+- Do not drop Jupiter or Mars.
+- Do not create Earth-specific renderer/package exceptions.
+- Do not broaden visual acceptance into new climate/source ingestion or deferred TTRPG work.
 
-## Definition of done for the Ultra baseline
+## Definition of done for Ultra baseline
 
-The Ultra baseline can be closed when:
+The baseline can close when:
 
-- the source-backed `4096 x 2048` Earth fixture remains the maintained build target;
-- the complete 23-body Sol package remains intact;
-- exact-head automated validation is green;
-- browser QA proves Parchment import/reload and World Forge package handoff;
-- owner QA accepts Natural Map at Source resolution, source-aware Globe, and geographic drill-down against the Ultra Earth surface;
-- another accepted Sol body remains available;
-- measured payload costs and the follow-on architecture decision are recorded without lowering the baseline to hide the cost.
+- fresh local Parchment startup automatically prepares/reuses the maintained Sol package;
+- fresh import reports `4096 x 2048` Earth and topology `1024`;
+- owner accepts Natural Map at Source resolution;
+- owner accepts source-aware Globe;
+- geographic drill-down works against Earth;
+- at least one accepted secondary Sol body remains available;
+- payload costs remain recorded as separate follow-up architecture debt.
