@@ -7,6 +7,12 @@ on:
       - dev
     paths:
       - '.github/workflows/ultra-earth-acceptance.yml'
+      - '.github/workflows/ultra-earth-reference.yml'
+      - 'package.json'
+      - 'scripts/build-maintained-sol-reference.ts'
+      - 'scripts/maintained-sol-command.test.ts'
+      - 'scripts/build-sol-reference-pipeline.ts'
+      - 'scripts/build-sol-reference-pipeline.test.ts'
       - 'apps/desktop/src/appVersion.ts'
       - 'apps/desktop/src/globe/**'
       - 'apps/desktop/src/shell/parchmentNavigation.ts'
@@ -47,7 +53,7 @@ jobs:
         run: npm ci
 
       - name: Run focused Ultra regressions
-        run: npx vitest run apps/desktop/src/globe/globeTextureResolution.test.ts apps/desktop/src/shell/parchmentNavigation.test.ts scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
+        run: npx vitest run apps/desktop/src/globe/globeTextureResolution.test.ts apps/desktop/src/shell/parchmentNavigation.test.ts scripts/maintained-sol-command.test.ts scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
 
       - name: Run repository verification
         run: npm run verify
@@ -63,4 +69,4 @@ jobs:
           else
             result='failed'
           fi
-          gh issue comment 124 --repo "$GITHUB_REPOSITORY" --body "Ultra Earth acceptance verification [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) ${result} for commit \`${GITHUB_SHA}\`. Focused Ultra regressions and \`npm run verify\` were included."
+          gh issue comment 124 --repo "$GITHUB_REPOSITORY" --body "Ultra Earth acceptance verification [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) ${result} for commit \`${GITHUB_SHA}\`. Focused Ultra regressions, canonical Sol-build orchestration, and \`npm run verify\` were included."
