@@ -12,10 +12,10 @@ The maintained Ultra Earth source/package path, v0.3.81 presentation repair, and
 
 Validated code checkpoint before the current documentation update:
 
-- commit: `57f1442b120d71c2545ec4ac265023d08d50b0b8`
+- commit: `5ed9ec5c53d47aea3dbe4d81d9917dd42c4ae058`
 - visible runtime: `0.3.81`
-- Ultra Earth acceptance run: `32864307205`
-- focused canonical-Sol, Globe, navigation, and reference regressions passed
+- Ultra Earth acceptance run: `32865033525`
+- focused canonical-Sol, local-Python-bootstrap, Globe, navigation, and reference regressions passed
 - full `npm run verify` passed
 
 Read first:
@@ -57,6 +57,8 @@ npm run reference:build-sol
 
 It owns:
 
+- repo-local reference Python environment creation under `.local/reference-python`;
+- installation of `tools/reference-etl/requirements.txt` into that local environment when needed;
 - Mars preparation;
 - maintained Earth/Jupiter source ETL;
 - Earth `4096 x 2048` / topology `1024` validation;
@@ -64,21 +66,17 @@ It owns:
 - `.wforge` and `.pipeline.json` evidence;
 - bounded retry of transient source-pipeline failures.
 
-Parchment local startup now validates/reuses an existing maintained package or invokes this command automatically from a configured/sibling World Forge checkout before generating the starter.
+A base Python 3 installation is still required. If `python` is not on PATH, `WORLD_FORGE_BOOTSTRAP_PYTHON` can point at the desired executable. Do not require the owner to manually pip-install World Forge raster packages globally.
 
-The intended owner workflow for sibling checkouts is simply:
+Parchment local startup validates/reuses an existing maintained package or invokes this command automatically from a configured/sibling World Forge checkout before generating the starter.
 
-```text
-cd Parchment-Worlds
-git pull
-npm run dev
-```
+Once both sibling checkouts are current, the owner no longer needs to run any Mars/Earth/reference commands manually. Starting Parchment with `npm run dev` is sufficient to build or reuse the maintained reference.
 
-The first startup with no valid reference may take several minutes; later startups reuse the validated local package.
+The first startup with no valid reference may take several minutes and download the public source rasters. Later startups reuse the validated local package.
 
 Parchment focused preparation acceptance run `32863452205` passed valid reuse, missing-package build orchestration, stale-512 replacement, and project-model typecheck.
 
-Hosted Parchment deployment uses the same canonical command from the matching World Forge branch. Do not create a second hosted-only reference recipe.
+Hosted Parchment deployment uses the same canonical command from the matching World Forge branch. Do not create a second hosted-only Mars/Earth reference recipe.
 
 ## Immediate priority
 
@@ -108,7 +106,7 @@ The Preview control affects presentation resolution only. It cannot invent detai
 
 ### Globe
 
-The v0.3.81 primary Globe texture now follows source resolution up to the maintained 4096-pixel edge and the browser/GPU texture limit. Ordinary lower-resolution worlds are not upscaled.
+The v0.3.81 primary Globe texture follows source resolution up to the maintained 4096-pixel edge and the browser/GPU texture limit. Ordinary lower-resolution worlds are not upscaled.
 
 Confirm Map and Globe agree on land/water and broad biome identity and that no seam/interaction regression appeared.
 
