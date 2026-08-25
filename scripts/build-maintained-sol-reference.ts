@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export type MaintainedSolBuildCommand = {
   stage: 'prepare-mars' | 'pipeline-sol';
@@ -92,6 +94,7 @@ function runChildCommand(
   });
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1]?.replace(/\\/g, '/')}`).href) {
+const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (invokedPath === import.meta.url) {
   await buildMaintainedSolReference();
 }
