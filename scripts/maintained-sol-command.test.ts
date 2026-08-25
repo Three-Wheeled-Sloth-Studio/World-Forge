@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildMaintainedSolReference,
   maintainedSolBuildCommands,
+  referencePythonPaths,
   type MaintainedSolBuildCommand,
 } from './build-maintained-sol-reference.js';
 
@@ -42,6 +43,15 @@ describe('maintained Sol reference command', () => {
     expect(maintainedSolBuildCommands('win32').prepareMars.command).toBe('npm.cmd');
   });
 
+  it('keeps reference Python dependencies in a repo-local environment on each platform', () => {
+    expect(referencePythonPaths('/repo', 'linux')).toMatchObject({
+      root: path.join('/repo', '.local', 'reference-python'),
+      python: path.join('/repo', '.local', 'reference-python', 'bin', 'python'),
+    });
+    expect(referencePythonPaths('C:\\repo', 'win32').python)
+      .toBe(path.join('C:\\repo', '.local', 'reference-python', 'Scripts', 'python.exe'));
+  });
+
   it('retries transient source-pipeline failures without re-preparing Mars', async () => {
     const calls: MaintainedSolBuildCommand[] = [];
     let pipelineAttempts = 0;
@@ -55,6 +65,7 @@ describe('maintained Sol reference command', () => {
 
     await buildMaintainedSolReference({
       env: {},
+      prepareEnvironment: async (env) => env,
       runCommand,
       sleep,
       pipelineAttempts: 3,
@@ -66,6 +77,19 @@ describe('maintained Sol reference command', () => {
     expect(sleep).toHaveBeenNthCalledWith(2, 10_000);
   });
 
+  it('passes the prepared reference environment to every build stage', async () => {
+    const prepared = { PATH: '/reference/bin', PYTHON: '/reference/bin/python' };
+    const seen: NodeJS.ProcessEnv[] = [];
+    await buildMaintainedSolReference({
+      env: { PATH: '/base' },
+      prepareEnvironment: async () => prepared,
+      runCommand: async (_command, env) => { seen.push(env); },
+    });
+
+    expect(seen).toHaveLength(2);
+    expect(seen.every((env) => env === prepared)).toBe(true);
+  });
+
   it('surfaces the final pipeline failure after the retry budget is exhausted', async () => {
     const runCommand = vi.fn(async (command: MaintainedSolBuildCommand) => {
       if (command.stage === 'pipeline-sol') throw new Error('source unavailable');
@@ -73,6 +97,7 @@ describe('maintained Sol reference command', () => {
 
     await expect(buildMaintainedSolReference({
       env: {},
+      prepareEnvironment: async (env) => env,
       runCommand,
       sleep: async () => undefined,
       pipelineAttempts: 2,
