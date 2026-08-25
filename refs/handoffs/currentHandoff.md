@@ -12,10 +12,10 @@ The Ultra Earth reference is source-built, package-built, presentation-repaired,
 
 Current validated World Forge checkpoint before this documentation update:
 
-- commit: `57f1442b120d71c2545ec4ac265023d08d50b0b8`
+- commit: `5ed9ec5c53d47aea3dbe4d81d9917dd42c4ae058`
 - visible runtime: `0.3.81`
-- Ultra Earth acceptance run: `32864307205`
-- focused Globe/navigation/reference/canonical-Sol regressions passed
+- Ultra Earth acceptance run: `32865033525`
+- focused Globe/navigation/reference/canonical-Sol/bootstrap regressions passed
 - full `npm run verify` passed
 
 Previous v0.3.81 presentation checkpoint:
@@ -47,12 +47,16 @@ npm run reference:build-sol
 
 The command is implemented by `scripts/build-maintained-sol-reference.ts` and owns the previously leaked multi-command recipe:
 
-1. prepare the accepted Mars Viking/MOLA bundle;
-2. run the normal source-backed Sol pipeline;
-3. prepare Earth at `4096 x 2048` / topology `1024` from the maintained Earth sources;
-4. prepare Jupiter;
-5. assemble the complete one-project Sol `.wforge` with Mars included;
-6. write `.local/reference-data/sol-earth-reference.wforge` and its `.pipeline.json` evidence.
+1. prepare a repo-local Python environment under `.local/reference-python` when needed;
+2. install `tools/reference-etl/requirements.txt` into that local environment when its requirements digest changes;
+3. prepare the accepted Mars Viking/MOLA bundle;
+4. run the normal source-backed Sol pipeline;
+5. prepare Earth at `4096 x 2048` / topology `1024` from the maintained Earth sources;
+6. prepare Jupiter;
+7. assemble the complete one-project Sol `.wforge` with Mars included;
+8. write `.local/reference-data/sol-earth-reference.wforge` and its `.pipeline.json` evidence.
+
+The local Python environment avoids requiring the owner to manually install raster ETL packages into global Python. A base Python 3 installation is still required; `WORLD_FORGE_BOOTSTRAP_PYTHON` can explicitly point at it if `python` is not on PATH.
 
 The Earth/Jupiter source pipeline is retried up to three times after transient failures. Mars is prepared once and is not redundantly rebuilt for each retry. This was added after a hosted run reached the correct Ultra Earth stage but Stanford's Koppen source returned a transient HTTP 504.
 
@@ -65,7 +69,7 @@ Focused coverage lives in:
 - `scripts/build-sol-reference-pipeline.ts`
 - `scripts/build-sol-reference-pipeline.test.ts`
 
-The heavy source rebuild is still not part of ordinary World Forge push CI. Exact-head repository validation tests the orchestration contract without downloading the scientific source bundle.
+The heavy source rebuild is still not part of ordinary World Forge push CI. Exact-head repository validation tests the orchestration and environment-bootstrap contracts without downloading the scientific source bundle.
 
 ## Parchment local and hosted integration
 
@@ -77,23 +81,18 @@ Normal local sibling-checkout behavior is:
 2. reuse it immediately when valid;
 3. if missing or stale, locate `WORLD_FORGE_LOCAL_PATH` or sibling `../World-Forge`;
 4. invoke this repository's `npm run reference:build-sol` with the large-package Node heap allowance;
-5. validate the result again;
-6. generate the normal enriched Parchment `.pworld`;
-7. continue startup.
+5. let the canonical World Forge command bootstrap its repo-local Python ETL environment if needed;
+6. validate the resulting package again;
+7. generate the normal enriched Parchment `.pworld`;
+8. continue startup.
 
-For the standard sibling layout, the intended owner workflow is now simply:
+For the standard sibling layout, once both `World-Forge/dev` and `Parchment-Worlds/dev` are current, the reference build itself no longer requires a separate terminal ritual. Starting Parchment with `npm run dev` is enough to build or reuse the maintained reference automatically.
 
-```text
-cd Parchment-Worlds
-git pull
-npm run dev
-```
-
-A first run with no valid local reference may take several minutes. Subsequent runs reuse the validated `.wforge` instead of rebuilding it.
+A first run with no valid local reference may take several minutes and download the maintained public source rasters. Subsequent runs reuse the validated `.wforge` instead of rebuilding it.
 
 Parchment's focused preparation acceptance run `32863452205` passed resolver, valid-package reuse, missing-package build orchestration, stale-512 replacement, and project-model typecheck.
 
-Hosted Parchment deployment now clones the matching World Forge branch, installs World Forge Node/Python ETL dependencies, exposes that checkout through `WORLD_FORGE_LOCAL_PATH`, and lets the same Parchment preflight invoke the same canonical World Forge command. Local and hosted no longer maintain separate Mars/Earth command recipes.
+Hosted Parchment deployment clones the matching World Forge branch, exposes that checkout through `WORLD_FORGE_LOCAL_PATH`, and lets the same Parchment preflight invoke the same canonical World Forge command. Local and hosted no longer maintain separate Mars/Earth command recipes.
 
 ## Source-backed build evidence
 
