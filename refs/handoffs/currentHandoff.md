@@ -8,14 +8,14 @@ Branch: `dev`
 
 ## Current checkpoint
 
-The Ultra Earth reference is source-built, package-built, presentation-repaired, and now has one canonical maintained Sol build entry point shared by local Parchment startup and hosted automation.
+The Ultra Earth reference is source-built, package-built, presentation-repaired, and now has one canonical maintained Sol build entry point shared by local Parchment startup and hosted automation. The first owner Windows startup exposed and fixed a direct `.cmd` child-process launch defect before World Forge itself started.
 
 Current validated World Forge checkpoint before this documentation update:
 
-- commit: `5ed9ec5c53d47aea3dbe4d81d9917dd42c4ae058`
+- commit: `806275f94f9411abdc3e102770334aad433a1ed2`
 - visible runtime: `0.3.81`
-- Ultra Earth acceptance run: `32865033525`
-- focused Globe/navigation/reference/canonical-Sol/bootstrap regressions passed
+- Ultra Earth acceptance run: `32866488122`
+- focused Globe/navigation/reference/canonical-Sol/bootstrap/Windows-launch regressions passed
 - full `npm run verify` passed
 
 Previous v0.3.81 presentation checkpoint:
@@ -60,7 +60,16 @@ The local Python environment avoids requiring the owner to manually install rast
 
 The Earth/Jupiter source pipeline is retried up to three times after transient failures. Mars is prepared once and is not redundantly rebuilt for each retry. This was added after a hosted run reached the correct Ultra Earth stage but Stanford's Koppen source returned a transient HTTP 504.
 
-The public command is cross-platform and uses `npm.cmd` for child npm invocations on Windows.
+### Windows child-process policy
+
+The first owner Windows Parchment run failed with Node `spawn EINVAL` before the canonical World Forge command actually started. The cause was direct spawning of `npm.cmd` from `child_process.spawn(...)`.
+
+The repaired policy is now shared by the orchestration path:
+
+- when npm provides `npm_execpath`, npm stages are launched through the current Node executable plus that npm CLI path;
+- if `npm_execpath` is unavailable on Windows, the launcher falls back through `cmd.exe` rather than spawning a `.cmd` file directly;
+- Parchment applies the same policy when invoking this repository's `reference:build-sol`, so the failure is fixed at both process boundaries;
+- no owner shell workaround is part of the normal workflow.
 
 Focused coverage lives in:
 
@@ -69,7 +78,7 @@ Focused coverage lives in:
 - `scripts/build-sol-reference-pipeline.ts`
 - `scripts/build-sol-reference-pipeline.test.ts`
 
-The heavy source rebuild is still not part of ordinary World Forge push CI. Exact-head repository validation tests the orchestration and environment-bootstrap contracts without downloading the scientific source bundle.
+The heavy source rebuild is still not part of ordinary World Forge push CI. Exact-head repository validation tests the orchestration, environment-bootstrap, and Windows launch contracts without downloading the scientific source bundle.
 
 ## Parchment local and hosted integration
 
@@ -90,7 +99,7 @@ For the standard sibling layout, once both `World-Forge/dev` and `Parchment-Worl
 
 A first run with no valid local reference may take several minutes and download the maintained public source rasters. Subsequent runs reuse the validated `.wforge` instead of rebuilding it.
 
-Parchment's focused preparation acceptance run `32863452205` passed resolver, valid-package reuse, missing-package build orchestration, stale-512 replacement, and project-model typecheck.
+The first owner Windows run correctly found the sibling checkout, then hit the fixed `spawn EINVAL` launcher defect. Parchment exact-head preparation run `32866388897` subsequently passed resolver behavior, valid-package reuse, missing-package build orchestration, stale-512 replacement, Windows launch-plan coverage, and project-model typecheck at commit `80bbc56faa751e1cc08b99b58fce378e85234dfa`.
 
 Hosted Parchment deployment clones the matching World Forge branch, exposes that checkout through `WORLD_FORGE_LOCAL_PATH`, and lets the same Parchment preflight invoke the same canonical World Forge command. Local and hosted no longer maintain separate Mars/Earth command recipes.
 
@@ -185,17 +194,22 @@ Do not begin this rewrite as part of Ultra visual acceptance without explicit sc
 
 ## Remaining owner acceptance
 
-The next owner pass should start from a freshly generated local Parchment Sol starter, not an already-imported old 512 project.
+The next owner pass should start from freshly pulled `dev` in both sibling repositories and a freshly generated local Parchment Sol starter, not an already-imported old 512 project.
 
-Expected smoke checks on the fresh import:
+Expected smoke sequence:
 
-- World Forge runtime `0.3.81`;
-- Generation Quality `Ultra 4096 x 2048`;
-- right-panel Map scale `4096 x 2048`;
-- Natural Map at `Source resolution` visibly preserves the improved coastline/detail;
-- Globe shows the same Earth surface through the source-aware texture path;
-- geographic drill-down opens against Earth;
-- at least one non-Earth body such as Mars or Jupiter still loads/displays.
+1. run `npm run dev` from Parchment and confirm the automatic reference build now gets past the previous Windows `spawn EINVAL` point;
+2. confirm the newly launched local My Projects page exposes `Import project` between `Sync all projects` and `New project`;
+3. choose `Use Sol starter` on the Import Project page;
+4. confirm World Forge runtime `0.3.81`;
+5. confirm Generation Quality `Ultra 4096 x 2048`;
+6. confirm right-panel Map scale `4096 x 2048`;
+7. inspect Natural Map at `Source resolution`;
+8. inspect the source-aware Globe;
+9. confirm geographic drill-down opens against Earth;
+10. confirm at least one non-Earth body such as Mars or Jupiter still loads/displays.
+
+If `predev` fails, Vite never starts. A browser session that lacks the current Import controls after such a failure is an older/already-running or hosted build and should not be used to judge the current local UI.
 
 Existing Parchment projects that already embedded the old 512 `.wforge` remain old data and should not be used for Ultra acceptance.
 
