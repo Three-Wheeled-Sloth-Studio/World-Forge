@@ -18,6 +18,11 @@ export type MaintainedSolBuildOptions = {
   pipelineAttempts?: number;
 };
 
+export type ChildLaunchPlan = {
+  command: string;
+  args: string[];
+};
+
 export function maintainedSolBuildCommands(platform = process.platform): {
   prepareMars: MaintainedSolBuildCommand;
   pipelineSol: MaintainedSolBuildCommand;
@@ -55,6 +60,30 @@ export function referencePythonPaths(
     bin,
     marker: path.join(root, 'world-forge-requirements.sha256'),
   };
+}
+
+export function childLaunchPlan(
+  command: MaintainedSolBuildCommand,
+  env: NodeJS.ProcessEnv,
+  platform = process.platform,
+): ChildLaunchPlan {
+  const isNpmCommand = command.command === 'npm' || command.command.toLowerCase() === 'npm.cmd';
+  const npmExecPath = cleanText(env.npm_execpath);
+  if (isNpmCommand && npmExecPath) {
+    return {
+      command: process.execPath,
+      args: [npmExecPath, ...command.args],
+    };
+  }
+
+  if (platform === 'win32' && command.command.toLowerCase().endsWith('.cmd')) {
+    return {
+      command: cleanText(env.ComSpec) ?? 'cmd.exe',
+      args: ['/d', '/s', '/c', command.command, ...command.args],
+    };
+  }
+
+  return { command: command.command, args: command.args };
 }
 
 export async function prepareReferenceEnvironment(
@@ -133,8 +162,9 @@ function runChildCommand(
   command: MaintainedSolBuildCommand,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
+  const launch = childLaunchPlan(command, env);
   return new Promise((resolve, reject) => {
-    const child = spawn(command.command, command.args, {
+    const child = spawn(launch.command, launch.args, {
       cwd: process.cwd(),
       env,
       stdio: 'inherit',
