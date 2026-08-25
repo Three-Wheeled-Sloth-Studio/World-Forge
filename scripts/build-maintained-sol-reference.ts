@@ -23,6 +23,9 @@ export type ChildLaunchPlan = {
   args: string[];
 };
 
+const REFERENCE_PIP_TIMEOUT_SECONDS = 120;
+const REFERENCE_PIP_RETRIES = 10;
+
 export function maintainedSolBuildCommands(platform = process.platform): {
   prepareMars: MaintainedSolBuildCommand;
   pipelineSol: MaintainedSolBuildCommand;
@@ -60,6 +63,21 @@ export function referencePythonPaths(
     bin,
     marker: path.join(root, 'world-forge-requirements.sha256'),
   };
+}
+
+export function referencePipInstallArgs(requirementsPath: string): string[] {
+  return [
+    '-m',
+    'pip',
+    'install',
+    '--disable-pip-version-check',
+    '--timeout',
+    String(REFERENCE_PIP_TIMEOUT_SECONDS),
+    '--retries',
+    String(REFERENCE_PIP_RETRIES),
+    '-r',
+    requirementsPath,
+  ];
 }
 
 export function childLaunchPlan(
@@ -104,10 +122,13 @@ export async function prepareReferenceEnvironment(
 
   const installedDigest = await readTextIfPresent(venv.marker);
   if (installedDigest?.trim() !== requirementsDigest) {
-    console.log('Installing World Forge reference ETL dependencies into the repo-local Python environment.');
+    console.log(
+      `Installing World Forge reference ETL dependencies into the repo-local Python environment `
+      + `(pip timeout ${REFERENCE_PIP_TIMEOUT_SECONDS}s, ${REFERENCE_PIP_RETRIES} transport retries).`,
+    );
     await runSetupCommand(
       venv.python,
-      ['-m', 'pip', 'install', '--disable-pip-version-check', '-r', requirementsPath],
+      referencePipInstallArgs(requirementsPath),
       repositoryRoot,
       env,
     );
