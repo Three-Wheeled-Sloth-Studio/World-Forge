@@ -20,7 +20,7 @@
     "reference:prepare-mars": "python tools/reference-etl/prepare_mars_reference.py --viking-source-url https://upload.wikimedia.org/wikipedia/commons/1/1f/Mars_Viking_MDIM21_ClrMosaic_1km.jpg",
     "reference:assemble-sol": "npm run reference:pipeline-sol -- --prepared-only --body-input .local/reference-data/mars-mola-viking",
     "reference:publish-sol-starter": "tsx --tsconfig tsconfig.scripts.json scripts/publish-sol-starter.ts",
-    "reference:build-sol": "npm run reference:prepare-mars && npm run reference:pipeline-sol -- --body-input .local/reference-data/mars-mola-viking",
+    "reference:build-sol": "tsx --tsconfig tsconfig.scripts.json scripts/build-maintained-sol-reference.ts",
     "reference:build-earth": "tsx --tsconfig tsconfig.scripts.json scripts/build-earth-reference.ts",
     "reference:pipeline-sol": "tsx --tsconfig tsconfig.scripts.json scripts/build-sol-reference-pipeline.ts",
     "test:production-page-harness": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page-runner.ts --self-test && npm run profile:production-page:inner -- --self-test",
