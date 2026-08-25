@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildMaintainedSolReference,
+  childLaunchPlan,
   maintainedSolBuildCommands,
   referencePythonPaths,
   type MaintainedSolBuildCommand,
@@ -41,6 +42,23 @@ describe('maintained Sol reference command', () => {
       },
     });
     expect(maintainedSolBuildCommands('win32').prepareMars.command).toBe('npm.cmd');
+  });
+
+  it('launches Windows npm stages through Node when npm_execpath is available', () => {
+    const command = maintainedSolBuildCommands('win32').prepareMars;
+    const npmCli = 'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js';
+    expect(childLaunchPlan(command, { npm_execpath: npmCli }, 'win32')).toEqual({
+      command: process.execPath,
+      args: [npmCli, 'run', 'reference:prepare-mars'],
+    });
+  });
+
+  it('falls back to cmd.exe rather than spawning a .cmd file directly on Windows', () => {
+    const command = maintainedSolBuildCommands('win32').prepareMars;
+    expect(childLaunchPlan(command, { ComSpec: 'C:\\Windows\\System32\\cmd.exe' }, 'win32')).toEqual({
+      command: 'C:\\Windows\\System32\\cmd.exe',
+      args: ['/d', '/s', '/c', 'npm.cmd', 'run', 'reference:prepare-mars'],
+    });
   });
 
   it('keeps reference Python dependencies in a repo-local environment on each platform', () => {
