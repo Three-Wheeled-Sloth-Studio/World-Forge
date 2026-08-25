@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-08-07
+updated: 2026-08-25
 principle: Run the narrowest useful validation during implementation, then the appropriate checkpoint validation before declaring work complete. Not every command applies to every change.
 commands:
   - id: case-collisions
@@ -18,6 +18,14 @@ commands:
     command: npm run verify
     purpose: Run validation plus the production frontend build.
     use_when: Before declaring a functional milestone complete or when build-facing files change.
+  - id: production-page-smoke
+    command: npm run smoke:production-page-harness
+    purpose: Exercise the production page harness through the browser smoke path used by ordinary CI.
+    use_when: UI, build, page-harness, or release-facing behavior changes; ordinary CI runs it after npm run verify.
+  - id: production-rerank-smoke
+    command: npm run smoke:production-rerank
+    purpose: Exercise the production attribution rerank browser smoke path used by ordinary CI.
+    use_when: Attribution/rerank or release-facing behavior changes; ordinary CI runs it after npm run verify.
   - id: dependency-audit
     command: npm audit
     purpose: Check the current dependency graph for known vulnerabilities.
@@ -30,3 +38,11 @@ commands:
     command: GitHub Actions -> Geographic Drilldown Diagnostic -> Run workflow
     purpose: Run the focused geographic drilldown regression and evaluation suite in a clean remote environment.
     use_when: Geographic work needs an intentional remote diagnostic checkpoint. This workflow is manual-only and is not authoritative repository CI.
+  - id: ultra-earth-reference-diagnostic
+    command: GitHub Actions -> Ultra Earth Reference Diagnostic -> Run workflow
+    purpose: Rebuild the maintained real-source Earth/Sol reference and capture source, package, timing, and memory evidence.
+    use_when: Maintained source inputs, reference ETL, reference packaging, or the Ultra Earth contract changes. This is intentionally not ordinary push CI.
+notes:
+  - Ordinary GitHub validation is one job: npm ci, npm run verify, production page-harness smoke, and production rerank smoke.
+  - The former dedicated Ultra Earth acceptance workflow was removed after owner acceptance because its tests and full verification duplicated the ordinary suite.
+  - Real scientific-source rebuilds and geographic evaluation remain intentional diagnostics because they provide evidence ordinary CI does not.

@@ -6,168 +6,94 @@ Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-## Current checkpoint
+## Pause checkpoint
 
-The Ultra Earth reference is source-built, package-built, presentation-repaired, and now has one canonical maintained Sol build entry point shared by local Parchment startup and hosted automation. The first owner Windows startup exposed and fixed a direct `.cmd` child-process launch defect before World Forge itself started.
+The maintained Ultra Earth path has reached an owner-accepted integration checkpoint and is intentionally paused before payload/performance optimization.
 
-Current validated World Forge checkpoint before this documentation update:
+Current functional/CI checkpoint before this documentation-only update:
 
-- commit: `806275f94f9411abdc3e102770334aad433a1ed2`
+- commit: `8a8b4d259e46945e768d9e4168ecc24bd48efef8`
 - visible runtime: `0.3.81`
-- Ultra Earth acceptance run: `32866488122`
-- focused Globe/navigation/reference/canonical-Sol/bootstrap/Windows-launch regressions passed
-- full `npm run verify` passed
+- ordinary validation run: `32894204075`
+- canonical `npm run verify`: passed
+- production page-harness smoke: passed
+- production attribution-rerank smoke: passed
 
-Previous v0.3.81 presentation checkpoint:
+The ordinary CI workflow was consolidated at this checkpoint; see `refs/testing/ci-suite-audit-2026-08-25.md`.
 
-- commit: `400223bd70227459bff8fbf30c4a4202e0a38789`
-- run: `32155132659`
-- full `npm run verify`: green
+## Owner QA outcome
 
-## Maintained Earth contract
+The integrated local Parchment -> World Forge path now demonstrates the correctness target that drove this slice:
 
-The maintained real-Earth reference remains:
+- Parchment Google login works when the machine-local `.env.local` Firebase web configuration is present;
+- an existing/local Parchment project loads successfully;
+- the maintained Sol project reaches World Forge;
+- Earth reports the expected `4096 x 2048` map scale;
+- the 3D/globe presentation is noticeably slower to appear at this resolution, but it eventually loads;
+- secondary Sol bodies were already confirmed to continue loading/displaying in the same project.
 
-- raster: `4096 x 2048`
-- cubed-sphere topology: `1024`
+Treat the initial 3D-load delay as measured/observed performance debt, not evidence that the Earth package silently fell back to 512 resolution.
 
-Topology is produced by the existing shared `topologyResolutionForOutput(...)` policy. Do not add an Earth-specific topology rule and do not restore the old 512 topology estimate.
+The owner chose to pause here. Do not reopen the Ultra resolution/source correctness work without new evidence.
 
-Ordinary fictional-world generation defaults are unchanged. The current ordinary default generation quality is `1024 x 512`; `512 x 256` is the lower `Standard` tier.
+## Maintained Earth and Sol contracts
 
-For an imported `.wforge`, the Generation Quality control loads that project's own config. Therefore an imported Ultra Earth should show `Ultra 4096 x 2048`; seeing `Standard 512 x 256` plus right-panel `Map scale 512 x 256` is evidence that an old 512 package was actually loaded, not merely a cosmetic dropdown default.
+These remain unchanged:
 
-## Unified maintained Sol build
+- Earth raster: `4096 x 2048`
+- canonical cubed-sphere topology: `1024`
+- complete maintained Sol project: `23` bodies
+- Earth stays in the same project as Jupiter, Mars, and the rest of the maintained system
 
-World Forge now owns one first-party command for rebuilding the maintained Sol reference:
+Ordinary fictional generation remains independent:
+
+- current ordinary default: `1024 x 512`
+- `512 x 256`: lower `Standard` tier
+
+For imported projects, the Generation Quality control reflects the loaded project's config. A real Ultra import should therefore report `Ultra 4096 x 2048` and right-panel `Map scale 4096 x 2048`.
+
+## Canonical maintained Sol build
+
+The one first-party entry point remains:
 
 ```text
 npm run reference:build-sol
 ```
 
-The command is implemented by `scripts/build-maintained-sol-reference.ts` and owns the previously leaked multi-command recipe:
+It owns:
 
-1. prepare a repo-local Python environment under `.local/reference-python` when needed;
-2. install `tools/reference-etl/requirements.txt` into that local environment when its requirements digest changes;
-3. prepare the accepted Mars Viking/MOLA bundle;
-4. run the normal source-backed Sol pipeline;
-5. prepare Earth at `4096 x 2048` / topology `1024` from the maintained Earth sources;
-6. prepare Jupiter;
-7. assemble the complete one-project Sol `.wforge` with Mars included;
-8. write `.local/reference-data/sol-earth-reference.wforge` and its `.pipeline.json` evidence.
+1. repo-local reference Python environment setup under `.local/reference-python`;
+2. resilient installation of the reference ETL requirements;
+3. accepted Mars preparation;
+4. maintained Earth/Jupiter source ETL;
+5. Earth `4096 x 2048` / topology `1024` validation;
+6. complete Sol package assembly;
+7. `.wforge` plus `.pipeline.json` evidence;
+8. bounded retry of transient scientific-source failures.
 
-The local Python environment avoids requiring the owner to manually install raster ETL packages into global Python. A base Python 3 installation is still required; `WORLD_FORGE_BOOTSTRAP_PYTHON` can explicitly point at it if `python` is not on PATH.
+Normal Parchment local startup validates/reuses a maintained package or invokes this command automatically. Do not restore the older owner-facing sequence of separate Mars and Sol terminal commands.
 
-The Earth/Jupiter source pipeline is retried up to three times after transient failures. Mars is prepared once and is not redundantly rebuilt for each retry. This was added after a hosted run reached the correct Ultra Earth stage but Stanford's Koppen source returned a transient HTTP 504.
+## Local identity configuration boundary
 
-### Windows child-process policy
+The temporary local sign-in failure during owner QA was not an authentication-code regression. Parchment's Firebase client remained intact; the current machine simply did not have its ignored `.env.local` file.
 
-The first owner Windows Parchment run failed with Node `spawn EINVAL` before the canonical World Forge command actually started. The cause was direct spawning of `npm.cmd` from `child_process.spawn(...)`.
+That file is deliberately machine-local and must not be committed. When absent, Parchment correctly reports that Google sign-in is not configured for that installation. Once the Firebase web configuration was restored, login worked again.
 
-The repaired policy is now shared by the orchestration path:
+Do not commit Firebase/Admin/server credentials in either repository to make local QA easier.
 
-- when npm provides `npm_execpath`, npm stages are launched through the current Node executable plus that npm CLI path;
-- if `npm_execpath` is unavailable on Windows, the launcher falls back through `cmd.exe` rather than spawning a `.cmd` file directly;
-- Parchment applies the same policy when invoking this repository's `reference:build-sol`, so the failure is fixed at both process boundaries;
-- no owner shell workaround is part of the normal workflow.
+## Source/package evidence
 
-Focused coverage lives in:
-
-- `scripts/build-maintained-sol-reference.ts`
-- `scripts/maintained-sol-command.test.ts`
-- `scripts/build-sol-reference-pipeline.ts`
-- `scripts/build-sol-reference-pipeline.test.ts`
-
-The heavy source rebuild is still not part of ordinary World Forge push CI. Exact-head repository validation tests the orchestration, environment-bootstrap, and Windows launch contracts without downloading the scientific source bundle.
-
-## Parchment local and hosted integration
-
-Parchment Worlds now owns an `ensure:sol-reference` preflight before its normal Sol starter generation.
-
-Normal local sibling-checkout behavior is:
-
-1. validate any existing automatic `.wforge` as Earth `4096 x 2048`, topology `1024`, with matching pipeline evidence and package byte length;
-2. reuse it immediately when valid;
-3. if missing or stale, locate `WORLD_FORGE_LOCAL_PATH` or sibling `../World-Forge`;
-4. invoke this repository's `npm run reference:build-sol` with the large-package Node heap allowance;
-5. let the canonical World Forge command bootstrap its repo-local Python ETL environment if needed;
-6. validate the resulting package again;
-7. generate the normal enriched Parchment `.pworld`;
-8. continue startup.
-
-For the standard sibling layout, once both `World-Forge/dev` and `Parchment-Worlds/dev` are current, the reference build itself no longer requires a separate terminal ritual. Starting Parchment with `npm run dev` is enough to build or reuse the maintained reference automatically.
-
-A first run with no valid local reference may take several minutes and download the maintained public source rasters. Subsequent runs reuse the validated `.wforge` instead of rebuilding it.
-
-The first owner Windows run correctly found the sibling checkout, then hit the fixed `spawn EINVAL` launcher defect. Parchment exact-head preparation run `32866388897` subsequently passed resolver behavior, valid-package reuse, missing-package build orchestration, stale-512 replacement, Windows launch-plan coverage, and project-model typecheck at commit `80bbc56faa751e1cc08b99b58fce378e85234dfa`.
-
-Hosted Parchment deployment clones the matching World Forge branch, exposes that checkout through `WORLD_FORGE_LOCAL_PATH`, and lets the same Parchment preflight invoke the same canonical World Forge command. Local and hosted no longer maintain separate Mars/Earth command recipes.
-
-## Source-backed build evidence
-
-The accepted measured Ultra source build remains World Forge Actions run `32136329836`:
+The accepted measured World Forge source build remains run `32136329836`:
 
 - Earth bundle: `92,277,263` bytes
 - Earth raster: `4096 x 2048`
 - topology: `1024`
-- complete Sol body count: `23`
+- Sol bodies: `23`
 - final `.wforge`: `193,507,559` bytes
 - source-to-package wall time: `1:48.23`
 - peak RSS: about `5.65 GiB`
 
-Measured Earth summary from that run:
-
-- minimum elevation: `-10250.2744 m`
-- maximum elevation: `6320.3843 m`
-- water share: `0.6590461`
-- Koppen class count: `31`
-- desert land share: `0.1178108`
-- rainforest land share: `0.0427358`
-- mountain land share: `0.0220696`
-- mean land wetness: `0.3274100`
-
-Source semantics remain:
-
-- NOAA ETOPO 2022 elevation/bathymetry;
-- water mask derived from elevation and sea level;
-- Koppen-Geiger-backed broad biome identity;
-- wetness derived from Koppen classes;
-- EF-derived permanent ice;
-- mountains driven by imported elevation.
-
-Do not claim imported hydrography, measured precipitation, complete temperature climatology, tectonics, winds, currents, or ecological land cover.
-
-## Complete Sol package
-
-One project still contains the complete maintained Sol reference:
-
-- body count: `23`
-- Earth: Tier 3 geographic surface at `4096 x 2048`
-- Jupiter: accepted `768 x 384` atmospheric appearance
-- Mars: accepted `512 x 256` Viking/MOLA Tier 2 surface
-
-Do not split Earth or other bodies into separate World Forge projects to address package size.
-
-## Presentation QA repair in v0.3.81
-
-Owner QA found that the first Ultra package could be loaded while presentation still hid some of its detail.
-
-Fixed:
-
-- primary Globe texture was hard-coded to `2048 x 1024`; it now follows source resolution up to the maintained 4096-pixel edge and browser/GPU texture limits;
-- ordinary lower-resolution worlds are not upscaled;
-- standalone local World Forge now returns to local Parchment instead of production;
-- directly opened hosted World Forge remains on its own environment.
-
-Map preview remains independently configurable. For source-resolution visual QA, use:
-
-`Explore -> Layers -> Display -> Preview -> Source resolution`
-
-That control changes rendering detail only. It cannot recover detail from an old 512 source package.
-
-## Parchment/package measurements
-
-The accepted Parchment diagnostic run `32137360931` measured:
+The accepted Parchment packaging measurement remains run `32137360931`:
 
 - nested `.wforge`: `193,507,559` bytes
 - `.pworld`: `258,172,374` bytes
@@ -176,49 +102,57 @@ The accepted Parchment diagnostic run `32137360931` measured:
 - package-reader inspection: `14.66 s`
 - package-reader peak RSS: about `2.0 GiB`
 
-Browser run `32139014646` proved normal starter review, import, reload, nested `.wforge` transfer, and a loaded `4096 x 2048` Earth surface from topology `1024`. Its final red status was an obsolete diagnostic assertion after the package had already loaded, not a package-load failure.
+Those costs and the owner's slow initial 3D load are consistent with the known package/hydration architecture debt. Do not lower Earth resolution to hide the cost.
 
-The payload cost is measured architecture debt. Do not lower Earth resolution to hide it.
+## Presentation state
 
-## Payload architecture follow-up
+v0.3.81 remains the accepted presentation repair:
 
-Payload optimization remains a separate owner-approved follow-up. Recommended order remains:
+- the primary Globe texture follows source resolution up to the maintained 4096-pixel product edge and browser/GPU limits;
+- ordinary lower-resolution worlds are not upscaled;
+- standalone local World Forge returns to local Parchment rather than production;
+- hosted direct-open navigation remains environment-local.
 
-1. binary typed-layer entries inside `.wforge` instead of JSON numeric arrays;
-2. backward-compatible reading of current packages;
-3. remeasure package size, import/save time, and browser memory;
-4. add staged/lazy hydration only if post-binary measurements still require it;
-5. then reconsider Parchment's base64 attachment envelope.
+Map presentation detail remains configurable under:
 
-Do not begin this rewrite as part of Ultra visual acceptance without explicit scope direction.
+`Explore -> Layers -> Display -> Preview -> Source resolution`
 
-## Remaining owner acceptance
+This is a presentation control only; it does not change stored map scale.
 
-The next owner pass should start from freshly pulled `dev` in both sibling repositories and a freshly generated local Parchment Sol starter, not an already-imported old 512 project.
+## CI/test-suite audit
 
-Expected smoke sequence:
+The 2026-08-25 audit intentionally reduced orchestration duplication without deleting useful regression tests:
 
-1. run `npm run dev` from Parchment and confirm the automatic reference build now gets past the previous Windows `spawn EINVAL` point;
-2. confirm the newly launched local My Projects page exposes `Import project` between `Sync all projects` and `New project`;
-3. choose `Use Sol starter` on the Import Project page;
-4. confirm World Forge runtime `0.3.81`;
-5. confirm Generation Quality `Ultra 4096 x 2048`;
-6. confirm right-panel Map scale `4096 x 2048`;
-7. inspect Natural Map at `Source resolution`;
-8. inspect the source-aware Globe;
-9. confirm geographic drill-down opens against Earth;
-10. confirm at least one non-Earth body such as Mars or Jupiter still loads/displays.
+- ordinary World Forge CI is now one authoritative job with one dependency install;
+- it runs canonical `npm run verify` plus the two production-browser smokes;
+- the dedicated path-triggered Ultra acceptance workflow was removed because its focused tests were already in the ordinary Vitest suite and it reran full verification;
+- the manual Geographic Drilldown Diagnostic remains because `evaluate:regions` is not ordinary CI;
+- the manual Ultra Earth Reference Diagnostic remains because it performs the expensive real scientific-source build and records resource/package evidence;
+- a quick stale-assertion scan found no individual unit/integration test whose deletion would improve signal.
 
-If `predev` fails, Vite never starts. A browser session that lacks the current Import controls after such a failure is an older/already-running or hosted build and should not be used to judge the current local UI.
+See `refs/testing/ci-suite-audit-2026-08-25.md`.
 
-Existing Parchment projects that already embedded the old 512 `.wforge` remain old data and should not be used for Ultra acceptance.
+## Deferred payload/performance follow-up
+
+Do not begin this work merely because the Ultra baseline is paused. Resume it when explicitly selected as the next product slice.
+
+Recommended order remains:
+
+1. replace high-volume `.wforge` JSON numeric arrays with binary typed-layer ZIP entries;
+2. preserve backward-compatible reading of existing packages;
+3. remeasure package size, save/reopen, import/handoff time, memory, and Globe/3D startup latency;
+4. add staged/lazy hydration only if the binary results still justify it;
+5. only then reconsider Parchment's base64-in-JSON attachment envelope.
+
+Do not split Earth out of Sol and do not reduce the maintained resolution as an optimization.
 
 ## Guardrails
 
 - One Sol system remains one project.
 - Preserve deterministic body IDs and Parchment bindings.
 - Keep Earth at `4096 x 2048` and topology `1024` unless the product target is deliberately changed.
-- Keep ordinary generated-world defaults independent of the maintained Earth fixture.
-- Do not drop Jupiter or Mars.
+- Keep ordinary generated-world defaults independent of the maintained reference fixture.
+- Keep Jupiter and Mars.
 - Do not create Earth-specific renderers or package formats.
-- Do not broaden Ultra acceptance into new climate/source ingestion or deferred TTRPG polish.
+- Do not mistake missing Parchment `.env.local` for a World Forge/auth code regression.
+- Treat current 3D startup latency as performance evidence for a later optimization slice.
