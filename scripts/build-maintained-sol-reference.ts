@@ -23,8 +23,15 @@ export type ChildLaunchPlan = {
   args: string[];
 };
 
+export type ReferenceSetupRetryOptions = {
+  attempts?: number;
+  sleep?: (milliseconds: number) => Promise<void>;
+  label?: string;
+};
+
 const REFERENCE_PIP_TIMEOUT_SECONDS = 120;
 const REFERENCE_PIP_RETRIES = 10;
+const REFERENCE_SETUP_ATTEMPTS = 3;
 
 export function maintainedSolBuildCommands(platform = process.platform): {
   prepareMars: MaintainedSolBuildCommand;
@@ -80,6 +87,34 @@ export function referencePipInstallArgs(requirementsPath: string): string[] {
   ];
 }
 
+export async function retryReferenceSetupOperation(
+  operation: () => Promise<void>,
+  options: ReferenceSetupRetryOptions = {},
+): Promise<void> {
+  const attempts = Math.max(1, options.attempts ?? REFERENCE_SETUP_ATTEMPTS);
+  const sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const label = options.label ?? 'Reference setup';
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await operation();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= attempts) break;
+      const delayMs = Math.min(30_000, 5_000 * attempt);
+      const detail = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `${label} attempt ${attempt} of ${attempts} failed: ${detail}. Retrying in ${Math.round(delayMs / 1000)}s.`,
+      );
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`${label} failed after ${attempts} attempts.`);
+}
+
 export function childLaunchPlan(
   command: MaintainedSolBuildCommand,
   env: NodeJS.ProcessEnv,
@@ -124,13 +159,17 @@ export async function prepareReferenceEnvironment(
   if (installedDigest?.trim() !== requirementsDigest) {
     console.log(
       `Installing World Forge reference ETL dependencies into the repo-local Python environment `
-      + `(pip timeout ${REFERENCE_PIP_TIMEOUT_SECONDS}s, ${REFERENCE_PIP_RETRIES} transport retries).`,
+      + `(pip timeout ${REFERENCE_PIP_TIMEOUT_SECONDS}s, ${REFERENCE_PIP_RETRIES} transport retries, `
+      + `${REFERENCE_SETUP_ATTEMPTS} process attempts).`,
     );
-    await runSetupCommand(
-      venv.python,
-      referencePipInstallArgs(requirementsPath),
-      repositoryRoot,
-      env,
+    await retryReferenceSetupOperation(
+      () => runSetupCommand(
+        venv.python,
+        referencePipInstallArgs(requirementsPath),
+        repositoryRoot,
+        env,
+      ),
+      { label: 'Reference Python dependency install' },
     );
     await writeFile(venv.marker, `${requirementsDigest}\n`, 'utf8');
   }
