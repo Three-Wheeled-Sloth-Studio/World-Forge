@@ -21,6 +21,8 @@ Current functional/CI checkpoint before this documentation-only update:
 
 The ordinary CI workflow was consolidated at this checkpoint; see `refs/testing/ci-suite-audit-2026-08-25.md`.
 
+The production-only AGPL license commit was merged back into `dev` on 2026-08-25. This preserves the repository license and restores the required fast-forward ancestry for the normal `dev -> qa -> main` promotion helpers; do not recreate a main-only documentation or licensing commit.
+
 ## Owner QA outcome
 
 The integrated local Parchment -> World Forge path now demonstrates the correctness target that drove this slice:
