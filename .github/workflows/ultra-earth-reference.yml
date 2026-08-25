@@ -51,10 +51,7 @@ jobs:
       - name: Run focused reference-pipeline tests
         run: npx vitest run scripts/build-sol-reference-pipeline.test.ts scripts/publish-sol-starter.test.ts
 
-      - name: Prepare Mars reference bundle
-        run: npm run reference:prepare-mars
-
-      - name: Rebuild Ultra Earth and complete Sol package
+      - name: Rebuild maintained Ultra Sol reference
         id: sol
         continue-on-error: true
         shell: bash
@@ -62,8 +59,7 @@ jobs:
           mkdir -p .local/reference-data/diagnostics
           set +e
           /usr/bin/time -v -o .local/reference-data/diagnostics/sol-pipeline.time.txt \
-            npm run reference:pipeline-sol -- \
-              --body-input .local/reference-data/mars-mola-viking \
+            npm run reference:build-sol \
             > >(tee .local/reference-data/diagnostics/sol-pipeline.log) \
             2> >(tee .local/reference-data/diagnostics/sol-pipeline.stderr.log >&2)
           status=$?
