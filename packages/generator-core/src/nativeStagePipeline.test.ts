@@ -26,6 +26,13 @@ function testConfig(seed: string) {
   };
 }
 
+let diagnosticProject: ReturnType<typeof generateProjectWithNativeStages> | undefined;
+
+function generatedDiagnosticProject() {
+  diagnosticProject ??= generateProjectWithNativeStages(testConfig('native-stage-drift-diagnostics'));
+  return diagnosticProject;
+}
+
 function topologyP90NeighborDelta(neighbors: Int32Array, elevation: Float32Array): number {
   const deltas: number[] = [];
   for (let cell = 0; cell < elevation.length; cell += 1) {
@@ -42,8 +49,16 @@ function topologyP90NeighborDelta(neighbors: Int32Array, elevation: Float32Array
 describe('native generator-core stage telemetry', () => {
   it('emits ordered native lifecycle events for all ten stages', () => {
     const events: NativeGenerationStageEvent[] = [];
+    const trace: string[] = [];
     const project = generateProjectWithNativeStages(testConfig('native-stage-order'), {
-      onStageEvent: (event) => events.push(event)
+      appVersion: '0.2.46-test',
+      onStageEvent: (event) => {
+        events.push(event);
+        if (event.phase === 'started' || event.phase === 'completed') trace.push(`stage:${event.phase}:${event.stageId}`);
+      },
+      onGraphNodeEvent: (event) => {
+        if (event.phase === 'started') trace.push(`node:${event.nodeId}`);
+      }
     });
 
     const started = events.filter((event) => event.phase === 'started').map((event) => event.stageId);
@@ -64,19 +79,6 @@ describe('native generator-core stage telemetry', () => {
     expect('motionLifecycle' in project.primaryWorld.deepTime).toBe(false);
     expect(project.primaryWorld.deepTime.finalWater.modelVersion).toBe('final-water-diagnostics-v1');
     expect(Math.abs(project.primaryWorld.deepTime.finalWater.oceanErrorPercentagePoints)).toBeLessThan(3);
-  });
-
-  it('moves foundation stages at graph start rather than after post-hoc previews', () => {
-    const trace: string[] = [];
-    generateProjectWithNativeStages(testConfig('native-stage-graph-boundaries'), {
-      onStageEvent: (event) => {
-        if (event.phase === 'started' || event.phase === 'completed') trace.push(`stage:${event.phase}:${event.stageId}`);
-      },
-      onGraphNodeEvent: (event) => {
-        if (event.phase === 'started') trace.push(`node:${event.nodeId}`);
-      }
-    });
-
     const expectStageBeforeNode = (stageId: string, nodeId: string) => {
       expect(trace.indexOf(`stage:started:${stageId}`)).toBeGreaterThanOrEqual(0);
       expect(trace.indexOf(`stage:started:${stageId}`)).toBeLessThan(trace.indexOf(`node:${nodeId}`));
@@ -85,6 +87,7 @@ describe('native generator-core stage telemetry', () => {
     expectStageBeforeNode('world.primordial-crust', 'topology.construct');
     expectStageBeforeNode('world.tectonics-cratons', 'plates.construct');
     expectStageBeforeNode('world.initial-terrain', 'terrain.topology-elevation');
+    expect(project.appVersion).toBe('0.2.46-test');
   });
 
   it('keeps world output deterministic when telemetry is enabled', () => {
@@ -159,14 +162,6 @@ describe('native generator-core stage telemetry', () => {
     expect(after / Math.max(0.000001, before)).toBeLessThan(1.3);
   });
 
-  it('stamps generated projects with the supplied app version', () => {
-    const project = generateProjectWithNativeStages(testConfig('native-stage-app-version'), {
-      appVersion: '0.2.46-test'
-    });
-
-    expect(project.appVersion).toBe('0.2.46-test');
-  });
-
   it('scales impact history with geological age while eroding older relief', () => {
     const youngConfig = testConfig('native-stage-impact-age');
     const oldConfig = testConfig('native-stage-impact-age');
@@ -187,7 +182,7 @@ describe('native generator-core stage telemetry', () => {
   });
 
   it('retains continental drift diagnostics for plate-interaction validation', () => {
-    const project = generateProjectWithNativeStages(testConfig('native-stage-drift-diagnostics'));
+    const project = generatedDiagnosticProject();
     const drift = project.primaryWorld.deepTime.continentalDrift;
     const fragmentHistory = project.primaryWorld.deepTime.fragmentHistory;
 
@@ -204,7 +199,7 @@ describe('native generator-core stage telemetry', () => {
   });
 
   it('retains final-water diagnostics for marine depth validation', () => {
-    const project = generateProjectWithNativeStages(testConfig('native-stage-final-water-diagnostics'));
+    const project = generatedDiagnosticProject();
     const water = project.primaryWorld.deepTime.finalWater;
     const marineBands = water.immediateShelfShareOfMarine
       + water.continentalShelfShareOfMarine
@@ -220,7 +215,7 @@ describe('native generator-core stage telemetry', () => {
   });
 
   it('retains present-climate diagnostics for rainfall and median temperature validation', () => {
-    const project = generateProjectWithNativeStages(testConfig('native-stage-present-climate-diagnostics'));
+    const project = generatedDiagnosticProject();
     const climate = project.primaryWorld.deepTime.presentClimate;
 
     expect(climate.modelVersion).toBe('present-climate-diagnostics-v1');
@@ -233,7 +228,7 @@ describe('native generator-core stage telemetry', () => {
   });
 
   it('retains hydrology diagnostics for source and river-density validation', () => {
-    const project = generateProjectWithNativeStages(testConfig('native-stage-hydrology-diagnostics'));
+    const project = generatedDiagnosticProject();
     const hydrology = project.primaryWorld.deepTime.hydrology;
 
     expect(hydrology.modelVersion).toBe('hydrology-diagnostics-v1');

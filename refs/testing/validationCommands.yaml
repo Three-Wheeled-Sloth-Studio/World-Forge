@@ -25,7 +25,7 @@ commands:
   - id: production-rerank-smoke
     command: npm run smoke:production-rerank
     purpose: Exercise the production attribution rerank browser smoke path used by ordinary CI.
-    use_when: Attribution/rerank or release-facing behavior changes; ordinary CI runs it after npm run verify.
+    use_when: Attribution/rerank or release-facing behavior changes; ready pull requests and manual validation checkpoints run it after npm run verify.
   - id: dependency-audit
     command: npm audit
     purpose: Check the current dependency graph for known vulnerabilities.
@@ -43,6 +43,8 @@ commands:
     purpose: Rebuild the maintained real-source Earth/Sol reference and capture source, package, timing, and memory evidence.
     use_when: Maintained source inputs, reference ETL, reference packaging, or the Ultra Earth contract changes. This is intentionally not ordinary push CI.
 notes:
-  - Ordinary GitHub validation is one job: npm ci, npm run verify, production page-harness smoke, and production rerank smoke.
+  - Ordinary dev/release validation is one job: npm ci, npm run verify, and the production page-harness smoke. Ready pull requests and manual checkpoints also run the production rerank smoke.
+  - Manual validation exposes a full_test_matrix input that restores the extended generation and geographic seed matrices.
+  - QA and main are exact-SHA promotion targets. Deployment requires a successful Validate World Forge run for the exact source SHA and then performs build-only compilation/bundling.
   - The former dedicated Ultra Earth acceptance workflow was removed after owner acceptance because its tests and full verification duplicated the ordinary suite.
   - Real scientific-source rebuilds and geographic evaluation remain intentional diagnostics because they provide evidence ordinary CI does not.

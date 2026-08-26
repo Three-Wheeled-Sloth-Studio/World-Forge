@@ -14,10 +14,10 @@ Because `dev` is both the active implementation branch and an automatically vali
 
 Full automatic validation runs on pushes to:
 
-- `main`
 - `dev`
-- `qa`
 - `release/**`
+
+`qa` and `main` are exact-SHA promotion targets. They do not rerun the identical authoritative suite; deployment requires successful `Validate World Forge` evidence for the exact promoted SHA before build or upload begins.
 
 Ready-for-review pull requests also receive the authoritative suite when a PR-based workflow is deliberately used.
 
@@ -29,7 +29,7 @@ Marking the PR ready for review triggers authoritative CI. Converting it back to
 
 ## Manual validation
 
-Use **Actions -> Validate World Forge -> Run workflow** to run the authoritative suite at an intentional checkpoint without changing branch or PR state.
+Use **Actions -> Validate World Forge -> Run workflow** to run the authoritative suite at an intentional checkpoint without changing branch or PR state. Enable `full_test_matrix` when the extended generation and geographic seed matrices are required.
 
 The geographic drilldown workflow is a manual diagnostic only. It must not run on every `dev` push and must not substitute for the authoritative `Validate World Forge` workflow.
 
@@ -47,15 +47,7 @@ A newer checkpoint cancels obsolete validation for the same PR or accepted branc
 
 ## Validation order
 
-The workflow runs in this order:
-
-1. Git-index case-collision guard.
-2. `fast-checks`: dependency installation and the complete Vitest suite.
-3. `validate`: dependency installation, TypeScript compilation and production frontend build.
-4. Production page and attribution harness self-tests.
-5. Headless production page and attribution smoke runs.
-
-`validate` depends on `fast-checks`, so the slower build and browser checks do not start when the cheap path-safety guard or test suite has already rejected the checkpoint.
+The single authoritative job installs dependencies once, runs `npm run verify`, and then runs the headless production-page smoke. Ready pull requests and manual checkpoints additionally run the attribution-rerank smoke. `npm run verify` performs the case-collision guard and typecheck once, the complete ordinary Vitest/self-test lane, and a bundle-only production build.
 
 ## Stable check names
 

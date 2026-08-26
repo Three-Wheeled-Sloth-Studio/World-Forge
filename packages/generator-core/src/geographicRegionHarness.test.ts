@@ -10,7 +10,8 @@ import {
 } from './geographicRegionEvaluation';
 
 describe('fixed-world geographic region harness', () => {
-  for (const seed of ['1001001', '9776542']) {
+  const seeds = process.env.WORLD_FORGE_FULL_TEST_MATRIX === '1' ? ['1001001', '9776542'] : ['1001001'];
+  for (const seed of seeds) {
     it(`produces valid candidate and baseline evidence for ${seed}`, () => {
       const config = createDefaultConfig(seed, { width: 64, height: 32 });
       config.topologyResolution = 12;

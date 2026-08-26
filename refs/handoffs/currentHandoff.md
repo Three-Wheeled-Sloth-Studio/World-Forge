@@ -21,6 +21,8 @@ Current functional/CI checkpoint before this documentation-only update:
 
 The ordinary CI workflow was consolidated at this checkpoint; see `refs/testing/ci-suite-audit-2026-08-25.md`.
 
+The follow-up CI streamlining increment keeps full validation on `dev`, ready pull requests, release branches, and manual checkpoints while treating `qa` and `main` as exact-SHA promotion targets. Deployments now require a successful `Validate World Forge` run for the exact source commit and run build-only compilation/bundling instead of repeating the full suite. The ordinary seed matrix and repeated full-generation fixtures were reduced; the extended matrix remains available through the manual `full_test_matrix` workflow input.
+
 The production-only AGPL license commit was merged back into `dev` on 2026-08-25. This preserves the repository license and restores the required fast-forward ancestry for the normal `dev -> qa -> main` promotion helpers; do not recreate a main-only documentation or licensing commit.
 
 ## Owner QA outcome

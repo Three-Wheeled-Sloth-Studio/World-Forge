@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - dev
-      - qa
-      - main
       - 'release/**'
   pull_request:
     types:
@@ -15,6 +13,12 @@ on:
       - ready_for_review
       - converted_to_draft
   workflow_dispatch:
+    inputs:
+      full_test_matrix:
+        description: Run extended generation and geographic seed matrices
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -45,9 +49,12 @@ jobs:
 
       - name: Run canonical repository verification
         run: npm run verify
+        env:
+          WORLD_FORGE_FULL_TEST_MATRIX: ${{ inputs.full_test_matrix && '1' || '0' }}
 
       - name: Smoke production page harness
         run: npm run smoke:production-page-harness
 
       - name: Smoke production attribution rerank
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
         run: npm run smoke:production-rerank

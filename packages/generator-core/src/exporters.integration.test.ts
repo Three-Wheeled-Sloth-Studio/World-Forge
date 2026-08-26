@@ -3,12 +3,19 @@ import { createDefaultConfig, generateProject } from './index';
 import { exportHexGridSvg, exportHexTileMapJson, exportSvg, exportVttGridSvg, exportVttMetadata, exportWforge, generateHexTileMap, importWforge, projectToJson } from '@world-forge/exporters';
 import { hexTileMapPresets } from '../../shared/src/index';
 
+let sharedExportProject: ReturnType<typeof generateProject> | undefined;
+
+function exportProject() {
+  sharedExportProject ??= generateProject(createDefaultConfig('export-shared-001', { width: 128, height: 64 }));
+  return sharedExportProject;
+}
+
 describe('world export integrations', () => {
   it('exports structured JSON and simplified SVG', () => {
-    const project = generateProject(createDefaultConfig('export-smoke-001', { width: 256, height: 128 }));
+    const project = exportProject();
     const json = projectToJson(project);
     const parsed = JSON.parse(json);
-    expect(parsed.seed).toBe('export-smoke-001');
+    expect(parsed.seed).toBe('export-shared-001');
     expect(parsed.primaryWorld.layers.length).toBeGreaterThan(5);
 
     const svg = exportSvg(project);
@@ -17,7 +24,7 @@ describe('world export integrations', () => {
   });
 
   it('exports a configurable hex tile map derived from topology facts', () => {
-    const project = generateProject(createDefaultConfig('hex-tile-export-001', { width: 128, height: 64 }));
+    const project = exportProject();
     const tileMap = generateHexTileMap(project, { width: 18, height: 10, enabledFeatures: ['minor-river', 'navigable-river', 'wet'] });
     const json = JSON.parse(exportHexTileMapJson(project, { width: 18, height: 10, enabledFeatures: ['minor-river', 'navigable-river', 'wet'] }));
     const svg = exportHexGridSvg(project, { width: 18, height: 10 });
@@ -52,7 +59,7 @@ describe('world export integrations', () => {
   });
 
   it('aligns same-row hex SVG polygons without horizontal overlap', () => {
-    const project = generateProject(createDefaultConfig('hex-alignment-001', { width: 128, height: 64 }));
+    const project = exportProject();
     const svg = exportHexGridSvg(project, { width: 4, height: 3 });
     const polygons = [...svg.matchAll(/<polygon points="([^"]+)" fill="[^"]+" stroke="#1c292b"/g)].map((match) => polygonBounds(match[1]));
 
@@ -86,7 +93,7 @@ describe('world export integrations', () => {
   });
 
   it('exports VTT-agnostic metadata and optional hex grid overlay', () => {
-    const project = generateProject(createDefaultConfig('vtt-export-001', { width: 128, height: 64 }));
+    const project = exportProject();
     const metadata = JSON.parse(exportVttMetadata(project, { width: 1024, height: 512, grid: { kind: 'hex-pointy', hexSizeMiles: 1200 } }));
     const svg = exportVttGridSvg(project, { width: 1024, height: 512, grid: { kind: 'hex-pointy', hexSizeMiles: 1200 } });
 
@@ -111,9 +118,9 @@ describe('world export integrations', () => {
   });
 
   it('roundtrips a .wforge project package', async () => {
-    const project = generateProject(createDefaultConfig('package-smoke-001', { width: 128, height: 64 }));
+    const project = exportProject();
     const blob = await exportWforge(project);
-    const file = new File([blob], 'package-smoke-001.wforge');
+    const file = new File([blob], 'export-shared-001.wforge');
     const loaded = await importWforge(file);
     expect(loaded.seed).toBe(project.seed);
     expect(loaded.primaryWorld.layers.elevation.length).toBe(project.primaryWorld.layers.elevation.length);

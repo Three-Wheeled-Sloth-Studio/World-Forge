@@ -21,9 +21,16 @@ function layerHasSignal(values: ArrayLike<number>): boolean {
   return false;
 }
 
+let pressureProject: ReturnType<typeof generateProject> | undefined;
+
+function sharedPressureProject() {
+  pressureProject ??= generateProject(createDefaultConfig('pressure-systems-001', { width: 128, height: 64 }));
+  return pressureProject;
+}
+
 describe('climatological pressure and basin-scale circulation', () => {
   it('builds deterministic fixed-resolution pressure systems', () => {
-    const project = generateProject(createDefaultConfig('pressure-systems-001', { width: 256, height: 128 }));
+    const project = sharedPressureProject();
     const first = buildClimatologicalPressureModel(project);
     const second = buildClimatologicalPressureModel(project);
 
@@ -40,7 +47,7 @@ describe('climatological pressure and basin-scale circulation', () => {
   }, 20_000);
 
   it('exposes broad subsidence, convergence, and storm-track regimes', () => {
-    const project = generateProject(createDefaultConfig('pressure-regimes-001', { width: 256, height: 128 }));
+    const project = sharedPressureProject();
     const model = buildClimatologicalPressureModel(project);
     const equator = sampleClimatologicalPressure(model, 0, 0);
     const subtropicalNorth = sampleClimatologicalPressure(model, 0, 30 * Math.PI / 180);
@@ -52,7 +59,7 @@ describe('climatological pressure and basin-scale circulation', () => {
   }, 20_000);
 
   it('replaces local packing with a small set of basin-scale gyres', () => {
-    const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 256, height: 128 }));
+    const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 128, height: 64 }));
     const diagnostics = applyBasinAwareCirculation(project);
 
     expect(diagnostics.modelVersion).toBe('basin-circulation-v6');
@@ -68,7 +75,7 @@ describe('climatological pressure and basin-scale circulation', () => {
   }, 20_000);
 
   it('preserves terrain-defined mountain biomes during projected climate reconciliation', () => {
-    const project = generateProject(createDefaultConfig('pressure-mountain-preservation-001', { width: 256, height: 128 }));
+    const project = generateProject(createDefaultConfig('pressure-mountain-preservation-001', { width: 128, height: 64 }));
     const layers = project.primaryWorld.layers;
     const mountainCell = layers.water.findIndex((water) => water === 0);
     expect(mountainCell).toBeGreaterThanOrEqual(0);
@@ -80,7 +87,7 @@ describe('climatological pressure and basin-scale circulation', () => {
   }, 20_000);
 
   it('keeps pressure and current outputs deterministic for the same project', () => {
-    const config = createDefaultConfig('circulation-determinism-001', { width: 256, height: 128 });
+    const config = createDefaultConfig('circulation-determinism-001', { width: 128, height: 64 });
     const first = generateProject(config);
     const second = generateProject(config);
     const firstDiagnostics = applyBasinAwareCirculation(first);

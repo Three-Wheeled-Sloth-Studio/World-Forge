@@ -7,7 +7,8 @@
     "dev": "vite --host localhost",
     "check:case-collisions": "node scripts/check-case-collisions.mjs",
     "prebuild": "npm run check:case-collisions",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run build:bundle",
+    "build:bundle": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "benchmark:generation": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark-generation.ts",
     "benchmark:workflows": "tsx --tsconfig tsconfig.scripts.json scripts/compare-generation-workflows.ts",
@@ -37,7 +38,7 @@
     "pretypecheck": "npm run check:case-collisions",
     "typecheck": "tsc -b",
     "validate": "npm run typecheck && npm test && npm run test:production-page-harness && npm run test:production-rerank",
-    "verify": "npm run validate && npm run build"
+    "verify": "npm run validate && npm run build:bundle"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.2",

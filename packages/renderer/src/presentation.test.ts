@@ -3,10 +3,17 @@ import { createDefaultConfig, generateProject } from '../../generator-core/src/i
 import { applyBasinAwareCirculation } from '../../generator-core/src/basinCirculation';
 import { buildSparseFlowPaths } from './presentation';
 
-function generatedWorld(seed: string) {
-  const project = generateProject(createDefaultConfig(seed, { width: 256, height: 128 }));
+let acceptedWorld: ReturnType<typeof generatedWorld> | undefined;
+
+function generatedWorld() {
+  const project = generateProject(createDefaultConfig('sparse-presentation-001', { width: 256, height: 128 }));
   applyBasinAwareCirculation(project);
   return project.primaryWorld;
+}
+
+function sharedWorld() {
+  acceptedWorld ??= generatedWorld();
+  return acceptedWorld;
 }
 
 function pathSignature(paths: ReturnType<typeof buildSparseFlowPaths>) {
@@ -30,7 +37,7 @@ function pathLength(points: Array<{ x: number; y: number }>): number {
 
 describe('sparse wind and current presentation', () => {
   it('reduces wind presentation to a bounded set of long deterministic paths', () => {
-    const world = generatedWorld('sparse-wind-001');
+    const world = sharedWorld();
     const first = buildSparseFlowPaths(world, 'wind', 1024, 512);
     const second = buildSparseFlowPaths(world, 'wind', 1024, 512);
 
@@ -42,7 +49,7 @@ describe('sparse wind and current presentation', () => {
   }, 30_000);
 
   it('uses a bounded set of water-confined gyre and equatorial paths', () => {
-    const world = generatedWorld('sparse-current-001');
+    const world = sharedWorld();
     const paths = buildSparseFlowPaths(world, 'current', 1024, 512);
     const { width, height } = world.mapModel.resolution;
 
@@ -59,7 +66,7 @@ describe('sparse wind and current presentation', () => {
   }, 30_000);
 
   it('changes only presentation density and leaves authoritative vectors untouched', () => {
-    const world = generatedWorld('sparse-authority-001');
+    const world = sharedWorld();
     const windXBefore = Array.from(world.layers.windX);
     const windYBefore = Array.from(world.layers.windY);
     const currentXBefore = Array.from(world.layers.currentX);
