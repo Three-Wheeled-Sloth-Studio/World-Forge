@@ -32,7 +32,11 @@ import {
   topologyTerrainGradientWithGeometry,
   type TopologyDirectionGeometry
 } from './presentClimateTraversal';
-import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
+import {
+  computeTopologyInfluence,
+  computeTopologyInfluenceSet,
+  topologyRadiusForReferenceScale,
+} from './topologyInfluence';
 import { generationWorkflowDeepTimeFeatures, type GenerationWorkflowId } from './workflows';
 import { latitudeTemperatureOffsetC, latitudeTemperatureProfileForWorkflow } from './latitudeTemperatureProfile';
 import { classifyPermanentIce } from './permanentIce';
@@ -2238,12 +2242,16 @@ function refreshTopologyClimate(
   const layers = world.topologyLayers;
   const count = topology.cellCount;
   const topologyGeometry = optimizeTraversal ? buildTopologyDirectionGeometry(topology) : undefined;
+  const primaryOceanRadius = topologyRadiusForReferenceScale(topology, 28);
+  const diagnosticOceanRadius = topologyRadiusForReferenceScale(topology, 16);
+  const landRadius = topologyRadiusForReferenceScale(topology, 10);
   const oceanInfluenceSet = captureDerivedFields
-    ? computeTopologyInfluenceSet(layers.water, topology, [28, 16], 1)
+    ? computeTopologyInfluenceSet(layers.water, topology, [primaryOceanRadius, diagnosticOceanRadius], 1)
     : undefined;
-  const oceanInfluence = oceanInfluenceSet?.get(28) ?? computeTopologyInfluence(layers.water, topology, 28, 1);
-  const diagnosticOceanInfluence = oceanInfluenceSet?.get(16);
-  const landInfluence = computeTopologyInfluence(layers.water, topology, 10, 0);
+  const oceanInfluence = oceanInfluenceSet?.get(primaryOceanRadius)
+    ?? computeTopologyInfluence(layers.water, topology, primaryOceanRadius, 1);
+  const diagnosticOceanInfluence = oceanInfluenceSet?.get(diagnosticOceanRadius);
+  const landInfluence = computeTopologyInfluence(layers.water, topology, landRadius, 0);
   const precipitation = new Float32Array(count);
   const moisture = new Float32Array(count);
   const orographicLift = captureDerivedFields ? new Float32Array(count) : undefined;
@@ -2377,7 +2385,12 @@ function buildPresentClimateDiagnostics(
   let tundraRisk = 0;
   let wetlandRisk = 0;
   let desertWetlandOverlap = 0;
-  const oceanInfluence = derivedFields?.oceanInfluence ?? computeTopologyInfluence(layers.water, topology, 16, 1);
+  const oceanInfluence = derivedFields?.oceanInfluence ?? computeTopologyInfluence(
+    layers.water,
+    topology,
+    topologyRadiusForReferenceScale(topology, 16),
+    1,
+  );
 
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (layers.water[cell]) {

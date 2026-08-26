@@ -95,6 +95,39 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project }) => orographicWindAlignment(project),
   },
   {
+    id: 'hydration.coastal-interior-contrast',
+    label: 'Coastal–interior wetness contrast',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'wetness',
+    proves: 'At continental scale, generated coastal land is wetter on average than deep interiors and can be compared with the Köppen-derived contrast.',
+    doesNotProve: 'That every coast is wet or that rain-shadowed and cold-current coasts follow the global mean.',
+    threshold: { minimum: 0 },
+    evaluate: ({ project }, observations) => coastalInteriorContrast(project, observations),
+  },
+  {
+    id: 'hydration.equatorial-subtropical-contrast',
+    label: 'Equatorial–subtropical wetness contrast',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'wetness',
+    proves: 'Generated equatorial land is wetter on average than the subtropical dry belts.',
+    doesNotProve: 'Correct longitude-specific deserts, monsoon seasonality, or local precipitation totals.',
+    threshold: { minimum: 0.05 },
+    evaluate: ({ project }, observations) => equatorialSubtropicalContrast(project, observations),
+  },
+  {
+    id: 'hydration.representative-region-rank-correlation',
+    label: 'Representative-region wetness rank correlation',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'rho',
+    proves: 'Broad humid, arid, maritime, continental, monsoonal, and cold-region examples are ordered similarly to the Köppen-derived proxy.',
+    doesNotProve: 'Pixel-level agreement or independence from the chosen diagnostic regions.',
+    threshold: { minimum: 0.45 },
+    evaluate: ({ project }, observations) => representativeRegionRank(project, observations),
+  },
+  {
     id: 'biomes.koppen-macro-f1',
     label: 'Köppen-derived biome macro-F1',
     component: 'biomes',
@@ -320,6 +353,113 @@ function orographicWindAlignment(project: WorldProject) {
   };
 }
 
+function coastalInteriorContrast(project: WorldProject, observations: EarthObservations) {
+  const source = observations.resolution;
+  const width = Math.min(128, source.width);
+  const height = Math.min(64, source.height);
+  const generated = aggregateRasterLayer(project.primaryWorld.layers.wetness, source, width, height, observations.waterMask);
+  const observed = aggregateRasterLayer(observations.wetness, source, width, height, observations.waterMask);
+  const water = aggregateWaterMask(observations.waterMask, source, width, height);
+  const distance = distanceFromWater(water, width, height);
+  let generatedCoast = 0;
+  let observedCoast = 0;
+  let coastCount = 0;
+  let generatedInterior = 0;
+  let observedInterior = 0;
+  let interiorCount = 0;
+  for (let index = 0; index < water.length; index += 1) {
+    if (water[index]) continue;
+    if (distance[index] <= 1) {
+      generatedCoast += generated[index];
+      observedCoast += observed[index];
+      coastCount += 1;
+    } else if (distance[index] >= 4) {
+      generatedInterior += generated[index];
+      observedInterior += observed[index];
+      interiorCount += 1;
+    }
+  }
+  const generatedCoastMean = generatedCoast / Math.max(1, coastCount);
+  const generatedInteriorMean = generatedInterior / Math.max(1, interiorCount);
+  const observedCoastMean = observedCoast / Math.max(1, coastCount);
+  const observedInteriorMean = observedInterior / Math.max(1, interiorCount);
+  return {
+    value: generatedCoastMean - generatedInteriorMean,
+    sampleCount: coastCount + interiorCount,
+    details: {
+      observedContrast: observedCoastMean - observedInteriorMean,
+      generatedCoastMean,
+      generatedInteriorMean,
+      coastCells: coastCount,
+      interiorCells: interiorCount,
+    },
+  };
+}
+
+function equatorialSubtropicalContrast(project: WorldProject, observations: EarthObservations) {
+  const generated = project.primaryWorld.layers.wetness;
+  const equatorialGenerated = latitudeBandLandMean(generated, observations, 0, 10);
+  const subtropicalGenerated = latitudeBandLandMean(generated, observations, 20, 35);
+  const equatorialObserved = latitudeBandLandMean(observations.wetness, observations, 0, 10);
+  const subtropicalObserved = latitudeBandLandMean(observations.wetness, observations, 20, 35);
+  return {
+    value: equatorialGenerated - subtropicalGenerated,
+    details: {
+      observedContrast: equatorialObserved - subtropicalObserved,
+      generatedEquatorialMean: equatorialGenerated,
+      generatedSubtropicalMean: subtropicalGenerated,
+    },
+  };
+}
+
+const representativeRegions = [
+  ['amazon', -15, 5, -75, -50],
+  ['congo', -10, 5, 15, 30],
+  ['sahara', 15, 30, -15, 35],
+  ['arabia', 15, 30, 35, 60],
+  ['maritimeEurope', 45, 58, -10, 10],
+  ['centralAsia', 35, 50, 55, 85],
+  ['india', 8, 25, 70, 90],
+  ['southeastAsia', -10, 20, 95, 125],
+  ['australiaInterior', -30, -18, 120, 140],
+  ['siberia', 55, 70, 60, 120],
+] as const;
+
+function representativeRegionRank(project: WorldProject, observations: EarthObservations) {
+  const generated: number[] = [];
+  const observed: number[] = [];
+  const details: Record<string, number> = {};
+  for (const [id, minLat, maxLat, minLon, maxLon] of representativeRegions) {
+    const generatedMean = regionMean(
+      project.primaryWorld.layers.wetness,
+      observations.resolution,
+      minLat,
+      maxLat,
+      minLon,
+      maxLon,
+      observations.waterMask,
+    );
+    const observedMean = regionMean(
+      observations.wetness,
+      observations.resolution,
+      minLat,
+      maxLat,
+      minLon,
+      maxLon,
+      observations.waterMask,
+    );
+    generated.push(generatedMean);
+    observed.push(observedMean);
+    details[`${id}Generated`] = generatedMean;
+    details[`${id}Observed`] = observedMean;
+  }
+  return {
+    value: spearmanRankCorrelation(generated, observed),
+    sampleCount: representativeRegions.length,
+    details,
+  };
+}
+
 function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
   const generatedSource = project.primaryWorld.layers.biomes;
   const mountain = biomeToCode('mountain');
@@ -531,6 +671,59 @@ function aggregateWaterMask(
     }
   }
   return output;
+}
+
+function distanceFromWater(water: Uint8Array, width: number, height: number): Int16Array {
+  const distance = new Int16Array(water.length);
+  distance.fill(32_767);
+  const queue = new Int32Array(water.length);
+  let head = 0;
+  let tail = 0;
+  for (let index = 0; index < water.length; index += 1) {
+    if (!water[index]) continue;
+    distance[index] = 0;
+    queue[tail++] = index;
+  }
+  while (head < tail) {
+    const cell = queue[head++];
+    const x = cell % width;
+    const y = Math.floor(cell / width);
+    const nextDistance = distance[cell] + 1;
+    const neighbors = [
+      y * width + ((x - 1 + width) % width),
+      y * width + ((x + 1) % width),
+      y > 0 ? (y - 1) * width + x : -1,
+      y + 1 < height ? (y + 1) * width + x : -1,
+    ];
+    for (const neighbor of neighbors) {
+      if (neighbor < 0 || distance[neighbor] <= nextDistance) continue;
+      distance[neighbor] = nextDistance;
+      queue[tail++] = neighbor;
+    }
+  }
+  return distance;
+}
+
+function latitudeBandLandMean(
+  values: Float32Array,
+  observations: EarthObservations,
+  minimumAbsoluteLatitude: number,
+  maximumAbsoluteLatitude: number,
+): number {
+  let total = 0;
+  let count = 0;
+  const { width, height } = observations.resolution;
+  for (let y = 0; y < height; y += 1) {
+    const absoluteLatitude = Math.abs(latitudeDegrees(y, height));
+    if (absoluteLatitude < minimumAbsoluteLatitude || absoluteLatitude > maximumAbsoluteLatitude) continue;
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      if (observations.waterMask[index]) continue;
+      total += values[index];
+      count += 1;
+    }
+  }
+  return total / Math.max(1, count);
 }
 
 function modal(counts: Uint32Array): number {

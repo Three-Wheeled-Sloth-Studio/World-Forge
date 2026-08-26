@@ -1,8 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { buildCubedSphereTopology } from '@world-forge/shared';
-import { computeTopologyInfluence, computeTopologyInfluenceSet } from './topologyInfluence';
+import {
+  computeTopologyDistance,
+  computeTopologyInfluence,
+  computeTopologyInfluenceSet,
+  topologyRadiusForReferenceScale,
+} from './topologyInfluence';
 
 describe('topology influence reuse', () => {
+  it('uses resolution-stable radii anchored to the ordinary topology scale', () => {
+    expect(topologyRadiusForReferenceScale(buildCubedSphereTopology(64), 28)).toBe(7);
+    expect(topologyRadiusForReferenceScale(buildCubedSphereTopology(256), 28)).toBe(28);
+    expect(topologyRadiusForReferenceScale(buildCubedSphereTopology(1024), 28)).toBe(112);
+  });
+
+  it('computes bounded shortest-path distance without scan-order propagation', () => {
+    const topology = buildCubedSphereTopology(8);
+    const mask = new Uint8Array(topology.cellCount);
+    mask[0] = 1;
+    const distance = computeTopologyDistance(mask, topology, 3, 1);
+    expect(distance[0]).toBe(0);
+    expect(Array.from(distance).every((value) => value >= 0 && value <= 4)).toBe(true);
+    expect(Array.from(distance).some((value) => value === 3)).toBe(true);
+    expect(Array.from(distance).some((value) => value === 4)).toBe(true);
+  });
+
   it('derives smaller-radius fields exactly from the maximum-radius distance pass', () => {
     const topology = buildCubedSphereTopology(8);
     const mask = new Uint8Array(topology.cellCount);

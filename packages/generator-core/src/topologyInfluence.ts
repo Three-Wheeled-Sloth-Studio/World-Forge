@@ -9,20 +9,37 @@ export function computeTopologyDistance(
   const radius = Math.max(0, Math.round(maxRadius));
   const distance = new Float32Array(mask.length);
   const maxDistance = radius + 1;
+  const queue = new Int32Array(mask.length);
+  let head = 0;
+  let tail = 0;
   for (let cell = 0; cell < mask.length; cell += 1) {
-    distance[cell] = mask[cell] === targetValue ? 0 : maxDistance;
+    if (mask[cell] === targetValue) {
+      distance[cell] = 0;
+      queue[tail++] = cell;
+    } else {
+      distance[cell] = maxDistance;
+    }
   }
-  for (let pass = 0; pass < radius; pass += 1) {
-    for (let cell = 0; cell < mask.length; cell += 1) {
-      let best = distance[cell];
-      for (let direction = 0; direction < 4; direction += 1) {
-        const neighbor = topology.neighbors[cell * 4 + direction];
-        if (neighbor >= 0) best = Math.min(best, distance[neighbor] + 1);
-      }
-      distance[cell] = best;
+  while (head < tail) {
+    const cell = queue[head++];
+    const nextDistance = distance[cell] + 1;
+    if (nextDistance > radius) continue;
+    for (let direction = 0; direction < 4; direction += 1) {
+      const neighbor = topology.neighbors[cell * 4 + direction];
+      if (neighbor < 0 || distance[neighbor] <= nextDistance) continue;
+      distance[neighbor] = nextDistance;
+      queue[tail++] = neighbor;
     }
   }
   return distance;
+}
+
+export function topologyRadiusForReferenceScale(
+  topology: CubedSphereTopology,
+  referenceRadius: number,
+  referenceResolution = 256,
+): number {
+  return Math.max(1, Math.round(referenceRadius * topology.resolution / Math.max(1, referenceResolution)));
 }
 
 export function topologyInfluenceFromDistance(distance: Float32Array, radius: number): Float32Array {

@@ -62,6 +62,12 @@ Scientific evaluation initially exposed an evaluator-coordinate error: stored ve
 
 The existing pressure pass now applies a bounded final-wind orographic adjustment using its already-computed terrain gradient. This adds no raster traversal. Fixed-grid windward-minus-leeward precipitation is positive at every tier, while Köppen wetness correlation and biome macro-F1 did not regress.
 
+### Resolution-stable moisture influence
+
+Ocean and land influence radii were raw topology-cell counts, so their physical reach shrank by 4x from Fast to Standard and another 4x from Standard to Ultra. Radii are now scaled from the ordinary topology-256 product reference. The former repeated in-place distance scans were replaced by deterministic multi-source shortest-path traversal, keeping the larger Ultra radius linear in topology cells.
+
+This made coastal/interior and representative-region behavior more comparable across tiers. Standard core downstream time improved by about 9% and Ultra by about 7%. Ultra representative-region wetness rank correlation reached 0.879. Ultra biome macro-F1 decreased by about 0.012 and wetness rank correlation by about 0.005; both remain inside accepted component tolerances.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -70,13 +76,16 @@ The existing pressure pass now applies a bounded final-wind orographic adjustmen
 | Tropical convergence direction | 0.9987 | 1.0000 | 1.0000 |
 | Current confinement to ocean | 1.0000 | 1.0000 | 1.0000 |
 | Gyre rotation agreement | 0.9663 | 0.9620 | 0.9639 |
-| Köppen wetness rank correlation | 0.4868 | 0.4186 | 0.4680 |
-| Wet/dry extreme balanced accuracy | 0.4921 | 0.4371 | 0.4593 |
-| Amazon-Sahara wetness contrast | 0.1616 | 0.2104 | 0.2633 |
-| Orographic precipitation delta | 0.0061 | 0.0130 | 0.0212 |
-| Köppen biome macro-F1 | 0.4091 | 0.4621 | 0.4756 |
+| Köppen wetness rank correlation | 0.4718 | 0.4190 | 0.4632 |
+| Wet/dry extreme balanced accuracy | 0.4769 | 0.4376 | 0.4582 |
+| Amazon-Sahara wetness contrast | 0.1501 | 0.2104 | 0.2687 |
+| Orographic precipitation delta | 0.0044 | 0.0161 | 0.0274 |
+| Coastal-interior contrast | 0.3730 | 0.4047 | 0.3427 |
+| Equatorial-subtropical contrast | 0.3330 | 0.3505 | 0.3722 |
+| Representative-region rank correlation | 0.6727 | 0.6848 | 0.8788 |
+| Köppen biome macro-F1 | 0.4335 | 0.4637 | 0.4636 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 141.3 ms | 972.4 ms | 14,718.6 ms |
+| Core downstream time | 138.4 ms | 883.9 ms | 13,657.3 ms |
 
 Core time excludes reference-file loading and report serialization. The Ultra adapter wall time was 21.8 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
@@ -94,4 +103,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. Do not tune constants blindly. Add coastal/interior and named representative-region component diagnostics, then isolate whether fetch, subtropical subsidence, continentality, or classification thresholds own the residual errors. Observed wind/current datasets would be required before making local circulation-match claims.
+Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. Coastal-interior contrast remains much too strong: 0.40 generated versus about 0.09 in the proxy. The equatorial-subtropical contrast is close to reference, so do not retune latitude belts. The next model experiment should add bounded land-surface moisture recycling or another efficient inland-transport mechanism while preserving subtropical deserts. Observed wind/current datasets would be required before making local circulation-match claims.

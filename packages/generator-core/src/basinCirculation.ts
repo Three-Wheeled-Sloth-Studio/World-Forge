@@ -212,7 +212,7 @@ function applyPressureSystems(
         : 0;
       const terrainStrength = clamp(slope * 20, 0, 1);
       const orographicAdjustment = terrainStrength * (
-        windSlopeAlignment >= 0 ? windSlopeAlignment * 0.12 : windSlopeAlignment * 0.08
+        windSlopeAlignment >= 0 ? windSlopeAlignment * 0.15 : windSlopeAlignment * 0.1
       );
       const adjustment = pressure.convergence * 0.13
         + pressure.stormTrack * 0.1

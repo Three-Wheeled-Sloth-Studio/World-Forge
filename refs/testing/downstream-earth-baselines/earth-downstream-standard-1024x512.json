@@ -7,12 +7,15 @@
     "atmosphere.tropical-convergence-direction-agreement": { "value": 0.9999828673, "absoluteTolerance": 0.01, "regressionDirection": "higher" },
     "ocean.land-current-confinement": { "value": 1, "absoluteTolerance": 0.0001, "regressionDirection": "higher" },
     "ocean.gyre-rotation-agreement": { "value": 0.9619875742, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
-    "hydration.koppen-wetness-rank-correlation": { "value": 0.418558572, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
-    "hydration.koppen-extreme-balanced-accuracy": { "value": 0.4371251622, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
-    "hydration.amazon-sahara-contrast": { "value": 0.2104024167, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
-    "hydration.orographic-wind-alignment": { "value": 0.0130103141, "absoluteTolerance": 0.008, "regressionDirection": "higher" },
-    "biomes.koppen-macro-f1": { "value": 0.4621115716, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.koppen-wetness-rank-correlation": { "value": 0.4190234591, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.koppen-extreme-balanced-accuracy": { "value": 0.4375902671, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.amazon-sahara-contrast": { "value": 0.2104478677, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
+    "hydration.orographic-wind-alignment": { "value": 0.0160775313, "absoluteTolerance": 0.008, "regressionDirection": "higher" },
+    "hydration.coastal-interior-contrast": { "value": 0.4047258319, "absoluteTolerance": 0.04, "regressionDirection": "either" },
+    "hydration.equatorial-subtropical-contrast": { "value": 0.3505321974, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
+    "hydration.representative-region-rank-correlation": { "value": 0.6848484848, "absoluteTolerance": 0.05, "regressionDirection": "higher" },
+    "biomes.koppen-macro-f1": { "value": 0.4637463375, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
     "biomes.final-climate-classification-consistency": { "value": 1, "absoluteTolerance": 0.001, "regressionDirection": "higher" },
-    "performance.core-downstream-ms": { "value": 972.4178, "relativeTolerance": 0.25, "regressionDirection": "lower" }
+    "performance.core-downstream-ms": { "value": 883.8749, "relativeTolerance": 0.25, "regressionDirection": "lower" }
   }
 }
