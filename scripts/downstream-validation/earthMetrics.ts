@@ -73,6 +73,26 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project }, observations) => wetDryBalancedAccuracy(project, observations),
   },
   {
+    id: 'hydration.observed-dry-false-wet-rate',
+    label: 'Observed-dry false-wet rate by physical regime',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'share',
+    proves: 'Observed-proxy dry extremes that the generator fails to rank as dry can be localized by generated temperature, coast distance, relief, and circulation regime.',
+    doesNotProve: 'The causal mechanism of an error, absolute precipitation, seasonality, or local hydrology.',
+    evaluate: ({ project }, observations) => hydrationRegimeDiagnostics(project, observations).falseWet,
+  },
+  {
+    id: 'hydration.observed-wet-false-dry-rate',
+    label: 'Observed-wet false-dry rate by physical regime',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'share',
+    proves: 'Observed-proxy wet extremes that the generator fails to rank as wet can be localized by generated temperature, coast distance, relief, and circulation regime.',
+    doesNotProve: 'The causal mechanism of an error, absolute precipitation, seasonality, or local hydrology.',
+    evaluate: ({ project }, observations) => hydrationRegimeDiagnostics(project, observations).falseDry,
+  },
+  {
     id: 'hydration.amazon-sahara-contrast',
     label: 'Amazon–Sahara wetness contrast',
     component: 'hydration',
@@ -199,6 +219,113 @@ export function spearmanRankCorrelation(left: readonly number[], right: readonly
   return pearson(ranks(left), ranks(right));
 }
 
+export type HydrationRegimeSample = {
+  generatedWetness: number;
+  observedWetness: number;
+  temperatureC: number;
+  coastDistance: number;
+  relief: number;
+  absoluteLatitude: number;
+};
+
+type HydrationErrorProfile = {
+  value: number;
+  sampleCount: number;
+  details: Record<string, number>;
+};
+
+export function hydrationRegimeErrorProfiles(samples: readonly HydrationRegimeSample[]): {
+  falseWet: HydrationErrorProfile;
+  falseDry: HydrationErrorProfile;
+} {
+  const observed = samples.map((sample) => sample.observedWetness).sort((left, right) => left - right);
+  const generated = samples.map((sample) => sample.generatedWetness).sort((left, right) => left - right);
+  const relief = samples.map((sample) => sample.relief).sort((left, right) => left - right);
+  const thresholds = {
+    observedDry: percentile(observed, 0.25),
+    observedWet: percentile(observed, 0.75),
+    generatedDry: percentile(generated, 0.25),
+    generatedWet: percentile(generated, 0.75),
+    lowRelief: percentile(relief, 1 / 3),
+    highRelief: percentile(relief, 2 / 3),
+  };
+  const regimes: readonly [string, (sample: HydrationRegimeSample) => boolean][] = [
+    ['temperatureCold', (sample) => sample.temperatureC <= 5],
+    ['temperatureTemperate', (sample) => sample.temperatureC > 5 && sample.temperatureC <= 20],
+    ['temperatureHot', (sample) => sample.temperatureC > 20],
+    ['coastCoastal', (sample) => sample.coastDistance <= 1],
+    ['coastTransitional', (sample) => sample.coastDistance >= 2 && sample.coastDistance <= 3],
+    ['coastDeepInterior', (sample) => sample.coastDistance >= 4],
+    ['reliefLow', (sample) => sample.relief <= thresholds.lowRelief],
+    ['reliefModerate', (sample) => sample.relief > thresholds.lowRelief && sample.relief < thresholds.highRelief],
+    ['reliefHigh', (sample) => sample.relief >= thresholds.highRelief],
+    ['circulationEquatorial', (sample) => sample.absoluteLatitude < 15],
+    ['circulationSubsiding', (sample) => sample.absoluteLatitude >= 15 && sample.absoluteLatitude < 35],
+    ['circulationMidlatitude', (sample) => sample.absoluteLatitude >= 35 && sample.absoluteLatitude < 60],
+    ['circulationPolar', (sample) => sample.absoluteLatitude >= 60],
+    ['coldCoastal', (sample) => sample.temperatureC <= 5 && sample.coastDistance <= 1],
+    ['coldDeepInterior', (sample) => sample.temperatureC <= 5 && sample.coastDistance >= 4],
+    ['temperateCoastal', (sample) => sample.temperatureC > 5 && sample.temperatureC <= 20 && sample.coastDistance <= 1],
+    ['temperateDeepInterior', (sample) => sample.temperatureC > 5 && sample.temperatureC <= 20 && sample.coastDistance >= 4],
+    ['hotCoastal', (sample) => sample.temperatureC > 20 && sample.coastDistance <= 1],
+    ['hotDeepInterior', (sample) => sample.temperatureC > 20 && sample.coastDistance >= 4],
+    ['subsidingCoastal', (sample) => sample.absoluteLatitude >= 15 && sample.absoluteLatitude < 35 && sample.coastDistance <= 1],
+    ['subsidingDeepInterior', (sample) => sample.absoluteLatitude >= 15 && sample.absoluteLatitude < 35 && sample.coastDistance >= 4],
+    ['midlatitudeCoastal', (sample) => sample.absoluteLatitude >= 35 && sample.absoluteLatitude < 60 && sample.coastDistance <= 1],
+    ['midlatitudeDeepInterior', (sample) => sample.absoluteLatitude >= 35 && sample.absoluteLatitude < 60 && sample.coastDistance >= 4],
+    ['polarCoastal', (sample) => sample.absoluteLatitude >= 60 && sample.coastDistance <= 1],
+    ['polarDeepInterior', (sample) => sample.absoluteLatitude >= 60 && sample.coastDistance >= 4],
+  ];
+  return {
+    falseWet: buildHydrationErrorProfile(
+      samples,
+      (sample) => sample.observedWetness <= thresholds.observedDry,
+      (sample) => sample.generatedWetness > thresholds.generatedDry,
+      regimes,
+      {
+        observedThreshold: thresholds.observedDry,
+        generatedThreshold: thresholds.generatedDry,
+      },
+    ),
+    falseDry: buildHydrationErrorProfile(
+      samples,
+      (sample) => sample.observedWetness >= thresholds.observedWet,
+      (sample) => sample.generatedWetness < thresholds.generatedWet,
+      regimes,
+      {
+        observedThreshold: thresholds.observedWet,
+        generatedThreshold: thresholds.generatedWet,
+      },
+    ),
+  };
+}
+
+function buildHydrationErrorProfile(
+  samples: readonly HydrationRegimeSample[],
+  observedExtreme: (sample: HydrationRegimeSample) => boolean,
+  misclassified: (sample: HydrationRegimeSample) => boolean,
+  regimes: readonly [string, (sample: HydrationRegimeSample) => boolean][],
+  thresholds: { observedThreshold: number; generatedThreshold: number },
+): HydrationErrorProfile {
+  const extremeSamples = samples.filter(observedExtreme);
+  const errors = extremeSamples.filter(misclassified).length;
+  const overallRate = errors / Math.max(1, extremeSamples.length);
+  const details: Record<string, number> = {
+    observedThreshold: thresholds.observedThreshold,
+    generatedThreshold: thresholds.generatedThreshold,
+    errorCells: errors,
+  };
+  for (const [id, matches] of regimes) {
+    const regimeSamples = extremeSamples.filter(matches);
+    const regimeErrors = regimeSamples.filter(misclassified).length;
+    const rate = regimeErrors / Math.max(1, regimeSamples.length);
+    details[`${id}Samples`] = regimeSamples.length;
+    details[`${id}Rate`] = rate;
+    details[`${id}Lift`] = regimeSamples.length ? rate - overallRate : 0;
+  }
+  return { value: overallRate, sampleCount: extremeSamples.length, details };
+}
+
 function zonalWindAgreement(project: WorldProject) {
   const { width, height } = project.primaryWorld.mapModel.resolution;
   const wind = project.primaryWorld.layers.windX;
@@ -321,6 +448,36 @@ function wetDryBalancedAccuracy(project: WorldProject, observations: EarthObserv
     sampleCount: dryCount + wetCount,
     details: { dryAccuracy: dryCorrect / Math.max(1, dryCount), wetAccuracy: wetCorrect / Math.max(1, wetCount) },
   };
+}
+
+function hydrationRegimeDiagnostics(project: WorldProject, observations: EarthObservations) {
+  const source = observations.resolution;
+  const width = Math.min(128, source.width);
+  const height = Math.min(64, source.height);
+  const generatedWetness = aggregateRasterLayer(project.primaryWorld.layers.wetness, source, width, height, observations.waterMask);
+  const observedWetness = aggregateRasterLayer(observations.wetness, source, width, height, observations.waterMask);
+  const temperature = aggregateRasterLayer(project.primaryWorld.layers.temperature, source, width, height, observations.waterMask);
+  const elevation = aggregateRasterLayer(project.primaryWorld.layers.elevation, source, width, height, observations.waterMask);
+  const water = aggregateWaterMask(observations.waterMask, source, width, height);
+  const coastDistance = distanceFromWater(water, width, height);
+  const relief = localRelief(elevation, water, width, height);
+  const samples: HydrationRegimeSample[] = [];
+  for (let y = 0; y < height; y += 1) {
+    const absoluteLatitude = Math.abs(latitudeDegrees(y, height));
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      if (water[index]) continue;
+      samples.push({
+        generatedWetness: generatedWetness[index],
+        observedWetness: observedWetness[index],
+        temperatureC: temperature[index],
+        coastDistance: coastDistance[index],
+        relief: relief[index],
+        absoluteLatitude,
+      });
+    }
+  }
+  return hydrationRegimeErrorProfiles(samples);
 }
 
 function amazonSaharaContrast(project: WorldProject, observations: EarthObservations) {
@@ -788,6 +945,34 @@ function distanceFromWater(water: Uint8Array, width: number, height: number): In
     }
   }
   return distance;
+}
+
+function localRelief(
+  elevation: Float32Array,
+  water: Uint8Array,
+  width: number,
+  height: number,
+): Float32Array {
+  const relief = new Float32Array(elevation.length);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const cell = y * width + x;
+      if (water[cell]) continue;
+      let maximumDifference = 0;
+      const neighbors = [
+        y * width + ((x - 1 + width) % width),
+        y * width + ((x + 1) % width),
+        y > 0 ? (y - 1) * width + x : -1,
+        y + 1 < height ? (y + 1) * width + x : -1,
+      ];
+      for (const neighbor of neighbors) {
+        if (neighbor < 0 || water[neighbor]) continue;
+        maximumDifference = Math.max(maximumDifference, Math.abs(elevation[neighbor] - elevation[cell]));
+      }
+      relief[cell] = maximumDifference;
+    }
+  }
+  return relief;
 }
 
 function latitudeBandLandMean(

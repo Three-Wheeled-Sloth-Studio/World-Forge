@@ -6,7 +6,7 @@ Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`
 
 The reusable framework, Earth production adapter, fixed 128 x 64 analysis grid, and Fast/Standard/Ultra baselines are established. Final biome ownership and final-wind orographic reconciliation have been corrected from measured evidence. Stored flow vectors remain geographic north-positive; presentation converts them to south-increasing raster rows.
 
-Bounded land-surface recycling, capped potential evaporation, and ascent-protected subsidence/fetch coupling are implemented with explicit humid/dry and latitude-error guards. Standard dry-region mean is 0.316 but remains above the 0.086 proxy, especially Arabia at 0.416. Do not strengthen evaporation or fetch suppression past their cross-tier guardrails. Next, localize wet/dry classification errors by generated physical regime—temperature, relief, coast distance, and circulation—before changing another production term. Retain answer-key isolation and keep Earth/performance diagnostics manual outside push CI.
+The evaluator-only wet/dry regime diagnostic is complete. Observed-wet deep interiors are false dry at about 0.94-0.95 across temperature bands, while observed-dry coasts are false wet at about 0.88-0.91; relief is not the primary separator. Next, prototype bounded redistribution of coastal moisture farther inland, preferably wind-aligned at fixed reference scale and conserving or nearly conserving the affected contribution. Protect regime error rates, humid/dry region means, latitude-contrast error, orography, biome F1, and performance. Retain answer-key isolation and keep Earth/performance diagnostics manual outside push CI.
 
 Continue implementation in:
 

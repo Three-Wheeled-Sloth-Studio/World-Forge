@@ -92,6 +92,20 @@ A stronger 60% minimum retention improved dry-region metrics further but made th
 
 At Standard, dry-region mean improved from 0.3270 to 0.3160, representative-region rank correlation from 0.7212 to 0.7697, coastal-interior contrast from 0.4004 to 0.3953, and biome macro-F1 from 0.4726 to 0.4773. Humid-region mean remained 0.579. Ultra dry-region mean reached 0.3097 and biome macro-F1 0.4804. The correction adds only constant arithmetic inside an existing topology pass.
 
+## Wet/dry error-regime diagnostic
+
+The evaluator now profiles both directions of extreme-wetness error on the fixed 128 x 64 grid. Observed and generated dry/wet thresholds remain their respective quartiles, matching the balanced-accuracy definition. False-wet and false-dry rates are segmented by generated temperature, coast distance, relative local-relief tercile, circulation latitude band, and temperature/circulation intersections with coast distance. Every regime reports rate, sample count, and lift over the overall error rate. These details are evaluator-only and do not enter production generation.
+
+The result is stable across Standard and Ultra:
+
+- observed-wet deep interiors have a 0.94-0.95 false-dry rate overall;
+- cold, temperate, and hot deep-interior intersections each remain about 0.89-0.98 false dry;
+- observed-dry coasts have a 0.88-0.91 false-wet rate;
+- subsiding observed-dry coasts are about 0.81-0.83 false wet;
+- relief bands have smaller, inconsistent lifts and are not the primary separator.
+
+This localizes the dominant residual as excessive coastal concentration plus insufficient inland moisture reach, not a need for more global drying or a cold-only correction. A secondary missing behavior is dry-coast physics, plausibly including cold-current/upwelling effects that the current stage order cannot yet represent directly.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -102,6 +116,8 @@ At Standard, dry-region mean improved from 0.3270 to 0.3160, representative-regi
 | Gyre rotation agreement | 0.9663 | 0.9620 | 0.9639 |
 | Köppen wetness rank correlation | 0.4782 | 0.4213 | 0.4671 |
 | Wet/dry extreme balanced accuracy | 0.4810 | 0.4388 | 0.4555 |
+| Observed-dry false-wet rate | 0.4800 | 0.4670 | 0.4527 |
+| Observed-wet false-dry rate | 0.5610 | 0.6622 | 0.6420 |
 | Amazon-Sahara wetness contrast | 0.1853 | 0.2587 | 0.3293 |
 | Orographic precipitation delta | 0.0007 | 0.0147 | 0.0267 |
 | Coastal-interior contrast | 0.3580 | 0.3953 | 0.3316 |
@@ -130,4 +146,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. Standard dry-region mean is now 0.316 but remains above the 0.086 proxy, with Arabia at 0.416. Evaporation and subsidence/fetch coupling have reached their cross-tier guardrails. The next investigation should localize wet/dry classification errors by generated physical regime—temperature, relief, coast distance, and circulation—before changing another production term. Observed wind/current datasets would be required before making local circulation-match claims.
+Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. The regime diagnostic shows the next production slice should redistribute a bounded share of coastal moisture farther inland rather than add more moisture or increase global drying. Favor fixed-reference-scale, wind-aligned land transport that conserves or nearly conserves the affected moisture contribution. Protect the new false-wet/false-dry regime baselines, humid/dry region guards, latitude-contrast error, orography, biome F1, and performance. Dry-coast current/upwelling physics should remain a later slice unless production stage ownership is deliberately changed. Observed wind/current datasets would be required before making local circulation-match claims.

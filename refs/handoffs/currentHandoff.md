@@ -4,11 +4,11 @@ Updated: 2026-08-26
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its subsidence/fetch-coupling increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, and five measured generator corrections are implemented on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its wet/dry error-regime diagnostic. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, five measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Land-moisture recycling is bounded and fixed-scale; final hydration includes capped potential evaporation; and advected marine moisture now responds to subsidence while retaining protection from generated ascent. A new absolute-error metric prevents latitude-contrast overshoot. Standard dry-region mean is 0.316, representative-region rank 0.770, and biome macro-F1 0.477. The remaining dry-region gap is still large versus the 0.086 proxy, especially Arabia at 0.416. Do not feed answer keys into production generation, retune latitude belts, strengthen evaporation, or deepen fetch suppression past the cross-tier guardrails.
+The new diagnostic finds observed-wet deep interiors are false dry at about 0.94-0.95 across hot, temperate, and cold intersections, while observed-dry coasts are false wet at about 0.88-0.91. Relief is not the primary separator. The next production hypothesis is bounded redistribution of coastal moisture farther inland, preferably wind-aligned and fixed-scale, rather than more global moisture or drying. Do not feed answer keys into production generation, retune latitude belts, strengthen evaporation, or deepen fetch suppression past the cross-tier guardrails.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

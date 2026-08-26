@@ -9,6 +9,8 @@
     "ocean.gyre-rotation-agreement": { "value": 0.9662775616, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
     "hydration.koppen-wetness-rank-correlation": { "value": 0.4782099386, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
     "hydration.koppen-extreme-balanced-accuracy": { "value": 0.480952711, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.observed-dry-false-wet-rate": { "value": 0.48, "absoluteTolerance": 0.05, "regressionDirection": "lower" },
+    "hydration.observed-wet-false-dry-rate": { "value": 0.5610098177, "absoluteTolerance": 0.05, "regressionDirection": "lower" },
     "hydration.amazon-sahara-contrast": { "value": 0.1853148383, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
     "hydration.orographic-wind-alignment": { "value": 0.0007411027, "absoluteTolerance": 0.004, "regressionDirection": "higher" },
     "hydration.coastal-interior-contrast": { "value": 0.3580276199, "absoluteTolerance": 0.04, "regressionDirection": "either" },
