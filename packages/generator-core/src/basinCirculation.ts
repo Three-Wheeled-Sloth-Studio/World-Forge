@@ -2,6 +2,7 @@ import { biomeToCode, clamp, type WorldProject } from '@world-forge/shared';
 import {
   buildClimatologicalPressureModel,
   sampleClimatologicalCoastDistance,
+  sampleClimatologicalField,
   sampleClimatologicalPressure,
   type ClimatologicalPressureCenter,
   type ClimatologicalPressureModel,
@@ -50,10 +51,12 @@ export type ClimatologicalPressureDiagnostics = {
   meanPrecipitationAdjustment: number;
   orographicAdjustedCells: number;
   meanOrographicAdjustment: number;
+  coolCurrentAdjustedCells: number;
+  meanCoolCurrentDrying: number;
 };
 
 export type BasinCirculationDiagnostics = {
-  modelVersion: 'basin-circulation-v6';
+  modelVersion: 'basin-circulation-v7';
   marineBasinCount: number;
   largestBasinShare: number;
   coherentGyreCount: number;
@@ -96,6 +99,18 @@ function normalizeTo(x: number, y: number, speed: number): { x: number; y: numbe
   const magnitude = Math.hypot(x, y);
   if (magnitude < 1e-7) return { x: 0, y: 0 };
   return { x: x / magnitude * speed, y: y / magnitude * speed };
+}
+
+export function equatorwardCurrentExposure(
+  currentX: number,
+  currentY: number,
+  latitudeDegreesValue: number,
+): number {
+  const speed = Math.hypot(currentX, currentY);
+  if (speed < 1e-7 || Math.abs(latitudeDegreesValue) < 5) return 0;
+  const hemisphere = latitudeDegreesValue >= 0 ? 1 : -1;
+  const equatorwardAlignment = currentY * hemisphere / speed;
+  return Math.max(0, equatorwardAlignment) * Math.min(1, speed / 0.35);
 }
 
 function scalarGradient(values: Float32Array, x: number, y: number, width: number, height: number): { x: number; y: number } {
@@ -161,7 +176,8 @@ function classifyAdjustedBiome(project: WorldProject, index: number): number {
 
 function applyPressureSystems(
   project: WorldProject,
-  model: ClimatologicalPressureModel
+  model: ClimatologicalPressureModel,
+  coolCurrentPotential: Float32Array,
 ): {
   windTerrainDeflectionIndex: number;
   stagnantWindShare: number;
@@ -169,6 +185,8 @@ function applyPressureSystems(
   meanPrecipitationAdjustment: number;
   orographicAdjustedCells: number;
   meanOrographicAdjustment: number;
+  coolCurrentAdjustedCells: number;
+  meanCoolCurrentDrying: number;
 } {
   const world = project.primaryWorld;
   const layers = world.layers;
@@ -179,6 +197,8 @@ function applyPressureSystems(
   let adjustmentTotal = 0;
   let orographicAdjustedCells = 0;
   let orographicAdjustmentTotal = 0;
+  let coolCurrentAdjustedCells = 0;
+  let coolCurrentDryingTotal = 0;
 
   for (let y = 0; y < height; y += 1) {
     const latitude = latitudeForY(y, height);
@@ -214,13 +234,34 @@ function applyPressureSystems(
       const orographicAdjustment = terrainStrength * (
         windSlopeAlignment >= 0 ? windSlopeAlignment * 0.15 : windSlopeAlignment * 0.1
       );
-      const adjustment = pressure.convergence * 0.13
+      const coolCurrentExposure = sampleClimatologicalField(
+        model,
+        coolCurrentPotential,
+        longitude,
+        latitude,
+      );
+      const coolCurrentDrying = Math.sqrt(clamp(coolCurrentExposure, 0, 1))
+        * (0.025 + pressure.subsidence * 0.075)
+        * (1 - pressure.convergence * 0.65);
+      const circulationAdjustment = pressure.convergence * 0.13
         + pressure.stormTrack * 0.1
         - pressure.subsidence * 0.15
         + orographicAdjustment;
-      const nextPrecipitation = clamp(previousPrecipitation + adjustment, 0, 1);
-      const nextMoisture = clamp(layers.climateMoisture[cell] + adjustment * 0.55, 0, 1);
-      const nextWetness = clamp(previousWetness + adjustment * 0.62, 0, 1);
+      const nextPrecipitation = clamp(
+        previousPrecipitation + circulationAdjustment - coolCurrentDrying * 0.4,
+        0,
+        1,
+      );
+      const nextMoisture = clamp(
+        layers.climateMoisture[cell] + circulationAdjustment * 0.55 - coolCurrentDrying * 0.7,
+        0,
+        1,
+      );
+      const nextWetness = clamp(
+        previousWetness + circulationAdjustment * 0.62 - coolCurrentDrying,
+        0,
+        1,
+      );
       layers.climatePrecipitation[cell] = nextPrecipitation;
       layers.climateMoisture[cell] = nextMoisture;
       layers.wetness[cell] = nextWetness;
@@ -232,6 +273,10 @@ function applyPressureSystems(
         orographicAdjustedCells += 1;
         orographicAdjustmentTotal += orographicAdjustment;
       }
+      if (coolCurrentDrying > 1e-6) {
+        coolCurrentAdjustedCells += 1;
+        coolCurrentDryingTotal += coolCurrentDrying;
+      }
     }
   }
 
@@ -241,7 +286,9 @@ function applyPressureSystems(
     precipitationAdjustedCells: adjustedCells,
     meanPrecipitationAdjustment: adjustmentTotal / Math.max(1, adjustedCells),
     orographicAdjustedCells,
-    meanOrographicAdjustment: orographicAdjustmentTotal / Math.max(1, orographicAdjustedCells)
+    meanOrographicAdjustment: orographicAdjustmentTotal / Math.max(1, orographicAdjustedCells),
+    coolCurrentAdjustedCells,
+    meanCoolCurrentDrying: coolCurrentDryingTotal / Math.max(1, coolCurrentAdjustedCells),
   };
 }
 
@@ -254,6 +301,7 @@ function evaluateCurrentField(
   coastalAlignmentScore: number;
   stagnantOceanShare: number;
   meanCurrentSpeed: number;
+  coolCurrentPotential: Float32Array;
 } {
   const world = project.primaryWorld;
   const layers = world.layers;
@@ -265,6 +313,11 @@ function evaluateCurrentField(
   let marineCells = 0;
   let coastalCells = 0;
   let coastalAligned = 0;
+  const referenceWidth = model.resolution.width;
+  const referenceHeight = model.resolution.height;
+  const referenceCurrentX = new Float32Array(referenceWidth * referenceHeight);
+  const referenceCurrentY = new Float32Array(referenceWidth * referenceHeight);
+  const referenceCurrentCount = new Uint32Array(referenceWidth * referenceHeight);
 
   for (let y = 0; y < height; y += 1) {
     const latitude = latitudeForY(y, height);
@@ -394,16 +447,58 @@ function evaluateCurrentField(
     }
     layers.currentX[cell] = smoothedX[cell];
     layers.currentY[cell] = smoothedY[cell];
+    const x = cell % width;
+    const y = Math.floor(cell / width);
+    const referenceX = Math.min(referenceWidth - 1, Math.floor(x / width * referenceWidth));
+    const referenceY = Math.min(referenceHeight - 1, Math.floor(y / height * referenceHeight));
+    const referenceCell = referenceY * referenceWidth + referenceX;
+    referenceCurrentX[referenceCell] += smoothedX[cell];
+    referenceCurrentY[referenceCell] += smoothedY[cell];
+    referenceCurrentCount[referenceCell] += 1;
     const speed = Math.hypot(smoothedX[cell], smoothedY[cell]);
     speedTotal += speed;
     if (speed < 0.1) stagnantOcean += 1;
+  }
+
+  for (let cell = 0; cell < referenceCurrentCount.length; cell += 1) {
+    const count = referenceCurrentCount[cell];
+    if (!count) continue;
+    referenceCurrentX[cell] /= count;
+    referenceCurrentY[cell] /= count;
+  }
+  const coolCurrentPotential = new Float32Array(referenceCurrentCount.length);
+  for (let y = 0; y < referenceHeight; y += 1) {
+    const latitudeDegreesValue = latitudeForY(y, referenceHeight) * 180 / Math.PI;
+    for (let x = 0; x < referenceWidth; x += 1) {
+      const cell = indexOf(x, y, referenceWidth);
+      if (model.water[cell]) continue;
+      const neighbors = [
+        indexOf(x - 1, y, referenceWidth),
+        indexOf(x + 1, y, referenceWidth),
+        y > 0 ? indexOf(x, y - 1, referenceWidth) : -1,
+        y + 1 < referenceHeight ? indexOf(x, y + 1, referenceWidth) : -1,
+      ];
+      let exposure = 0;
+      let marineNeighbors = 0;
+      for (const neighbor of neighbors) {
+        if (neighbor < 0 || !model.water[neighbor]) continue;
+        exposure += equatorwardCurrentExposure(
+          referenceCurrentX[neighbor],
+          referenceCurrentY[neighbor],
+          latitudeDegreesValue,
+        );
+        marineNeighbors += 1;
+      }
+      coolCurrentPotential[cell] = exposure / Math.max(1, marineNeighbors);
+    }
   }
 
   return {
     owner,
     coastalAlignmentScore: coastalAligned / Math.max(1, coastalCells),
     stagnantOceanShare: stagnantOcean / Math.max(1, marineCells),
-    meanCurrentSpeed: speedTotal / Math.max(1, marineCells)
+    meanCurrentSpeed: speedTotal / Math.max(1, marineCells),
+    coolCurrentPotential,
   };
 }
 
@@ -411,16 +506,6 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
   const world = project.primaryWorld;
   const { width, height } = world.mapModel.resolution;
   const pressureModel = buildClimatologicalPressureModel(project);
-  const pressureResult = traceGenerationPerformance(
-    'climatological-pressure.apply-fields',
-    {
-      topologyCells: world.topology.cellCount,
-      activeCells: world.layers.elevation.length,
-      fullTopologyPasses: 1,
-      allocatedBufferBytes: 0
-    },
-    () => applyPressureSystems(project, pressureModel)
-  );
   const gyres = traceGenerationPerformance(
     'basin-circulation.build-large-scale-gyres',
     {
@@ -440,6 +525,19 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
       allocatedBufferBytes: world.layers.water.length * (Float32Array.BYTES_PER_ELEMENT * 4 + Int16Array.BYTES_PER_ELEMENT)
     },
     () => evaluateCurrentField(project, pressureModel, gyres)
+  );
+  // Currents depend on the fixed pressure model, not on the final pressure
+  // adjustment. Evaluating them first lets the same circulation solve provide
+  // a bounded coastal-stability signal without another full-resolution pass.
+  const pressureResult = traceGenerationPerformance(
+    'climatological-pressure.apply-fields',
+    {
+      topologyCells: world.topology.cellCount,
+      activeCells: world.layers.elevation.length,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: 0
+    },
+    () => applyPressureSystems(project, pressureModel, currentResult.coolCurrentPotential)
   );
   const subtropicalSectors = pressureModel.sectors.filter((sector) => sector.regime === 'subtropical');
   const totalSectorSpan = subtropicalSectors.reduce((sum, sector) => sum + sector.spanColumns, 0);
@@ -461,10 +559,12 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     precipitationAdjustedCells: pressureResult.precipitationAdjustedCells,
     meanPrecipitationAdjustment: pressureResult.meanPrecipitationAdjustment,
     orographicAdjustedCells: pressureResult.orographicAdjustedCells,
-    meanOrographicAdjustment: pressureResult.meanOrographicAdjustment
+    meanOrographicAdjustment: pressureResult.meanOrographicAdjustment,
+    coolCurrentAdjustedCells: pressureResult.coolCurrentAdjustedCells,
+    meanCoolCurrentDrying: pressureResult.meanCoolCurrentDrying,
   };
   const diagnostics: BasinCirculationDiagnostics = {
-    modelVersion: 'basin-circulation-v6',
+    modelVersion: 'basin-circulation-v7',
     marineBasinCount: subtropicalSectors.length,
     largestBasinShare,
     coherentGyreCount: gyres.filter((gyre) => gyre.kind === 'subtropical' && gyre.territorySize >= width * height * 0.01).length,

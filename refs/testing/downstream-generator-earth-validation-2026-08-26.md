@@ -6,7 +6,7 @@ Branch: `dev`
 
 ## Outcome
 
-World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after seven measured production corrections.
+World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after eight measured production corrections.
 
 This diagnostic is intentionally outside routine push CI. Routine tests cover framework math, schema/report behavior, the production adapter seam, circulation contracts, and small deterministic generation only.
 
@@ -124,6 +124,18 @@ An initial 70% alongshore / 25% offshore calibration improved Standard dry-coast
 
 The added work is a four-neighbor gradient only for affected coastal land cells and reuses precomputed topology geometry on optimized runs. Measured core time remains within the prior envelope: 158.0 ms Fast, 944.4 ms Standard, and 14,037.9 ms Ultra. The remaining dry-coast gap is too large for further unconditional-bonus tuning; representing cold-current/upwelling aridity would require evidence and a deliberate circulation/climate coupling design.
 
+### Cool-current coastal stability
+
+Evaluator-only candidate metrics first tested whether the generated circulation contains a usable generic coastal-cooling signal. Equatorward current exposure is derived from current direction, hemisphere, and bounded speed on the same fixed 128 x 64 analysis grid. It correlates with observed-proxy coastal dryness at rho 0.181 Fast, 0.266 Standard, and 0.227 Ultra. At Standard, the most exposed third of coastal cells contains 20.7% observed-dry cells versus 7.4% in the least exposed third. Weighting the current by generated subsidence improves the correlation to 0.282 Standard. These are association diagnostics, not evidence of observed current-route or sea-surface-temperature accuracy.
+
+The alternative wind-driven offshore-Ekman proxy correlates in the wrong direction at every tier (-0.228 Fast, -0.194 Standard, and -0.187 Ultra), so it is explicitly retained as rejected diagnostic evidence and does not influence production.
+
+The accepted production correction advances the existing current evaluation ahead of the final pressure/hydration pass. This is a dependency reorder, not another ocean solve: currents already depend on the fixed pressure model rather than pressure-adjusted hydration. During the existing final current loop, vectors are accumulated to the fixed 128 x 64 grid. Adjacent land receives a bounded equatorward-current potential. Final pressure applies a small precipitation response and a larger bounded hydration response, strengthened by subsiding air and protected by convergence. The circulation model is now `basin-circulation-v7`.
+
+Standard dry-coast false-wet rate improves from 0.867 to 0.856 and subsiding dry-coast rate from 0.826 to 0.804. Standard representative-region rank improves from 0.794 to 0.855 and biome macro-F1 from 0.4733 to 0.4754. At Ultra, representative-region rank improves from 0.879 to 0.891, observed-wet false-dry rate from 0.6248 to 0.6196, wetness rank from 0.4832 to 0.4849, and balanced accuracy from 0.4654 to 0.4667. Overall Ultra false-wet remains 0.4560; the current signal does not disguise the remaining polar-coast errors.
+
+The auxiliary current accumulators are fixed-grid arrays under 100 KiB. No additional full-resolution circulation pass or solver was added. Measured core time is 163.1 ms Fast, 975.7 ms Standard, and 14,568.1 ms Ultra, about 3.8% above the preceding Ultra checkpoint and within the accepted envelope.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -132,21 +144,24 @@ The added work is a four-neighbor gradient only for affected coastal land cells 
 | Tropical convergence direction | 0.9987 | 1.0000 | 1.0000 |
 | Current confinement to ocean | 1.0000 | 1.0000 | 1.0000 |
 | Gyre rotation agreement | 0.9663 | 0.9620 | 0.9639 |
-| Köppen wetness rank correlation | 0.4880 | 0.4374 | 0.4832 |
-| Wet/dry extreme balanced accuracy | 0.4838 | 0.4554 | 0.4654 |
-| Observed-dry false-wet rate | 0.4733 | 0.4604 | 0.4560 |
-| Observed-wet false-dry rate | 0.5526 | 0.6502 | 0.6248 |
-| Amazon-Sahara wetness contrast | 0.2012 | 0.2741 | 0.3436 |
-| Orographic precipitation delta | 0.0014 | 0.0142 | 0.0248 |
-| Coastal-interior contrast | 0.3170 | 0.3529 | 0.2914 |
-| Equatorial-subtropical contrast | 0.3940 | 0.4143 | 0.4423 |
-| Equatorial-subtropical contrast error | 0.0029 | 0.0246 | 0.0544 |
-| Representative-region rank correlation | 0.6727 | 0.7939 | 0.8788 |
-| Humid-region mean | 0.7585 | 0.6047 | 0.6449 |
-| Dry-region mean | 0.4533 | 0.3162 | 0.3060 |
-| Köppen biome macro-F1 | 0.4464 | 0.4733 | 0.4843 |
+| Equatorward-current dry-coast separation | 0.1808 | 0.2655 | 0.2273 |
+| Current-plus-subsidence dry-coast separation | 0.2031 | 0.2820 | 0.2437 |
+| Offshore-Ekman dry-coast separation (rejected) | -0.2278 | -0.1942 | -0.1874 |
+| Köppen wetness rank correlation | 0.4893 | 0.4394 | 0.4849 |
+| Wet/dry extreme balanced accuracy | 0.4827 | 0.4554 | 0.4667 |
+| Observed-dry false-wet rate | 0.4744 | 0.4593 | 0.4560 |
+| Observed-wet false-dry rate | 0.5526 | 0.6489 | 0.6196 |
+| Amazon-Sahara wetness contrast | 0.2032 | 0.2760 | 0.3455 |
+| Orographic precipitation delta | 0.0011 | 0.0140 | 0.0245 |
+| Coastal-interior contrast | 0.3127 | 0.3477 | 0.2859 |
+| Equatorial-subtropical contrast | 0.3979 | 0.4185 | 0.4471 |
+| Equatorial-subtropical contrast error | 0.0068 | 0.0289 | 0.0591 |
+| Representative-region rank correlation | 0.6727 | 0.8545 | 0.8909 |
+| Humid-region mean | 0.7584 | 0.6045 | 0.6447 |
+| Dry-region mean | 0.4502 | 0.3134 | 0.3030 |
+| Köppen biome macro-F1 | 0.4464 | 0.4754 | 0.4839 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 158.0 ms | 944.4 ms | 14,037.9 ms |
+| Core downstream time | 163.1 ms | 975.7 ms | 14,568.1 ms |
 
 Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
@@ -164,4 +179,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration remains the weakest observed-proxy component, but regional and pixel-scale signals now improve together. Wind orientation reduces the unconditional dry-coast error without disturbing the broader circulation model, yet observed-dry coasts still rank too wet at roughly 0.87 Standard and 0.92 Ultra. Further coefficient suppression is not justified: the rejected stronger calibration already showed the coarse orographic tradeoff. The next slice should diagnose whether the present stage order can expose generic cool-current/upwelling signals to coastal hydration, and define what new observation evidence would be required, before changing circulation/climate coupling. Preserve transport conservation, inland false-dry gains, latitude error, dry/humid regions, orography, biome F1, memory, and performance. Do not claim local current realism without observed wind/current datasets.
+Hydration remains the weakest observed-proxy component, but regional and pixel-scale signals now improve together. The warm/temperate cool-current seam is coupled as far as the available generated signal justifies; its moderate precision makes stronger broad drying unsafe. The dominant residual inside the observed-dry coastal diagnostic is now cold/polar coast behavior: Standard cold-coastal false-wet rate is 0.889 and Ultra is 0.970, while the temperate rates are 0.820 and 0.851. The next slice should localize polar-desert hydration against generated temperature, precipitation, permanent ice, and the Köppen-derived proxy before changing production. In particular, determine whether the metric is exposing a real missing cold-air moisture-capacity effect or a limitation in interpreting Köppen EF/D climates as continuous wetness. Preserve humid cold regions, ice behavior, latitude contrast, orography, biome F1, and performance. Do not claim local current realism without observed wind/current datasets.

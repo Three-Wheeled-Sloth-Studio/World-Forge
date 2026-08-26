@@ -2,6 +2,7 @@ import {
   biomeToCode,
   type WorldProject,
 } from '@world-forge/shared';
+import { equatorwardCurrentExposure } from '@world-forge/generator-core';
 import type { ValidationMetricDefinition } from '@world-forge/validation-core';
 import type { EarthDownstreamOutput, EarthObservations } from './earthScenario';
 
@@ -51,6 +52,41 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     doesNotProve: 'Observed gyre boundaries, transport, depth structure, or current speed calibration.',
     threshold: { minimum: 0.6 },
     evaluate: ({ project, reconciliation }) => gyreRotationAgreement(project, reconciliation.circulation),
+  },
+  {
+    id: 'ocean.equatorward-current-dry-coast-separation',
+    label: 'Equatorward-current dry-coast separation',
+    component: 'ocean',
+    evidence: 'derived-proxy',
+    unit: 'rho',
+    proves: 'Whether generated equatorward boundary-current exposure co-locates with broadly drier observed-proxy coasts strongly enough to be useful to hydration.',
+    doesNotProve: 'Observed current routes, sea-surface temperature, upwelling intensity, causality, or a calibrated coastal drying amount.',
+    evaluate: ({ project }, observations) => coastalCirculationSeparation(project, observations, 'current'),
+  },
+  {
+    id: 'ocean.cool-current-stability-dry-coast-separation',
+    label: 'Cool-current stability dry-coast separation',
+    component: 'ocean',
+    evidence: 'derived-proxy',
+    unit: 'rho',
+    proves: 'Whether the interaction of generated equatorward boundary currents and generated subsiding air more precisely co-locates with observed-proxy dry coasts.',
+    doesNotProve: 'Observed current routes, sea-surface temperature, inversion strength, causality, or a calibrated coastal drying amount.',
+    evaluate: ({ project, reconciliation }, observations) => coastalCirculationSeparation(
+      project,
+      observations,
+      'current',
+      reconciliation.circulation.pressureSystems.subsidencePotential,
+    ),
+  },
+  {
+    id: 'atmosphere.offshore-ekman-dry-coast-separation',
+    label: 'Offshore-Ekman dry-coast separation',
+    component: 'atmosphere',
+    evidence: 'derived-proxy',
+    unit: 'rho',
+    proves: 'Whether generated coastal wind orientation implies offshore surface transport at coasts that are broadly drier in the observed proxy.',
+    doesNotProve: 'Observed winds, actual Ekman transport, sea-surface temperature, nutrient upwelling, causality, or a calibrated drying amount.',
+    evaluate: ({ project }, observations) => coastalCirculationSeparation(project, observations, 'ekman'),
   },
   {
     id: 'hydration.koppen-wetness-rank-correlation',
@@ -217,6 +253,25 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
 export function spearmanRankCorrelation(left: readonly number[], right: readonly number[]): number {
   if (left.length !== right.length || left.length < 2) return 0;
   return pearson(ranks(left), ranks(right));
+}
+
+export function offshoreEkmanExposure(
+  windX: number,
+  windY: number,
+  offshoreX: number,
+  offshoreY: number,
+  latitudeDegreesValue: number,
+): number {
+  const windSpeed = Math.hypot(windX, windY);
+  const offshoreMagnitude = Math.hypot(offshoreX, offshoreY);
+  if (windSpeed < 1e-7 || offshoreMagnitude < 1e-7 || Math.abs(latitudeDegreesValue) < 5) return 0;
+  const hemisphere = latitudeDegreesValue >= 0 ? 1 : -1;
+  const ekmanX = -windY * hemisphere;
+  const ekmanY = windX * hemisphere;
+  const alignment = (
+    ekmanX * offshoreX + ekmanY * offshoreY
+  ) / (windSpeed * offshoreMagnitude);
+  return Math.max(0, alignment) * Math.min(1, windSpeed / 0.35);
 }
 
 export type HydrationRegimeSample = {
@@ -404,6 +459,108 @@ function gyreRotationAgreement(
     if (layers.currentX[cell] * expectedX + layers.currentY[cell] * expectedY > 0) supported += 1;
   }
   return { value: supported / Math.max(1, total), sampleCount: total, details: { gyres: circulation.packedGyres.length } };
+}
+
+function coastalCirculationSeparation(
+  project: WorldProject,
+  observations: EarthObservations,
+  mode: 'current' | 'ekman',
+  stability?: Float32Array,
+) {
+  const source = observations.resolution;
+  const width = Math.min(128, source.width);
+  const height = Math.min(64, source.height);
+  const layers = project.primaryWorld.layers;
+  const water = aggregateWaterMask(observations.waterMask, source, width, height);
+  const coastDistance = distanceFromWater(water, width, height);
+  const observed = aggregateRasterLayer(observations.wetness, source, width, height, observations.waterMask);
+  const generated = aggregateRasterLayer(layers.wetness, source, width, height, observations.waterMask);
+  const vectorX = aggregateOceanRasterLayer(
+    mode === 'current' ? layers.currentX : layers.windX,
+    source,
+    width,
+    height,
+    observations.waterMask,
+  );
+  const vectorY = aggregateOceanRasterLayer(
+    mode === 'current' ? layers.currentY : layers.windY,
+    source,
+    width,
+    height,
+    observations.waterMask,
+  );
+  const allObservedLand: number[] = [];
+  const samples: Array<{ score: number; observed: number; generated: number }> = [];
+  for (let y = 0; y < height; y += 1) {
+    const latitude = latitudeDegrees(y, height);
+    for (let x = 0; x < width; x += 1) {
+      const cell = y * width + x;
+      if (water[cell]) continue;
+      allObservedLand.push(observed[cell]);
+      if (coastDistance[cell] !== 1) continue;
+      let scoreTotal = 0;
+      let marineNeighbors = 0;
+      const neighbors = [
+        { x: (x - 1 + width) % width, y, dx: -1, dy: 0 },
+        { x: (x + 1) % width, y, dx: 1, dy: 0 },
+        { x, y: y - 1, dx: 0, dy: -1 },
+        { x, y: y + 1, dx: 0, dy: 1 },
+      ];
+      for (const neighbor of neighbors) {
+        if (neighbor.y < 0 || neighbor.y >= height) continue;
+        const neighborCell = neighbor.y * width + neighbor.x;
+        if (!water[neighborCell]) continue;
+        scoreTotal += mode === 'current'
+          ? equatorwardCurrentExposure(vectorX[neighborCell], vectorY[neighborCell], latitude)
+          : offshoreEkmanExposure(
+            vectorX[neighborCell],
+            vectorY[neighborCell],
+            neighbor.dx,
+            neighbor.dy,
+            latitude,
+          );
+        marineNeighbors += 1;
+      }
+      if (!marineNeighbors) continue;
+      const circulationScore = scoreTotal / marineNeighbors;
+      const stabilityWeight = stability
+        ? 0.2 + stability[cell] * 0.8
+        : 1;
+      samples.push({
+        score: circulationScore * stabilityWeight,
+        observed: observed[cell],
+        generated: generated[cell],
+      });
+    }
+  }
+
+  const ordered = [...samples].sort((left, right) => left.score - right.score);
+  const groupSize = Math.max(1, Math.floor(ordered.length / 3));
+  const low = ordered.slice(0, groupSize);
+  const high = ordered.slice(-groupSize);
+  const dryThreshold = percentile(allObservedLand.sort((left, right) => left - right), 0.25);
+  const meanOf = (group: typeof samples, field: 'score' | 'observed' | 'generated') => (
+    group.reduce((sum, sample) => sum + sample[field], 0) / Math.max(1, group.length)
+  );
+  const dryShare = (group: typeof samples) => (
+    group.filter((sample) => sample.observed <= dryThreshold).length / Math.max(1, group.length)
+  );
+  return {
+    value: spearmanRankCorrelation(
+      samples.map((sample) => sample.score),
+      samples.map((sample) => -sample.observed),
+    ),
+    sampleCount: samples.length,
+    details: {
+      lowScoreMean: meanOf(low, 'score'),
+      highScoreMean: meanOf(high, 'score'),
+      observedWetnessDelta: meanOf(low, 'observed') - meanOf(high, 'observed'),
+      generatedWetnessDelta: meanOf(low, 'generated') - meanOf(high, 'generated'),
+      lowObservedDryShare: dryShare(low),
+      highObservedDryShare: dryShare(high),
+      dryThreshold,
+    },
+  };
 }
 
 function wetnessRankCorrelation(project: WorldProject, observations: EarthObservations) {
@@ -883,6 +1040,34 @@ function aggregateRasterLayer(
         for (let offsetX = 0; offsetX < stepX; offsetX += 1) {
           const index = (blockY * stepY + offsetY) * source.width + blockX * stepX + offsetX;
           if (water?.[index]) continue;
+          total += layer[index];
+          count += 1;
+        }
+      }
+      output[blockY * width + blockX] = total / Math.max(1, count);
+    }
+  }
+  return output;
+}
+
+function aggregateOceanRasterLayer(
+  layer: Float32Array,
+  source: EarthObservations['resolution'],
+  width: number,
+  height: number,
+  water: Uint8Array,
+): Float32Array {
+  const output = new Float32Array(width * height);
+  const stepX = source.width / width;
+  const stepY = source.height / height;
+  for (let blockY = 0; blockY < height; blockY += 1) {
+    for (let blockX = 0; blockX < width; blockX += 1) {
+      let total = 0;
+      let count = 0;
+      for (let offsetY = 0; offsetY < stepY; offsetY += 1) {
+        for (let offsetX = 0; offsetX < stepX; offsetX += 1) {
+          const index = (blockY * stepY + offsetY) * source.width + blockX * stepX + offsetX;
+          if (!water[index]) continue;
           total += layer[index];
           count += 1;
         }

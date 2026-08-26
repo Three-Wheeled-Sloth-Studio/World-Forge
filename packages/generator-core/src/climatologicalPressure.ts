@@ -465,6 +465,15 @@ function sampleBilinear(layer: Float32Array, width: number, height: number, long
   return a * (1 - ty) + b * ty;
 }
 
+export function sampleClimatologicalField(
+  model: ClimatologicalPressureModel,
+  field: Float32Array,
+  longitude: number,
+  latitude: number,
+): number {
+  return sampleBilinear(field, model.resolution.width, model.resolution.height, longitude, latitude);
+}
+
 export function sampleClimatologicalPressure(model: ClimatologicalPressureModel, longitude: number, latitude: number): PressureSample {
   const { width, height } = model.resolution;
   return {

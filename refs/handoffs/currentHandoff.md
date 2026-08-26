@@ -4,11 +4,11 @@ Updated: 2026-08-26
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its wind-oriented coastal-exposure increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, seven measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its cool-current coastal-stability increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, eight measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-The generator redistributes a capped existing coastal/marine contribution downwind on a fixed topology-64 land grid and normalizes it back to the donor total. Its separate coastal bonus now retains 100% under onshore flow, 85% alongshore, and 50% under fully offshore flow; unresolved orientation preserves the old value. Standard dry-coast false-wet rate improved from 0.911 to 0.867 and Ultra overall false-wet rate from 0.460 to 0.456. The remaining classified defect is dry coasts plausibly associated with cool-current/upwelling physics that is not currently coupled into hydration. Do not add net moisture, feed answer keys into production, retune latitude belts, or further suppress the coastal bonus without new evidence.
+The generator now exposes a fixed-grid equatorward-current potential to final coastal hydration without another ocean solve. Generated current exposure has modest but repeatable association with the observed dry-coast proxy; the alternative offshore-Ekman hypothesis points the wrong way and is not used. Standard representative-region rank is 0.855 and Ultra is 0.891; Ultra false-dry rate is 0.620. The dominant remaining dry-coast residual is cold/polar rather than temperate current-exposed coast. Do not add net moisture, feed answer keys into production, retune latitude belts, or amplify current drying beyond its measured precision.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

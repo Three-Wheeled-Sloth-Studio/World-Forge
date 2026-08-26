@@ -82,12 +82,13 @@ describe('climatological pressure and basin-scale circulation', () => {
     const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 128, height: 64 }));
     const diagnostics = applyBasinAwareCirculation(project);
 
-    expect(diagnostics.modelVersion).toBe('basin-circulation-v6');
+    expect(diagnostics.modelVersion).toBe('basin-circulation-v7');
     expect(diagnostics.gyreCandidateCount).toBeLessThanOrEqual(10);
     expect(diagnostics.packedGyres.length).toBe(diagnostics.gyreCandidateCount);
     expect(diagnostics.packedGyres.some((gyre) => gyre.kind === 'subtropical')).toBe(true);
     expect(diagnostics.pressureSystems.resolution).toEqual({ width: 128, height: 64 });
     expect(diagnostics.pressureSystems.precipitationAdjustedCells).toBeGreaterThan(0);
+    expect(diagnostics.pressureSystems.coolCurrentAdjustedCells).toBeGreaterThan(0);
     expect(diagnostics.pressureSystems.orographicAdjustedCells).toBeGreaterThan(0);
     expect(Number.isFinite(diagnostics.pressureSystems.meanOrographicAdjustment)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.windX)).toBe(true);

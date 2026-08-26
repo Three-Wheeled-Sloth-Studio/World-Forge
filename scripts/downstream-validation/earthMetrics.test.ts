@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { equatorwardCurrentExposure } from '@world-forge/generator-core';
 import {
   hydrationRegimeErrorProfiles,
+  offshoreEkmanExposure,
   spearmanRankCorrelation,
   type HydrationRegimeSample,
 } from './earthMetrics';
@@ -12,6 +14,21 @@ describe('Earth downstream metric math', () => {
 
   it('handles tied ranks deterministically', () => {
     expect(spearmanRankCorrelation([1, 1, 2, 3], [4, 4, 3, 1])).toBeLessThan(-0.9);
+  });
+
+  it('identifies equatorward current exposure in either hemisphere', () => {
+    expect(equatorwardCurrentExposure(0, 0.35, 25)).toBeCloseTo(1);
+    expect(equatorwardCurrentExposure(0, -0.35, -25)).toBeCloseTo(1);
+    expect(equatorwardCurrentExposure(0, -0.35, 25)).toBe(0);
+    expect(equatorwardCurrentExposure(0, 0.35, -25)).toBe(0);
+    expect(equatorwardCurrentExposure(0, 0.35, 2)).toBe(0);
+  });
+
+  it('identifies hemisphere-correct offshore Ekman transport', () => {
+    expect(offshoreEkmanExposure(0, -0.35, 1, 0, 25)).toBeCloseTo(1);
+    expect(offshoreEkmanExposure(0, 0.35, 1, 0, -25)).toBeCloseTo(1);
+    expect(offshoreEkmanExposure(0, 0.35, 1, 0, 25)).toBe(0);
+    expect(offshoreEkmanExposure(0, -0.35, 1, 0, -25)).toBe(0);
   });
 
   it('localizes false wet and false dry extremes by generated regime', () => {
