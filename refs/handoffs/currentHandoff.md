@@ -4,11 +4,11 @@ Updated: 2026-08-26
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its wet/dry error-regime diagnostic. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, five measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its wind-aligned coastal-moisture redistribution increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, six measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-The new diagnostic finds observed-wet deep interiors are false dry at about 0.94-0.95 across hot, temperate, and cold intersections, while observed-dry coasts are false wet at about 0.88-0.91. Relief is not the primary separator. The next production hypothesis is bounded redistribution of coastal moisture farther inland, preferably wind-aligned and fixed-scale, rather than more global moisture or drying. Do not feed answer keys into production generation, retune latitude belts, strengthen evaporation, or deepen fetch suppression past the cross-tier guardrails.
+The generator now redistributes a capped existing coastal/marine contribution downwind on a fixed topology-64 land grid and normalizes it back to the donor total. Standard wetness rank is 0.436, coastal-interior contrast 0.362, and representative-region rank 0.794; Ultra false-dry rate is 0.626 and biome macro-F1 0.484. The remaining classified defect is observed-dry coasts ranking too wet, especially where flow has no inland recipient. Do not add net moisture, feed answer keys into production, retune latitude belts, or hide the explicit false-wet/latitude-error residuals.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

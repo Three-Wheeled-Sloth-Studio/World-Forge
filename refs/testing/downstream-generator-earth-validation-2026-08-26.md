@@ -6,7 +6,7 @@ Branch: `dev`
 
 ## Outcome
 
-World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after five measured production corrections.
+World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after six measured production corrections.
 
 This diagnostic is intentionally outside routine push CI. Routine tests cover framework math, schema/report behavior, the production adapter seam, circulation contracts, and small deterministic generation only.
 
@@ -106,6 +106,16 @@ The result is stable across Standard and Ultra:
 
 This localizes the dominant residual as excessive coastal concentration plus insufficient inland moisture reach, not a need for more global drying or a cold-only correction. A secondary missing behavior is dry-coast physics, plausibly including cold-current/upwelling effects that the current stage order cannot yet represent directly.
 
+### Wind-aligned coastal moisture redistribution
+
+The accepted transport moves a capped share of the existing marine-fetch and coastal-wetness contribution rather than creating new water. Donor moisture is reduced on authoritative land cells, transported downwind for fourteen passes on a fixed topology-64 land mask, expanded, normalized back to the authoritative donor total, and then applied before recycling. Each reference cell caches its downwind recipient, eliminating repeated geometry work. Directional transport and conservation have focused tests.
+
+The authoritative pass stores wind direction in two signed 16-bit arrays because only direction is required. At Ultra these add about 32 MiB; donor and transported Float32 fields add about 64 MiB. The reference solve is small and resolution-stable. Measured core overhead is about 6% Fast/Standard and 4% Ultra.
+
+Compared with the preceding checkpoint, Standard wetness rank improved from 0.4213 to 0.4357, extreme balanced accuracy from 0.4388 to 0.4515, observed-wet false-dry rate from 0.6622 to 0.6542, coastal-interior contrast from 0.3953 to 0.3623, Amazon-Sahara contrast from 0.2587 to 0.2757, and representative-region rank from 0.7697 to 0.7939. Ultra wetness rank reached 0.4809, false-dry rate 0.6262, coastal-interior contrast 0.3016, and biome macro-F1 0.4839.
+
+The correction does not solve observed-dry coastal errors: their ranking remains poor where wind has no valid inland recipient, and overall Ultra false-wet rate increases from 0.4527 to 0.4604. Ultra latitude-contrast error also rises from 0.0391 to 0.0513 but remains below its 0.08 gate. Dry-region mean increases slightly within tolerance. These are explicit residuals, not hidden gains.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -114,23 +124,23 @@ This localizes the dominant residual as excessive coastal concentration plus ins
 | Tropical convergence direction | 0.9987 | 1.0000 | 1.0000 |
 | Current confinement to ocean | 1.0000 | 1.0000 | 1.0000 |
 | Gyre rotation agreement | 0.9663 | 0.9620 | 0.9639 |
-| Köppen wetness rank correlation | 0.4782 | 0.4213 | 0.4671 |
-| Wet/dry extreme balanced accuracy | 0.4810 | 0.4388 | 0.4555 |
-| Observed-dry false-wet rate | 0.4800 | 0.4670 | 0.4527 |
-| Observed-wet false-dry rate | 0.5610 | 0.6622 | 0.6420 |
-| Amazon-Sahara wetness contrast | 0.1853 | 0.2587 | 0.3293 |
-| Orographic precipitation delta | 0.0007 | 0.0147 | 0.0267 |
-| Coastal-interior contrast | 0.3580 | 0.3953 | 0.3316 |
-| Equatorial-subtropical contrast | 0.3838 | 0.3980 | 0.4271 |
-| Equatorial-subtropical contrast error | 0.0072 | 0.0083 | 0.0391 |
-| Representative-region rank correlation | 0.6727 | 0.7697 | 0.8788 |
-| Humid-region mean | 0.7459 | 0.5789 | 0.6273 |
-| Dry-region mean | 0.4565 | 0.3160 | 0.3097 |
-| Köppen biome macro-F1 | 0.4445 | 0.4773 | 0.4804 |
+| Köppen wetness rank correlation | 0.4883 | 0.4357 | 0.4809 |
+| Wet/dry extreme balanced accuracy | 0.4846 | 0.4515 | 0.4633 |
+| Observed-dry false-wet rate | 0.4811 | 0.4615 | 0.4604 |
+| Observed-wet false-dry rate | 0.5498 | 0.6542 | 0.6262 |
+| Amazon-Sahara wetness contrast | 0.2024 | 0.2757 | 0.3456 |
+| Orographic precipitation delta | 0.0045 | 0.0167 | 0.0267 |
+| Coastal-interior contrast | 0.3254 | 0.3623 | 0.3016 |
+| Equatorial-subtropical contrast | 0.3919 | 0.4120 | 0.4392 |
+| Equatorial-subtropical contrast error | 0.0008 | 0.0223 | 0.0513 |
+| Representative-region rank correlation | 0.6727 | 0.7939 | 0.8788 |
+| Humid-region mean | 0.7622 | 0.6094 | 0.6499 |
+| Dry-region mean | 0.4603 | 0.3245 | 0.3150 |
+| Köppen biome macro-F1 | 0.4451 | 0.4766 | 0.4839 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 147.7 ms | 904.3 ms | 13,608.7 ms |
+| Core downstream time | 156.9 ms | 960.8 ms | 14,202.2 ms |
 
-Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 20.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
+Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
 Versioned tolerances are stored under `refs/testing/downstream-earth-baselines/` and are loaded automatically by the manual runner.
 
@@ -146,4 +156,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. The regime diagnostic shows the next production slice should redistribute a bounded share of coastal moisture farther inland rather than add more moisture or increase global drying. Favor fixed-reference-scale, wind-aligned land transport that conserves or nearly conserves the affected moisture contribution. Protect the new false-wet/false-dry regime baselines, humid/dry region guards, latitude-contrast error, orography, biome F1, and performance. Dry-coast current/upwelling physics should remain a later slice unless production stage ownership is deliberately changed. Observed wind/current datasets would be required before making local circulation-match claims.
+Hydration remains the weakest observed-proxy component, but regional and pixel-scale signals now improve together. The dominant remaining classified defect is observed-dry coasts ranking too wet, especially where offshore or alongshore flow prevents the land transport from finding a recipient. The next slice should audit unconditional coastal wetness against wind/coast orientation and determine whether a bounded offshore-flow suppression can represent dry coasts before considering a climate/circulation stage reorder for cold-current or upwelling effects. Preserve transport conservation, inland false-dry gains, latitude error, dry/humid regions, orography, biome F1, memory, and performance. Observed wind/current datasets would be required before making local circulation-match claims.

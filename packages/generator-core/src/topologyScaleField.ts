@@ -15,6 +15,10 @@ export type TopologyScaleFieldOptions = {
   activeMaskValue?: 0 | 1;
 };
 
+export type DirectionalTransportOptions = TopologyScaleFieldOptions & {
+  transferPerPass?: number;
+};
+
 const referenceTopologyCache = new Map<number, CubedSphereTopology>();
 
 export function broadenTopologySignal(
@@ -146,6 +150,90 @@ export function spreadMaskedTopologySignal(
     },
     () => expandFromReferenceScale(reduced.values, topology.resolution, referenceResolution)
   );
+}
+
+/**
+ * Moves a signal downwind within a masked surface on a fixed reference grid.
+ * The expanded result is normalized over active authoritative cells so the
+ * transported contribution retains the donor total despite scale conversion.
+ */
+export function transportMaskedTopologySignal(
+  source: Float32Array,
+  windX: Float32Array | Int16Array,
+  windY: Float32Array | Int16Array,
+  topology: CubedSphereTopology,
+  mask: Uint8Array,
+  options: DirectionalTransportOptions = {}
+): Float32Array {
+  const referenceResolution = Math.max(
+    16,
+    Math.min(topology.resolution, Math.round(options.referenceResolution ?? 64))
+  );
+  const passes = Math.max(0, Math.round(options.passes ?? 8));
+  const transferPerPass = Math.max(0, Math.min(1, options.transferPerPass ?? 0.55));
+  const activeMaskValue = options.activeMaskValue ?? 1;
+  let transported: Float32Array;
+
+  if (topology.resolution === referenceResolution) {
+    transported = advectMaskedTopologyLayer(
+      new Float32Array(source),
+      windX,
+      windY,
+      mask,
+      activeMaskValue,
+      topology,
+      passes,
+      transferPerPass
+    );
+  } else {
+    const referenceTopology = referenceTopologyForResolution(referenceResolution);
+    const reduced = traceGenerationPerformance(
+      'reference-scale-directional-signal-reduction',
+      {
+        topologyCells: topology.cellCount,
+        fullTopologyPasses: 1,
+        allocatedBufferBytes: referenceTopology.cellCount
+          * (Float32Array.BYTES_PER_ELEMENT * 3 + Uint32Array.BYTES_PER_ELEMENT + Uint8Array.BYTES_PER_ELEMENT)
+      },
+      () => reduceMaskedFieldsToReferenceScale(
+        [source, windX, windY],
+        mask,
+        activeMaskValue,
+        topology.resolution,
+        referenceResolution
+      )
+    );
+    const referenceTransport = traceGenerationPerformance(
+      'reference-scale-directional-signal-transport',
+      {
+        topologyCells: referenceTopology.cellCount,
+        fullTopologyPasses: passes,
+        allocatedBufferBytes: referenceTopology.cellCount * Float32Array.BYTES_PER_ELEMENT * passes
+      },
+      () => advectMaskedTopologyLayer(
+        reduced.values[0],
+        reduced.values[1],
+        reduced.values[2],
+        reduced.mask,
+        1,
+        referenceTopology,
+        passes,
+        transferPerPass
+      )
+    );
+    transported = traceGenerationPerformance(
+      'authoritative-topology-directional-signal-expansion',
+      {
+        topologyCells: topology.cellCount,
+        fullTopologyPasses: 1,
+        allocatedBufferBytes: topology.cellCount * Float32Array.BYTES_PER_ELEMENT
+      },
+      () => expandFromReferenceScale(referenceTransport, topology.resolution, referenceResolution)
+    );
+  }
+
+  normalizeMaskedSignalTotal(transported, source, mask, activeMaskValue);
+  return transported;
 }
 
 export function stabilizeTopologyField(
@@ -354,6 +442,38 @@ function reduceMaskedAverageToReferenceScale(
   return { values, mask: reducedMask };
 }
 
+function reduceMaskedFieldsToReferenceScale(
+  sources: readonly (Float32Array | Int16Array)[],
+  mask: Uint8Array,
+  activeMaskValue: 0 | 1,
+  sourceResolution: number,
+  referenceResolution: number
+): { values: Float32Array[]; mask: Uint8Array } {
+  const referenceCellCount = 6 * referenceResolution * referenceResolution;
+  const values = sources.map(() => new Float32Array(referenceCellCount));
+  const counts = new Uint32Array(referenceCellCount);
+  const reducedMask = new Uint8Array(referenceCellCount);
+  const sourceFaceSize = sourceResolution * sourceResolution;
+  for (let cell = 0; cell < mask.length; cell += 1) {
+    if (mask[cell] !== activeMaskValue) continue;
+    const face = Math.floor(cell / sourceFaceSize);
+    const local = cell - face * sourceFaceSize;
+    const x = local % sourceResolution;
+    const y = Math.floor(local / sourceResolution);
+    const referenceX = Math.min(referenceResolution - 1, Math.floor((x / sourceResolution) * referenceResolution));
+    const referenceY = Math.min(referenceResolution - 1, Math.floor((y / sourceResolution) * referenceResolution));
+    const referenceCell = cubedSphereCellIndex(face, referenceX, referenceY, referenceResolution);
+    for (let field = 0; field < sources.length; field += 1) values[field][referenceCell] += sources[field][cell];
+    counts[referenceCell] += 1;
+    reducedMask[referenceCell] = 1;
+  }
+  for (let cell = 0; cell < referenceCellCount; cell += 1) {
+    if (!counts[cell]) continue;
+    for (const field of values) field[cell] /= counts[cell];
+  }
+  return { values, mask: reducedMask };
+}
+
 function reduceAverageToReferenceScaleMasked(
   source: Float32Array,
   sourceResolution: number,
@@ -497,6 +617,81 @@ function smoothMaskedTopologyLayer(
       layer[cell] = lerp(source[cell], sum / count, blend);
     }
   }
+}
+
+function advectMaskedTopologyLayer(
+  layer: Float32Array,
+  windX: Float32Array | Int16Array,
+  windY: Float32Array | Int16Array,
+  mask: Uint8Array,
+  activeMaskValue: 0 | 1,
+  topology: CubedSphereTopology,
+  passes: number,
+  transferPerPass: number
+): Float32Array {
+  const recipients = new Int32Array(layer.length);
+  for (let cell = 0; cell < layer.length; cell += 1) {
+    recipients[cell] = cell;
+    if (mask[cell] !== activeMaskValue) continue;
+    const magnitude = Math.hypot(windX[cell], windY[cell]);
+    let bestScore = 0;
+    if (magnitude <= 0.0001) continue;
+    for (let direction = 0; direction < 4; direction += 1) {
+      const neighbor = topology.neighbors[cell * 4 + direction];
+      if (neighbor < 0 || mask[neighbor] !== activeMaskValue) continue;
+      const dx = wrappedAngle(topology.longitudes[neighbor] - topology.longitudes[cell])
+        * Math.max(0.12, Math.cos(topology.latitudes[cell]));
+      const dy = topology.latitudes[neighbor] - topology.latitudes[cell];
+      const distance = Math.max(0.000001, Math.hypot(dx, dy));
+      const score = (dx / distance) * (windX[cell] / magnitude)
+        + (dy / distance) * (windY[cell] / magnitude);
+      if (score > bestScore) {
+        recipients[cell] = neighbor;
+        bestScore = score;
+      }
+    }
+  }
+  let current = layer;
+  for (let pass = 0; pass < passes; pass += 1) {
+    const next = new Float32Array(layer.length);
+    for (let cell = 0; cell < current.length; cell += 1) {
+      if (mask[cell] !== activeMaskValue) continue;
+      const value = current[cell];
+      if (value === 0) continue;
+      const recipient = recipients[cell];
+      const transferred = recipient === cell ? 0 : value * transferPerPass;
+      next[cell] += value - transferred;
+      if (transferred) next[recipient] += transferred;
+    }
+    current = next;
+  }
+  return current;
+}
+
+function normalizeMaskedSignalTotal(
+  target: Float32Array,
+  source: Float32Array,
+  mask: Uint8Array,
+  activeMaskValue: 0 | 1
+): void {
+  let sourceTotal = 0;
+  let targetTotal = 0;
+  for (let cell = 0; cell < target.length; cell += 1) {
+    if (mask[cell] !== activeMaskValue) {
+      target[cell] = 0;
+      continue;
+    }
+    sourceTotal += source[cell];
+    targetTotal += target[cell];
+  }
+  const scale = targetTotal > 0 ? sourceTotal / targetTotal : 0;
+  for (let cell = 0; cell < target.length; cell += 1) {
+    if (mask[cell] === activeMaskValue) target[cell] *= scale;
+  }
+}
+
+function wrappedAngle(value: number): number {
+  return Math.atan2(Math.sin(value), Math.cos(value));
 }
 
 function lerp(a: number, b: number, t: number): number {

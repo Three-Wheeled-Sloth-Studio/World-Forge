@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildCubedSphereTopology, cubedSphereCellIndex } from '@world-forge/shared';
-import { broadenTopologySignal, spreadMaskedTopologySignal, stabilizeTopologyField } from './topologyScaleField';
+import {
+  broadenTopologySignal,
+  spreadMaskedTopologySignal,
+  stabilizeTopologyField,
+  transportMaskedTopologySignal,
+} from './topologyScaleField';
 
 describe('broadenTopologySignal', () => {
   it('keeps deformation width stable as topology resolution increases', () => {
@@ -68,6 +73,33 @@ describe('spreadMaskedTopologySignal', () => {
     const low = maskedSpreadSample(64);
     const high = maskedSpreadSample(256);
     expect(Math.abs(high - low)).toBeLessThan(0.035);
+  });
+});
+
+describe('transportMaskedTopologySignal', () => {
+  it('moves a conserved signal downwind at fixed reference scale', () => {
+    const resolution = 128;
+    const topology = buildCubedSphereTopology(resolution);
+    const source = new Float32Array(topology.cellCount);
+    const windX = new Float32Array(topology.cellCount).fill(1);
+    const windY = new Float32Array(topology.cellCount);
+    const land = new Uint8Array(topology.cellCount).fill(1);
+    const sourceCell = cubedSphereCellIndex(0, resolution / 2, resolution / 2, resolution);
+    source[sourceCell] = 1;
+
+    const transported = transportMaskedTopologySignal(source, windX, windY, topology, land);
+
+    const total = transported.reduce((sum, value) => sum + value, 0);
+    let eastwardDisplacement = 0;
+    for (let cell = 0; cell < transported.length; cell += 1) {
+      const longitudeDelta = Math.atan2(
+        Math.sin(topology.longitudes[cell] - topology.longitudes[sourceCell]),
+        Math.cos(topology.longitudes[cell] - topology.longitudes[sourceCell]),
+      );
+      eastwardDisplacement += transported[cell] * longitudeDelta;
+    }
+    expect(total).toBeCloseTo(1, 5);
+    expect(eastwardDisplacement).toBeGreaterThan(0.02);
   });
 });
 

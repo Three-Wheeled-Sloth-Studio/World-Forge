@@ -41,7 +41,12 @@ import { generationWorkflowDeepTimeFeatures, type GenerationWorkflowId } from '.
 import { latitudeTemperatureOffsetC, latitudeTemperatureProfileForWorkflow } from './latitudeTemperatureProfile';
 import { classifyPermanentIce } from './permanentIce';
 import { projectTopologyRiverPath } from './riverPathProjection';
-import { broadenTopologySignal, spreadMaskedTopologySignal, stabilizeTopologyField } from './topologyScaleField';
+import {
+  broadenTopologySignal,
+  spreadMaskedTopologySignal,
+  stabilizeTopologyField,
+  transportMaskedTopologySignal,
+} from './topologyScaleField';
 import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
 import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
@@ -2280,6 +2285,9 @@ function refreshTopologyClimate(
   const landInfluence = computeTopologyInfluence(layers.water, topology, landRadius, 0);
   const precipitation = new Float32Array(count);
   const moisture = new Float32Array(count);
+  const surfaceWindX = new Int16Array(count);
+  const surfaceWindY = new Int16Array(count);
+  const coastalMoistureDonor = new Float32Array(count);
   const orographicLift = captureDerivedFields ? new Float32Array(count) : undefined;
   const orographicShadow = captureDerivedFields ? new Float32Array(count) : undefined;
   const workflowId = (project.config as GenerationConfig & { workflowId?: GenerationWorkflowId }).workflowId;
@@ -2298,6 +2306,8 @@ function refreshTopologyClimate(
 
     let fetch: number;
     let orographic: { lift: number; shadow: number };
+    let windX = 0;
+    let windY = 0;
     if (topologyGeometry && ocean) {
       fetch = 1;
       orographic = { lift: 0, shadow: 0 };
@@ -2313,6 +2323,8 @@ function refreshTopologyClimate(
         world.averageTemperatureC,
         terrainGradient
       );
+      windX = wind.x;
+      windY = wind.y;
       fetch = presentDayMoistureFetch(
         layers.elevation,
         layers.water,
@@ -2346,16 +2358,40 @@ function refreshTopologyClimate(
       subtropicalDry,
       itcz + stormTrack + orographic.lift * 0.5
     );
-    const climateBase = fetch * marineFetchRetention * 0.56
+    const advectedMarineMoisture = fetch * marineFetchRetention * 0.56;
+    const climateBase = advectedMarineMoisture
       + (1 - project.selectedValues.aridity) * 0.3
       + itcz + stormTrack + coastalWetness + thermalMoisture;
     const landPrecipitation = clamp(climateBase + orographic.lift * 0.5 - orographic.shadow * 0.92 - subtropicalDry - altitudeDrying, 0, 1);
     precipitation[cell] = ocean ? clamp(normalizeValue(layers.temperature[cell], -4, 32) * 0.72 + oceanInfluence[cell] * 0.1, 0.1, 0.95) : landPrecipitation;
     moisture[cell] = ocean ? 1 : clamp(landPrecipitation * 0.82 + oceanInfluence[cell] * 0.14 + Math.max(0, layers.wetness[cell] - 0.52) * 0.06, 0.02, 1);
+    if (!ocean) {
+      surfaceWindX[cell] = Math.round(windX * 32_767);
+      surfaceWindY[cell] = Math.round(windY * 32_767);
+      coastalMoistureDonor[cell] = Math.min(
+        0.08,
+        (advectedMarineMoisture + coastalWetness) * oceanInfluence[cell] * 0.2
+      );
+    }
     layers.climateMoisture[cell] = moisture[cell];
     layers.climatePrecipitation[cell] = precipitation[cell];
     layers.climateWetnessDelta[cell] = 0;
 
+  }
+
+  const transportedCoastalMoisture = transportMaskedTopologySignal(
+    coastalMoistureDonor,
+    surfaceWindX,
+    surfaceWindY,
+    topology,
+    layers.water,
+    { activeMaskValue: 0, referenceResolution: 64, passes: 14, transferPerPass: 0.75 }
+  );
+  for (let cell = 0; cell < count; cell += 1) {
+    if (layers.water[cell]) continue;
+    const redistributed = transportedCoastalMoisture[cell] - coastalMoistureDonor[cell];
+    precipitation[cell] = clamp(precipitation[cell] + redistributed, 0, 1);
+    moisture[cell] = clamp(moisture[cell] + redistributed * 0.9, 0.02, 1);
   }
 
   // Approximate land-surface evapotranspiration without another authoritative
