@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildCubedSphereTopology, cubedSphereCellForLonLat, type CubedSphereTopology } from '@world-forge/shared';
 import { createDefaultConfig, generateProject } from './index';
-import { generateProjectWithDeepTime, potentialEvaporativeWetnessLoss } from './deepTimePipeline';
+import {
+  advectedMoistureRetention,
+  generateProjectWithDeepTime,
+  potentialEvaporativeWetnessLoss,
+} from './deepTimePipeline';
 
 function testConfig(seed: string, overrides: Record<string, number> = {}) {
   const config = createDefaultConfig(seed, { width: 64, height: 32 });
@@ -137,6 +141,21 @@ describe('potentialEvaporativeWetnessLoss', () => {
     expect(potentialEvaporativeWetnessLoss(34, 0.2, 0.8))
       .toBeGreaterThan(potentialEvaporativeWetnessLoss(34, 0.2, 0.2));
     expect(potentialEvaporativeWetnessLoss(34, 0.2, 0)).toBe(0);
+  });
+});
+
+describe('advectedMoistureRetention', () => {
+  it('retains fetch without subsidence or under strong ascent', () => {
+    expect(advectedMoistureRetention(0, 0)).toBe(1);
+    expect(advectedMoistureRetention(0.18, 0.18)).toBe(1);
+  });
+
+  it('bounds fetch suppression and weakens it as ascent increases', () => {
+    const exposed = advectedMoistureRetention(0.18, 0);
+    const ascentProtected = advectedMoistureRetention(0.18, 0.1);
+    expect(exposed).toBe(0.75);
+    expect(ascentProtected).toBeGreaterThan(exposed);
+    expect(ascentProtected).toBeLessThan(1);
   });
 });
 

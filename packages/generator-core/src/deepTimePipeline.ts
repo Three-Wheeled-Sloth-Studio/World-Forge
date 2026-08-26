@@ -1981,6 +1981,15 @@ export function potentialEvaporativeWetnessLoss(
   );
 }
 
+export function advectedMoistureRetention(
+  subsidenceDrying: number,
+  ascentForcing: number
+): number {
+  const subsidenceStrength = normalizeValue(subsidenceDrying, 0, 0.18);
+  const ascentProtection = normalizeValue(ascentForcing, 0.03, 0.18);
+  return clamp(1 - subsidenceStrength * (1 - ascentProtection) * 0.25, 0.75, 1);
+}
+
 function smoothTopologyLayer(layer: Float32Array, topology: CubedSphereTopology, passes: number, blend: number, mask?: Uint8Array): void {
   for (let pass = 0; pass < passes; pass += 1) {
     const next = new Float32Array(layer);
@@ -2333,7 +2342,13 @@ function refreshTopologyClimate(
     const coastalWetness = landInfluence[cell] * oceanInfluence[cell] * 0.08;
     const thermalMoisture = normalizeValue(layers.temperature[cell], -8, 30) * 0.08;
     const altitudeDrying = Math.max(0, altitude - 0.24) * 0.22;
-    const climateBase = fetch * 0.56 + (1 - project.selectedValues.aridity) * 0.3 + itcz + stormTrack + coastalWetness + thermalMoisture;
+    const marineFetchRetention = advectedMoistureRetention(
+      subtropicalDry,
+      itcz + stormTrack + orographic.lift * 0.5
+    );
+    const climateBase = fetch * marineFetchRetention * 0.56
+      + (1 - project.selectedValues.aridity) * 0.3
+      + itcz + stormTrack + coastalWetness + thermalMoisture;
     const landPrecipitation = clamp(climateBase + orographic.lift * 0.5 - orographic.shadow * 0.92 - subtropicalDry - altitudeDrying, 0, 1);
     precipitation[cell] = ocean ? clamp(normalizeValue(layers.temperature[cell], -4, 32) * 0.72 + oceanInfluence[cell] * 0.1, 0.1, 0.95) : landPrecipitation;
     moisture[cell] = ocean ? 1 : clamp(landPrecipitation * 0.82 + oceanInfluence[cell] * 0.14 + Math.max(0, layers.wetness[cell] - 0.52) * 0.06, 0.02, 1);

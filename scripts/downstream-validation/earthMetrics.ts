@@ -117,6 +117,17 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project }, observations) => equatorialSubtropicalContrast(project, observations),
   },
   {
+    id: 'hydration.equatorial-subtropical-contrast-error',
+    label: 'Equatorial–subtropical contrast absolute error',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'wetness-error',
+    proves: 'The broad generated latitude contrast remains close to, rather than merely greater than, the Köppen-derived contrast.',
+    doesNotProve: 'Correct longitude-specific deserts, monsoon seasonality, or local precipitation totals.',
+    threshold: { maximum: 0.08 },
+    evaluate: ({ project }, observations) => equatorialSubtropicalContrastError(project, observations),
+  },
+  {
     id: 'hydration.representative-region-rank-correlation',
     label: 'Representative-region wetness rank correlation',
     component: 'hydration',
@@ -428,6 +439,18 @@ function equatorialSubtropicalContrast(project: WorldProject, observations: Eart
       observedContrast: equatorialObserved - subtropicalObserved,
       generatedEquatorialMean: equatorialGenerated,
       generatedSubtropicalMean: subtropicalGenerated,
+    },
+  };
+}
+
+function equatorialSubtropicalContrastError(project: WorldProject, observations: EarthObservations) {
+  const contrast = equatorialSubtropicalContrast(project, observations);
+  const observedContrast = contrast.details.observedContrast;
+  return {
+    value: Math.abs(contrast.value - observedContrast),
+    details: {
+      generatedContrast: contrast.value,
+      observedContrast,
     },
   };
 }

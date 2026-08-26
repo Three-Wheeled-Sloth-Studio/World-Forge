@@ -6,7 +6,7 @@ Branch: `dev`
 
 ## Outcome
 
-World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after four measured production corrections.
+World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after five measured production corrections.
 
 This diagnostic is intentionally outside routine push CI. Routine tests cover framework math, schema/report behavior, the production adapter seam, circulation contracts, and small deterministic generation only.
 
@@ -84,6 +84,14 @@ The loss is a capped generic function of generated temperature, generated precip
 
 At Ultra, dry-region mean improved from 0.3626 to 0.3195, Amazon-Sahara contrast from 0.2888 to 0.3232, and biome macro-F1 from 0.4674 to 0.4762. Humid-region mean changed from 0.6446 to 0.6274. Wetness rank and extreme balanced accuracy decreased by 0.0044 and 0.0085 respectively, within their accepted tolerances. Core time remained inside the performance envelope.
 
+### Ascent-protected advected moisture
+
+Marine fetch previously entered the precipitation base before atmospheric subsidence was considered. Nearby seas could therefore sustain high precipitation in descending subtropical air. Advected moisture now retains 75% to 100% of its value according to the existing subtropical-drying signal. ITCZ, storm-track, and orographic ascent protect the fetch, so the correction does not suppress generic monsoon or windward uplift mechanisms. No latitude forcing or named-region rule changed.
+
+A stronger 60% minimum retention improved dry-region metrics further but made the cross-tier latitude contrast too large at Ultra. The validation suite now includes explicit equatorial-subtropical contrast absolute error, rather than rewarding an ever-larger contrast. The accepted 75% minimum produces errors of 0.007 Fast, 0.008 Standard, and 0.039 Ultra, all within the 0.08 evidence gate and better on average than the prior model.
+
+At Standard, dry-region mean improved from 0.3270 to 0.3160, representative-region rank correlation from 0.7212 to 0.7697, coastal-interior contrast from 0.4004 to 0.3953, and biome macro-F1 from 0.4726 to 0.4773. Humid-region mean remained 0.579. Ultra dry-region mean reached 0.3097 and biome macro-F1 0.4804. The correction adds only constant arithmetic inside an existing topology pass.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -92,20 +100,21 @@ At Ultra, dry-region mean improved from 0.3626 to 0.3195, Amazon-Sahara contrast
 | Tropical convergence direction | 0.9987 | 1.0000 | 1.0000 |
 | Current confinement to ocean | 1.0000 | 1.0000 | 1.0000 |
 | Gyre rotation agreement | 0.9663 | 0.9620 | 0.9639 |
-| Köppen wetness rank correlation | 0.4770 | 0.4196 | 0.4663 |
-| Wet/dry extreme balanced accuracy | 0.4803 | 0.4399 | 0.4562 |
-| Amazon-Sahara wetness contrast | 0.1686 | 0.2513 | 0.3232 |
-| Orographic precipitation delta | 0.0010 | 0.0150 | 0.0268 |
-| Coastal-interior contrast | 0.3624 | 0.4004 | 0.3357 |
-| Equatorial-subtropical contrast | 0.3575 | 0.3840 | 0.4150 |
-| Representative-region rank correlation | 0.6364 | 0.7212 | 0.8788 |
-| Humid-region mean | 0.7459 | 0.5790 | 0.6274 |
-| Dry-region mean | 0.4781 | 0.3270 | 0.3195 |
-| Köppen biome macro-F1 | 0.4401 | 0.4726 | 0.4762 |
+| Köppen wetness rank correlation | 0.4782 | 0.4213 | 0.4671 |
+| Wet/dry extreme balanced accuracy | 0.4810 | 0.4388 | 0.4555 |
+| Amazon-Sahara wetness contrast | 0.1853 | 0.2587 | 0.3293 |
+| Orographic precipitation delta | 0.0007 | 0.0147 | 0.0267 |
+| Coastal-interior contrast | 0.3580 | 0.3953 | 0.3316 |
+| Equatorial-subtropical contrast | 0.3838 | 0.3980 | 0.4271 |
+| Equatorial-subtropical contrast error | 0.0072 | 0.0083 | 0.0391 |
+| Representative-region rank correlation | 0.6727 | 0.7697 | 0.8788 |
+| Humid-region mean | 0.7459 | 0.5789 | 0.6273 |
+| Dry-region mean | 0.4565 | 0.3160 | 0.3097 |
+| Köppen biome macro-F1 | 0.4445 | 0.4773 | 0.4804 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 148.6 ms | 938.4 ms | 13,796.1 ms |
+| Core downstream time | 147.7 ms | 904.3 ms | 13,608.7 ms |
 
-Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.0 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
+Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 20.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
 Versioned tolerances are stored under `refs/testing/downstream-earth-baselines/` and are loaded automatically by the manual runner.
 
@@ -121,4 +130,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. Standard dry-region mean improved from 0.370 to 0.327 but remains well above the 0.086 proxy, with Arabia at 0.434. Do not strengthen evaporation further at the expense of humid-region headroom. The next investigation should measure whether marine fetch and atmospheric subsidence are coupled incorrectly in hot dry regions, without named-region rules or latitude-belt retuning. Observed wind/current datasets would be required before making local circulation-match claims.
+Hydration remains the weakest observed-proxy component: fixed-grid wetness rank correlation is 0.42 Standard and wet/dry extreme balanced accuracy is 0.44. Standard dry-region mean is now 0.316 but remains above the 0.086 proxy, with Arabia at 0.416. Evaporation and subsidence/fetch coupling have reached their cross-tier guardrails. The next investigation should localize wet/dry classification errors by generated physical regime—temperature, relief, coast distance, and circulation—before changing another production term. Observed wind/current datasets would be required before making local circulation-match claims.
