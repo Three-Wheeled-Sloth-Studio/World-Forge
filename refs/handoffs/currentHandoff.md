@@ -4,11 +4,11 @@ Updated: 2026-08-26
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is now active and has completed its first evidence-led increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, and two measured generator corrections are implemented locally on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its moisture-recycling increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, and three measured generator corrections are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Coastal/interior and representative-region hydration diagnostics are now present. Influence radii are resolution-stable and use linear-time topology distance fields. The remaining measured defect is excessive coastality: Standard coastal-interior wetness contrast is about 0.40 versus about 0.09 in the Köppen proxy, while latitude-belt contrast is already close. Do not feed answer keys into production generation or retune latitude belts to hide this gap.
+Land-moisture recycling is bounded, land-masked, subtropically suppressed, and solved at fixed reference scale. Explicit humid/dry region metrics protect against indiscriminate wetting. Ultra plausibility metrics improved while core time stayed inside the accepted envelope. The remaining measured defect is excessive absolute wetness in generic dry regions: Standard dry-region mean is about 0.37 versus about 0.086 in the Köppen proxy. Do not feed answer keys into production generation or retune latitude belts to hide this gap.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

@@ -128,6 +128,26 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project }, observations) => representativeRegionRank(project, observations),
   },
   {
+    id: 'hydration.reference-humid-region-mean',
+    label: 'Reference humid-region wetness mean',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'wetness',
+    proves: 'Amazon and Congo diagnostic interiors retain substantial generated moisture under continental transport changes.',
+    doesNotProve: 'Correct rainfall totals, evapotranspiration, seasonality, or boundaries in either region.',
+    evaluate: ({ project }, observations) => referenceRegionGroupMean(project, observations, ['amazon', 'congo']),
+  },
+  {
+    id: 'hydration.reference-dry-region-mean',
+    label: 'Reference dry-region wetness mean',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'wetness',
+    proves: 'Sahara, Arabia, and interior Australia provide an explicit regression guard against indiscriminate land-moisture amplification.',
+    doesNotProve: 'Correct desert boundaries, local oases, seasonal rainfall, or absolute soil moisture.',
+    evaluate: ({ project }, observations) => referenceRegionGroupMean(project, observations, ['sahara', 'arabia', 'australiaInterior']),
+  },
+  {
     id: 'biomes.koppen-macro-f1',
     label: 'Köppen-derived biome macro-F1',
     component: 'biomes',
@@ -457,6 +477,49 @@ function representativeRegionRank(project: WorldProject, observations: EarthObse
     value: spearmanRankCorrelation(generated, observed),
     sampleCount: representativeRegions.length,
     details,
+  };
+}
+
+function referenceRegionGroupMean(
+  project: WorldProject,
+  observations: EarthObservations,
+  regionIds: readonly (typeof representativeRegions[number][0])[],
+) {
+  let generatedTotal = 0;
+  let observedTotal = 0;
+  const details: Record<string, number> = {};
+  for (const [id, minLat, maxLat, minLon, maxLon] of representativeRegions) {
+    if (!regionIds.includes(id)) continue;
+    const generated = regionMean(
+      project.primaryWorld.layers.wetness,
+      observations.resolution,
+      minLat,
+      maxLat,
+      minLon,
+      maxLon,
+      observations.waterMask,
+    );
+    const observed = regionMean(
+      observations.wetness,
+      observations.resolution,
+      minLat,
+      maxLat,
+      minLon,
+      maxLon,
+      observations.waterMask,
+    );
+    generatedTotal += generated;
+    observedTotal += observed;
+    details[`${id}Generated`] = generated;
+    details[`${id}Observed`] = observed;
+  }
+  return {
+    value: generatedTotal / Math.max(1, regionIds.length),
+    sampleCount: regionIds.length,
+    details: {
+      ...details,
+      observedMean: observedTotal / Math.max(1, regionIds.length),
+    },
   };
 }
 

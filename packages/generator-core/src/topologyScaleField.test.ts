@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCubedSphereTopology, cubedSphereCellIndex } from '@world-forge/shared';
-import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleField';
+import { broadenTopologySignal, spreadMaskedTopologySignal, stabilizeTopologyField } from './topologyScaleField';
 
 describe('broadenTopologySignal', () => {
   it('keeps deformation width stable as topology resolution increases', () => {
@@ -43,6 +43,34 @@ describe('broadenTopologySignal', () => {
   });
 });
 
+describe('spreadMaskedTopologySignal', () => {
+  it('spreads within active land without crossing an inactive water barrier', () => {
+    const resolution = 64;
+    const topology = buildCubedSphereTopology(resolution);
+    const source = new Float32Array(topology.cellCount);
+    const water = new Uint8Array(topology.cellCount).fill(1);
+    for (let y = 20; y < 44; y += 1) {
+      for (let x = 8; x < 28; x += 1) water[cubedSphereCellIndex(0, x, y, resolution)] = 0;
+      for (let x = 36; x < 56; x += 1) water[cubedSphereCellIndex(0, x, y, resolution)] = 0;
+    }
+    source[cubedSphereCellIndex(0, 12, 32, resolution)] = 1;
+
+    const spread = spreadMaskedTopologySignal(source, topology, water, {
+      activeMaskValue: 0,
+      passes: 12,
+    });
+
+    expect(spread[cubedSphereCellIndex(0, 16, 32, resolution)]).toBeGreaterThan(0);
+    expect(spread[cubedSphereCellIndex(0, 40, 32, resolution)]).toBe(0);
+  });
+
+  it('keeps masked propagation comparable across topology resolutions', () => {
+    const low = maskedSpreadSample(64);
+    const high = maskedSpreadSample(256);
+    expect(Math.abs(high - low)).toBeLessThan(0.035);
+  });
+});
+
 function broadenedShare(resolution: number): number {
   const topology = buildCubedSphereTopology(resolution);
   const broadened = broadenTopologySignal(boundarySignal(resolution), topology);
@@ -57,4 +85,23 @@ function boundarySignal(resolution: number): Float32Array {
     signal[cubedSphereCellIndex(0, x, y, resolution)] = 0.18;
   }
   return signal;
+}
+
+function maskedSpreadSample(resolution: number): number {
+  const topology = buildCubedSphereTopology(resolution);
+  const source = new Float32Array(topology.cellCount);
+  const mask = new Uint8Array(topology.cellCount);
+  for (let y = Math.floor(resolution * 0.25); y < Math.ceil(resolution * 0.75); y += 1) {
+    for (let x = Math.floor(resolution * 0.2); x < Math.ceil(resolution * 0.8); x += 1) {
+      mask[cubedSphereCellIndex(0, x, y, resolution)] = 1;
+    }
+  }
+  for (let y = Math.floor(resolution * 0.4); y < Math.ceil(resolution * 0.6); y += 1) {
+    for (let x = Math.floor(resolution * 0.2); x < Math.ceil(resolution * 0.32); x += 1) {
+      source[cubedSphereCellIndex(0, x, y, resolution)] = 1;
+    }
+  }
+  const spread = spreadMaskedTopologySignal(source, topology, mask);
+  const sample = cubedSphereCellIndex(0, Math.floor(resolution * 0.36), Math.floor(resolution * 0.5), resolution);
+  return spread[sample];
 }

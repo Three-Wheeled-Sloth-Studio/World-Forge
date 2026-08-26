@@ -41,7 +41,7 @@ import { generationWorkflowDeepTimeFeatures, type GenerationWorkflowId } from '.
 import { latitudeTemperatureOffsetC, latitudeTemperatureProfileForWorkflow } from './latitudeTemperatureProfile';
 import { classifyPermanentIce } from './permanentIce';
 import { projectTopologyRiverPath } from './riverPathProjection';
-import { broadenTopologySignal, stabilizeTopologyField } from './topologyScaleField';
+import { broadenTopologySignal, spreadMaskedTopologySignal, stabilizeTopologyField } from './topologyScaleField';
 import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
 import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
@@ -2313,7 +2313,7 @@ function refreshTopologyClimate(
     const itcz = Math.exp(-(topology.latitudes[cell] ** 2) / 0.085) * 0.22;
     const stormTrack = Math.exp(-((absLatitude - 0.72) ** 2) / 0.055) * 0.16;
     const subtropicalDry = Math.exp(-((absLatitude - 0.53) ** 2) / 0.04) * 0.18;
-    const coastalWetness = landInfluence[cell] * oceanInfluence[cell] * 0.1;
+    const coastalWetness = landInfluence[cell] * oceanInfluence[cell] * 0.08;
     const thermalMoisture = normalizeValue(layers.temperature[cell], -8, 30) * 0.08;
     const altitudeDrying = Math.max(0, altitude - 0.24) * 0.22;
     const climateBase = fetch * 0.56 + (1 - project.selectedValues.aridity) * 0.3 + itcz + stormTrack + coastalWetness + thermalMoisture;
@@ -2324,6 +2324,46 @@ function refreshTopologyClimate(
     layers.climatePrecipitation[cell] = precipitation[cell];
     layers.climateWetnessDelta[cell] = 0;
 
+  }
+
+  // Approximate land-surface evapotranspiration without another authoritative
+  // long-range traversal. Dry surfaces cannot seed the feedback, while the
+  // fixed-scale masked solve gives humid interiors a bounded moisture source.
+  const recyclableMoisture = new Float32Array(count);
+  for (let cell = 0; cell < count; cell += 1) {
+    if (layers.water[cell]) continue;
+    const humidSurface = normalizeValue(precipitation[cell], 0.28, 0.7);
+    const warmth = normalizeValue(layers.temperature[cell], 5, 30);
+    recyclableMoisture[cell] = precipitation[cell]
+      * humidSurface * humidSurface
+      * (0.35 + warmth * 0.65);
+  }
+  const recycledMoisture = spreadMaskedTopologySignal(
+    recyclableMoisture,
+    topology,
+    layers.water,
+    { activeMaskValue: 0, referenceResolution: 64, passes: 5, blend: 0.65 }
+  );
+  for (let cell = 0; cell < count; cell += 1) {
+    if (layers.water[cell]) continue;
+    const absLatitude = Math.abs(topology.latitudes[cell]);
+    const subtropicalSubsidence = Math.exp(-((absLatitude - 0.53) ** 2) / 0.04);
+    const establishedHumidity = normalizeValue(precipitation[cell], 0.24, 0.55);
+    const inlandness = 1 - oceanInfluence[cell];
+    const inlandOpportunity = 0.08 + Math.pow(inlandness, 1.5) * 0.92;
+    const dryBeltProtection = 1 - subtropicalSubsidence * 0.9;
+    const headroom = 1 - precipitation[cell];
+    const recycling = Math.min(
+      0.12,
+      recycledMoisture[cell]
+        * establishedHumidity
+        * inlandOpportunity
+        * dryBeltProtection
+        * headroom
+        * 0.65
+    );
+    precipitation[cell] = clamp(precipitation[cell] + recycling, 0, 1);
+    moisture[cell] = clamp(moisture[cell] + recycling * 0.9, 0.02, 1);
   }
 
   smoothTopologyLayer(moisture, topology, 1, 0.18);

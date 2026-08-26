@@ -12,6 +12,7 @@ export type TopologyScaleFieldOptions = {
   referenceResolution?: number;
   passes?: number;
   blend?: number;
+  activeMaskValue?: 0 | 1;
 };
 
 const referenceTopologyCache = new Map<number, CubedSphereTopology>();
@@ -76,6 +77,75 @@ export function broadenTopologySignal(
     () => smoothTopologyLayer(result, topology, 2, 0.35)
   );
   return result;
+}
+
+/**
+ * Diffuses a generated signal within a masked surface at a fixed reference
+ * scale. The authoritative field is visited only for reduction and expansion,
+ * so propagation distance and cost remain stable as topology resolution grows.
+ */
+export function spreadMaskedTopologySignal(
+  source: Float32Array,
+  topology: CubedSphereTopology,
+  mask: Uint8Array,
+  options: TopologyScaleFieldOptions = {}
+): Float32Array {
+  const referenceResolution = Math.max(
+    16,
+    Math.min(topology.resolution, Math.round(options.referenceResolution ?? 64))
+  );
+  const passes = Math.max(0, Math.round(options.passes ?? 5));
+  const blend = Math.max(0, Math.min(1, options.blend ?? 0.65));
+  const activeMaskValue = options.activeMaskValue ?? 1;
+
+  if (topology.resolution === referenceResolution) {
+    const result = new Float32Array(source);
+    smoothMaskedTopologyLayer(result, mask, activeMaskValue, topology, passes, blend);
+    return result;
+  }
+
+  const referenceTopology = referenceTopologyForResolution(referenceResolution);
+  const reduced = traceGenerationPerformance(
+    'reference-scale-masked-signal-reduction',
+    {
+      topologyCells: topology.cellCount,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: referenceTopology.cellCount
+        * (Float32Array.BYTES_PER_ELEMENT + Uint32Array.BYTES_PER_ELEMENT + Uint8Array.BYTES_PER_ELEMENT)
+    },
+    () => reduceMaskedAverageToReferenceScale(
+      source,
+      mask,
+      activeMaskValue,
+      topology.resolution,
+      referenceResolution
+    )
+  );
+  traceGenerationPerformance(
+    'reference-scale-masked-signal-diffusion',
+    {
+      topologyCells: referenceTopology.cellCount,
+      fullTopologyPasses: passes,
+      allocatedBufferBytes: referenceTopology.cellCount * Float32Array.BYTES_PER_ELEMENT * passes
+    },
+    () => smoothMaskedTopologyLayer(
+      reduced.values,
+      reduced.mask,
+      1,
+      referenceTopology,
+      passes,
+      blend
+    )
+  );
+  return traceGenerationPerformance(
+    'authoritative-topology-masked-signal-expansion',
+    {
+      topologyCells: topology.cellCount,
+      fullTopologyPasses: 1,
+      allocatedBufferBytes: topology.cellCount * Float32Array.BYTES_PER_ELEMENT
+    },
+    () => expandFromReferenceScale(reduced.values, topology.resolution, referenceResolution)
+  );
 }
 
 export function stabilizeTopologyField(
@@ -254,6 +324,36 @@ function reduceToReferenceScale(
   return result;
 }
 
+function reduceMaskedAverageToReferenceScale(
+  source: Float32Array,
+  mask: Uint8Array,
+  activeMaskValue: 0 | 1,
+  sourceResolution: number,
+  referenceResolution: number
+): { values: Float32Array; mask: Uint8Array } {
+  const values = new Float32Array(6 * referenceResolution * referenceResolution);
+  const counts = new Uint32Array(values.length);
+  const reducedMask = new Uint8Array(values.length);
+  const sourceFaceSize = sourceResolution * sourceResolution;
+  for (let cell = 0; cell < source.length; cell += 1) {
+    if (mask[cell] !== activeMaskValue) continue;
+    const face = Math.floor(cell / sourceFaceSize);
+    const local = cell - face * sourceFaceSize;
+    const x = local % sourceResolution;
+    const y = Math.floor(local / sourceResolution);
+    const referenceX = Math.min(referenceResolution - 1, Math.floor((x / sourceResolution) * referenceResolution));
+    const referenceY = Math.min(referenceResolution - 1, Math.floor((y / sourceResolution) * referenceResolution));
+    const referenceCell = cubedSphereCellIndex(face, referenceX, referenceY, referenceResolution);
+    values[referenceCell] += source[cell];
+    counts[referenceCell] += 1;
+    reducedMask[referenceCell] = 1;
+  }
+  for (let cell = 0; cell < values.length; cell += 1) {
+    if (counts[cell]) values[cell] /= counts[cell];
+  }
+  return { values, mask: reducedMask };
+}
+
 function reduceAverageToReferenceScaleMasked(
   source: Float32Array,
   sourceResolution: number,
@@ -366,6 +466,31 @@ function smoothTopologyLayer(
       for (let direction = 0; direction < 4; direction += 1) {
         const neighbor = topology.neighbors[cell * 4 + direction];
         if (neighbor < 0) continue;
+        sum += source[neighbor];
+        count += 1;
+      }
+      layer[cell] = lerp(source[cell], sum / count, blend);
+    }
+  }
+}
+
+function smoothMaskedTopologyLayer(
+  layer: Float32Array,
+  mask: Uint8Array,
+  activeMaskValue: 0 | 1,
+  topology: CubedSphereTopology,
+  passes: number,
+  blend: number
+): void {
+  for (let pass = 0; pass < passes; pass += 1) {
+    const source = new Float32Array(layer);
+    for (let cell = 0; cell < layer.length; cell += 1) {
+      if (mask[cell] !== activeMaskValue) continue;
+      let sum = source[cell];
+      let count = 1;
+      for (let direction = 0; direction < 4; direction += 1) {
+        const neighbor = topology.neighbors[cell * 4 + direction];
+        if (neighbor < 0 || mask[neighbor] !== activeMaskValue) continue;
         sum += source[neighbor];
         count += 1;
       }
