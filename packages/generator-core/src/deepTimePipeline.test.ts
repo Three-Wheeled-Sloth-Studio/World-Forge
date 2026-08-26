@@ -3,6 +3,7 @@ import { buildCubedSphereTopology, cubedSphereCellForLonLat, type CubedSphereTop
 import { createDefaultConfig, generateProject } from './index';
 import {
   advectedMoistureRetention,
+  coastalMoistureExposure,
   generateProjectWithDeepTime,
   potentialEvaporativeWetnessLoss,
 } from './deepTimePipeline';
@@ -156,6 +157,24 @@ describe('advectedMoistureRetention', () => {
     expect(exposed).toBe(0.75);
     expect(ascentProtected).toBeGreaterThan(exposed);
     expect(ascentProtected).toBeLessThan(1);
+  });
+});
+
+describe('coastalMoistureExposure', () => {
+  it('favors onshore flow and suppresses offshore flow', () => {
+    expect(coastalMoistureExposure(-1, 0, 1, 0)).toBe(1);
+    expect(coastalMoistureExposure(0, 1, 1, 0)).toBeCloseTo(0.85);
+    expect(coastalMoistureExposure(1, 0, 1, 0)).toBe(0.5);
+  });
+
+  it('preserves the coastal term when orientation is unresolved', () => {
+    expect(coastalMoistureExposure(0, 0, 1, 0)).toBe(1);
+    expect(coastalMoistureExposure(1, 0, 0, 0)).toBe(1);
+  });
+
+  it('normalizes vector magnitude and stays bounded', () => {
+    expect(coastalMoistureExposure(-8, 0, 0.2, 0)).toBe(1);
+    expect(coastalMoistureExposure(8, 0, 0.2, 0)).toBe(0.5);
   });
 });
 

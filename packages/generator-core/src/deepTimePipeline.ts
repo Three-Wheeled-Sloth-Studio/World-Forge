@@ -1995,6 +1995,28 @@ export function advectedMoistureRetention(
   return clamp(1 - subsidenceStrength * (1 - ascentProtection) * 0.25, 0.75, 1);
 }
 
+export function coastalMoistureExposure(
+  windX: number,
+  windY: number,
+  oceanGradientX: number,
+  oceanGradientY: number
+): number {
+  const windMagnitude = Math.hypot(windX, windY);
+  const gradientMagnitude = Math.hypot(oceanGradientX, oceanGradientY);
+  if (windMagnitude < 0.0001 || gradientMagnitude < 0.0001) return 1;
+
+  // Ocean influence increases toward the sea, so negative alignment is
+  // onshore flow and positive alignment is offshore flow.
+  const alignment = clamp(
+    (windX * oceanGradientX + windY * oceanGradientY) / (windMagnitude * gradientMagnitude),
+    -1,
+    1
+  );
+  const onshoreFlow = Math.max(0, -alignment);
+  const offshoreFlow = Math.max(0, alignment);
+  return clamp(0.85 + onshoreFlow * 0.15 - offshoreFlow * 0.35, 0.5, 1);
+}
+
 function smoothTopologyLayer(layer: Float32Array, topology: CubedSphereTopology, passes: number, blend: number, mask?: Uint8Array): void {
   for (let pass = 0; pass < passes; pass += 1) {
     const next = new Float32Array(layer);
@@ -2308,6 +2330,7 @@ function refreshTopologyClimate(
     let orographic: { lift: number; shadow: number };
     let windX = 0;
     let windY = 0;
+    let coastalExposure = 1;
     if (topologyGeometry && ocean) {
       fetch = 1;
       orographic = { lift: 0, shadow: 0 };
@@ -2344,6 +2367,17 @@ function refreshTopologyClimate(
         terrainGradient,
         topologyGeometry
       );
+      if (oceanInfluence[cell] > 0) {
+        const oceanGradient = topologyGeometry
+          ? topologyTerrainGradientWithGeometry(oceanInfluence, topology, topologyGeometry, cell)
+          : topologyTerrainGradient(oceanInfluence, topology, cell);
+        coastalExposure = coastalMoistureExposure(
+          wind.x,
+          wind.y,
+          oceanGradient.x,
+          oceanGradient.y
+        );
+      }
     }
     if (orographicLift) orographicLift[cell] = orographic.lift;
     if (orographicShadow) orographicShadow[cell] = orographic.shadow;
@@ -2351,7 +2385,7 @@ function refreshTopologyClimate(
     const itcz = Math.exp(-(topology.latitudes[cell] ** 2) / 0.085) * 0.22;
     const stormTrack = Math.exp(-((absLatitude - 0.72) ** 2) / 0.055) * 0.16;
     const subtropicalDry = Math.exp(-((absLatitude - 0.53) ** 2) / 0.04) * 0.18;
-    const coastalWetness = landInfluence[cell] * oceanInfluence[cell] * 0.08;
+    const coastalWetness = landInfluence[cell] * oceanInfluence[cell] * 0.08 * coastalExposure;
     const thermalMoisture = normalizeValue(layers.temperature[cell], -8, 30) * 0.08;
     const altitudeDrying = Math.max(0, altitude - 0.24) * 0.22;
     const marineFetchRetention = advectedMoistureRetention(
