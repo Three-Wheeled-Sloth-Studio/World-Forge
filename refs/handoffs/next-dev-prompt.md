@@ -1,4 +1,12 @@
-# Next Dev Prompt: Post-Ultra Pause Checkpoint
+# Next Dev Prompt: Downstream Earth Validation
+
+Updated: 2026-08-26
+
+Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
+
+The reusable framework, Earth production adapter, fixed 128 x 64 analysis grid, and Fast/Standard/Ultra baselines are established. Final biome ownership and final-wind orographic reconciliation have been corrected from measured evidence. Stored flow vectors remain geographic north-positive; presentation converts them to south-increasing raster rows.
+
+Next, deepen hydration diagnostics before changing more production behavior. Add coastal/interior and representative-region component evidence, identify whether moisture fetch, subtropical subsidence, continentality, or biome thresholds own the remaining gap, and retain the same answer-key isolation. Keep Earth and performance diagnostics manual/outside push CI.
 
 Continue implementation in:
 

@@ -48,6 +48,8 @@ export type ClimatologicalPressureDiagnostics = {
   openNorthernCircumpolarPath: boolean;
   precipitationAdjustedCells: number;
   meanPrecipitationAdjustment: number;
+  orographicAdjustedCells: number;
+  meanOrographicAdjustment: number;
 };
 
 export type BasinCirculationDiagnostics = {
@@ -165,6 +167,8 @@ function applyPressureSystems(
   stagnantWindShare: number;
   precipitationAdjustedCells: number;
   meanPrecipitationAdjustment: number;
+  orographicAdjustedCells: number;
+  meanOrographicAdjustment: number;
 } {
   const world = project.primaryWorld;
   const layers = world.layers;
@@ -173,6 +177,8 @@ function applyPressureSystems(
   let stagnantWind = 0;
   let adjustedCells = 0;
   let adjustmentTotal = 0;
+  let orographicAdjustedCells = 0;
+  let orographicAdjustmentTotal = 0;
 
   for (let y = 0; y < height; y += 1) {
     const latitude = latitudeForY(y, height);
@@ -201,7 +207,17 @@ function applyPressureSystems(
       if (layers.water[cell]) continue;
       const previousPrecipitation = layers.climatePrecipitation[cell];
       const previousWetness = layers.wetness[cell];
-      const adjustment = pressure.convergence * 0.13 + pressure.stormTrack * 0.1 - pressure.subsidence * 0.15;
+      const windSlopeAlignment = slope > 1e-7
+        ? clamp((terrain.x * wind.x - terrain.y * wind.y) / Math.max(1e-7, slope * windSpeed), -1, 1)
+        : 0;
+      const terrainStrength = clamp(slope * 20, 0, 1);
+      const orographicAdjustment = terrainStrength * (
+        windSlopeAlignment >= 0 ? windSlopeAlignment * 0.12 : windSlopeAlignment * 0.08
+      );
+      const adjustment = pressure.convergence * 0.13
+        + pressure.stormTrack * 0.1
+        - pressure.subsidence * 0.15
+        + orographicAdjustment;
       const nextPrecipitation = clamp(previousPrecipitation + adjustment, 0, 1);
       const nextMoisture = clamp(layers.climateMoisture[cell] + adjustment * 0.55, 0, 1);
       const nextWetness = clamp(previousWetness + adjustment * 0.62, 0, 1);
@@ -212,6 +228,10 @@ function applyPressureSystems(
       layers.biomes[cell] = classifyAdjustedBiome(project, cell);
       adjustedCells += 1;
       adjustmentTotal += nextPrecipitation - previousPrecipitation;
+      if (Math.abs(orographicAdjustment) > 1e-6) {
+        orographicAdjustedCells += 1;
+        orographicAdjustmentTotal += orographicAdjustment;
+      }
     }
   }
 
@@ -219,7 +239,9 @@ function applyPressureSystems(
     windTerrainDeflectionIndex: deflectionTotal / Math.max(1, width * height),
     stagnantWindShare: stagnantWind / Math.max(1, width * height),
     precipitationAdjustedCells: adjustedCells,
-    meanPrecipitationAdjustment: adjustmentTotal / Math.max(1, adjustedCells)
+    meanPrecipitationAdjustment: adjustmentTotal / Math.max(1, adjustedCells),
+    orographicAdjustedCells,
+    meanOrographicAdjustment: orographicAdjustmentTotal / Math.max(1, orographicAdjustedCells)
   };
 }
 
@@ -437,7 +459,9 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     openSouthernCircumpolarPath: pressureModel.openSouthernCircumpolarPath,
     openNorthernCircumpolarPath: pressureModel.openNorthernCircumpolarPath,
     precipitationAdjustedCells: pressureResult.precipitationAdjustedCells,
-    meanPrecipitationAdjustment: pressureResult.meanPrecipitationAdjustment
+    meanPrecipitationAdjustment: pressureResult.meanPrecipitationAdjustment,
+    orographicAdjustedCells: pressureResult.orographicAdjustedCells,
+    meanOrographicAdjustment: pressureResult.meanOrographicAdjustment
   };
   const diagnostics: BasinCirculationDiagnostics = {
     modelVersion: 'basin-circulation-v6',

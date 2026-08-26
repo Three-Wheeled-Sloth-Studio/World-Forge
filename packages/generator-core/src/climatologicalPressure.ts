@@ -408,6 +408,8 @@ function buildFields(
       const gradientX = (pressurePotential[indexOf(x + 1, y, width)] - pressurePotential[indexOf(x - 1, y, width)]) * 0.5;
       const gradientY = (pressurePotential[indexOf(x, Math.min(height - 1, y + 1), width)] - pressurePotential[indexOf(x, Math.max(0, y - 1), width)]) * 0.5;
       const baseZonal = absLatitude < 26 ? -1 : absLatitude < 63 ? 1 : -0.62;
+      // Stored flow vectors use positive Y toward geographic north; renderers
+      // invert that component when stepping through south-increasing rows.
       const baseMeridional = absLatitude < 26 ? -hemisphere * 0.24 : absLatitude < 63 ? hemisphere * 0.1 : -hemisphere * 0.08;
       const wind = normalizeVector(
         baseZonal * 0.78 - gradientX * 0.32 - gradientY * hemisphere * 1.4,

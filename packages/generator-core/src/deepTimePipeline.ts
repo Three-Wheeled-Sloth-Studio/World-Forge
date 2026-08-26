@@ -14,7 +14,11 @@ import {
 } from '@world-forge/shared';
 import { generateProject, type GenerateProjectOptions } from './index';
 import { emitTerrainDiagnosticSnapshot } from './terrainDiagnostics';
-import { applyBasinAwareCirculation } from './basinCirculation';
+import {
+  applyBasinAwareCirculation,
+  type BasinCirculationDiagnostics
+} from './basinCirculation';
+import { applyBiomeCohesion } from './biomeCohesion';
 import {
   buildRotationBetweenUnitVectors,
   rotateUnitVector,
@@ -2912,6 +2916,85 @@ function refreshMetrics(project: DeepTimeProject): SurfaceConsistencyDiagnostics
   };
 }
 
+export type PresentDayDownstreamReconciliation = {
+  climate: PresentClimateDiagnostics;
+  hydrology: HydrologyDiagnostics;
+  circulation: BasinCirculationDiagnostics;
+  consistency: SurfaceConsistencyDiagnostics;
+  topologyBiomeCorrections: number;
+  biomeCohesionReassignments: number;
+  projectedCellsRefreshed: number;
+  stageTimingsMs: Record<string, number>;
+};
+
+export type PresentDayDownstreamOptions = {
+  captureClimateDerivedFields?: boolean;
+  optimizeTraversal?: boolean;
+};
+
+/**
+ * Re-runs the production present-day downstream stages against an already-final
+ * terrain and water surface. This is the validation seam for imported reference
+ * surfaces; it deliberately does not run tectonics, deep-time aging, or sea-level
+ * selection and does not consume observational answer-key layers.
+ */
+export function reconcilePresentDayDownstream(
+  project: WorldProject,
+  options: PresentDayDownstreamOptions = {},
+): PresentDayDownstreamReconciliation {
+  const mutable = project as DeepTimeProject;
+  const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
+  const timings: Record<string, number> = {};
+  const timed = <T>(stage: string, operation: () => T): T => {
+    const started = performance.now();
+    const result = operation();
+    timings[stage] = performance.now() - started;
+    return result;
+  };
+  const optimizeTraversal = options.optimizeTraversal ?? true;
+  const climateRefresh = timed('climate', () => refreshTopologyClimate(
+    mutable,
+    topology,
+    options.captureClimateDerivedFields ?? true,
+    optimizeTraversal,
+  ));
+  const hydrologyResult = timed('hydrology', () => rebuildTopologyHydrology(mutable, topology, optimizeTraversal));
+  mutable.primaryWorld.rivers = hydrologyResult.rivers;
+  const climate = timed('climate-diagnostics', () => buildPresentClimateDiagnostics(
+    mutable,
+    topology,
+    climateRefresh.derivedFields,
+  ));
+  const topologyBiomeCorrections = timed('biomes', () => classifyTopologyBiomes(mutable));
+  const biomeCohesionReassignments = timed('biome-cohesion', () => applyBiomeCohesion(
+    mutable,
+    topology,
+    { projectRaster: false },
+  ));
+  const projectedCellsRefreshed = timed('projection', () => projectFinalTopology(mutable, topology));
+  const circulation = timed('circulation', () => applyBasinAwareCirculation(mutable));
+  mutable.primaryWorld.rivers = timed('river-projection', () => projectRiverPaths(
+    mutable,
+    topology,
+    mutable.primaryWorld.rivers,
+  ));
+  const consistency = timed('metrics', () => refreshMetrics(mutable));
+  consistency.biomeCorrections += topologyBiomeCorrections + biomeCohesionReassignments;
+  consistency.climateCellsRefreshed = climateRefresh.cells;
+  consistency.hydrologyCellsRebuilt = hydrologyResult.cells;
+  consistency.projectedCellsRefreshed = projectedCellsRefreshed;
+  return {
+    climate,
+    hydrology: hydrologyResult.diagnostics,
+    circulation,
+    consistency,
+    topologyBiomeCorrections,
+    biomeCohesionReassignments,
+    projectedCellsRefreshed,
+    stageTimingsMs: timings,
+  };
+}
+
 export function applyDeepTimeFoundation(
   project: WorldProject,
   onProgress?: (progress: DeepTimeProgress) => void,
@@ -3075,6 +3158,16 @@ export function applyDeepTimeFoundation(
     },
     () => classifyTopologyBiomes(mutable)
   );
+  const biomeCohesionReassignments = traceGenerationPerformance(
+    'deep-time.final.biome-cohesion',
+    {
+      topologyCells: topology.cellCount,
+      activeCells: topology.cellCount,
+      fullTopologyPasses: 2,
+      allocatedBufferBytes: topology.cellCount
+    },
+    () => applyBiomeCohesion(mutable, topology, { projectRaster: false })
+  );
   const projectedCellsRefreshed = traceGenerationPerformance(
     'topology-to-raster-final-projection',
     {
@@ -3118,7 +3211,7 @@ export function applyDeepTimeFoundation(
   if (fragmentPlacement.retainedCellRatio < 0.97) consistency.findings.push('Authoritative fragment placement retained less than 97 percent of source continental cells.');
   if (fragmentPlacement.mergedCollisionCellShare > 0.01) consistency.findings.push('Fragment placement required merged collision handling across more than one percent of topology cells.');
   consistency.topologyWaterMaskCorrections = topologyWaterMaskCorrections;
-  consistency.biomeCorrections += topologyBiomeCorrections;
+  consistency.biomeCorrections += topologyBiomeCorrections + biomeCohesionReassignments;
   consistency.climateCellsRefreshed = climateRefresh.cells;
   consistency.hydrologyCellsRebuilt = hydrology.cells;
   consistency.projectedCellsRefreshed = projectedCellsRefreshed;

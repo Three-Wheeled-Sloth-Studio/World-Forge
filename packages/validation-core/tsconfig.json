@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "../../.local/types/packages/validation-core",
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "../../.local/tsbuildinfo/packages-validation-core.tsbuildinfo",
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

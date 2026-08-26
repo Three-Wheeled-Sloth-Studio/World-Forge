@@ -122,7 +122,8 @@ function summarizeCollapsed(project: WorldProject, cells: number[], originalBiom
 
 export function applyBiomeCohesion(
   project: WorldProject,
-  topology: CubedSphereTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution)
+  topology: CubedSphereTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution),
+  options: { projectRaster?: boolean } = {},
 ): number {
   const layers = project.primaryWorld.topologyLayers;
   const next = new Uint8Array(layers.biomes);
@@ -203,6 +204,6 @@ export function applyBiomeCohesion(
     collapsedCellCount: collapsed.reduce((sum, item) => sum + item.areaCells, 0)
   };
 
-  if (reassigned > 0) projectBiomeLayer(project, topology);
+  if (reassigned > 0 && options.projectRaster !== false) projectBiomeLayer(project, topology);
   return reassigned;
 }

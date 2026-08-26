@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-08-25
+updated: 2026-08-26
 principle: Run the narrowest useful validation during implementation, then the appropriate checkpoint validation before declaring work complete. Not every command applies to every change.
 commands:
   - id: case-collisions
@@ -42,9 +42,22 @@ commands:
     command: GitHub Actions -> Ultra Earth Reference Diagnostic -> Run workflow
     purpose: Rebuild the maintained real-source Earth/Sol reference and capture source, package, timing, and memory evidence.
     use_when: Maintained source inputs, reference ETL, reference packaging, or the Ultra Earth contract changes. This is intentionally not ordinary push CI.
+  - id: downstream-earth-fast
+    command: npm run validate:downstream-earth:fast
+    purpose: Run the maintained Earth physical surface through production downstream climate, hydrology, biome, and circulation stages and compare component metrics with the Fast baseline.
+    use_when: Iterating on downstream generator behavior. This is an intentional local diagnostic, not ordinary push CI.
+  - id: downstream-earth-standard
+    command: npm run validate:downstream-earth:standard
+    purpose: Run the fixed-grid Earth plausibility metrics and performance comparison at 1024 x 512 / topology 256.
+    use_when: A downstream generator change reaches a scientific-validation checkpoint. This remains outside ordinary push CI.
+  - id: downstream-earth-ultra
+    command: npm run validate:downstream-earth:ultra
+    purpose: Run the maintained 4096 x 2048 / topology 1024 Earth downstream diagnostic and compare against its manual baseline.
+    use_when: An intentional maintained-Earth or scaling checkpoint requires Ultra evidence. Never add this to ordinary push CI.
 notes:
   - Ordinary dev/release validation is one job: npm ci, npm run verify, and the production page-harness smoke. Ready pull requests and manual checkpoints also run the production rerank smoke.
   - Manual validation exposes a full_test_matrix input that restores the extended generation and geographic seed matrices.
   - QA and main are exact-SHA promotion targets. Deployment requires a successful Validate World Forge run for the exact source SHA and then performs build-only compilation/bundling.
   - The former dedicated Ultra Earth acceptance workflow was removed after owner acceptance because its tests and full verification duplicated the ordinary suite.
   - Real scientific-source rebuilds and geographic evaluation remain intentional diagnostics because they provide evidence ordinary CI does not.
+  - Downstream Earth validation uses observed elevation plus derived Köppen wetness/biome/ice answer keys. Fast, Standard, and Ultra runs are manual diagnostics; only framework math and small deterministic contracts belong in routine tests.

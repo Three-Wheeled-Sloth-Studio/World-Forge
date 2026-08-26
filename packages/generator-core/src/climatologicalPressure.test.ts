@@ -58,6 +58,26 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(midLatitudeNorth.stormTrack).toBeGreaterThan(subtropicalNorth.stormTrack);
   }, 20_000);
 
+  it('uses the north-positive stored-vector convention for three-cell meridional flow', () => {
+    const model = buildClimatologicalPressureModel(sharedPressureProject());
+    const meanWindY = (latitudeDegrees: number) => {
+      let total = 0;
+      const samples = 16;
+      for (let index = 0; index < samples; index += 1) {
+        const longitude = -Math.PI + (index + 0.5) / samples * Math.PI * 2;
+        total += sampleClimatologicalPressure(model, longitude, latitudeDegrees * Math.PI / 180).windY;
+      }
+      return total / samples;
+    };
+
+    expect(meanWindY(15)).toBeLessThan(0);
+    expect(meanWindY(-15)).toBeGreaterThan(0);
+    expect(meanWindY(45)).toBeGreaterThan(0);
+    expect(meanWindY(-45)).toBeLessThan(0);
+    expect(meanWindY(75)).toBeLessThan(0);
+    expect(meanWindY(-75)).toBeGreaterThan(0);
+  }, 20_000);
+
   it('replaces local packing with a small set of basin-scale gyres', () => {
     const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 128, height: 64 }));
     const diagnostics = applyBasinAwareCirculation(project);
@@ -68,6 +88,8 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(diagnostics.packedGyres.some((gyre) => gyre.kind === 'subtropical')).toBe(true);
     expect(diagnostics.pressureSystems.resolution).toEqual({ width: 128, height: 64 });
     expect(diagnostics.pressureSystems.precipitationAdjustedCells).toBeGreaterThan(0);
+    expect(diagnostics.pressureSystems.orographicAdjustedCells).toBeGreaterThan(0);
+    expect(Number.isFinite(diagnostics.pressureSystems.meanOrographicAdjustment)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.windX)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.windY)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.currentX)).toBe(true);

@@ -1,0 +1,18 @@
+{
+  "scenarioId": "earth-downstream-fast-256x128",
+  "adapterId": "world-forge-present-day-downstream",
+  "adapterVersion": "1",
+  "metrics": {
+    "atmosphere.zonal-band-direction-agreement": { "value": 0.9162649372, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "atmosphere.tropical-convergence-direction-agreement": { "value": 0.9987444196, "absoluteTolerance": 0.01, "regressionDirection": "higher" },
+    "ocean.land-current-confinement": { "value": 1, "absoluteTolerance": 0.0001, "regressionDirection": "higher" },
+    "ocean.gyre-rotation-agreement": { "value": 0.9662775616, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.koppen-wetness-rank-correlation": { "value": 0.4868153041, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.koppen-extreme-balanced-accuracy": { "value": 0.492133897, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.amazon-sahara-contrast": { "value": 0.1616050552, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
+    "hydration.orographic-wind-alignment": { "value": 0.0060703418, "absoluteTolerance": 0.005, "regressionDirection": "higher" },
+    "biomes.koppen-macro-f1": { "value": 0.4091093697, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "biomes.final-climate-classification-consistency": { "value": 1, "absoluteTolerance": 0.001, "regressionDirection": "higher" },
+    "performance.core-downstream-ms": { "value": 141.2581, "relativeTolerance": 0.25, "regressionDirection": "lower" }
+  }
+}

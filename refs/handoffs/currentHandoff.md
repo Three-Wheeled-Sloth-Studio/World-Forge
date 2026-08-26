@@ -1,6 +1,14 @@
 # Current Handoff
 
-Updated: 2026-08-25
+Updated: 2026-08-26
+
+## Active downstream validation checkpoint
+
+The downstream Earth scientific-validation slice is now active and has completed its first evidence-led increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, and two measured generator corrections are implemented locally on `dev`.
+
+See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
+
+Current residual focus is hydration discrimination and representative-region diagnostics. Do not feed Köppen-derived wetness or biome answer keys into production generation and do not tune Earth-only coordinate exceptions.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

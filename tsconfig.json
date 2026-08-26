@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/shared" },
+    { "path": "./packages/validation-core" },
     { "path": "./packages/generator-core" },
     { "path": "./packages/generation-runtime" },
     { "path": "./packages/renderer" },

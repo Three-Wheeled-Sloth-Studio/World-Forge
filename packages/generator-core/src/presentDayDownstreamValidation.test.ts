@@ -1,0 +1,25 @@
+import { describe, expect, it } from 'vitest';
+import { createDefaultConfig } from './generatorCoreBase';
+import { reconcilePresentDayDownstream } from './deepTimePipeline';
+import { generateProjectWithNativeStages } from './nativeStagePipeline';
+
+describe('present-day downstream validation seam', () => {
+  it('reconciles downstream layers without changing final terrain or water', () => {
+    const config = createDefaultConfig('downstream-validation-seam', { width: 64, height: 32 });
+    config.topologyResolution = 16;
+    const project = generateProjectWithNativeStages(config);
+    const topologyElevation = new Float32Array(project.primaryWorld.topologyLayers.elevation);
+    const topologyWater = new Uint8Array(project.primaryWorld.topologyLayers.water);
+
+    const result = reconcilePresentDayDownstream(project);
+
+    expect(project.primaryWorld.topologyLayers.elevation).toEqual(topologyElevation);
+    expect(project.primaryWorld.topologyLayers.water).toEqual(topologyWater);
+    expect(result.projectedCellsRefreshed).toBe(64 * 32);
+    expect(result.hydrology.landCellCount).toBeGreaterThan(0);
+    expect(result.circulation.pressureSystems.resolution).toEqual({ width: 128, height: 64 });
+    expect(Object.values(result.stageTimingsMs).every((value) => Number.isFinite(value) && value >= 0)).toBe(true);
+    expect(project.primaryWorld.layers.windX.some((value) => Math.abs(value) > 0)).toBe(true);
+    expect(project.primaryWorld.layers.currentX.some((value) => Math.abs(value) > 0)).toBe(true);
+  });
+});

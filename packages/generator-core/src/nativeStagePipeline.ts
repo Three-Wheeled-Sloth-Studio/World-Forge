@@ -11,7 +11,6 @@ import { waterGeologyNodeId } from './graph/nodes/water-geology-node';
 import { climateGlaciationNodeId } from './graph/nodes/climate-glaciation-node';
 import { hydrologyBiomesNodeId } from './graph/nodes/hydrology-biomes-node';
 import { projectionAssemblyNodeId } from './graph/nodes/projection-assembly-node';
-import { applyBiomeCohesion } from './biomeCohesion';
 import { attachBiomeDiagnostics, type BiomeDiagnostics } from './biomeDiagnostics';
 import {
   generateProjectWithMotionAwareDeepTime,
@@ -323,17 +322,13 @@ export function generateProjectWithNativeStages(
     });
 
     const biomeTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
-    const cohesionStartedAt = nowMs();
-    applyBiomeCohesion(project, biomeTopology);
     const cohesionCompletedAt = nowMs();
     attachBiomeDiagnostics(project, biomeTopology);
     const diagnosticsCompletedAt = nowMs();
     if (project.diagnostics) {
-      const cohesionMs = Math.max(0, cohesionCompletedAt - cohesionStartedAt);
       const diagnosticsMs = Math.max(0, diagnosticsCompletedAt - cohesionCompletedAt);
-      project.diagnostics.phases.push({ name: 'biomes.cohesion', ms: Number(cohesionMs.toFixed(3)) });
       project.diagnostics.phases.push({ name: 'biomes.diagnostics', ms: Number(diagnosticsMs.toFixed(3)) });
-      project.diagnostics.totalMs = Number((project.diagnostics.totalMs + cohesionMs + diagnosticsMs).toFixed(3));
+      project.diagnostics.totalMs = Number((project.diagnostics.totalMs + diagnosticsMs).toFixed(3));
     }
     completedProject = project;
     transitionTo('world.outputs-validation', 0.99, 'Assembling final project and validation results');

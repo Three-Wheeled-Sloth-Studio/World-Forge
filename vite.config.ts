@@ -19,6 +19,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@world-forge/shared': path.resolve(__dirname, 'packages/shared/src'),
+      '@world-forge/validation-core': path.resolve(__dirname, 'packages/validation-core/src'),
       '@world-forge/generator-core': path.resolve(__dirname, 'packages/generator-core/src'),
       '@world-forge/generation-runtime': path.resolve(__dirname, 'packages/generation-runtime/src'),
       '@world-forge/renderer': path.resolve(__dirname, 'packages/renderer/src/bodyAwarePresentation.ts'),
