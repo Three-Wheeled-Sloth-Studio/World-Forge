@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCubedSphereTopology, cubedSphereCellForLonLat, type CubedSphereTopology } from '@world-forge/shared';
 import { createDefaultConfig, generateProject } from './index';
-import { generateProjectWithDeepTime } from './deepTimePipeline';
+import { generateProjectWithDeepTime, potentialEvaporativeWetnessLoss } from './deepTimePipeline';
 
 function testConfig(seed: string, overrides: Record<string, number> = {}) {
   const config = createDefaultConfig(seed, { width: 64, height: 32 });
@@ -118,6 +118,25 @@ describe('deep-time generator-core pipeline', () => {
         expect(world.layers.ice[y * width + x]).toBe(world.topologyLayers.ice[cell]);
       }
     }
+  });
+});
+
+describe('potentialEvaporativeWetnessLoss', () => {
+  it('selectively dries hot low-precipitation surfaces', () => {
+    const hotDry = potentialEvaporativeWetnessLoss(30, 0.25, 0.5);
+    const hotHumid = potentialEvaporativeWetnessLoss(30, 0.7, 0.5);
+    const coldDry = potentialEvaporativeWetnessLoss(4, 0.25, 0.5);
+
+    expect(hotDry).toBeGreaterThan(0.2);
+    expect(hotHumid).toBeLessThan(hotDry * 0.02);
+    expect(coldDry).toBe(0);
+  });
+
+  it('is bounded and respects the world aridity control', () => {
+    expect(potentialEvaporativeWetnessLoss(34, 0, 1)).toBe(0.45);
+    expect(potentialEvaporativeWetnessLoss(34, 0.2, 0.8))
+      .toBeGreaterThan(potentialEvaporativeWetnessLoss(34, 0.2, 0.2));
+    expect(potentialEvaporativeWetnessLoss(34, 0.2, 0)).toBe(0);
   });
 });
 

@@ -1964,6 +1964,23 @@ function normalizeValue(value: number, min: number, max: number): number {
   return clamp((value - min) / Math.max(0.000001, max - min), 0, 1);
 }
 
+export function potentialEvaporativeWetnessLoss(
+  temperatureC: number,
+  precipitation: number,
+  aridity: number
+): number {
+  const thermalDemand = normalizeValue(temperatureC, 8, 34);
+  const precipitationDeficit = 1 - clamp(precipitation, 0, 1);
+  const deficitSquared = precipitationDeficit * precipitationDeficit;
+  const deficitFourth = deficitSquared * deficitSquared;
+  const deficitSeventh = deficitFourth * deficitSquared * precipitationDeficit;
+  return clamp(
+    thermalDemand * deficitSeventh * clamp(aridity, 0, 1) * 4.5,
+    0,
+    0.45
+  );
+}
+
 function smoothTopologyLayer(layer: Float32Array, topology: CubedSphereTopology, passes: number, blend: number, mask?: Uint8Array): void {
   for (let pass = 0; pass < passes; pass += 1) {
     const next = new Float32Array(layer);
@@ -2373,7 +2390,14 @@ function refreshTopologyClimate(
     const previous = layers.wetness[cell];
     layers.climateMoisture[cell] = layers.water[cell] ? 1 : moisture[cell];
     layers.climatePrecipitation[cell] = precipitation[cell];
-    layers.wetness[cell] = layers.water[cell] ? 1 : clamp(precipitation[cell] * 0.78 + moisture[cell] * 0.22, 0, 1);
+    const evaporativeDemand = potentialEvaporativeWetnessLoss(
+      layers.temperature[cell],
+      precipitation[cell],
+      project.selectedValues.aridity
+    );
+    layers.wetness[cell] = layers.water[cell]
+      ? 1
+      : clamp(precipitation[cell] * 0.78 + moisture[cell] * 0.22 - evaporativeDemand, 0, 1);
     layers.climateWetnessDelta[cell] = layers.wetness[cell] - previous;
   }
 
