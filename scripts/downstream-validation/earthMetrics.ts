@@ -1106,8 +1106,8 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
     biomeToCode('grassland'),
     biomeToCode('forest'),
     biomeToCode('rainforest'),
-    biomeToCode('wetland'),
   ];
+  const diagnosticCategories = [...categories, biomeToCode('wetland')];
   const generated: number[] = [];
   const referenceBiomes: number[] = [];
   const analysisWidth = Math.min(128, observations.resolution.width);
@@ -1140,6 +1140,20 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
   let represented = 0;
   let samples = 0;
   const classDetails: Record<string, number> = {};
+  for (const referenceCategory of diagnosticCategories) {
+    classDetails[`referenceCode${referenceCategory}Samples`] = referenceBiomes.filter(
+      (code) => code === referenceCategory,
+    ).length;
+    classDetails[`generatedCode${referenceCategory}Samples`] = generated.filter(
+      (code) => code === referenceCategory,
+    ).length;
+    for (const generatedCategory of diagnosticCategories) {
+      classDetails[`confusionReference${referenceCategory}Generated${generatedCategory}`] = generated.reduce(
+        (count, code, index) => count + (referenceBiomes[index] === referenceCategory && code === generatedCategory ? 1 : 0),
+        0,
+      );
+    }
+  }
   for (const category of categories) {
     let truePositive = 0;
     let falsePositive = 0;
@@ -1162,7 +1176,12 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
   return {
     value: totalF1 / Math.max(1, represented),
     sampleCount: samples,
-    details: { representedClasses: represented, mountainReferenceExcluded: true, ...classDetails },
+    details: {
+      representedClasses: represented,
+      mountainReferenceExcluded: true,
+      wetlandReferenceExcluded: true,
+      ...classDetails,
+    },
   };
 }
 

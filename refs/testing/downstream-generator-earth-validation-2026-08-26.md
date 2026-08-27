@@ -166,6 +166,12 @@ At Standard, the 46 misses versus four successes average 0.500 versus 0.100 prec
 
 Two production counterfactuals were rejected. A direct temperate coastal-subsidence loss improved the targeted Standard rate from 0.92 to 0.88 at full strength but worsened overall false-wet classification and exceeded the latitude-contrast baseline; half strength reached only 0.90 and would exceed Ultra's hard 0.08 latitude-error gate. A western-margin fallback for unresolved cool-current exposure passed global guards but left the targeted Standard rate unchanged at 0.92. No production behavior or baseline changed. The remaining coast error requires better current-route or seasonal coastal-climate structure, not another drying coefficient.
 
+### Biome confusion and reference coverage
+
+The Köppen-derived reference contains no wetland class, but the macro-F1 calculation previously counted generated wetland false positives as evidence that wetland was represented and assigned that unsupported class F1=0. The corrected metric scores only classes present in the reference while continuing to report generated wetland prevalence and the complete compact confusion matrix. This is an evaluator correction, not a production improvement. Corrected macro-F1 is 0.523 Fast, 0.552 Standard, and 0.563 Ultra.
+
+The confusion profile localizes the remaining classifier ceiling. At Standard, reference/generated counts are 532/356 grassland and 396/662 forest; 201 reference grassland cells and 121 reference desert cells are generated as forest. Fast and Ultra show the same direction. Raising the forest threshold from 0.50 to 0.55 improves Standard macro-F1 by only 0.003 and regresses Fast because it trades grassland recall for forest recall. The threshold counterfactual was rejected. Distinguishing these classes materially requires better seasonal moisture/temperature structure or another generic ecological signal, not a global final-wetness threshold.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -190,7 +196,7 @@ Two production counterfactuals were rejected. A direct temperate coastal-subside
 | Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
 | Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
 | Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
-| Köppen biome macro-F1 | 0.4483 | 0.4730 | 0.4829 |
+| Köppen biome macro-F1 | 0.5230 | 0.5518 | 0.5634 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
 | Core downstream time | 176.5 ms | 1,058.5 ms | 14,942.7 ms |
 
@@ -210,4 +216,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The deep-interior correction and temperate dry-coast audit are complete. The coast residual cannot be improved safely by another bounded drying term: direct subsidence drying violates latitude structure, while a western-margin current fallback does not change the targeted error. The next evidence slice should move to biome-assignment residuals: build a compact confusion profile by generated temperature, wetness, ice, relief, and hydrology, then determine whether the 0.45-0.48 macro-F1 ceiling comes from upstream climate fields or final classifier thresholds. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.
+The deep-interior correction, temperate dry-coast audit, and biome confusion audit are complete. Static forest-threshold tuning cannot materially improve the grassland/forest confusion. The next material slice requires a generic seasonal climate or ecological-structure signal that can separate grassland, forest, rainforest, and dry-summer coasts without answer keys or another expensive full-resolution solver. Begin evaluator-only: derive low-cost continentality/circulation seasonality candidates on the fixed grid and test whether they separate the reference classes across all tiers. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.
