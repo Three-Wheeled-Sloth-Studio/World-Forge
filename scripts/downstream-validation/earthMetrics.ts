@@ -1188,6 +1188,7 @@ function biomeMacroF1(
         * (0.35 + continentality * 0.65);
       const subsidence = pressureSystems.subsidencePotential[analysisCell] ?? 0;
       const convergence = pressureSystems.convergencePotential[analysisCell] ?? 0;
+      const coastalProximity = Math.max(0, 1 - analysisCoastDistance[analysisCell] / 4);
       const longitude = ((blockX + 0.5) / analysisWidth) * Math.PI * 2 - Math.PI;
       const signedLatitudeDegrees = latitudeDegrees(blockY, analysisHeight);
       const signedLatitude = signedLatitudeDegrees * Math.PI / 180;
@@ -1198,6 +1199,13 @@ function biomeMacroF1(
         signalLayers.temperature[analysisCell],
         project.primaryWorld.averageTemperatureC,
       );
+      const seasonalBalance = twoSeasonWaterBalanceSignals(
+        signalLayers.temperature[analysisCell],
+        signalLayers.precipitation[analysisCell],
+        thermalSeasonality,
+        convergence,
+        project.selectedValues.aridity,
+      );
       ecologicalSignals.push({
         temperature: signalLayers.temperature[analysisCell],
         wetness: signalLayers.wetness[analysisCell],
@@ -1206,16 +1214,25 @@ function biomeMacroF1(
         relief: analysisRelief[analysisCell],
         finalWindRainShadow: finalWindRainShadow[analysisCell],
         finalWindCoastalExposure: finalWindCoastalExposure[analysisCell],
+        finalWindCoastalDryingPotential: (1 - finalWindCoastalExposure[analysisCell])
+          * subsidence
+          * (1 - convergence)
+          * coastalProximity,
         river: signalLayers.river[analysisCell],
         lakeShare: signalLayers.lakes[analysisCell],
         coastDistance: analysisCoastDistance[analysisCell],
+        coastalProximity,
         continentality,
+        continentalDryingPotential: Math.pow(continentality, 1.5)
+          * (1 - convergence)
+          * (1 - subsidence),
         subsidence,
         convergence,
         thermalSeasonality,
         drySeasonStress: thermalSeasonality
           * (0.3 + subsidence * 0.7)
           * (1 - convergence * 0.7),
+        ...seasonalBalance,
         ...pressureAttribution,
       });
       sampleCoordinates.push({
@@ -1287,6 +1304,60 @@ function biomeMacroF1(
       }
     }
   }
+  const finalWindCoastalCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
+    code,
+    ecologicalSignals[index],
+    ecologicalSignals[index].wetness - ecologicalSignals[index].finalWindCoastalDryingPotential * 0.4,
+  ));
+  const finalWindShadowCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
+    code,
+    ecologicalSignals[index],
+    ecologicalSignals[index].wetness - ecologicalSignals[index].finalWindRainShadow * 0.2,
+  ));
+  const reclassificationControl = generated.map((code, index) => reclassifyDiagnosticBiome(
+    code,
+    ecologicalSignals[index],
+    ecologicalSignals[index].wetness,
+  ));
+  classDetails.counterfactualReclassificationControlMacroF1 = diagnosticMacroF1(
+    reclassificationControl,
+    referenceBiomes,
+    categories,
+  );
+  classDetails.counterfactualFinalWindCoastalMacroF1 = diagnosticMacroF1(
+    finalWindCoastalCounterfactual,
+    referenceBiomes,
+    categories,
+  );
+  classDetails.counterfactualFinalWindShadowMacroF1 = diagnosticMacroF1(
+    finalWindShadowCounterfactual,
+    referenceBiomes,
+    categories,
+  );
+  for (const strength of [0.1, 0.15, 0.2, 0.25, 0.3, 0.4]) {
+    const continentalDryingCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
+      code,
+      ecologicalSignals[index],
+      ecologicalSignals[index].wetness - ecologicalSignals[index].continentalDryingPotential * strength,
+    ));
+    classDetails[`counterfactualContinentalDrying${Math.round(strength * 100)}MacroF1`] = diagnosticMacroF1(
+      continentalDryingCounterfactual,
+      referenceBiomes,
+      categories,
+    );
+  }
+  for (const strength of [0.5, 1, 1.5, 2]) {
+    const seasonalBalanceCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
+      code,
+      ecologicalSignals[index],
+      ecologicalSignals[index].wetness - ecologicalSignals[index].seasonalIncrementalEvaporativeLoss * strength,
+    ));
+    classDetails[`counterfactualSeasonalWaterBalance${Math.round(strength * 100)}MacroF1`] = diagnosticMacroF1(
+      seasonalBalanceCounterfactual,
+      referenceBiomes,
+      categories,
+    );
+  }
   for (const category of categories) {
     let truePositive = 0;
     let falsePositive = 0;
@@ -1335,14 +1406,106 @@ const desertRegionDiagnosticSignals = [
   'precipitation',
   'coastDistance',
   'continentality',
+  'continentalDryingPotential',
   'relief',
   'finalWindRainShadow',
   'finalWindCoastalExposure',
+  'finalWindCoastalDryingPotential',
   'subsidence',
   'convergence',
   'latitudePressure',
   'centerPressure',
+  'seasonalTemperatureAmplitudeC',
+  'seasonalPrecipitationSwing',
+  'seasonalIncrementalEvaporativeLoss',
+  'seasonalDryHalfWaterBalance',
 ] as const;
+
+function twoSeasonWaterBalanceSignals(
+  temperatureC: number,
+  precipitation: number,
+  thermalSeasonality: number,
+  convergence: number,
+  aridity: number,
+): Record<string, number> {
+  const temperatureAmplitudeC = thermalSeasonality * 30;
+  const precipitationSwing = Math.min(
+    0.2,
+    thermalSeasonality * 0.25 + convergence * (0.03 + thermalSeasonality * 0.12),
+  );
+  const summerTemperatureC = temperatureC + temperatureAmplitudeC;
+  const winterTemperatureC = temperatureC - temperatureAmplitudeC;
+  const summerPrecipitation = Math.min(1, precipitation + precipitationSwing);
+  const winterPrecipitation = Math.max(0, precipitation - precipitationSwing);
+  const annualLoss = diagnosticPotentialEvaporativeLoss(temperatureC, precipitation, aridity);
+  const summerLoss = diagnosticPotentialEvaporativeLoss(summerTemperatureC, summerPrecipitation, aridity);
+  const winterLoss = diagnosticPotentialEvaporativeLoss(winterTemperatureC, winterPrecipitation, aridity);
+  return {
+    seasonalTemperatureAmplitudeC: temperatureAmplitudeC,
+    seasonalPrecipitationSwing: precipitationSwing,
+    seasonalIncrementalEvaporativeLoss: Math.max(0, (summerLoss + winterLoss) * 0.5 - annualLoss),
+    seasonalDryHalfWaterBalance: Math.min(
+      summerPrecipitation - summerLoss,
+      winterPrecipitation - winterLoss,
+    ),
+  };
+}
+
+function diagnosticPotentialEvaporativeLoss(
+  temperatureC: number,
+  precipitation: number,
+  aridity: number,
+): number {
+  const thermalDemand = Math.max(0, Math.min(1, (temperatureC - 8) / 26));
+  const precipitationDeficit = 1 - Math.max(0, Math.min(1, precipitation));
+  const deficitSquared = precipitationDeficit * precipitationDeficit;
+  const deficitFourth = deficitSquared * deficitSquared;
+  const deficitSeventh = deficitFourth * deficitSquared * precipitationDeficit;
+  return Math.max(0, Math.min(0.45,
+    thermalDemand * deficitSeventh * Math.max(0, Math.min(1, aridity)) * 4.5,
+  ));
+}
+
+function reclassifyDiagnosticBiome(
+  currentCode: number,
+  signals: Record<string, number>,
+  adjustedWetness: number,
+): number {
+  const reclassifiable = currentCode === biomeToCode('desert')
+    || currentCode === biomeToCode('grassland')
+    || currentCode === biomeToCode('forest')
+    || currentCode === biomeToCode('rainforest');
+  if (!reclassifiable) return currentCode;
+  if (adjustedWetness < 0.2) return biomeToCode('desert');
+  if (signals.temperature > 20 && adjustedWetness > 0.72) return biomeToCode('rainforest');
+  if (adjustedWetness > forestWetnessThreshold(signals.temperature)) return biomeToCode('forest');
+  return biomeToCode('grassland');
+}
+
+function diagnosticMacroF1(
+  generated: number[],
+  reference: number[],
+  categories: number[],
+): number {
+  let total = 0;
+  let represented = 0;
+  for (const category of categories) {
+    let truePositive = 0;
+    let falsePositive = 0;
+    let falseNegative = 0;
+    for (let index = 0; index < generated.length; index += 1) {
+      if (generated[index] === category && reference[index] === category) truePositive += 1;
+      else if (generated[index] === category) falsePositive += 1;
+      else if (reference[index] === category) falseNegative += 1;
+    }
+    if (truePositive + falsePositive + falseNegative === 0) continue;
+    const precision = truePositive / Math.max(1, truePositive + falsePositive);
+    const recall = truePositive / Math.max(1, truePositive + falseNegative);
+    total += precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0;
+    represented += 1;
+  }
+  return total / Math.max(1, represented);
+}
 
 function upwindBarrierPotential(
   elevation: Float32Array,
