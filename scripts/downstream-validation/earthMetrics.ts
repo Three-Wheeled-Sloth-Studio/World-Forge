@@ -116,7 +116,11 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     unit: 'share',
     proves: 'Observed-proxy dry extremes that the generator fails to rank as dry can be localized by generated temperature, coast distance, relief, and circulation regime.',
     doesNotProve: 'The causal mechanism of an error, absolute precipitation, seasonality, or local hydrology.',
-    evaluate: ({ project }, observations) => hydrationRegimeDiagnostics(project, observations).falseWet,
+    evaluate: ({ project, reconciliation }, observations) => hydrationRegimeDiagnostics(
+      project,
+      observations,
+      reconciliation.circulation.pressureSystems,
+    ).falseWet,
   },
   {
     id: 'hydration.observed-wet-false-dry-rate',
@@ -303,6 +307,10 @@ export type HydrationRegimeSample = {
   hydrationLoss?: number;
   subsidence?: number;
   convergence?: number;
+  currentExposure?: number;
+  coolCurrentStability?: number;
+  offshoreEkman?: number;
+  oceanWestExposure?: number;
 };
 
 type HydrationErrorProfile = {
@@ -353,6 +361,17 @@ export function hydrationRegimeErrorProfiles(samples: readonly HydrationRegimeSa
     ['polarCoastal', (sample) => sample.absoluteLatitude >= 60 && sample.coastDistance <= 1],
     ['polarDeepInterior', (sample) => sample.absoluteLatitude >= 60 && sample.coastDistance >= 4],
   ];
+  const falseWet = buildHydrationErrorProfile(
+    samples,
+    (sample) => sample.observedWetness <= thresholds.observedDry,
+    (sample) => sample.generatedWetness > thresholds.generatedDry,
+    regimes,
+    {
+      observedThreshold: thresholds.observedDry,
+      generatedThreshold: thresholds.generatedDry,
+    },
+  );
+  addTemperateCoastalMechanismDetails(falseWet, samples, thresholds.observedDry, thresholds.generatedDry);
   const falseDry = buildHydrationErrorProfile(
     samples,
     (sample) => sample.observedWetness >= thresholds.observedWet,
@@ -365,18 +384,43 @@ export function hydrationRegimeErrorProfiles(samples: readonly HydrationRegimeSa
   );
   addDeepInteriorMechanismDetails(falseDry, samples, thresholds.observedWet, thresholds.generatedWet);
   return {
-    falseWet: buildHydrationErrorProfile(
-      samples,
-      (sample) => sample.observedWetness <= thresholds.observedDry,
-      (sample) => sample.generatedWetness > thresholds.generatedDry,
-      regimes,
-      {
-        observedThreshold: thresholds.observedDry,
-        generatedThreshold: thresholds.generatedDry,
-      },
-    ),
+    falseWet,
     falseDry,
   };
+}
+
+function addTemperateCoastalMechanismDetails(
+  profile: HydrationErrorProfile,
+  samples: readonly HydrationRegimeSample[],
+  observedDryThreshold: number,
+  generatedDryThreshold: number,
+): void {
+  const temperateDryCoasts = samples.filter((sample) => (
+    sample.temperatureC > 5
+      && sample.temperatureC <= 20
+      && sample.coastDistance <= 1
+      && sample.observedWetness <= observedDryThreshold
+  ));
+  const failed = temperateDryCoasts.filter((sample) => sample.generatedWetness > generatedDryThreshold);
+  const successful = temperateDryCoasts.filter((sample) => sample.generatedWetness <= generatedDryThreshold);
+  profile.details.temperateDryCoastFailures = failed.length;
+  profile.details.temperateDryCoastSuccesses = successful.length;
+  const fields: readonly [string, keyof HydrationRegimeSample][] = [
+    ['Precipitation', 'precipitation'],
+    ['AtmosphericMoisture', 'atmosphericMoisture'],
+    ['HydrationLoss', 'hydrationLoss'],
+    ['Subsidence', 'subsidence'],
+    ['Convergence', 'convergence'],
+    ['Relief', 'relief'],
+    ['CurrentExposure', 'currentExposure'],
+    ['CoolCurrentStability', 'coolCurrentStability'],
+    ['OffshoreEkman', 'offshoreEkman'],
+    ['OceanWestExposure', 'oceanWestExposure'],
+  ];
+  for (const [label, field] of fields) {
+    profile.details[`temperateDryCoastFailed${label}Mean`] = sampleFieldMean(failed, field);
+    profile.details[`temperateDryCoastSuccessful${label}Mean`] = sampleFieldMean(successful, field);
+  }
 }
 
 function addDeepInteriorMechanismDetails(
@@ -691,6 +735,10 @@ function hydrationRegimeDiagnostics(
   const water = aggregateWaterMask(observations.waterMask, source, width, height);
   const coastDistance = distanceFromWater(water, width, height);
   const relief = localRelief(elevation, water, width, height);
+  const currentX = aggregateOceanRasterLayer(project.primaryWorld.layers.currentX, source, width, height, observations.waterMask);
+  const currentY = aggregateOceanRasterLayer(project.primaryWorld.layers.currentY, source, width, height, observations.waterMask);
+  const windX = aggregateOceanRasterLayer(project.primaryWorld.layers.windX, source, width, height, observations.waterMask);
+  const windY = aggregateOceanRasterLayer(project.primaryWorld.layers.windY, source, width, height, observations.waterMask);
   const samples: HydrationRegimeSample[] = [];
   for (let y = 0; y < height; y += 1) {
     const absoluteLatitude = Math.abs(latitudeDegrees(y, height));
@@ -703,6 +751,19 @@ function hydrationRegimeDiagnostics(
         * humidSurface * humidSurface
         * (0.35 + warmth * 0.65);
       const assembledHydration = precipitation[index] * 0.78 + atmosphericMoisture[index] * 0.22;
+      const coastalSignals = coastalMechanismSignals(
+        x,
+        y,
+        width,
+        height,
+        water,
+        currentX,
+        currentY,
+        windX,
+        windY,
+        latitudeDegrees(y, height),
+      );
+      const subsidence = pressureSystems?.subsidencePotential[index];
       samples.push({
         generatedWetness: generatedWetness[index],
         observedWetness: observedWetness[index],
@@ -714,12 +775,60 @@ function hydrationRegimeDiagnostics(
         atmosphericMoisture: atmosphericMoisture[index],
         recyclableSource,
         hydrationLoss: Math.max(0, assembledHydration - generatedWetness[index]),
-        subsidence: pressureSystems?.subsidencePotential[index],
+        subsidence,
         convergence: pressureSystems?.convergencePotential[index],
+        currentExposure: coastalSignals.currentExposure,
+        coolCurrentStability: coastalSignals.currentExposure * (0.2 + (subsidence ?? 0) * 0.8),
+        offshoreEkman: coastalSignals.offshoreEkman,
+        oceanWestExposure: coastalSignals.oceanWestExposure,
       });
     }
   }
   return hydrationRegimeErrorProfiles(samples);
+}
+
+function coastalMechanismSignals(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  water: Uint8Array,
+  currentX: Float32Array,
+  currentY: Float32Array,
+  windX: Float32Array,
+  windY: Float32Array,
+  latitude: number,
+): { currentExposure: number; offshoreEkman: number; oceanWestExposure: number } {
+  let currentExposure = 0;
+  let offshoreEkman = 0;
+  let marineNeighbors = 0;
+  let oceanWestNeighbors = 0;
+  const neighbors = [
+    { x: (x - 1 + width) % width, y, dx: -1, dy: 0 },
+    { x: (x + 1) % width, y, dx: 1, dy: 0 },
+    { x, y: y - 1, dx: 0, dy: -1 },
+    { x, y: y + 1, dx: 0, dy: 1 },
+  ];
+  for (const neighbor of neighbors) {
+    if (neighbor.y < 0 || neighbor.y >= height) continue;
+    const neighborCell = neighbor.y * width + neighbor.x;
+    if (!water[neighborCell]) continue;
+    if (neighbor.dx < 0) oceanWestNeighbors += 1;
+    currentExposure += equatorwardCurrentExposure(currentX[neighborCell], currentY[neighborCell], latitude);
+    offshoreEkman += offshoreEkmanExposure(
+      windX[neighborCell],
+      windY[neighborCell],
+      neighbor.dx,
+      neighbor.dy,
+      latitude,
+    );
+    marineNeighbors += 1;
+  }
+  return {
+    currentExposure: currentExposure / Math.max(1, marineNeighbors),
+    offshoreEkman: offshoreEkman / Math.max(1, marineNeighbors),
+    oceanWestExposure: oceanWestNeighbors / Math.max(1, marineNeighbors),
+  };
 }
 
 function normalizeMetricValue(value: number, minimum: number, maximum: number): number {

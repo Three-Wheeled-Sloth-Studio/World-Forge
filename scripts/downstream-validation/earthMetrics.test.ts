@@ -54,6 +54,10 @@ describe('Earth downstream metric math', () => {
       hydrationLoss: (7 - index) / 20,
       subsidence: index < 4 ? 0.8 : 0.2,
       convergence: index < 4 ? 0.1 : 0.7,
+      currentExposure: index / 9,
+      coolCurrentStability: index / 11,
+      offshoreEkman: index / 13,
+      oceanWestExposure: index % 2,
     }));
 
     const profiles = hydrationRegimeErrorProfiles(samples);
@@ -63,6 +67,8 @@ describe('Earth downstream metric math', () => {
     expect(profiles.falseWet.details.temperatureHotSamples).toBe(2);
     expect(profiles.falseWet.details.temperatureHotRate).toBe(1);
     expect(profiles.falseWet.details.temperatureHotLift).toBeCloseTo(1 / 3);
+    expect(profiles.falseWet.details.temperateDryCoastFailures).toBe(0);
+    expect(profiles.falseWet.details.temperateDryCoastSuccesses).toBe(0);
     expect(profiles.falseDry.sampleCount).toBe(3);
     expect(profiles.falseDry.value).toBeCloseTo(2 / 3);
     expect(profiles.falseDry.details.circulationPolarSamples).toBe(0);

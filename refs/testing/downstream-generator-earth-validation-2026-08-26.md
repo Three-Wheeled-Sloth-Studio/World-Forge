@@ -158,6 +158,14 @@ The accepted calibration improves Standard wetness rank from 0.5919 to 0.6017, f
 
 This adds one 32 KiB fixed-grid field, one queue traversal over 8,192 cells when the pressure model is built, and one nearest-cell lookup per final land cell. It adds no full-resolution solver or transport pass. Canonical Ultra core time is 14,942.7 ms versus 14,637.0 ms before the change, about 2.1% higher and within the performance envelope.
 
+### Temperate dry-coast residual audit
+
+The evaluator now compares observed-dry temperate coastal misses with correctly ranked cells using generated precipitation, atmospheric moisture, net hydration loss, subsidence, convergence, relief, equatorward-current exposure, current-plus-subsidence stability, offshore Ekman exposure, and whether adjacent ocean lies west of land. These details remain attached to the existing false-wet metric and add no production work.
+
+At Standard, the 46 misses versus four successes average 0.500 versus 0.100 precipitation, 0.550 versus 0.200 atmospheric moisture, 0.588 versus 0.846 subsidence, 0.092 versus 0.309 current exposure, 0.067 versus 0.278 current stability, and 0.279 versus 0.750 ocean-west exposure. Fast shows the same ordering. Ultra retains strong subsidence separation but much weaker coastline-geometry and current separation, with only four successful samples. Offshore Ekman again points the wrong way and relief remains neutral.
+
+Two production counterfactuals were rejected. A direct temperate coastal-subsidence loss improved the targeted Standard rate from 0.92 to 0.88 at full strength but worsened overall false-wet classification and exceeded the latitude-contrast baseline; half strength reached only 0.90 and would exceed Ultra's hard 0.08 latitude-error gate. A western-margin fallback for unresolved cool-current exposure passed global guards but left the targeted Standard rate unchanged at 0.92. No production behavior or baseline changed. The remaining coast error requires better current-route or seasonal coastal-climate structure, not another drying coefficient.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -202,4 +210,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The deep-interior audit is complete and its bounded convergence-recycling correction is implemented. The largest clearly separated residual is now the opposing observed-dry temperate coast error, which remained about 0.92 Standard and Ultra before this correction and is intentionally untouched by the inland-only term. Re-audit those cells by generated current exposure, subsidence, wind orientation, relief/rain shadow, precipitation source, and coastline geometry before another production change. Preserve permanent-ice semantics, the new inland gains, latitude error, regional ordering, biome F1, and performance. Do not increase global coastal drying or reuse observed coast labels in production.
+The deep-interior correction and temperate dry-coast audit are complete. The coast residual cannot be improved safely by another bounded drying term: direct subsidence drying violates latitude structure, while a western-margin current fallback does not change the targeted error. The next evidence slice should move to biome-assignment residuals: build a compact confusion profile by generated temperature, wetness, ice, relief, and hydrology, then determine whether the 0.45-0.48 macro-F1 ceiling comes from upstream climate fields or final classifier thresholds. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.

@@ -8,7 +8,7 @@ The downstream Earth scientific-validation slice is active and has completed its
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Basin circulation v9 retains permanent-ice liquid semantics and adds bounded convergence recycling only over generated deep continental interiors outside subsiding air. Standard/Ultra wetness rank is now 0.602/0.645 and false-dry rate is 0.559/0.522; reference dry-region means remain stable. The next residual to audit is observed-dry temperate coasts. Do not feed answer keys into production, retune latitude belts, reapply the ice factor, or solve coast errors with a global coefficient.
+Basin circulation v9 retains permanent-ice liquid semantics and adds bounded convergence recycling only over generated deep continental interiors outside subsiding air. Standard/Ultra wetness rank is now 0.602/0.645 and false-dry rate is 0.559/0.522; reference dry-region means remain stable. The temperate dry-coast audit is complete: subsidence/current/geometry associations exist, but direct drying violates latitude structure and a western-margin fallback does not improve the target. No coast production change was accepted. Next, audit biome confusion to separate upstream climate errors from final classifier errors. Do not feed answer keys into production, retune latitude belts, reapply the ice factor, or solve coast errors with a global coefficient.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
