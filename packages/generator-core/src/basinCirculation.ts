@@ -10,6 +10,7 @@ import {
   type OceanCirculationSector
 } from './climatologicalPressure';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
+import { forestWetnessThreshold } from './biomeClimate';
 
 const BIOME_CODE = {
   ocean: biomeToCode('ocean'),
@@ -188,7 +189,7 @@ function classifyAdjustedBiome(project: WorldProject, index: number): number {
   if (layers.temperature[index] <= 1.5) return BIOME_CODE.tundra;
   if (layers.wetness[index] < 0.2) return BIOME_CODE.desert;
   if (layers.temperature[index] > 20 && layers.wetness[index] > 0.72) return BIOME_CODE.rainforest;
-  if (layers.wetness[index] > 0.5) return BIOME_CODE.forest;
+  if (layers.wetness[index] > forestWetnessThreshold(layers.temperature[index])) return BIOME_CODE.forest;
   return BIOME_CODE.grassland;
 }
 

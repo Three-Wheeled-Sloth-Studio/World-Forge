@@ -23,7 +23,7 @@
     "hydration.representative-region-rank-correlation": { "value": 0.7333333333, "absoluteTolerance": 0.05, "regressionDirection": "higher" },
     "hydration.reference-humid-region-mean": { "value": 0.7814082319, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
     "hydration.reference-dry-region-mean": { "value": 0.4503482794, "absoluteTolerance": 0.03, "regressionDirection": "lower" },
-    "biomes.koppen-macro-f1": { "value": 0.52304981, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "biomes.koppen-macro-f1": { "value": 0.5285763447, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
     "biomes.final-climate-classification-consistency": { "value": 1, "absoluteTolerance": 0.001, "regressionDirection": "higher" },
     "performance.core-downstream-ms": { "value": 176.4516, "relativeTolerance": 0.25, "regressionDirection": "lower" }
   }

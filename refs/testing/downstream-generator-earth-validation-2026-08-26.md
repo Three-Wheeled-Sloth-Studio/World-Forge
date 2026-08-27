@@ -172,6 +172,12 @@ The Köppen-derived reference contains no wetland class, but the macro-F1 calcul
 
 The confusion profile localizes the remaining classifier ceiling. At Standard, reference/generated counts are 532/356 grassland and 396/662 forest; 201 reference grassland cells and 121 reference desert cells are generated as forest. Fast and Ultra show the same direction. Raising the forest threshold from 0.50 to 0.55 improves Standard macro-F1 by only 0.003 and regresses Fast because it trades grassland recall for forest recall. The threshold counterfactual was rejected. Distinguishing these classes materially requires better seasonal moisture/temperature structure or another generic ecological signal, not a global final-wetness threshold.
 
+### Temperature-adjusted forest moisture demand
+
+Evaluator-only ecological profiles showed that reference grassland and forest cells have nearly identical generated wetness and precipitation at Standard, but forest cells are materially cooler: 8.8 C versus 12.3 C. A low-cost tilt/latitude/continentality seasonality proxy did not cleanly separate them; forest was actually more seasonal because the reference includes broad boreal forest. Temperature therefore provides the reusable physical separator without adding a seasonal solver.
+
+The accepted classifier keeps the forest wetness threshold at 0.50 through 8 C, raises it linearly to 0.60 at 20 C, and caps it there. Rainforest, desert, tundra, ice, wetland, and mountain precedence are unchanged. Unlike the rejected flat 0.55 threshold, this preserves cool forest while converting marginal warm forest to grassland. Macro-F1 improves from 0.5230 to 0.5286 Fast, 0.5518 to 0.5735 Standard, and 0.5634 to 0.5864 Ultra. Standard grassland F1 improves from 0.268 to 0.322 and forest F1 from 0.405 to 0.430; Ultra grassland and forest also improve. Climate fields and downstream runtime are unchanged.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -196,7 +202,7 @@ The confusion profile localizes the remaining classifier ceiling. At Standard, r
 | Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
 | Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
 | Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
-| Köppen biome macro-F1 | 0.5230 | 0.5518 | 0.5634 |
+| Köppen biome macro-F1 | 0.5286 | 0.5735 | 0.5864 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
 | Core downstream time | 176.5 ms | 1,058.5 ms | 14,942.7 ms |
 
@@ -216,4 +222,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The deep-interior correction, temperate dry-coast audit, and biome confusion audit are complete. Static forest-threshold tuning cannot materially improve the grassland/forest confusion. The next material slice requires a generic seasonal climate or ecological-structure signal that can separate grassland, forest, rainforest, and dry-summer coasts without answer keys or another expensive full-resolution solver. Begin evaluator-only: derive low-cost continentality/circulation seasonality candidates on the fixed grid and test whether they separate the reference classes across all tiers. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.
+The deep-interior correction, dry-coast audit, biome confusion correction, and temperature-adjusted forest rule are complete. The tested tilt/latitude/continentality seasonality proxy does not add a clean class separator beyond temperature and wetness, so do not promote it as a new production field. The next residual audit should focus on desert cells generated as forest and grassland to distinguish upstream wetness excess from missing seasonal aridity. Use evaluator-only class-conditional precipitation, moisture, circulation, and coast/interior profiles first. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.

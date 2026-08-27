@@ -2,7 +2,7 @@ import {
   biomeToCode,
   type WorldProject,
 } from '@world-forge/shared';
-import { equatorwardCurrentExposure } from '@world-forge/generator-core';
+import { equatorwardCurrentExposure, forestWetnessThreshold } from '@world-forge/generator-core';
 import type { ValidationMetricDefinition } from '@world-forge/validation-core';
 import type { EarthDownstreamOutput, EarthObservations } from './earthScenario';
 
@@ -241,7 +241,11 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     unit: 'F1',
     proves: 'Generated broad ecological classes overlap the compact Köppen-derived reference categories.',
     doesNotProve: 'Species ecology, biome boundaries at native resolution, or independent validation of the Köppen mapping.',
-    evaluate: ({ project }, observations) => biomeMacroF1(project, observations),
+    evaluate: ({ project, reconciliation }, observations) => biomeMacroF1(
+      project,
+      observations,
+      reconciliation.circulation.pressureSystems,
+    ),
   },
   {
     id: 'biomes.final-climate-classification-consistency',
@@ -1095,7 +1099,11 @@ function referenceRegionGroupMean(
   };
 }
 
-function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
+function biomeMacroF1(
+  project: WorldProject,
+  observations: EarthObservations,
+  pressureSystems: EarthDownstreamOutput['reconciliation']['circulation']['pressureSystems'],
+) {
   const generatedSource = project.primaryWorld.layers.biomes;
   const mountain = biomeToCode('mountain');
   const ocean = biomeToCode('ocean');
@@ -1110,8 +1118,27 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
   const diagnosticCategories = [...categories, biomeToCode('wetland')];
   const generated: number[] = [];
   const referenceBiomes: number[] = [];
+  const ecologicalSignals: Array<Record<string, number>> = [];
   const analysisWidth = Math.min(128, observations.resolution.width);
   const analysisHeight = Math.min(64, observations.resolution.height);
+  const analysisWater = aggregateWaterMask(observations.waterMask, observations.resolution, analysisWidth, analysisHeight);
+  const analysisCoastDistance = distanceFromWater(analysisWater, analysisWidth, analysisHeight);
+  const analysisElevation = aggregateRasterLayer(
+    project.primaryWorld.layers.elevation,
+    observations.resolution,
+    analysisWidth,
+    analysisHeight,
+    observations.waterMask,
+  );
+  const analysisRelief = localRelief(analysisElevation, analysisWater, analysisWidth, analysisHeight);
+  const signalLayers = {
+    temperature: aggregateRasterLayer(project.primaryWorld.layers.temperature, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
+    wetness: aggregateRasterLayer(project.primaryWorld.layers.wetness, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
+    precipitation: aggregateRasterLayer(project.primaryWorld.layers.climatePrecipitation, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
+    moisture: aggregateRasterLayer(project.primaryWorld.layers.climateMoisture, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
+    river: aggregateRasterLayer(project.primaryWorld.layers.river, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
+    lakes: aggregateRasterLayer(project.primaryWorld.layers.lakes, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
+  };
   const stepX = observations.resolution.width / analysisWidth;
   const stepY = observations.resolution.height / analysisHeight;
   for (let blockY = 0; blockY < analysisHeight; blockY += 1) {
@@ -1134,6 +1161,28 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
       if (land < stepX * stepY * 0.35) continue;
       generated.push(modal(generatedCounts));
       referenceBiomes.push(modal(referenceCounts));
+      const analysisCell = blockY * analysisWidth + blockX;
+      const latitude = Math.abs(latitudeDegrees(blockY, analysisHeight)) * Math.PI / 180;
+      const continentality = Math.min(1, analysisCoastDistance[analysisCell] / 6);
+      const thermalSeasonality = Math.sin(project.selectedValues.axialTiltDeg * Math.PI / 180)
+        * Math.sin(latitude)
+        * (0.35 + continentality * 0.65);
+      const subsidence = pressureSystems.subsidencePotential[analysisCell] ?? 0;
+      const convergence = pressureSystems.convergencePotential[analysisCell] ?? 0;
+      ecologicalSignals.push({
+        temperature: signalLayers.temperature[analysisCell],
+        wetness: signalLayers.wetness[analysisCell],
+        precipitation: signalLayers.precipitation[analysisCell],
+        moisture: signalLayers.moisture[analysisCell],
+        relief: analysisRelief[analysisCell],
+        river: signalLayers.river[analysisCell],
+        lakeShare: signalLayers.lakes[analysisCell],
+        continentality,
+        thermalSeasonality,
+        drySeasonStress: thermalSeasonality
+          * (0.3 + subsidence * 0.7)
+          * (1 - convergence * 0.7),
+      });
     }
   }
   let totalF1 = 0;
@@ -1152,6 +1201,15 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
         (count, code, index) => count + (referenceBiomes[index] === referenceCategory && code === generatedCategory ? 1 : 0),
         0,
       );
+    }
+    const referenceIndexes = referenceBiomes
+      .map((code, index) => code === referenceCategory ? index : -1)
+      .filter((index) => index >= 0);
+    for (const signal of Object.keys(ecologicalSignals[0] ?? {})) {
+      classDetails[`referenceCode${referenceCategory}Mean${capitalizeMetricId(signal)}`] = referenceIndexes.reduce(
+        (total, index) => total + ecologicalSignals[index][signal],
+        0,
+      ) / Math.max(1, referenceIndexes.length);
     }
   }
   for (const category of categories) {
@@ -1185,6 +1243,10 @@ function biomeMacroF1(project: WorldProject, observations: EarthObservations) {
   };
 }
 
+function capitalizeMetricId(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 function finalBiomeConsistency(project: WorldProject) {
   const layers = project.primaryWorld.layers;
   let supported = 0;
@@ -1204,7 +1266,7 @@ function expectedBiomeCode(project: WorldProject, index: number): number {
   if (layers.temperature[index] <= 1.5) return biomeToCode('tundra');
   if (layers.wetness[index] < 0.2) return biomeToCode('desert');
   if (layers.temperature[index] > 20 && layers.wetness[index] > 0.72) return biomeToCode('rainforest');
-  if (layers.wetness[index] > 0.5) return biomeToCode('forest');
+  if (layers.wetness[index] > forestWetnessThreshold(layers.temperature[index])) return biomeToCode('forest');
   return biomeToCode('grassland');
 }
 

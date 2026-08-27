@@ -14,6 +14,7 @@ import { sampleNumericDistribution, type NumericDistribution, type RandomSource 
 import { classifyPermanentIce } from './permanentIce';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
 import { latitudeTemperatureProfileForWorkflow, summarizePolarClimate } from './latitudeTemperatureProfile';
+import { forestWetnessThreshold } from './biomeClimate';
 import type { GenerationWorkflowId } from './workflows';
 import {
   distributionHardBounds,
@@ -238,7 +239,7 @@ function propagateSystemOrbitForcing(project: DeepTimeProject, stellar: StellarM
       if (layers.temperature[cell] <= 1.5) biome = 'tundra';
       else if (layers.wetness[cell] < 0.2) biome = 'desert';
       else if (layers.temperature[cell] > 20 && layers.wetness[cell] > 0.72) biome = 'rainforest';
-      else if (layers.wetness[cell] > 0.5) biome = 'forest';
+      else if (layers.wetness[cell] > forestWetnessThreshold(layers.temperature[cell])) biome = 'forest';
       else if (biome === 'ice_cap' || biome === 'tundra' || biome === 'desert' || biome === 'forest' || biome === 'rainforest') biome = 'grassland';
       layers.biomes[cell] = biomeToCode(biome);
     } else if (layers.ice[cell] && !layers.water[cell]) {

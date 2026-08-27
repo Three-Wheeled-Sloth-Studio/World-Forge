@@ -18,6 +18,7 @@ import {
   applyBasinAwareCirculation,
   type BasinCirculationDiagnostics
 } from './basinCirculation';
+import { forestWetnessThreshold } from './biomeClimate';
 import { applyBiomeCohesion } from './biomeCohesion';
 import {
   buildRotationBetweenUnitVectors,
@@ -2966,7 +2967,7 @@ function classifyTopologyBiomes(project: DeepTimeProject): number {
     else if (layers.temperature[cell] <= 1.5) next = tundra;
     else if (layers.wetness[cell] < 0.2) next = desert;
     else if (layers.temperature[cell] > 20 && layers.wetness[cell] > 0.72) next = rainforest;
-    else if (layers.wetness[cell] > 0.5) next = forest;
+    else if (layers.wetness[cell] > forestWetnessThreshold(layers.temperature[cell])) next = forest;
     if (layers.biomes[cell] !== next) corrections += 1;
     layers.biomes[cell] = next;
   }
