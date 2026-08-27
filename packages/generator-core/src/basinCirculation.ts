@@ -56,7 +56,7 @@ export type ClimatologicalPressureDiagnostics = {
 };
 
 export type BasinCirculationDiagnostics = {
-  modelVersion: 'basin-circulation-v7';
+  modelVersion: 'basin-circulation-v8';
   marineBasinCount: number;
   largestBasinShare: number;
   coherentGyreCount: number;
@@ -111,6 +111,11 @@ export function equatorwardCurrentExposure(
   const hemisphere = latitudeDegreesValue >= 0 ? 1 : -1;
   const equatorwardAlignment = currentY * hemisphere / speed;
   return Math.max(0, equatorwardAlignment) * Math.min(1, speed / 0.35);
+}
+
+export function coldHydrationAvailability(wetness: number, temperatureC: number): number {
+  const frozenFraction = clamp((5 - temperatureC) / 25, 0, 1);
+  return clamp(wetness * (1 - frozenFraction * 0.75), 0, 1);
 }
 
 function scalarGradient(values: Float32Array, x: number, y: number, width: number, height: number): { x: number; y: number } {
@@ -257,11 +262,14 @@ function applyPressureSystems(
         0,
         1,
       );
-      const nextWetness = clamp(
+      const circulationWetness = clamp(
         previousWetness + circulationAdjustment * 0.62 - coolCurrentDrying,
         0,
         1,
       );
+      const nextWetness = layers.ice[cell]
+        ? coldHydrationAvailability(circulationWetness, layers.temperature[cell])
+        : circulationWetness;
       layers.climatePrecipitation[cell] = nextPrecipitation;
       layers.climateMoisture[cell] = nextMoisture;
       layers.wetness[cell] = nextWetness;
@@ -564,7 +572,7 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     meanCoolCurrentDrying: pressureResult.meanCoolCurrentDrying,
   };
   const diagnostics: BasinCirculationDiagnostics = {
-    modelVersion: 'basin-circulation-v7',
+    modelVersion: 'basin-circulation-v8',
     marineBasinCount: subtropicalSectors.length,
     largestBasinShare,
     coherentGyreCount: gyres.filter((gyre) => gyre.kind === 'subtropical' && gyre.territorySize >= width * height * 0.01).length,
@@ -588,7 +596,7 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     climate.notes = [
       ...climate.notes.filter((note) => !note.startsWith('Basin-aware circulation') && !note.startsWith('Climatological pressure')),
       `Climatological pressure v1 resolved ${pressureModel.centers.length} durable center(s) on a fixed ${pressureModel.resolution.width}x${pressureModel.resolution.height} reference grid.`,
-      `Basin-aware circulation v6 generated ${gyres.filter((gyre) => gyre.kind === 'subtropical').length} basin-scale subtropical gyre(s) and ${gyres.filter((gyre) => gyre.kind === 'subpolar').length} subpolar gyre(s) without iterative raster packing.`
+      `Basin-aware circulation v8 generated ${gyres.filter((gyre) => gyre.kind === 'subtropical').length} basin-scale subtropical gyre(s) and ${gyres.filter((gyre) => gyre.kind === 'subpolar').length} subpolar gyre(s) without iterative raster packing.`
     ];
   }
   return diagnostics;

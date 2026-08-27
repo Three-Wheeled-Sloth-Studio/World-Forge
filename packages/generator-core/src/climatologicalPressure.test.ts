@@ -82,7 +82,7 @@ describe('climatological pressure and basin-scale circulation', () => {
     const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 128, height: 64 }));
     const diagnostics = applyBasinAwareCirculation(project);
 
-    expect(diagnostics.modelVersion).toBe('basin-circulation-v7');
+    expect(diagnostics.modelVersion).toBe('basin-circulation-v8');
     expect(diagnostics.gyreCandidateCount).toBeLessThanOrEqual(10);
     expect(diagnostics.packedGyres.length).toBe(diagnostics.gyreCandidateCount);
     expect(diagnostics.packedGyres.some((gyre) => gyre.kind === 'subtropical')).toBe(true);

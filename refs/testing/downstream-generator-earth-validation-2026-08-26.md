@@ -1,12 +1,12 @@
 # Downstream Generator Earth Validation Checkpoint
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 Branch: `dev`
 
 ## Outcome
 
-World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after eight measured production corrections.
+World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after nine measured production corrections.
 
 This diagnostic is intentionally outside routine push CI. Routine tests cover framework math, schema/report behavior, the production adapter seam, circulation contracts, and small deterministic generation only.
 
@@ -136,6 +136,18 @@ Standard dry-coast false-wet rate improves from 0.867 to 0.856 and subsiding dry
 
 The auxiliary current accumulators are fixed-grid arrays under 100 KiB. No additional full-resolution circulation pass or solver was added. Measured core time is 163.1 ms Fast, 975.7 ms Standard, and 14,568.1 ms Ultra, about 3.8% above the preceding Ultra checkpoint and within the accepted envelope.
 
+### Permanent-ice liquid hydration
+
+The post-current residual audit showed that every observed-dry cold-coastal sample at Fast and Standard is Köppen EF-derived permanent ice, and every one is also classified as permanent ice by the generator. Mean generated precipitation remained about 0.40-0.45, so the defect was semantic: final wetness treated frozen precipitation and atmospheric moisture as immediately usable liquid surface hydration. The Köppen proxy assigns EF wetness 0.10.
+
+An evaluator-only counterfactual applied a generic temperature-dependent frozen-water availability factor. Before production promotion, it improved global wetness rank by about 0.08 Fast and 0.12 Standard and balanced accuracy by 0.06-0.07. Applying it indiscriminately to all cold land damaged Siberian/boreal regional ordering. The accepted correction therefore applies only to already-generated permanent-ice land after precipitation, atmospheric moisture, hydrology, and ice classification are complete. Surfaces at 5 C are unchanged; the usable-liquid fraction decreases linearly with frozen severity and retains at least 25% of pre-adjustment wetness. A stronger second application did not improve the targeted Standard error and worsened Fast, providing a measured stopping point.
+
+This correction changes no observed input, ice extent, precipitation, atmospheric moisture, river routing, or warm/cold non-ice land. Basin circulation advances to `basin-circulation-v8` because final raster hydration is owned by that pass. A durable permanent-ice liquid-wetness error metric now reports generated and proxy means plus generated-ice agreement; its cross-tier error is 0.015 Fast, 0.057 Standard, and 0.062 Ultra, below the 0.12 evidence gate.
+
+Compared with the preceding checkpoint, Fast wetness rank improves from 0.489 to 0.593, balanced accuracy from 0.483 to 0.544, false-wet rate from 0.474 to 0.437, and false-dry rate from 0.553 to 0.494. Standard wetness rank improves from 0.439 to 0.592, balanced accuracy from 0.455 to 0.524, false-wet rate from 0.459 to 0.407, and false-dry rate from 0.649 to 0.563. Ultra wetness rank improves from 0.485 to 0.637, balanced accuracy from 0.467 to 0.544, false-wet rate from 0.456 to 0.396, and false-dry rate from 0.620 to 0.534. Representative-region ordering, humid/dry means, orography, biome F1, and runtime remain within or better than their prior envelopes.
+
+The manual 80-case fictional preset harness was made callable from Node by safely handling absent Vite environment metadata. All 80 worlds generated without runtime errors. Its status remains globally red because the harness expects plate-advection-v3 diagnostics that its native-stage generation path does not emit; four cases also retain pre-existing tiny-biome-patch findings. Focused fictional preset, polar-climate, downstream, and determinism tests pass. The stale manual harness contract is recorded as separate validation debt rather than misreported as climate evidence.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -147,13 +159,14 @@ The auxiliary current accumulators are fixed-grid arrays under 100 KiB. No addit
 | Equatorward-current dry-coast separation | 0.1808 | 0.2655 | 0.2273 |
 | Current-plus-subsidence dry-coast separation | 0.2031 | 0.2820 | 0.2437 |
 | Offshore-Ekman dry-coast separation (rejected) | -0.2278 | -0.1942 | -0.1874 |
-| Köppen wetness rank correlation | 0.4893 | 0.4394 | 0.4849 |
-| Wet/dry extreme balanced accuracy | 0.4827 | 0.4554 | 0.4667 |
-| Observed-dry false-wet rate | 0.4744 | 0.4593 | 0.4560 |
-| Observed-wet false-dry rate | 0.5526 | 0.6489 | 0.6196 |
+| Köppen wetness rank correlation | 0.5925 | 0.5919 | 0.6370 |
+| Wet/dry extreme balanced accuracy | 0.5442 | 0.5244 | 0.5442 |
+| Observed-dry false-wet rate | 0.4367 | 0.4066 | 0.3956 |
+| Observed-wet false-dry rate | 0.4937 | 0.5634 | 0.5337 |
+| Permanent-ice liquid-wetness error | 0.0150 | 0.0572 | 0.0621 |
 | Amazon-Sahara wetness contrast | 0.2032 | 0.2760 | 0.3455 |
 | Orographic precipitation delta | 0.0011 | 0.0140 | 0.0245 |
-| Coastal-interior contrast | 0.3127 | 0.3477 | 0.2859 |
+| Coastal-interior contrast | 0.3154 | 0.3479 | 0.2901 |
 | Equatorial-subtropical contrast | 0.3979 | 0.4185 | 0.4471 |
 | Equatorial-subtropical contrast error | 0.0068 | 0.0289 | 0.0591 |
 | Representative-region rank correlation | 0.6727 | 0.8545 | 0.8909 |
@@ -161,7 +174,7 @@ The auxiliary current accumulators are fixed-grid arrays under 100 KiB. No addit
 | Dry-region mean | 0.4502 | 0.3134 | 0.3030 |
 | Köppen biome macro-F1 | 0.4464 | 0.4754 | 0.4839 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 163.1 ms | 975.7 ms | 14,568.1 ms |
+| Core downstream time | 171.0 ms | 955.6 ms | 14,637.0 ms |
 
 Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
@@ -179,4 +192,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration remains the weakest observed-proxy component, but regional and pixel-scale signals now improve together. The warm/temperate cool-current seam is coupled as far as the available generated signal justifies; its moderate precision makes stronger broad drying unsafe. The dominant residual inside the observed-dry coastal diagnostic is now cold/polar coast behavior: Standard cold-coastal false-wet rate is 0.889 and Ultra is 0.970, while the temperate rates are 0.820 and 0.851. The next slice should localize polar-desert hydration against generated temperature, precipitation, permanent ice, and the Köppen-derived proxy before changing production. In particular, determine whether the metric is exposing a real missing cold-air moisture-capacity effect or a limitation in interpreting Köppen EF/D climates as continuous wetness. Preserve humid cold regions, ice behavior, latitude contrast, orography, biome F1, and performance. Do not claim local current realism without observed wind/current datasets.
+Hydration now has materially stronger cross-tier Earth ordering, so the next slice should begin with a fresh residual audit rather than continuing polar coefficients. The largest error direction is observed-wet false-dry behavior: 0.563 Standard and 0.534 Ultra, concentrated in deep interiors at 0.846 and 0.772. The opposing residual is observed-dry temperate coasts ranking wet at 0.920 Standard and 0.915 Ultra. Next, segment deep-interior wet failures by generated precipitation, recyclable-source humidity, temperature, relief, and circulation to determine whether the limiting mechanism is source starvation, transport reach, or post-transport loss. Preserve the new permanent-ice semantics, dry-coast gains, latitude error, regional ordering, biome F1, and performance. Do not solve the opposing coastal and interior errors with another global moisture coefficient.

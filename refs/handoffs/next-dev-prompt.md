@@ -1,12 +1,12 @@
 # Next Dev Prompt: Downstream Earth Validation
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
 
 The reusable framework, Earth production adapter, fixed 128 x 64 analysis grid, and Fast/Standard/Ultra baselines are established. Final biome ownership and final-wind orographic reconciliation have been corrected from measured evidence. Stored flow vectors remain geographic north-positive; presentation converts them to south-increasing raster rows.
 
-Fixed-scale wind-aligned coastal-moisture redistribution and wind-oriented coastal exposure are implemented. Basin circulation v7 now evaluates currents before final raster hydration and exposes a fixed-grid equatorward-current potential, strengthened by subsiding air. It improves Standard/Ultra regional ordering and Ultra false-dry behavior with about 3.8% Ultra core overhead. The alternative offshore-Ekman proxy correlates with observed coastal dryness in the wrong direction and is intentionally not used. The remaining dry-coast residual is dominated by cold/polar coasts. Next, diagnose whether that reflects missing cold-air moisture-capacity physics or a limitation of the Köppen-derived continuous-wetness proxy before changing production. Protect humid cold regions, permanent ice, latitude contrast, orography, biome F1, memory, and performance.
+Fixed-scale wind-aligned coastal transport, wind-oriented exposure, and cool-current stability are implemented. Basin circulation v8 now also converts frozen permanent-ice wetness into bounded usable-liquid availability after ice and hydrology are finalized. This produces a step-change in Earth hydration: Standard/Ultra wetness rank is 0.592/0.637 and balanced accuracy is 0.524/0.544 without changing precipitation, ice extent, or non-ice land. Next, re-audit the remaining errors. Observed-wet false-dry failures are concentrated in deep interiors (0.846 Standard, 0.772 Ultra), while temperate observed-dry coasts remain over-wet. Diagnose interior source starvation versus transport reach versus post-transport loss before another production change. Protect permanent-ice semantics, dry coasts, regional ordering, latitude error, biome F1, memory, and performance.
 
 Continue implementation in:
 

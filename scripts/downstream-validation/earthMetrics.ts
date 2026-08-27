@@ -129,6 +129,17 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project }, observations) => hydrationRegimeDiagnostics(project, observations).falseDry,
   },
   {
+    id: 'hydration.permanent-ice-wetness-error',
+    label: 'Permanent-ice liquid-wetness error',
+    component: 'hydration',
+    evidence: 'derived-proxy',
+    unit: 'wetness-error',
+    proves: 'Generated usable liquid wetness on Köppen EF-derived permanent ice remains close to the reference proxy while generated ice coverage is reported separately.',
+    doesNotProve: 'Measured polar precipitation, snow water equivalent, seasonal melt, subglacial water, or soil moisture.',
+    threshold: { maximum: 0.12 },
+    evaluate: ({ project }, observations) => permanentIceWetnessError(project, observations),
+  },
+  {
     id: 'hydration.amazon-sahara-contrast',
     label: 'Amazon–Sahara wetness contrast',
     component: 'hydration',
@@ -273,6 +284,7 @@ export function offshoreEkmanExposure(
   ) / (windSpeed * offshoreMagnitude);
   return Math.max(0, alignment) * Math.min(1, windSpeed / 0.35);
 }
+
 
 export type HydrationRegimeSample = {
   generatedWetness: number;
@@ -635,6 +647,43 @@ function hydrationRegimeDiagnostics(project: WorldProject, observations: EarthOb
     }
   }
   return hydrationRegimeErrorProfiles(samples);
+}
+
+function permanentIceWetnessError(
+  project: WorldProject,
+  observations: EarthObservations,
+) {
+  const source = observations.resolution;
+  const width = Math.min(128, source.width);
+  const height = Math.min(64, source.height);
+  const layers = project.primaryWorld.layers;
+  const generated = aggregateRasterLayer(layers.wetness, source, width, height, observations.waterMask);
+  const observed = aggregateRasterLayer(observations.wetness, source, width, height, observations.waterMask);
+  const water = aggregateWaterMask(observations.waterMask, source, width, height);
+  const referenceIce = aggregateWaterMask(observations.iceMask, source, width, height);
+  const generatedIce = aggregateWaterMask(layers.ice, source, width, height);
+  let generatedTotal = 0;
+  let observedTotal = 0;
+  let generatedIceCount = 0;
+  let samples = 0;
+  for (let index = 0; index < water.length; index += 1) {
+    if (water[index] || !referenceIce[index]) continue;
+    generatedTotal += generated[index];
+    observedTotal += observed[index];
+    generatedIceCount += generatedIce[index];
+    samples += 1;
+  }
+  const generatedMean = generatedTotal / Math.max(1, samples);
+  const observedMean = observedTotal / Math.max(1, samples);
+  return {
+    value: Math.abs(generatedMean - observedMean),
+    sampleCount: samples,
+    details: {
+      generatedMean,
+      observedMean,
+      generatedIceAgreement: generatedIceCount / Math.max(1, samples),
+    },
+  };
 }
 
 function amazonSaharaContrast(project: WorldProject, observations: EarthObservations) {

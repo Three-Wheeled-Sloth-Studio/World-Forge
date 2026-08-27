@@ -1,14 +1,14 @@
 # Current Handoff
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its cool-current coastal-stability increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, eight measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its permanent-ice liquid-hydration increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, nine measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-The generator now exposes a fixed-grid equatorward-current potential to final coastal hydration without another ocean solve. Generated current exposure has modest but repeatable association with the observed dry-coast proxy; the alternative offshore-Ekman hypothesis points the wrong way and is not used. Standard representative-region rank is 0.855 and Ultra is 0.891; Ultra false-dry rate is 0.620. The dominant remaining dry-coast residual is cold/polar rather than temperate current-exposed coast. Do not add net moisture, feed answer keys into production, retune latitude belts, or amplify current drying beyond its measured precision.
+Basin circulation v8 distinguishes atmospheric/frozen moisture from usable liquid wetness on already-generated permanent ice. It changes no precipitation, hydrology, ice extent, or non-ice climate. Wetness rank is now 0.592 Standard and 0.637 Ultra; false-dry rate is 0.563 Standard and 0.534 Ultra. The dominant remaining error is observed-wet deep interiors, with an opposing temperate dry-coast residual. Do not add net moisture, feed answer keys into production, retune latitude belts, reapply the ice factor, or solve these opposing errors with a global coefficient.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { equatorwardCurrentExposure } from '@world-forge/generator-core';
+import { coldHydrationAvailability, equatorwardCurrentExposure } from '@world-forge/generator-core';
 import {
   hydrationRegimeErrorProfiles,
   offshoreEkmanExposure,
@@ -29,6 +29,13 @@ describe('Earth downstream metric math', () => {
     expect(offshoreEkmanExposure(0, 0.35, 1, 0, -25)).toBeCloseTo(1);
     expect(offshoreEkmanExposure(0, 0.35, 1, 0, 25)).toBe(0);
     expect(offshoreEkmanExposure(0, -0.35, 1, 0, -25)).toBe(0);
+  });
+
+  it('reduces usable hydration only as surfaces become deeply frozen', () => {
+    expect(coldHydrationAvailability(0.8, 10)).toBe(0.8);
+    expect(coldHydrationAvailability(0.8, 5)).toBe(0.8);
+    expect(coldHydrationAvailability(0.8, -7.5)).toBeCloseTo(0.5);
+    expect(coldHydrationAvailability(0.8, -20)).toBeCloseTo(0.2);
   });
 
   it('localizes false wet and false dry extremes by generated regime', () => {

@@ -10,13 +10,14 @@
     "ocean.equatorward-current-dry-coast-separation": { "value": 0.2655222926, "absoluteTolerance": 0.05, "regressionDirection": "higher" },
     "ocean.cool-current-stability-dry-coast-separation": { "value": 0.281978417, "absoluteTolerance": 0.05, "regressionDirection": "higher" },
     "atmosphere.offshore-ekman-dry-coast-separation": { "value": -0.1941718142, "absoluteTolerance": 0.05, "regressionDirection": "either" },
-    "hydration.koppen-wetness-rank-correlation": { "value": 0.4394130551, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
-    "hydration.koppen-extreme-balanced-accuracy": { "value": 0.4554417273, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
-    "hydration.observed-dry-false-wet-rate": { "value": 0.4593406593, "absoluteTolerance": 0.05, "regressionDirection": "lower" },
-    "hydration.observed-wet-false-dry-rate": { "value": 0.6488651535, "absoluteTolerance": 0.05, "regressionDirection": "lower" },
+    "hydration.koppen-wetness-rank-correlation": { "value": 0.5918903256, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.koppen-extreme-balanced-accuracy": { "value": 0.5244180069, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
+    "hydration.observed-dry-false-wet-rate": { "value": 0.4065934066, "absoluteTolerance": 0.05, "regressionDirection": "lower" },
+    "hydration.observed-wet-false-dry-rate": { "value": 0.5634178905, "absoluteTolerance": 0.05, "regressionDirection": "lower" },
+    "hydration.permanent-ice-wetness-error": { "value": 0.0571594233, "absoluteTolerance": 0.03, "regressionDirection": "lower" },
     "hydration.amazon-sahara-contrast": { "value": 0.2760489845, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
     "hydration.orographic-wind-alignment": { "value": 0.0139609311, "absoluteTolerance": 0.008, "regressionDirection": "higher" },
-    "hydration.coastal-interior-contrast": { "value": 0.3476522232, "absoluteTolerance": 0.04, "regressionDirection": "either" },
+    "hydration.coastal-interior-contrast": { "value": 0.3478515738, "absoluteTolerance": 0.04, "regressionDirection": "either" },
     "hydration.equatorial-subtropical-contrast": { "value": 0.4185497798, "absoluteTolerance": 0.03, "regressionDirection": "higher" },
     "hydration.equatorial-subtropical-contrast-error": { "value": 0.0288619537, "absoluteTolerance": 0.02, "regressionDirection": "lower" },
     "hydration.representative-region-rank-correlation": { "value": 0.8545454545, "absoluteTolerance": 0.05, "regressionDirection": "higher" },
@@ -24,6 +25,6 @@
     "hydration.reference-dry-region-mean": { "value": 0.3133531611, "absoluteTolerance": 0.03, "regressionDirection": "lower" },
     "biomes.koppen-macro-f1": { "value": 0.4753837481, "absoluteTolerance": 0.02, "regressionDirection": "higher" },
     "biomes.final-climate-classification-consistency": { "value": 1, "absoluteTolerance": 0.001, "regressionDirection": "higher" },
-    "performance.core-downstream-ms": { "value": 975.6871, "relativeTolerance": 0.25, "regressionDirection": "lower" }
+    "performance.core-downstream-ms": { "value": 955.6271, "relativeTolerance": 0.25, "regressionDirection": "lower" }
   }
 }
