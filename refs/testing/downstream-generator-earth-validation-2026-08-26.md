@@ -178,6 +178,14 @@ Evaluator-only ecological profiles showed that reference grassland and forest ce
 
 The accepted classifier keeps the forest wetness threshold at 0.50 through 8 C, raises it linearly to 0.60 at 20 C, and caps it there. Rainforest, desert, tundra, ice, wetland, and mountain precedence are unchanged. Unlike the rejected flat 0.55 threshold, this preserves cool forest while converting marginal warm forest to grassland. Macro-F1 improves from 0.5230 to 0.5286 Fast, 0.5518 to 0.5735 Standard, and 0.5634 to 0.5864 Ultra. Standard grassland F1 improves from 0.268 to 0.322 and forest F1 from 0.405 to 0.430; Ultra grassland and forest also improve. Climate fields and downstream runtime are unchanged.
 
+### Desert-confusion hydration diagnosis
+
+The biome evaluator now reports generated climate and ecological signals for each reference-desert confusion branch. The Köppen transform maps only BWh and BWk to desert; semi-arid BSh and BSk remain grassland, so the reference-desert errors are not caused by folding steppe into the desert class.
+
+The result is stable across all tiers. Correct reference deserts average generated wetness 0.149 Fast, 0.172 Standard, and 0.204 Ultra. Reference deserts generated as grassland average 0.449, 0.432, and 0.449; those generated as forest average 0.714, 0.586, and 0.521. The low-cost dry-season-stress proxy is nearly identical for grassland and forest errors and slightly stronger for already-correct deserts. At Standard, correct deserts also have stronger generated subsidence (0.654) than grassland (0.445) or forest (0.500) errors.
+
+This proves that the remaining desert confusion is upstream annual hydration and longitudinal circulation error, not a biome threshold or missing steppe category. Reclassifying wet surfaces as desert would hide the climate defect and was not attempted. No production behavior or baseline value changes in this diagnostic increment.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -222,4 +230,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The deep-interior correction, dry-coast audit, biome confusion correction, and temperature-adjusted forest rule are complete. The tested tilt/latitude/continentality seasonality proxy does not add a clean class separator beyond temperature and wetness, so do not promote it as a new production field. The next residual audit should focus on desert cells generated as forest and grassland to distinguish upstream wetness excess from missing seasonal aridity. Use evaluator-only class-conditional precipitation, moisture, circulation, and coast/interior profiles first. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.
+The deep-interior correction, dry-coast audit, biome confusion correction, temperature-adjusted forest rule, and desert-confusion audit are complete. Desert errors are upstream hydration errors and co-locate with weaker generated subsidence; neither classifier thresholds nor the tested seasonal proxy can repair them. The next material diagnostic should evaluate longitudinal pressure-center/aridity placement against broad reference-dry regions before any further moisture coefficient. Determine whether thermal pressure centers, fixed latitude belts, or marine fetch are responsible for low subsidence over the missed BWh/BWk cells. Preserve permanent-ice semantics, inland gains, dry-region controls, latitude error, regional ordering, memory, and performance. Keep Earth and expensive performance diagnostics outside routine push CI.

@@ -1177,7 +1177,10 @@ function biomeMacroF1(
         relief: analysisRelief[analysisCell],
         river: signalLayers.river[analysisCell],
         lakeShare: signalLayers.lakes[analysisCell],
+        coastDistance: analysisCoastDistance[analysisCell],
         continentality,
+        subsidence,
+        convergence,
         thermalSeasonality,
         drySeasonStress: thermalSeasonality
           * (0.3 + subsidence * 0.7)
@@ -1210,6 +1213,19 @@ function biomeMacroF1(
         (total, index) => total + ecologicalSignals[index][signal],
         0,
       ) / Math.max(1, referenceIndexes.length);
+    }
+  }
+  const desertCode = biomeToCode('desert');
+  for (const generatedCategory of diagnosticCategories) {
+    const branchIndexes = referenceBiomes
+      .map((code, index) => code === desertCode && generated[index] === generatedCategory ? index : -1)
+      .filter((index) => index >= 0);
+    classDetails[`desertGeneratedCode${generatedCategory}Samples`] = branchIndexes.length;
+    for (const signal of Object.keys(ecologicalSignals[0] ?? {})) {
+      classDetails[`desertGeneratedCode${generatedCategory}Mean${capitalizeMetricId(signal)}`] = branchIndexes.reduce(
+        (total, index) => total + ecologicalSignals[index][signal],
+        0,
+      ) / Math.max(1, branchIndexes.length);
     }
   }
   for (const category of categories) {
