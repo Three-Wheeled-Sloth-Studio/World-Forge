@@ -1272,6 +1272,11 @@ function biomeMacroF1(
   const diagnosticCategories = [...categories, biomeToCode('wetland')];
   const generated: number[] = [];
   const referenceBiomes: number[] = [];
+  const seasonalStrengths = [0.1, 0.2, 0.3, 0.4] as const;
+  const nativeReclassificationControl: number[] = [];
+  const nativeSeasonalCounterfactuals = new Map<number, number[]>(
+    seasonalStrengths.map((strength) => [strength, []]),
+  );
   const ecologicalSignals: Array<Record<string, number>> = [];
   const sampleCoordinates: Array<{ latitude: number; longitude: number }> = [];
   const analysisWidth = Math.min(128, observations.resolution.width);
@@ -1398,6 +1403,35 @@ function biomeMacroF1(
         seasonalDryingExcess: Math.max(0, seasonalPressure.seasonalDryingPotential - subsidence),
         ...pressureAttribution,
       });
+      const nativeCountsByStrength = new Map<number, Uint32Array>(
+        seasonalStrengths.map((strength) => [strength, new Uint32Array(9)]),
+      );
+      const nativeControlCounts = new Uint32Array(9);
+      const seasonalDryingExcess = Math.max(0, seasonalPressure.seasonalDryingPotential - subsidence);
+      for (let offsetY = 0; offsetY < stepY; offsetY += 1) {
+        for (let offsetX = 0; offsetX < stepX; offsetX += 1) {
+          const x = blockX * stepX + offsetX;
+          const y = blockY * stepY + offsetY;
+          const index = y * observations.resolution.width + x;
+          const reference = observations.biomeCodes[index];
+          if (observations.waterMask[index] || reference === mountain || reference === ocean) continue;
+          const nativeSignals = { temperature: project.primaryWorld.layers.temperature[index] };
+          const nativeWetness = project.primaryWorld.layers.wetness[index];
+          nativeControlCounts[reclassifyDiagnosticBiome(generatedSource[index], nativeSignals, nativeWetness)] += 1;
+          for (const strength of seasonalStrengths) {
+            const counts = nativeCountsByStrength.get(strength)!;
+            counts[reclassifyDiagnosticBiome(
+              generatedSource[index],
+              nativeSignals,
+              nativeWetness - seasonalDryingExcess * strength,
+            )] += 1;
+          }
+        }
+      }
+      nativeReclassificationControl.push(modal(nativeControlCounts));
+      for (const strength of seasonalStrengths) {
+        nativeSeasonalCounterfactuals.get(strength)!.push(modal(nativeCountsByStrength.get(strength)!));
+      }
       sampleCoordinates.push({
         latitude: signedLatitudeDegrees,
         longitude: longitude * 180 / Math.PI,
@@ -1487,6 +1521,11 @@ function biomeMacroF1(
     referenceBiomes,
     categories,
   );
+  classDetails.counterfactualNativeReclassificationControlMacroF1 = diagnosticMacroF1(
+    nativeReclassificationControl,
+    referenceBiomes,
+    categories,
+  );
   for (const [detailId, value] of Object.entries(diagnosticClassificationDetails(
     reclassificationControl,
     referenceBiomes,
@@ -1542,7 +1581,7 @@ function biomeMacroF1(
       categories,
     );
   }
-  for (const strength of [0.1, 0.2, 0.3, 0.4]) {
+  for (const strength of seasonalStrengths) {
     const seasonalCirculationCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
       code,
       ecologicalSignals[index],
@@ -1550,6 +1589,11 @@ function biomeMacroF1(
     ));
     classDetails[`counterfactualSeasonalCirculation${Math.round(strength * 100)}MacroF1`] = diagnosticMacroF1(
       seasonalCirculationCounterfactual,
+      referenceBiomes,
+      categories,
+    );
+    classDetails[`counterfactualNativeSeasonalCirculation${Math.round(strength * 100)}MacroF1`] = diagnosticMacroF1(
+      nativeSeasonalCounterfactuals.get(strength)!,
       referenceBiomes,
       categories,
     );
