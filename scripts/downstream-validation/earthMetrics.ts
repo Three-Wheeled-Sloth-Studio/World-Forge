@@ -1119,6 +1119,7 @@ function biomeMacroF1(
   const generated: number[] = [];
   const referenceBiomes: number[] = [];
   const ecologicalSignals: Array<Record<string, number>> = [];
+  const sampleCoordinates: Array<{ latitude: number; longitude: number }> = [];
   const analysisWidth = Math.min(128, observations.resolution.width);
   const analysisHeight = Math.min(64, observations.resolution.height);
   const analysisWater = aggregateWaterMask(observations.waterMask, observations.resolution, analysisWidth, analysisHeight);
@@ -1131,6 +1132,24 @@ function biomeMacroF1(
     observations.waterMask,
   );
   const analysisRelief = localRelief(analysisElevation, analysisWater, analysisWidth, analysisHeight);
+  const analysisWindX = aggregateRasterLayer(project.primaryWorld.layers.windX, observations.resolution, analysisWidth, analysisHeight, observations.waterMask);
+  const analysisWindY = aggregateRasterLayer(project.primaryWorld.layers.windY, observations.resolution, analysisWidth, analysisHeight, observations.waterMask);
+  const finalWindRainShadow = upwindBarrierPotential(
+    analysisElevation,
+    analysisWater,
+    analysisWindX,
+    analysisWindY,
+    analysisWidth,
+    analysisHeight,
+  );
+  const finalWindCoastalExposure = coastalExposurePotential(
+    analysisCoastDistance,
+    analysisWater,
+    analysisWindX,
+    analysisWindY,
+    analysisWidth,
+    analysisHeight,
+  );
   const signalLayers = {
     temperature: aggregateRasterLayer(project.primaryWorld.layers.temperature, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
     wetness: aggregateRasterLayer(project.primaryWorld.layers.wetness, observations.resolution, analysisWidth, analysisHeight, observations.waterMask),
@@ -1169,12 +1188,24 @@ function biomeMacroF1(
         * (0.35 + continentality * 0.65);
       const subsidence = pressureSystems.subsidencePotential[analysisCell] ?? 0;
       const convergence = pressureSystems.convergencePotential[analysisCell] ?? 0;
+      const longitude = ((blockX + 0.5) / analysisWidth) * Math.PI * 2 - Math.PI;
+      const signedLatitudeDegrees = latitudeDegrees(blockY, analysisHeight);
+      const signedLatitude = signedLatitudeDegrees * Math.PI / 180;
+      const pressureAttribution = climatologicalPressureAttribution(
+        pressureSystems.centers,
+        longitude,
+        signedLatitude,
+        signalLayers.temperature[analysisCell],
+        project.primaryWorld.averageTemperatureC,
+      );
       ecologicalSignals.push({
         temperature: signalLayers.temperature[analysisCell],
         wetness: signalLayers.wetness[analysisCell],
         precipitation: signalLayers.precipitation[analysisCell],
         moisture: signalLayers.moisture[analysisCell],
         relief: analysisRelief[analysisCell],
+        finalWindRainShadow: finalWindRainShadow[analysisCell],
+        finalWindCoastalExposure: finalWindCoastalExposure[analysisCell],
         river: signalLayers.river[analysisCell],
         lakeShare: signalLayers.lakes[analysisCell],
         coastDistance: analysisCoastDistance[analysisCell],
@@ -1185,6 +1216,11 @@ function biomeMacroF1(
         drySeasonStress: thermalSeasonality
           * (0.3 + subsidence * 0.7)
           * (1 - convergence * 0.7),
+        ...pressureAttribution,
+      });
+      sampleCoordinates.push({
+        latitude: signedLatitudeDegrees,
+        longitude: longitude * 180 / Math.PI,
       });
     }
   }
@@ -1228,6 +1264,29 @@ function biomeMacroF1(
       ) / Math.max(1, branchIndexes.length);
     }
   }
+  for (const [regionId, minimumLatitude, maximumLatitude, minimumLongitude, maximumLongitude]
+    of desertDiagnosticRegions) {
+    for (const generatedCategory of diagnosticCategories) {
+      const regionBranchIndexes = referenceBiomes
+        .map((referenceCode, index) => {
+          const coordinate = sampleCoordinates[index];
+          const inRegion = coordinate.latitude >= minimumLatitude
+            && coordinate.latitude <= maximumLatitude
+            && coordinate.longitude >= minimumLongitude
+            && coordinate.longitude <= maximumLongitude;
+          return referenceCode === desertCode && generated[index] === generatedCategory && inRegion ? index : -1;
+        })
+        .filter((index) => index >= 0);
+      classDetails[`desertRegion${regionId}GeneratedCode${generatedCategory}Samples`] = regionBranchIndexes.length;
+      for (const signal of desertRegionDiagnosticSignals) {
+        classDetails[`desertRegion${regionId}GeneratedCode${generatedCategory}Mean${capitalizeMetricId(signal)}`]
+          = regionBranchIndexes.reduce(
+            (total, index) => total + ecologicalSignals[index][signal],
+            0,
+          ) / Math.max(1, regionBranchIndexes.length);
+      }
+    }
+  }
   for (const category of categories) {
     let truePositive = 0;
     let falsePositive = 0;
@@ -1259,8 +1318,172 @@ function biomeMacroF1(
   };
 }
 
+const desertDiagnosticRegions = [
+  ['Sahara', 15, 35, -20, 40],
+  ['Arabia', 12, 32, 35, 60],
+  ['CentralAsia', 30, 50, 45, 90],
+  ['Australia', -35, -15, 115, 145],
+  ['SouthwestNorthAmerica', 20, 40, -125, -95],
+  ['Atacama', -32, -15, -80, -65],
+  ['NamibKalahari', -32, -15, 10, 30],
+  ['Patagonia', -50, -35, -75, -60],
+  ['HornOfAfrica', 0, 15, 35, 55],
+] as const;
+
+const desertRegionDiagnosticSignals = [
+  'wetness',
+  'precipitation',
+  'coastDistance',
+  'continentality',
+  'relief',
+  'finalWindRainShadow',
+  'finalWindCoastalExposure',
+  'subsidence',
+  'convergence',
+  'latitudePressure',
+  'centerPressure',
+] as const;
+
+function upwindBarrierPotential(
+  elevation: Float32Array,
+  water: Uint8Array,
+  windX: Float32Array,
+  windY: Float32Array,
+  width: number,
+  height: number,
+): Float32Array {
+  const result = new Float32Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const cell = y * width + x;
+      if (water[cell]) continue;
+      const speed = Math.hypot(windX[cell], windY[cell]);
+      if (speed < 0.01) continue;
+      const directionX = windX[cell] / speed;
+      const directionY = windY[cell] / speed;
+      let barrier = 0;
+      for (let step = 1; step <= 8; step += 1) {
+        const sampleX = Math.round(x - directionX * step);
+        const sampleY = Math.round(y + directionY * step);
+        if (sampleY < 0 || sampleY >= height) break;
+        const sample = sampleY * width + ((sampleX % width) + width) % width;
+        if (water[sample]) break;
+        barrier = Math.max(
+          barrier,
+          Math.max(0, elevation[sample] - elevation[cell]) * (1 - step / 9),
+        );
+      }
+      result[cell] = Math.min(1, barrier * 2.5);
+    }
+  }
+  return result;
+}
+
+function coastalExposurePotential(
+  coastDistance: Float32Array,
+  water: Uint8Array,
+  windX: Float32Array,
+  windY: Float32Array,
+  width: number,
+  height: number,
+): Float32Array {
+  const result = new Float32Array(width * height);
+  result.fill(1);
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const cell = y * width + x;
+      if (water[cell] || coastDistance[cell] > 3) continue;
+      const west = y * width + ((x - 1 + width) % width);
+      const east = y * width + ((x + 1) % width);
+      const north = (y - 1) * width + x;
+      const south = (y + 1) * width + x;
+      const oceanGradientX = (coastDistance[west] - coastDistance[east]) * 0.5;
+      const oceanGradientY = (coastDistance[south] - coastDistance[north]) * 0.5;
+      const windMagnitude = Math.hypot(windX[cell], windY[cell]);
+      const gradientMagnitude = Math.hypot(oceanGradientX, oceanGradientY);
+      if (windMagnitude < 0.0001 || gradientMagnitude < 0.0001) continue;
+      const alignment = Math.max(-1, Math.min(1,
+        (windX[cell] * oceanGradientX + windY[cell] * oceanGradientY)
+          / (windMagnitude * gradientMagnitude),
+      ));
+      result[cell] = Math.max(0.5, Math.min(1,
+        0.85 + Math.max(0, -alignment) * 0.15 - Math.max(0, alignment) * 0.35,
+      ));
+    }
+  }
+  return result;
+}
+
 function capitalizeMetricId(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function climatologicalPressureAttribution(
+  centers: EarthDownstreamOutput['reconciliation']['circulation']['pressureSystems']['centers'],
+  longitude: number,
+  latitude: number,
+  temperatureC: number,
+  averageTemperatureC: number,
+): Record<string, number> {
+  const absoluteLatitude = Math.abs(latitude * 180 / Math.PI);
+  const latitudePressure = -0.72 * metricGaussian(absoluteLatitude, 0, 11)
+    + 0.66 * metricGaussian(absoluteLatitude, 30, 10)
+    - 0.46 * metricGaussian(absoluteLatitude, 58, 11)
+    + 0.3 * metricGaussian(absoluteLatitude, 86, 12);
+  const broadenedLatitudePressure = -0.72 * metricGaussian(absoluteLatitude, 0, 11)
+    + 0.66 * metricGaussian(absoluteLatitude, 30, 12)
+    - 0.46 * metricGaussian(absoluteLatitude, 58, 11)
+    + 0.3 * metricGaussian(absoluteLatitude, 86, 12);
+  const contributions: Record<string, number> = {
+    absoluteLatitude,
+    latitudePressure,
+    broadenedLatitudePressure,
+    latitudePressureGain12: broadenedLatitudePressure - latitudePressure,
+    subtropicalCenterPressure: 0,
+    subpolarCenterPressure: 0,
+    equatorialCenterPressure: 0,
+    polarCenterPressure: 0,
+    continentalCenterPressure: 0,
+  };
+  let centerPressure = 0;
+  for (const center of centers) {
+    const dx = metricWrappedDelta(longitude, center.longitudeRadians, Math.PI * 2)
+      / Math.max(0.01, center.radiusLongitudeRadians);
+    const dy = (latitude - center.latitudeRadians) / Math.max(0.01, center.radiusLatitudeRadians);
+    const contribution = (center.kind === 'high' ? 1 : -1)
+      * center.strength
+      * Math.exp(-0.5 * (dx * dx + dy * dy));
+    centerPressure += contribution;
+    const key = center.regime === 'subtropical'
+      ? 'subtropicalCenterPressure'
+      : center.regime === 'subpolar'
+        ? 'subpolarCenterPressure'
+        : center.regime === 'equatorial-trough'
+          ? 'equatorialCenterPressure'
+          : center.regime === 'polar'
+            ? 'polarCenterPressure'
+            : 'continentalCenterPressure';
+    contributions[key] += contribution;
+  }
+  const thermalAnomaly = Math.max(-1, Math.min(1, (temperatureC - averageTemperatureC) / 30));
+  const thermalPressure = -thermalAnomaly * metricGaussian(absoluteLatitude, 42, 24) * 0.12;
+  return {
+    ...contributions,
+    centerPressure,
+    thermalPressure,
+    reconstructedPressure: Math.max(-1, Math.min(1, latitudePressure + centerPressure + thermalPressure)),
+  };
+}
+
+function metricGaussian(value: number, center: number, spread: number): number {
+  return Math.exp(-((value - center) ** 2) / (2 * spread * spread));
+}
+
+function metricWrappedDelta(value: number, center: number, period: number): number {
+  let delta = value - center;
+  if (delta > period / 2) delta -= period;
+  if (delta < -period / 2) delta += period;
+  return delta;
 }
 
 function finalBiomeConsistency(project: WorldProject) {

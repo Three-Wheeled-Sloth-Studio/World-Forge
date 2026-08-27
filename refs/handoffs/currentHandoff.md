@@ -4,11 +4,11 @@ Updated: 2026-08-27
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its continental-convergence recycling increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, ten measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its longitudinal desert-attribution increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, ten measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Basin circulation v9 retains permanent-ice liquid semantics and bounded convergence recycling. Standard/Ultra wetness rank is 0.602/0.645 and false-dry rate is 0.559/0.522. Köppen macro-F1 is 0.529/0.574/0.586 after corrected reference coverage and temperature-adjusted forest moisture demand. The desert-confusion audit is complete: missed BWh/BWk cells have substantially excessive generated annual wetness and weaker subsidence, while the seasonal proxy does not separate them. Next, diagnose longitudinal pressure-center/aridity placement. Do not feed answer keys into production, retune latitude belts, reapply the ice factor, or solve class errors with a global coefficient.
+Basin circulation v9 retains permanent-ice liquid semantics and bounded convergence recycling. Standard/Ultra wetness rank is 0.602/0.645 and false-dry rate is 0.559/0.522. Köppen macro-F1 is 0.529/0.574/0.586 after corrected reference coverage and temperature-adjusted forest moisture demand. The longitudinal audit found that fixed latitude pressure dominates missed-desert attribution, but widening it is non-selective; basin-center and thermal terms are too small. Sahara/Arabia, Central Asia/Patagonia, Australia, and the Horn exhibit different residual mechanisms. Three end-to-end prototypes—belt widening, stronger legacy rain shadow, and topology-wind coastal-fetch scaling—were rejected and removed. Next, evaluate a cheap final-circulation-aligned precipitation refinement on the fixed analysis grid. Do not feed answer keys into production, add named-region rules, retune latitude belts, reapply the ice factor, or solve class errors with a global coefficient.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
