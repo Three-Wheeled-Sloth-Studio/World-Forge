@@ -1360,6 +1360,13 @@ function biomeMacroF1(
         convergence,
         project.selectedValues.aridity,
       );
+      const seasonalPressure = seasonalPressureSignals(
+        pressureAttribution.centerPressure - pressureAttribution.equatorialCenterPressure,
+        pressureAttribution.equatorialCenterPressure,
+        signedLatitudeDegrees,
+        thermalSeasonality * 30,
+        project.selectedValues.axialTiltDeg,
+      );
       ecologicalSignals.push({
         temperature: signalLayers.temperature[analysisCell],
         wetness: signalLayers.wetness[analysisCell],
@@ -1387,6 +1394,8 @@ function biomeMacroF1(
           * (0.3 + subsidence * 0.7)
           * (1 - convergence * 0.7),
         ...seasonalBalance,
+        ...seasonalPressure,
+        seasonalDryingExcess: Math.max(0, seasonalPressure.seasonalDryingPotential - subsidence),
         ...pressureAttribution,
       });
       sampleCoordinates.push({
@@ -1478,6 +1487,27 @@ function biomeMacroF1(
     referenceBiomes,
     categories,
   );
+  for (const [detailId, value] of Object.entries(diagnosticClassificationDetails(
+    reclassificationControl,
+    referenceBiomes,
+    categories,
+  ))) {
+    classDetails[`counterfactualReclassificationControl${detailId}`] = value;
+  }
+  for (const [regionId, minimumLatitude, maximumLatitude, minimumLongitude, maximumLongitude]
+    of desertDiagnosticRegions) {
+    classDetails[`counterfactualReclassificationControlRegion${regionId}DesertTruePositive`] = referenceBiomes.reduce(
+      (count, referenceCode, index) => {
+        const coordinate = sampleCoordinates[index];
+        const inRegion = coordinate.latitude >= minimumLatitude
+          && coordinate.latitude <= maximumLatitude
+          && coordinate.longitude >= minimumLongitude
+          && coordinate.longitude <= maximumLongitude;
+        return count + (referenceCode === desertCode && reclassificationControl[index] === desertCode && inRegion ? 1 : 0);
+      },
+      0,
+    );
+  }
   classDetails.counterfactualFinalWindCoastalMacroF1 = diagnosticMacroF1(
     finalWindCoastalCounterfactual,
     referenceBiomes,
@@ -1511,6 +1541,44 @@ function biomeMacroF1(
       referenceBiomes,
       categories,
     );
+  }
+  for (const strength of [0.1, 0.2, 0.3, 0.4]) {
+    const seasonalCirculationCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
+      code,
+      ecologicalSignals[index],
+      ecologicalSignals[index].wetness - ecologicalSignals[index].seasonalDryingExcess * strength,
+    ));
+    classDetails[`counterfactualSeasonalCirculation${Math.round(strength * 100)}MacroF1`] = diagnosticMacroF1(
+      seasonalCirculationCounterfactual,
+      referenceBiomes,
+      categories,
+    );
+    const seasonalDetails = diagnosticClassificationDetails(
+      seasonalCirculationCounterfactual,
+      referenceBiomes,
+      categories,
+    );
+    for (const [detailId, value] of Object.entries(seasonalDetails)) {
+      classDetails[`counterfactualSeasonalCirculation${Math.round(strength * 100)}${detailId}`] = value;
+    }
+    for (const [regionId, minimumLatitude, maximumLatitude, minimumLongitude, maximumLongitude]
+      of desertDiagnosticRegions) {
+      classDetails[`counterfactualSeasonalCirculation${Math.round(strength * 100)}Region${regionId}DesertTruePositive`]
+        = referenceBiomes.reduce((count, referenceCode, index) => {
+          const coordinate = sampleCoordinates[index];
+          const inRegion = coordinate.latitude >= minimumLatitude
+            && coordinate.latitude <= maximumLatitude
+            && coordinate.longitude >= minimumLongitude
+            && coordinate.longitude <= maximumLongitude;
+          return count + (
+            referenceCode === desertCode
+              && seasonalCirculationCounterfactual[index] === desertCode
+              && inRegion
+              ? 1
+              : 0
+          );
+        }, 0);
+    }
   }
   for (const category of categories) {
     let truePositive = 0;
@@ -1573,7 +1641,94 @@ const desertRegionDiagnosticSignals = [
   'seasonalPrecipitationSwing',
   'seasonalIncrementalEvaporativeLoss',
   'seasonalDryHalfWaterBalance',
+  'seasonalPressureRange',
+  'seasonalMaximumSubsidence',
+  'seasonalMinimumConvergence',
+  'seasonalDryingPotential',
+  'seasonalDryingExcess',
 ] as const;
+
+function seasonalPressureSignals(
+  nonEquatorialCenterPressure: number,
+  equatorialCenterPressure: number,
+  latitudeDegreesValue: number,
+  temperatureAmplitudeC: number,
+  axialTiltDeg: number,
+): Record<string, number> {
+  const hemisphere = latitudeDegreesValue >= 0 ? 1 : -1;
+  const migration = Math.min(18, axialTiltDeg * 0.65);
+  const localSummerDeclination = hemisphere * migration;
+  const localWinterDeclination = -localSummerDeclination;
+  const summerPressure = seasonalPressurePotential(
+    latitudeDegreesValue,
+    localSummerDeclination,
+    nonEquatorialCenterPressure,
+    equatorialCenterPressure,
+    -temperatureAmplitudeC,
+  );
+  const winterPressure = seasonalPressurePotential(
+    latitudeDegreesValue,
+    localWinterDeclination,
+    nonEquatorialCenterPressure,
+    equatorialCenterPressure,
+    temperatureAmplitudeC,
+  );
+  const summerSubsidence = Math.max(0, Math.min(1, (summerPressure + 0.08) / 0.9));
+  const winterSubsidence = Math.max(0, Math.min(1, (winterPressure + 0.08) / 0.9));
+  const summerConvergence = Math.max(0, Math.min(1, (-summerPressure + 0.02) / 0.85));
+  const winterConvergence = Math.max(0, Math.min(1, (-winterPressure + 0.02) / 0.85));
+  const maximumSubsidence = Math.max(summerSubsidence, winterSubsidence);
+  const minimumConvergence = Math.min(summerConvergence, winterConvergence);
+  return {
+    seasonalSummerPressure: summerPressure,
+    seasonalWinterPressure: winterPressure,
+    seasonalPressureRange: Math.abs(summerPressure - winterPressure),
+    seasonalMaximumSubsidence: maximumSubsidence,
+    seasonalMinimumSubsidence: Math.min(summerSubsidence, winterSubsidence),
+    seasonalMaximumConvergence: Math.max(summerConvergence, winterConvergence),
+    seasonalMinimumConvergence: minimumConvergence,
+    seasonalDryingPotential: maximumSubsidence * (1 - minimumConvergence),
+  };
+}
+
+function seasonalPressurePotential(
+  latitudeDegreesValue: number,
+  solarDeclinationDegrees: number,
+  nonEquatorialCenterPressure: number,
+  equatorialCenterPressure: number,
+  thermalTemperatureAnomalyC: number,
+): number {
+  const shiftedSubtropical = solarDeclinationDegrees * 0.2;
+  const shiftedSubpolar = solarDeclinationDegrees * 0.1;
+  const latitudePressure = -0.72 * metricGaussian(latitudeDegreesValue, solarDeclinationDegrees, 8)
+    + 0.66 * (
+      metricGaussian(latitudeDegreesValue, 30 + shiftedSubtropical, 10)
+      + metricGaussian(latitudeDegreesValue, -30 + shiftedSubtropical, 10)
+    )
+    - 0.46 * (
+      metricGaussian(latitudeDegreesValue, 58 + shiftedSubpolar, 11)
+      + metricGaussian(latitudeDegreesValue, -58 + shiftedSubpolar, 11)
+    )
+    + 0.3 * (
+      metricGaussian(latitudeDegreesValue, 86, 12)
+      + metricGaussian(latitudeDegreesValue, -86, 12)
+    );
+  const thermalPressure = thermalTemperatureAnomalyC / 30
+    * metricGaussian(Math.abs(latitudeDegreesValue), 42, 24)
+    * 0.12;
+  const annualEquatorialInfluence = metricGaussian(latitudeDegreesValue, 0, 8);
+  const seasonalEquatorialInfluence = metricGaussian(latitudeDegreesValue, solarDeclinationDegrees, 8);
+  const equatorialMigrationScale = Math.min(
+    1.5,
+    seasonalEquatorialInfluence / Math.max(0.05, annualEquatorialInfluence),
+  );
+  return Math.max(-1, Math.min(1,
+    latitudePressure
+      + nonEquatorialCenterPressure
+      + equatorialCenterPressure * equatorialMigrationScale
+      + thermalPressure,
+  ));
+}
 
 function twoSeasonWaterBalanceSignals(
   temperatureC: number,
@@ -1659,6 +1814,32 @@ function diagnosticMacroF1(
     represented += 1;
   }
   return total / Math.max(1, represented);
+}
+
+function diagnosticClassificationDetails(
+  generated: number[],
+  reference: number[],
+  categories: number[],
+): Record<string, number> {
+  const details: Record<string, number> = {};
+  for (const category of categories) {
+    let truePositive = 0;
+    let falsePositive = 0;
+    let falseNegative = 0;
+    for (let index = 0; index < generated.length; index += 1) {
+      if (generated[index] === category && reference[index] === category) truePositive += 1;
+      else if (generated[index] === category) falsePositive += 1;
+      else if (reference[index] === category) falseNegative += 1;
+    }
+    const precision = truePositive / Math.max(1, truePositive + falsePositive);
+    const recall = truePositive / Math.max(1, truePositive + falseNegative);
+    details[`F1Code${category}`] = precision + recall > 0
+      ? 2 * precision * recall / (precision + recall)
+      : 0;
+    details[`TruePositiveCode${category}`] = truePositive;
+    details[`FalsePositiveCode${category}`] = falsePositive;
+  }
+  return details;
 }
 
 function upwindBarrierPotential(

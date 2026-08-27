@@ -212,6 +212,14 @@ The new equatorial metric separated westward equatorial flow from the eastward n
 
 The accepted 0.64 calibration is a balance rather than a free gain. Equatorward-current dry-coast association changes from 0.181 to 0.153 Fast, 0.266 to 0.234 Standard, and 0.227 to 0.204 Ultra; current-plus-subsidence association changes from 0.203 to 0.179, 0.282 to 0.254, and 0.244 to 0.223. Both remain positive and inside their maintained tolerances. Hydration rank, extremes, biome F1, regional ordering, and latitude structure are effectively unchanged. The correction adds constant arithmetic only and no arrays, traversal, or solver pass.
 
+### Explicit seasonal-circulation diagnostic
+
+The earlier two-season water-balance proxy merely redistributed annual precipitation and was neutral. The replacement diagnostic constructs local-summer and local-winter pressure states directly: the equatorial trough and its longitudinal centers migrate up to 65% of axial tilt (capped at 18 degrees), the seasonal trough narrows to 8 degrees, subtropical/subpolar belts migrate more weakly, and bounded continental temperature amplitude adds thermal pressure. Everything remains evaluator-only on the 128 x 64 grid.
+
+Seasonal drying in excess of annual subsidence is a materially useful ecological signal. Against the required zero-adjustment reconstruction control, a 0.40 biome-stress counterfactual improves macro-F1 by 0.0140 Fast, 0.0208 Standard, and 0.0292 Ultra. At Standard, reconstructed desert F1 improves from 0.353 to 0.411 and grassland from 0.325 to 0.389; ice and tundra are unchanged. Desert true positives rise from 91 to 118 while false positives rise from 70 to 102. Regional true positives rise by 14 Sahara, five Arabia, four Australia, and one Namib/Kalahari; the counterfactual does not claim to solve Patagonia or the Horn.
+
+A late fixed-grid production overlay was rejected. At 0.40 it improved Fast macro-F1 by 0.013 but reduced Standard by 0.003; at 0.20 it improved Fast by 0.005 but reduced Standard by 0.004. It also intentionally diverged from the annual-only consistency classifier. The mismatch proves that aggregated seasonal evidence cannot be safely applied after topology classification, cohesion, and modal projection. All production seasonal fields and behavior were removed. The next implementation must let a fixed-grid seasonal signal participate before topology biome classification/cohesion, without allocating full-resolution seasonal arrays.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -259,4 +267,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The annual hydration/desert slice is at a measured stopping point, and the ocean structural audit has corrected the one material defect it exposed. Western-boundary intensification, equatorial flow/counterflow, gyre rotation, land confinement, and Southern Ocean continuity now have cross-tier evidence. The next material climate slice should design explicit seasonal circulation on the fixed grid before revisiting the Horn, monsoon margins, or continental thermal pressure. Do not approximate that work with more annual hydration coefficients or allocate Ultra-scale seasonal rasters. Keep Earth and expensive performance diagnostics outside routine push CI.
+The annual hydration/desert slice is at a measured stopping point, the ocean audit corrected its material countercurrent defect, and explicit seasonal circulation now has cross-tier evaluator evidence. The next implementation is architectural: build or sample the fixed-grid seasonal signal early enough to participate in topology biome classification and cohesion, then project once. Do not apply another late raster overlay, mutate annual wetness to hide seasonal ecology, or allocate Ultra-scale seasonal rasters. Preserve the zero-adjustment control and require Fast/Standard/Ultra end-to-end improvement before acceptance. Keep Earth and expensive performance diagnostics outside routine push CI.
