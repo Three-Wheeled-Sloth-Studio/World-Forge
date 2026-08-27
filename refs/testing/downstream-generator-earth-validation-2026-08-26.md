@@ -6,7 +6,7 @@ Branch: `dev`
 
 ## Outcome
 
-World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after ten measured production corrections.
+World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after eleven measured production corrections.
 
 This diagnostic is intentionally outside routine push CI. Routine tests cover framework math, schema/report behavior, the production adapter seam, circulation contracts, and small deterministic generation only.
 
@@ -204,6 +204,14 @@ End-to-end testing did not reproduce a shippable continental result. Reducing pr
 
 A low-cost two-season water-balance proxy used tilt/latitude/continental temperature amplitude, convergence-linked precipitation redistribution, and the existing nonlinear evaporative-demand equation. Its best reconstructed macro-F1 delta is only +0.0018 Fast, +0.0006 Standard, and -0.0004 Ultra. This proxy is also rejected; a useful seasonal model would require actual seasonal circulation structure, not another annual-field coefficient.
 
+### Ocean current structure and equatorial countercurrent
+
+Three fixed-grid structural metrics now cover important ocean behavior that gyre rotation alone did not prove. Western-boundary current speed is 1.406 times eastern-boundary speed Fast, 1.390 Standard, and 1.376 Ultra. Southern circumpolar continuity is 0.893, 0.912, and 0.912, with complete longitude coverage at Standard and Ultra. These confirm the intended western-boundary intensification and open Southern Ocean flow without claiming observed current-route fidelity.
+
+The new equatorial metric separated westward equatorial flow from the eastward north-equatorial countercurrent. Before correction, Standard westward support was 0.988 but countercurrent support only 0.041; the configured eastward pulse could not overcome the base westward flow. Basin circulation v10 raises only that fixed-cost pulse. Combined direction agreement is now 0.799 Fast, 0.769 Standard, and 0.781 Ultra, above the 0.65 component gate, while gyre rotation remains above 0.96 and land confinement remains 1.0.
+
+The accepted 0.64 calibration is a balance rather than a free gain. Equatorward-current dry-coast association changes from 0.181 to 0.153 Fast, 0.266 to 0.234 Standard, and 0.227 to 0.204 Ultra; current-plus-subsidence association changes from 0.203 to 0.179, 0.282 to 0.254, and 0.244 to 0.223. Both remain positive and inside their maintained tolerances. Hydration rank, extremes, biome F1, regional ordering, and latitude structure are effectively unchanged. The correction adds constant arithmetic only and no arrays, traversal, or solver pass.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -212,8 +220,11 @@ A low-cost two-season water-balance proxy used tilt/latitude/continental tempera
 | Tropical convergence direction | 0.9987 | 1.0000 | 1.0000 |
 | Current confinement to ocean | 1.0000 | 1.0000 | 1.0000 |
 | Gyre rotation agreement | 0.9663 | 0.9620 | 0.9639 |
-| Equatorward-current dry-coast separation | 0.1808 | 0.2655 | 0.2273 |
-| Current-plus-subsidence dry-coast separation | 0.2031 | 0.2820 | 0.2437 |
+| Western-boundary speed ratio | 1.4063 | 1.3904 | 1.3765 |
+| Equatorial-current direction agreement | 0.7989 | 0.7692 | 0.7806 |
+| Southern circumpolar continuity | 0.8930 | 0.9118 | 0.9122 |
+| Equatorward-current dry-coast separation | 0.1533 | 0.2338 | 0.2044 |
+| Current-plus-subsidence dry-coast separation | 0.1785 | 0.2539 | 0.2235 |
 | Offshore-Ekman dry-coast separation (rejected) | -0.2278 | -0.1942 | -0.1874 |
 | Köppen wetness rank correlation | 0.5999 | 0.6017 | 0.6449 |
 | Wet/dry extreme balanced accuracy | 0.5441 | 0.5282 | 0.5485 |
@@ -248,4 +259,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The annual hydration/desert slice has reached a measured stopping point. Fixed latitude widening, final-wind coastal/barrier refinements, continental limitation, and a low-cost two-season water-balance proxy all fail to produce cross-tier end-to-end gains worth their regressions. Do not continue coefficient tuning against the same annual fields. The next material downstream slice should strengthen ocean-circulation validation before behavior changes: western-boundary intensification, equatorial-current direction, subtropical convergence, and open circumpolar flow on the fixed grid. Only after that evidence should ocean behavior change. A future seasonal-climate slice must model seasonal circulation explicitly and remain fixed-grid rather than allocating Ultra-scale seasonal rasters. Keep Earth and expensive performance diagnostics outside routine push CI.
+The annual hydration/desert slice is at a measured stopping point, and the ocean structural audit has corrected the one material defect it exposed. Western-boundary intensification, equatorial flow/counterflow, gyre rotation, land confinement, and Southern Ocean continuity now have cross-tier evidence. The next material climate slice should design explicit seasonal circulation on the fixed grid before revisiting the Horn, monsoon margins, or continental thermal pressure. Do not approximate that work with more annual hydration coefficients or allocate Ultra-scale seasonal rasters. Keep Earth and expensive performance diagnostics outside routine push CI.

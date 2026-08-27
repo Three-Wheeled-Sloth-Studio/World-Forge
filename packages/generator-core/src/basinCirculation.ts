@@ -58,7 +58,7 @@ export type ClimatologicalPressureDiagnostics = {
 };
 
 export type BasinCirculationDiagnostics = {
-  modelVersion: 'basin-circulation-v9';
+  modelVersion: 'basin-circulation-v10';
   marineBasinCount: number;
   largestBasinShare: number;
   coherentGyreCount: number;
@@ -360,7 +360,7 @@ function evaluateCurrentField(
       let cx = -Math.exp(-(absLatitude * absLatitude) / 0.035) * 0.42;
       let cy = pressure.windY * 0.035;
       let structuralStrength = Math.exp(-(absLatitude * absLatitude) / 0.035) * 0.42;
-      const counterCurrent = Math.exp(-((latitude - 0.075) ** 2) / 0.0035) * 0.24;
+      const counterCurrent = Math.exp(-((latitude - 0.075) ** 2) / 0.0035) * 0.64;
       cx += counterCurrent;
       structuralStrength = Math.max(structuralStrength, counterCurrent);
       const circumpolar = Math.exp(-((absLatitude - 1.12) ** 2) / 0.022);
@@ -592,7 +592,7 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     meanCoolCurrentDrying: pressureResult.meanCoolCurrentDrying,
   };
   const diagnostics: BasinCirculationDiagnostics = {
-    modelVersion: 'basin-circulation-v9',
+    modelVersion: 'basin-circulation-v10',
     marineBasinCount: subtropicalSectors.length,
     largestBasinShare,
     coherentGyreCount: gyres.filter((gyre) => gyre.kind === 'subtropical' && gyre.territorySize >= width * height * 0.01).length,
@@ -616,7 +616,7 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     climate.notes = [
       ...climate.notes.filter((note) => !note.startsWith('Basin-aware circulation') && !note.startsWith('Climatological pressure')),
       `Climatological pressure v1 resolved ${pressureModel.centers.length} durable center(s) on a fixed ${pressureModel.resolution.width}x${pressureModel.resolution.height} reference grid.`,
-      `Basin-aware circulation v9 generated ${gyres.filter((gyre) => gyre.kind === 'subtropical').length} basin-scale subtropical gyre(s) and ${gyres.filter((gyre) => gyre.kind === 'subpolar').length} subpolar gyre(s) without iterative raster packing.`
+      `Basin-aware circulation v10 generated ${gyres.filter((gyre) => gyre.kind === 'subtropical').length} basin-scale subtropical gyre(s), ${gyres.filter((gyre) => gyre.kind === 'subpolar').length} subpolar gyre(s), and an explicit north-equatorial countercurrent without iterative raster packing.`
     ];
   }
   return diagnostics;

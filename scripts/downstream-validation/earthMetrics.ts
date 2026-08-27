@@ -54,6 +54,39 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project, reconciliation }) => gyreRotationAgreement(project, reconciliation.circulation),
   },
   {
+    id: 'ocean.western-boundary-intensification',
+    label: 'Western-boundary current intensification',
+    component: 'ocean',
+    evidence: 'structural-invariant',
+    unit: 'speed-ratio',
+    proves: 'Resolved subtropical gyres carry faster currents on their western side than on their eastern side.',
+    doesNotProve: 'Observed Gulf Stream, Kuroshio, Brazil, Agulhas, or East Australian Current routes or transports.',
+    threshold: { minimum: 1.15 },
+    evaluate: ({ project, reconciliation }) => westernBoundaryIntensification(project, reconciliation.circulation),
+  },
+  {
+    id: 'ocean.equatorial-current-direction-agreement',
+    label: 'Equatorial-current direction agreement',
+    component: 'ocean',
+    evidence: 'structural-invariant',
+    unit: 'share',
+    proves: 'Open tropical ocean supports broad westward equatorial flow and an eastward north-equatorial countercurrent.',
+    doesNotProve: 'Observed basin-specific current routes, seasonal reversal, depth structure, or calibrated transport.',
+    threshold: { minimum: 0.65 },
+    evaluate: ({ project }) => equatorialCurrentDirectionAgreement(project),
+  },
+  {
+    id: 'ocean.southern-circumpolar-continuity',
+    label: 'Southern circumpolar current continuity',
+    component: 'ocean',
+    evidence: 'structural-invariant',
+    unit: 'share',
+    proves: 'When the Southern Ocean path is open, mid-high southern latitudes carry predominantly eastward, zonal current around the planet.',
+    doesNotProve: 'Observed Antarctic Circumpolar Current fronts, speed, latitude, eddies, or volume transport.',
+    threshold: { minimum: 0.75 },
+    evaluate: ({ project, reconciliation }) => southernCircumpolarContinuity(project, reconciliation.circulation),
+  },
+  {
     id: 'ocean.equatorward-current-dry-coast-separation',
     label: 'Equatorward-current dry-coast separation',
     component: 'ocean',
@@ -574,6 +607,127 @@ function gyreRotationAgreement(
     if (layers.currentX[cell] * expectedX + layers.currentY[cell] * expectedY > 0) supported += 1;
   }
   return { value: supported / Math.max(1, total), sampleCount: total, details: { gyres: circulation.packedGyres.length } };
+}
+
+function westernBoundaryIntensification(
+  project: WorldProject,
+  circulation: EarthDownstreamOutput['reconciliation']['circulation'],
+) {
+  const { width } = project.primaryWorld.mapModel.resolution;
+  const layers = project.primaryWorld.layers;
+  let westernSpeed = 0;
+  let westernSamples = 0;
+  let easternSpeed = 0;
+  let easternSamples = 0;
+  for (let cell = 0; cell < circulation.gyreOwner.length; cell += 1) {
+    const owner = circulation.gyreOwner[cell];
+    if (owner < 0 || !layers.water[cell]) continue;
+    const gyre = circulation.packedGyres[owner];
+    if (!gyre || gyre.kind !== 'subtropical') continue;
+    const x = cell % width;
+    const y = Math.floor(cell / width);
+    let dx = x - gyre.centerX;
+    if (dx > width / 2) dx -= width;
+    if (dx < -width / 2) dx += width;
+    const nx = dx / Math.max(1, gyre.radiusX);
+    const ny = (y - gyre.centerY) / Math.max(1, gyre.radiusY);
+    if (Math.abs(ny) > 0.8) continue;
+    const speed = Math.hypot(layers.currentX[cell], layers.currentY[cell]);
+    if (nx <= -0.55) {
+      westernSpeed += speed;
+      westernSamples += 1;
+    } else if (nx >= 0.55) {
+      easternSpeed += speed;
+      easternSamples += 1;
+    }
+  }
+  const westernMean = westernSpeed / Math.max(1, westernSamples);
+  const easternMean = easternSpeed / Math.max(1, easternSamples);
+  return {
+    value: westernMean / Math.max(1e-6, easternMean),
+    sampleCount: westernSamples + easternSamples,
+    details: { westernMean, easternMean, westernSamples, easternSamples },
+  };
+}
+
+function equatorialCurrentDirectionAgreement(project: WorldProject) {
+  const { width, height } = project.primaryWorld.mapModel.resolution;
+  const layers = project.primaryWorld.layers;
+  let westwardSupported = 0;
+  let westwardSamples = 0;
+  let counterSupported = 0;
+  let counterSamples = 0;
+  for (let y = 0; y < height; y += 1) {
+    const latitude = latitudeDegrees(y, height);
+    const westwardBand = latitude >= -2.5 && latitude <= 2.5;
+    const counterCurrentBand = latitude >= 3 && latitude <= 7;
+    if (!westwardBand && !counterCurrentBand) continue;
+    for (let x = 0; x < width; x += 1) {
+      const cell = y * width + x;
+      if (!layers.water[cell]) continue;
+      if (westwardBand) {
+        westwardSamples += 1;
+        if (layers.currentX[cell] < 0) westwardSupported += 1;
+      }
+      if (counterCurrentBand) {
+        counterSamples += 1;
+        if (layers.currentX[cell] > 0) counterSupported += 1;
+      }
+    }
+  }
+  const westwardShare = westwardSupported / Math.max(1, westwardSamples);
+  const counterCurrentShare = counterSupported / Math.max(1, counterSamples);
+  return {
+    value: (westwardShare + counterCurrentShare) * 0.5,
+    sampleCount: westwardSamples + counterSamples,
+    details: { westwardShare, counterCurrentShare, westwardSamples, counterSamples },
+  };
+}
+
+function southernCircumpolarContinuity(
+  project: WorldProject,
+  circulation: EarthDownstreamOutput['reconciliation']['circulation'],
+) {
+  const { width, height } = project.primaryWorld.mapModel.resolution;
+  const layers = project.primaryWorld.layers;
+  if (!circulation.pressureSystems.openSouthernCircumpolarPath) {
+    return { value: 1, sampleCount: 0, details: { openPath: false, eastwardShare: 1, longitudeCoverage: 1 } };
+  }
+  let supported = 0;
+  let samples = 0;
+  const supportedColumns = new Uint8Array(width);
+  const oceanColumns = new Uint8Array(width);
+  for (let y = 0; y < height; y += 1) {
+    const latitude = latitudeDegrees(y, height);
+    if (latitude < -72 || latitude > -50) continue;
+    for (let x = 0; x < width; x += 1) {
+      const cell = y * width + x;
+      if (!layers.water[cell]) continue;
+      oceanColumns[x] = 1;
+      samples += 1;
+      const speed = Math.hypot(layers.currentX[cell], layers.currentY[cell]);
+      const eastwardZonal = layers.currentX[cell] > 0
+        && speed > 1e-6
+        && layers.currentX[cell] / speed >= 0.6;
+      if (eastwardZonal) {
+        supported += 1;
+        supportedColumns[x] = 1;
+      }
+    }
+  }
+  const eastwardShare = supported / Math.max(1, samples);
+  let oceanColumnCount = 0;
+  let supportedColumnCount = 0;
+  for (let x = 0; x < width; x += 1) {
+    oceanColumnCount += oceanColumns[x];
+    supportedColumnCount += supportedColumns[x];
+  }
+  const longitudeCoverage = supportedColumnCount / Math.max(1, oceanColumnCount);
+  return {
+    value: (eastwardShare + longitudeCoverage) * 0.5,
+    sampleCount: samples,
+    details: { openPath: true, eastwardShare, longitudeCoverage, oceanColumnCount },
+  };
 }
 
 function coastalCirculationSeparation(

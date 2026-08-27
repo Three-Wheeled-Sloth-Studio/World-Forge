@@ -92,7 +92,7 @@ describe('climatological pressure and basin-scale circulation', () => {
     const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 128, height: 64 }));
     const diagnostics = applyBasinAwareCirculation(project);
 
-    expect(diagnostics.modelVersion).toBe('basin-circulation-v9');
+    expect(diagnostics.modelVersion).toBe('basin-circulation-v10');
     expect(diagnostics.gyreCandidateCount).toBeLessThanOrEqual(10);
     expect(diagnostics.packedGyres.length).toBe(diagnostics.gyreCandidateCount);
     expect(diagnostics.packedGyres.some((gyre) => gyre.kind === 'subtropical')).toBe(true);
@@ -105,6 +105,34 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(layerHasSignal(project.primaryWorld.layers.windY)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.currentX)).toBe(true);
     expect(layerHasSignal(project.primaryWorld.layers.currentY)).toBe(true);
+  }, 20_000);
+
+  it('retains westward equatorial flow and an eastward north-equatorial countercurrent', () => {
+    const project = generateProject(createDefaultConfig('equatorial-currents-001', { width: 256, height: 128 }));
+    applyBasinAwareCirculation(project);
+    const { width, height } = project.primaryWorld.mapModel.resolution;
+    const layers = project.primaryWorld.layers;
+    let equatorialSupported = 0;
+    let equatorialSamples = 0;
+    let counterSupported = 0;
+    let counterSamples = 0;
+    for (let y = 0; y < height; y += 1) {
+      const latitude = 90 - ((y + 0.5) / height) * 180;
+      for (let x = 0; x < width; x += 1) {
+        const cell = y * width + x;
+        if (!layers.water[cell]) continue;
+        if (latitude >= -2.5 && latitude <= 2.5) {
+          equatorialSamples += 1;
+          if (layers.currentX[cell] < 0) equatorialSupported += 1;
+        }
+        if (latitude >= 3 && latitude <= 7) {
+          counterSamples += 1;
+          if (layers.currentX[cell] > 0) counterSupported += 1;
+        }
+      }
+    }
+    expect(equatorialSupported / equatorialSamples).toBeGreaterThan(0.8);
+    expect(counterSupported / counterSamples).toBeGreaterThan(0.4);
   }, 20_000);
 
   it('preserves terrain-defined mountain biomes during projected climate reconciliation', () => {
