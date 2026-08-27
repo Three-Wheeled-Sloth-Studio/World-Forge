@@ -1273,9 +1273,13 @@ function biomeMacroF1(
   const generated: number[] = [];
   const referenceBiomes: number[] = [];
   const seasonalStrengths = [0.1, 0.2, 0.3, 0.4] as const;
+  const forestTemperatureContrastStrengths = [0.03, 0.06, 0.09] as const;
   const nativeReclassificationControl: number[] = [];
   const nativeSeasonalCounterfactuals = new Map<number, number[]>(
     seasonalStrengths.map((strength) => [strength, []]),
+  );
+  const nativeForestTemperatureCounterfactuals = new Map<number, number[]>(
+    forestTemperatureContrastStrengths.map((strength) => [strength, []]),
   );
   const ecologicalSignals: Array<Record<string, number>> = [];
   const sampleCoordinates: Array<{ latitude: number; longitude: number }> = [];
@@ -1406,6 +1410,9 @@ function biomeMacroF1(
       const nativeCountsByStrength = new Map<number, Uint32Array>(
         seasonalStrengths.map((strength) => [strength, new Uint32Array(9)]),
       );
+      const nativeForestCountsByStrength = new Map<number, Uint32Array>(
+        forestTemperatureContrastStrengths.map((strength) => [strength, new Uint32Array(9)]),
+      );
       const nativeControlCounts = new Uint32Array(9);
       const seasonalDryingExcess = Math.max(0, seasonalPressure.seasonalDryingPotential - subsidence);
       for (let offsetY = 0; offsetY < stepY; offsetY += 1) {
@@ -1426,11 +1433,23 @@ function biomeMacroF1(
               nativeWetness - seasonalDryingExcess * strength,
             )] += 1;
           }
+          for (const strength of forestTemperatureContrastStrengths) {
+            const counts = nativeForestCountsByStrength.get(strength)!;
+            counts[reclassifyDiagnosticBiome(
+              generatedSource[index],
+              nativeSignals,
+              nativeWetness,
+              forestTemperatureThresholdAdjustment(nativeSignals.temperature, strength),
+            )] += 1;
+          }
         }
       }
       nativeReclassificationControl.push(modal(nativeControlCounts));
       for (const strength of seasonalStrengths) {
         nativeSeasonalCounterfactuals.get(strength)!.push(modal(nativeCountsByStrength.get(strength)!));
+      }
+      for (const strength of forestTemperatureContrastStrengths) {
+        nativeForestTemperatureCounterfactuals.get(strength)!.push(modal(nativeForestCountsByStrength.get(strength)!));
       }
       sampleCoordinates.push({
         latitude: signedLatitudeDegrees,
@@ -1623,6 +1642,25 @@ function biomeMacroF1(
           );
         }, 0);
     }
+  }
+  for (const strength of forestTemperatureContrastStrengths) {
+    const coarseCounterfactual = generated.map((code, index) => reclassifyDiagnosticBiome(
+      code,
+      ecologicalSignals[index],
+      ecologicalSignals[index].wetness,
+      forestTemperatureThresholdAdjustment(ecologicalSignals[index].temperature, strength),
+    ));
+    const id = Math.round(strength * 100);
+    classDetails[`counterfactualForestTemperatureContrast${id}MacroF1`] = diagnosticMacroF1(
+      coarseCounterfactual,
+      referenceBiomes,
+      categories,
+    );
+    classDetails[`counterfactualNativeForestTemperatureContrast${id}MacroF1`] = diagnosticMacroF1(
+      nativeForestTemperatureCounterfactuals.get(strength)!,
+      referenceBiomes,
+      categories,
+    );
   }
   for (const category of categories) {
     let truePositive = 0;
@@ -1823,6 +1861,7 @@ function reclassifyDiagnosticBiome(
   currentCode: number,
   signals: Record<string, number>,
   adjustedWetness: number,
+  forestThresholdAdjustment = 0,
 ): number {
   const reclassifiable = currentCode === biomeToCode('desert')
     || currentCode === biomeToCode('grassland')
@@ -1831,8 +1870,12 @@ function reclassifyDiagnosticBiome(
   if (!reclassifiable) return currentCode;
   if (adjustedWetness < 0.2) return biomeToCode('desert');
   if (signals.temperature > 20 && adjustedWetness > 0.72) return biomeToCode('rainforest');
-  if (adjustedWetness > forestWetnessThreshold(signals.temperature)) return biomeToCode('forest');
+  if (adjustedWetness > forestWetnessThreshold(signals.temperature) + forestThresholdAdjustment) return biomeToCode('forest');
   return biomeToCode('grassland');
+}
+
+function forestTemperatureThresholdAdjustment(temperatureC: number, strength: number): number {
+  return Math.max(-strength, Math.min(strength, (temperatureC - 11) / 9 * strength));
 }
 
 function diagnosticMacroF1(

@@ -226,6 +226,12 @@ This falsifies the coarse-grid counterfactual as a production predictor: its pos
 
 The evaluator now enforces that distinction without adding anything to routine CI. At seasonal strength 0.40, the coarse counterfactual scores 0.5284/0.5802/0.5961 Fast/Standard/Ultra, while native-first reclassification scores 0.5422/0.5712/0.5906 against native controls of 0.5286/0.5735/0.5864. The native result reproduces the measured late-overlay direction: Fast and Ultra improve, Standard regresses. This production-order counterfactual is now the acceptance screen; the coarse result remains useful only for explaining broad spatial mechanisms.
 
+### Temperature-conditioned forest moisture demand
+
+The next generic classifier signal used the same native-first screen. Reference grassland and forest have nearly identical generated precipitation and wetness at Standard, but reference forest is cooler (8.8 C versus 12.3 C). Instead of another global threshold, the counterfactual sharpened the existing physical interaction between temperature and forest moisture demand: cool forests tolerate slightly lower annual wetness, while warm forests require more to offset evaporative demand. A bounded 0.06 contrast improved native-first macro-F1 from 0.5286 to 0.5336 Fast, 0.5735 to 0.5846 Standard, and 0.5864 to 0.5964 Ultra.
+
+Production reproduced those predictions exactly. The accepted threshold spans about 0.44 in cold non-tundra climates, 0.48 at 8 C, 0.57 at 14 C, and 0.66 at 20 C and above. It adds only constant arithmetic inside existing classification calls, changes no hydration field, allocates nothing, and keeps final climate-to-biome consistency at 1.0. All hydration and circulation metrics remain unchanged.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -253,7 +259,7 @@ The evaluator now enforces that distinction without adding anything to routine C
 | Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
 | Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
 | Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
-| Köppen biome macro-F1 | 0.5286 | 0.5735 | 0.5864 |
+| Köppen biome macro-F1 | 0.5336 | 0.5846 | 0.5964 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
 | Core downstream time | 176.5 ms | 1,058.5 ms | 14,942.7 ms |
 
@@ -273,4 +279,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-The annual hydration/desert slice is at a measured stopping point, the ocean audit corrected its material countercurrent defect, and both late-raster and early-topology seasonal production paths have been rejected. The next slice is validation fidelity: add a native-resolution/project-then-aggregate counterfactual beside coarse explanatory biome counterfactuals, then use it to screen the next generic ecological signal before touching production. Do not apply another seasonal overlay, mutate annual wetness to hide seasonal ecology, or allocate Ultra-scale seasonal rasters. Require Fast/Standard/Ultra end-to-end improvement before acceptance. Keep Earth and expensive performance diagnostics outside routine push CI.
+The annual hydration/desert and explicit-seasonality paths are at measured stopping points, while native-first validation enabled a cross-tier temperature-conditioned forest improvement. The next slice should localize the remaining native biome confusion after this accepted threshold, then screen any generic candidate through native-first Fast/Standard/Ultra scoring before production. Do not apply another seasonal overlay, mutate annual wetness to hide seasonal ecology, or allocate Ultra-scale seasonal rasters. Keep Earth and expensive performance diagnostics outside routine push CI.
