@@ -1,12 +1,12 @@
-# Next Dev Prompt: Downstream Earth Validation
+# Next Dev Prompt: Paused Downstream Earth Validation
 
 Updated: 2026-08-27
 
-Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
+The downstream Earth validation slice is paused. If it is explicitly resumed, continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
 
 The reusable framework, Earth production adapter, fixed 128 x 64 analysis grid, and Fast/Standard/Ultra baselines are established. Final biome ownership and final-wind orographic reconciliation have been corrected from measured evidence. Stored flow vectors remain geographic north-positive; presentation converts them to south-increasing raster rows.
 
-Fixed-scale coastal transport, cool-current stability, permanent-ice liquid semantics, bounded continental convergence recycling, corrected biome coverage, and basin circulation v10 are implemented. Annual hydration and explicit seasonality are at stopping points. A native-resolution/project-then-aggregate counterfactual now guards against coarse modal-aggregation false positives. It screened the accepted bounded temperature-conditioned forest threshold, which improved macro-F1 from 0.5286/0.5735/0.5864 to 0.5336/0.5846/0.5964 Fast/Standard/Ultra while leaving hydration, circulation, consistency, memory, and performance intact. Next, localize remaining native biome confusion and screen another generic ecological signal through native-first Fast/Standard/Ultra evaluation. Protect annual wetness semantics, permanent ice, inland gains, regional ordering, latitude error, memory, and performance; do not allocate Ultra-scale seasonal arrays.
+Fixed-scale coastal transport, cool-current stability, permanent-ice liquid semantics, bounded continental convergence recycling, corrected biome coverage, and basin circulation v10 are implemented. Annual hydration and explicit seasonality are at stopping points. A native-resolution/project-then-aggregate counterfactual now guards against coarse modal-aggregation false positives. It screened the accepted bounded temperature-conditioned forest threshold, which improved macro-F1 from 0.5286/0.5735/0.5864 to 0.5336/0.5846/0.5964 Fast/Standard/Ultra while leaving hydration, circulation, consistency, memory, and performance intact. The accepted scientific checkpoint is `05cea6b2c17a4712d718c742550acace75d684ae`; `npm run verify` and all three manual Earth tiers passed. Do not continue automatically. If the slice is selected again, localize remaining native biome confusion and screen another generic ecological signal through native-first Fast/Standard/Ultra evaluation. Protect annual wetness semantics, permanent ice, inland gains, regional ordering, latitude error, memory, and performance; do not allocate Ultra-scale seasonal arrays.
 
 Continue implementation in:
 

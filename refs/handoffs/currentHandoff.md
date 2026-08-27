@@ -2,13 +2,13 @@
 
 Updated: 2026-08-27
 
-## Active downstream validation checkpoint
+## Paused downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its ocean-structure increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, eleven measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
+The downstream Earth scientific-validation slice is intentionally paused after completing its atmospheric, ocean, hydration, and biome-validation increments. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, native-first counterfactual screening, and measured generator corrections are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Basin circulation v10 retains permanent-ice liquid semantics and bounded convergence recycling and now carries a materially stronger north-equatorial countercurrent. Standard/Ultra wetness rank is 0.602/0.645. The evaluator-only seasonal pressure model improved coarse scores but both production paths were rejected; a native-resolution/project-then-aggregate counterfactual now prevents that modal-aggregation false positive. Using that screen, a bounded temperature-conditioned forest moisture threshold improved Köppen macro-F1 from 0.5286/0.5735/0.5864 to 0.5336/0.5846/0.5964 Fast/Standard/Ultra, with hydration/circulation unchanged and consistency 1.0. Next, localize remaining native biome confusion before screening another generic candidate. Do not feed answer keys into production, add named-region rules, retune annual hydration coefficients, mutate annual wetness, reapply the ice factor, or allocate Ultra-scale seasonal layers.
+Basin circulation v10 retains permanent-ice liquid semantics and bounded convergence recycling and now carries a materially stronger north-equatorial countercurrent. Standard/Ultra wetness rank is 0.602/0.645. The evaluator-only seasonal pressure model improved coarse scores but both production paths were rejected; a native-resolution/project-then-aggregate counterfactual now prevents that modal-aggregation false positive. Using that screen, a bounded temperature-conditioned forest moisture threshold improved Köppen macro-F1 from 0.5286/0.5735/0.5864 to 0.5336/0.5846/0.5964 Fast/Standard/Ultra, with hydration/circulation unchanged and consistency 1.0. Resume only when this scientific slice is explicitly selected again; the next evidence-led task would be to localize remaining native biome confusion before screening another generic candidate. Do not feed answer keys into production, add named-region rules, retune annual hydration coefficients, mutate annual wetness, reapply the ice factor, or allocate Ultra-scale seasonal layers.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
@@ -16,9 +16,19 @@ Branch: `dev`
 
 ## Pause checkpoint
 
-The maintained Ultra Earth path has reached an owner-accepted integration checkpoint and is intentionally paused before payload/performance optimization.
+The downstream Earth validation path has reached an owner-accepted scientific checkpoint and is intentionally paused.
 
-Current functional/CI checkpoint before this documentation-only update:
+Current scientific checkpoint:
+
+- commit: `05cea6b2c17a4712d718c742550acace75d684ae`
+- `npm run verify`: passed (149 test files, 553 tests, production harnesses, and bundle)
+- Fast/Standard/Ultra Earth diagnostics: passed
+- Köppen biome macro-F1: `0.5336 / 0.5846 / 0.5964`
+- hydration/circulation metrics: unchanged by the final forest-threshold correction
+- final climate-to-biome consistency: `1.0` at every tier
+- expensive Earth/reference and performance diagnostics: remain outside routine push CI
+
+The earlier maintained Ultra integration checkpoint remains relevant for source/package and owner-QA evidence:
 
 - commit: `8a8b4d259e46945e768d9e4168ecc24bd48efef8`
 - visible runtime: `0.3.81`
