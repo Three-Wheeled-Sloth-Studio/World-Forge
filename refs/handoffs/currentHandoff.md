@@ -4,11 +4,11 @@ Updated: 2026-08-27
 
 ## Active downstream validation checkpoint
 
-The downstream Earth scientific-validation slice is active and has completed its permanent-ice liquid-hydration increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, nine measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
+The downstream Earth scientific-validation slice is active and has completed its continental-convergence recycling increment. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, ten measured generator corrections, and evaluator-only physical-regime localization are implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Basin circulation v8 distinguishes atmospheric/frozen moisture from usable liquid wetness on already-generated permanent ice. It changes no precipitation, hydrology, ice extent, or non-ice climate. Wetness rank is now 0.592 Standard and 0.637 Ultra; false-dry rate is 0.563 Standard and 0.534 Ultra. The dominant remaining error is observed-wet deep interiors, with an opposing temperate dry-coast residual. Do not add net moisture, feed answer keys into production, retune latitude belts, reapply the ice factor, or solve these opposing errors with a global coefficient.
+Basin circulation v9 retains permanent-ice liquid semantics and adds bounded convergence recycling only over generated deep continental interiors outside subsiding air. Standard/Ultra wetness rank is now 0.602/0.645 and false-dry rate is 0.559/0.522; reference dry-region means remain stable. The next residual to audit is observed-dry temperate coasts. Do not feed answer keys into production, retune latitude belts, reapply the ice factor, or solve coast errors with a global coefficient.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 

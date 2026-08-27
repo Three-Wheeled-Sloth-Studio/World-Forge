@@ -1,7 +1,7 @@
 import { biomeToCode } from '@world-forge/shared';
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from './index';
-import { applyBasinAwareCirculation } from './basinCirculation';
+import { applyBasinAwareCirculation, continentalConvergenceRecycling } from './basinCirculation';
 import { buildClimatologicalPressureModel, sampleClimatologicalPressure } from './climatologicalPressure';
 
 function hashNumbers(values: ArrayLike<number>): number {
@@ -37,6 +37,8 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(first.modelVersion).toBe('climatological-pressure-v1');
     expect(first.resolution).toEqual({ width: 128, height: 64 });
     expect(first.pressurePotential).toHaveLength(128 * 64);
+    expect(first.inlandDistance).toHaveLength(128 * 64);
+    expect(Math.max(...first.inlandDistance)).toBeGreaterThan(0);
     expect(first.centers.some((center) => center.kind === 'high')).toBe(true);
     expect(first.centers.some((center) => center.kind === 'low')).toBe(true);
     expect(first.centers.some((center) => center.regime === 'subtropical')).toBe(true);
@@ -57,6 +59,14 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(subtropicalNorth.subsidence).toBeGreaterThan(subtropicalNorth.convergence);
     expect(midLatitudeNorth.stormTrack).toBeGreaterThan(subtropicalNorth.stormTrack);
   }, 20_000);
+
+  it('bounds convergence recycling to continental interiors outside subsiding air', () => {
+    expect(continentalConvergenceRecycling(2, 1, 0)).toBe(0);
+    expect(continentalConvergenceRecycling(8, 0, 0)).toBe(0);
+    expect(continentalConvergenceRecycling(8, 1, 1)).toBe(0);
+    expect(continentalConvergenceRecycling(8, 1, 0)).toBe(0.13);
+    expect(continentalConvergenceRecycling(5, 0.5, 0.2)).toBeCloseTo(0.042);
+  });
 
   it('uses the north-positive stored-vector convention for three-cell meridional flow', () => {
     const model = buildClimatologicalPressureModel(sharedPressureProject());
@@ -82,7 +92,7 @@ describe('climatological pressure and basin-scale circulation', () => {
     const project = generateProject(createDefaultConfig('large-scale-gyres-001', { width: 128, height: 64 }));
     const diagnostics = applyBasinAwareCirculation(project);
 
-    expect(diagnostics.modelVersion).toBe('basin-circulation-v8');
+    expect(diagnostics.modelVersion).toBe('basin-circulation-v9');
     expect(diagnostics.gyreCandidateCount).toBeLessThanOrEqual(10);
     expect(diagnostics.packedGyres.length).toBe(diagnostics.gyreCandidateCount);
     expect(diagnostics.packedGyres.some((gyre) => gyre.kind === 'subtropical')).toBe(true);

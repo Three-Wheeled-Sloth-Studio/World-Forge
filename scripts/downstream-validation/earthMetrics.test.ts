@@ -48,6 +48,12 @@ describe('Earth downstream metric math', () => {
       coastDistance: index % 3,
       relief: index / 10,
       absoluteLatitude: index < 4 ? 25 : 45,
+      precipitation: index / 10,
+      atmosphericMoisture: index / 8,
+      recyclableSource: index / 12,
+      hydrationLoss: (7 - index) / 20,
+      subsidence: index < 4 ? 0.8 : 0.2,
+      convergence: index < 4 ? 0.1 : 0.7,
     }));
 
     const profiles = hydrationRegimeErrorProfiles(samples);
@@ -61,5 +67,7 @@ describe('Earth downstream metric math', () => {
     expect(profiles.falseDry.value).toBeCloseTo(2 / 3);
     expect(profiles.falseDry.details.circulationPolarSamples).toBe(0);
     expect(profiles.falseDry.details.circulationPolarRate).toBe(0);
+    expect(profiles.falseDry.details.deepInteriorWetFailures).toBe(0);
+    expect(profiles.falseDry.details.deepInteriorWetSuccesses).toBe(0);
   });
 });

@@ -3,6 +3,7 @@ import {
   buildClimatologicalPressureModel,
   sampleClimatologicalCoastDistance,
   sampleClimatologicalField,
+  sampleClimatologicalInlandDistance,
   sampleClimatologicalPressure,
   type ClimatologicalPressureCenter,
   type ClimatologicalPressureModel,
@@ -56,7 +57,7 @@ export type ClimatologicalPressureDiagnostics = {
 };
 
 export type BasinCirculationDiagnostics = {
-  modelVersion: 'basin-circulation-v8';
+  modelVersion: 'basin-circulation-v9';
   marineBasinCount: number;
   largestBasinShare: number;
   coherentGyreCount: number;
@@ -116,6 +117,18 @@ export function equatorwardCurrentExposure(
 export function coldHydrationAvailability(wetness: number, temperatureC: number): number {
   const frozenFraction = clamp((5 - temperatureC) / 25, 0, 1);
   return clamp(wetness * (1 - frozenFraction * 0.75), 0, 1);
+}
+
+export function continentalConvergenceRecycling(
+  inlandDistance: number,
+  convergence: number,
+  subsidence: number,
+): number {
+  const continentality = clamp((inlandDistance - 2) / 6, 0, 1);
+  return Math.min(
+    0.13,
+    continentality * clamp(convergence, 0, 1) * (1 - clamp(subsidence, 0, 1)) * 0.21,
+  );
 }
 
 function scalarGradient(values: Float32Array, x: number, y: number, width: number, height: number): { x: number; y: number } {
@@ -248,10 +261,16 @@ function applyPressureSystems(
       const coolCurrentDrying = Math.sqrt(clamp(coolCurrentExposure, 0, 1))
         * (0.025 + pressure.subsidence * 0.075)
         * (1 - pressure.convergence * 0.65);
+      const convergenceRecycling = continentalConvergenceRecycling(
+        sampleClimatologicalInlandDistance(model, longitude, latitude),
+        pressure.convergence,
+        pressure.subsidence,
+      );
       const circulationAdjustment = pressure.convergence * 0.13
         + pressure.stormTrack * 0.1
         - pressure.subsidence * 0.15
-        + orographicAdjustment;
+        + orographicAdjustment
+        + convergenceRecycling;
       const nextPrecipitation = clamp(
         previousPrecipitation + circulationAdjustment - coolCurrentDrying * 0.4,
         0,
@@ -572,7 +591,7 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     meanCoolCurrentDrying: pressureResult.meanCoolCurrentDrying,
   };
   const diagnostics: BasinCirculationDiagnostics = {
-    modelVersion: 'basin-circulation-v8',
+    modelVersion: 'basin-circulation-v9',
     marineBasinCount: subtropicalSectors.length,
     largestBasinShare,
     coherentGyreCount: gyres.filter((gyre) => gyre.kind === 'subtropical' && gyre.territorySize >= width * height * 0.01).length,
@@ -596,7 +615,7 @@ export function applyBasinAwareCirculation(project: WorldProject): BasinCirculat
     climate.notes = [
       ...climate.notes.filter((note) => !note.startsWith('Basin-aware circulation') && !note.startsWith('Climatological pressure')),
       `Climatological pressure v1 resolved ${pressureModel.centers.length} durable center(s) on a fixed ${pressureModel.resolution.width}x${pressureModel.resolution.height} reference grid.`,
-      `Basin-aware circulation v8 generated ${gyres.filter((gyre) => gyre.kind === 'subtropical').length} basin-scale subtropical gyre(s) and ${gyres.filter((gyre) => gyre.kind === 'subpolar').length} subpolar gyre(s) without iterative raster packing.`
+      `Basin-aware circulation v9 generated ${gyres.filter((gyre) => gyre.kind === 'subtropical').length} basin-scale subtropical gyre(s) and ${gyres.filter((gyre) => gyre.kind === 'subpolar').length} subpolar gyre(s) without iterative raster packing.`
     ];
   }
   return diagnostics;

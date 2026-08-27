@@ -44,6 +44,7 @@ export type ClimatologicalPressureModel = {
   prevailingWindX: Float32Array;
   prevailingWindY: Float32Array;
   coastDistance: Float32Array;
+  inlandDistance: Float32Array;
   water: Uint8Array;
   openSouthernCircumpolarPath: boolean;
   openNorthernCircumpolarPath: boolean;
@@ -345,6 +346,38 @@ function buildCoastDistance(surface: ReferenceSurface): Float32Array {
   return distance;
 }
 
+function buildInlandDistance(surface: ReferenceSurface): Float32Array {
+  const { width, height, water } = surface;
+  const distance = new Float32Array(width * height);
+  distance.fill(width + height);
+  const queue = new Int32Array(width * height);
+  let head = 0;
+  let tail = 0;
+  for (let cell = 0; cell < water.length; cell += 1) {
+    if (!water[cell]) continue;
+    distance[cell] = 0;
+    queue[tail++] = cell;
+  }
+  while (head < tail) {
+    const cell = queue[head++];
+    const x = cell % width;
+    const y = Math.floor(cell / width);
+    const next = distance[cell] + 1;
+    const neighbors = [
+      indexOf(x - 1, y, width),
+      indexOf(x + 1, y, width),
+      y > 0 ? indexOf(x, y - 1, width) : -1,
+      y + 1 < height ? indexOf(x, y + 1, width) : -1,
+    ];
+    for (const neighbor of neighbors) {
+      if (neighbor < 0 || distance[neighbor] <= next) continue;
+      distance[neighbor] = next;
+      queue[tail++] = neighbor;
+    }
+  }
+  return distance;
+}
+
 function isCircumpolarOpen(surface: ReferenceSurface, latitudeDegrees: number): boolean {
   const row = rowForLatitude(latitudeDegrees * Math.PI / 180, surface.height);
   let openColumns = 0;
@@ -366,7 +399,7 @@ function buildFields(
   project: WorldProject,
   surface: ReferenceSurface,
   centers: ClimatologicalPressureCenter[]
-): Omit<ClimatologicalPressureModel, 'modelVersion' | 'resolution' | 'centers' | 'sectors' | 'water' | 'openSouthernCircumpolarPath' | 'openNorthernCircumpolarPath' | 'coastDistance'> {
+): Omit<ClimatologicalPressureModel, 'modelVersion' | 'resolution' | 'centers' | 'sectors' | 'water' | 'openSouthernCircumpolarPath' | 'openNorthernCircumpolarPath' | 'coastDistance' | 'inlandDistance'> {
   const { width, height, water, temperature } = surface;
   const pressurePotential = new Float32Array(width * height);
   const subsidencePotential = new Float32Array(width * height);
@@ -429,7 +462,7 @@ export function buildClimatologicalPressureModel(project: WorldProject): Climato
       topologyCells: project.primaryWorld.topology.cellCount,
       activeCells: REFERENCE_WIDTH * REFERENCE_HEIGHT,
       fullTopologyPasses: 0,
-      allocatedBufferBytes: REFERENCE_WIDTH * REFERENCE_HEIGHT * (Float32Array.BYTES_PER_ELEMENT * 7 + 1)
+      allocatedBufferBytes: REFERENCE_WIDTH * REFERENCE_HEIGHT * (Float32Array.BYTES_PER_ELEMENT * 8 + 1)
     },
     () => {
       const surface = buildReferenceSurface(project);
@@ -443,6 +476,7 @@ export function buildClimatologicalPressureModel(project: WorldProject): Climato
         sectors,
         water: surface.water,
         coastDistance: buildCoastDistance(surface),
+        inlandDistance: buildInlandDistance(surface),
         openSouthernCircumpolarPath: isCircumpolarOpen(surface, -64),
         openNorthernCircumpolarPath: isCircumpolarOpen(surface, 64),
         ...fields
@@ -485,6 +519,17 @@ export function sampleClimatologicalPressure(model: ClimatologicalPressureModel,
     windY: sampleBilinear(model.prevailingWindY, width, height, longitude, latitude),
     coastDistance: sampleBilinear(model.coastDistance, width, height, longitude, latitude)
   };
+}
+
+export function sampleClimatologicalInlandDistance(
+  model: ClimatologicalPressureModel,
+  longitude: number,
+  latitude: number,
+): number {
+  const { width, height } = model.resolution;
+  const x = Math.floor(((longitude + Math.PI) / (Math.PI * 2)) * width);
+  const y = clamp(Math.floor(((Math.PI / 2 - latitude) / Math.PI) * height), 0, height - 1);
+  return model.inlandDistance[indexOf(x, y, width)];
 }
 
 export function sampleClimatologicalCoastDistance(model: ClimatologicalPressureModel, longitude: number, latitude: number): number {

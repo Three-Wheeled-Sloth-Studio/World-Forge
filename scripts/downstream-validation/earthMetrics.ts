@@ -126,7 +126,11 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     unit: 'share',
     proves: 'Observed-proxy wet extremes that the generator fails to rank as wet can be localized by generated temperature, coast distance, relief, and circulation regime.',
     doesNotProve: 'The causal mechanism of an error, absolute precipitation, seasonality, or local hydrology.',
-    evaluate: ({ project }, observations) => hydrationRegimeDiagnostics(project, observations).falseDry,
+    evaluate: ({ project, reconciliation }, observations) => hydrationRegimeDiagnostics(
+      project,
+      observations,
+      reconciliation.circulation.pressureSystems,
+    ).falseDry,
   },
   {
     id: 'hydration.permanent-ice-wetness-error',
@@ -293,6 +297,12 @@ export type HydrationRegimeSample = {
   coastDistance: number;
   relief: number;
   absoluteLatitude: number;
+  precipitation?: number;
+  atmosphericMoisture?: number;
+  recyclableSource?: number;
+  hydrationLoss?: number;
+  subsidence?: number;
+  convergence?: number;
 };
 
 type HydrationErrorProfile = {
@@ -343,6 +353,17 @@ export function hydrationRegimeErrorProfiles(samples: readonly HydrationRegimeSa
     ['polarCoastal', (sample) => sample.absoluteLatitude >= 60 && sample.coastDistance <= 1],
     ['polarDeepInterior', (sample) => sample.absoluteLatitude >= 60 && sample.coastDistance >= 4],
   ];
+  const falseDry = buildHydrationErrorProfile(
+    samples,
+    (sample) => sample.observedWetness >= thresholds.observedWet,
+    (sample) => sample.generatedWetness < thresholds.generatedWet,
+    regimes,
+    {
+      observedThreshold: thresholds.observedWet,
+      generatedThreshold: thresholds.generatedWet,
+    },
+  );
+  addDeepInteriorMechanismDetails(falseDry, samples, thresholds.observedWet, thresholds.generatedWet);
   return {
     falseWet: buildHydrationErrorProfile(
       samples,
@@ -354,17 +375,51 @@ export function hydrationRegimeErrorProfiles(samples: readonly HydrationRegimeSa
         generatedThreshold: thresholds.generatedDry,
       },
     ),
-    falseDry: buildHydrationErrorProfile(
-      samples,
-      (sample) => sample.observedWetness >= thresholds.observedWet,
-      (sample) => sample.generatedWetness < thresholds.generatedWet,
-      regimes,
-      {
-        observedThreshold: thresholds.observedWet,
-        generatedThreshold: thresholds.generatedWet,
-      },
-    ),
+    falseDry,
   };
+}
+
+function addDeepInteriorMechanismDetails(
+  profile: HydrationErrorProfile,
+  samples: readonly HydrationRegimeSample[],
+  observedWetThreshold: number,
+  generatedWetThreshold: number,
+): void {
+  const deepWet = samples.filter((sample) => (
+    sample.coastDistance >= 4 && sample.observedWetness >= observedWetThreshold
+  ));
+  const failed = deepWet.filter((sample) => sample.generatedWetness < generatedWetThreshold);
+  const successful = deepWet.filter((sample) => sample.generatedWetness >= generatedWetThreshold);
+  profile.details.deepInteriorWetFailures = failed.length;
+  profile.details.deepInteriorWetSuccesses = successful.length;
+  const fields: readonly [string, keyof HydrationRegimeSample][] = [
+    ['Precipitation', 'precipitation'],
+    ['AtmosphericMoisture', 'atmosphericMoisture'],
+    ['RecyclableSource', 'recyclableSource'],
+    ['HydrationLoss', 'hydrationLoss'],
+    ['Subsidence', 'subsidence'],
+    ['Convergence', 'convergence'],
+    ['Relief', 'relief'],
+  ];
+  for (const [label, field] of fields) {
+    profile.details[`deepInteriorFailed${label}Mean`] = sampleFieldMean(failed, field);
+    profile.details[`deepInteriorSuccessful${label}Mean`] = sampleFieldMean(successful, field);
+  }
+}
+
+function sampleFieldMean(
+  samples: readonly HydrationRegimeSample[],
+  field: keyof HydrationRegimeSample,
+): number {
+  let total = 0;
+  let count = 0;
+  for (const sample of samples) {
+    const value = sample[field];
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    total += value;
+    count += 1;
+  }
+  return total / Math.max(1, count);
 }
 
 function buildHydrationErrorProfile(
@@ -619,11 +674,17 @@ function wetDryBalancedAccuracy(project: WorldProject, observations: EarthObserv
   };
 }
 
-function hydrationRegimeDiagnostics(project: WorldProject, observations: EarthObservations) {
+function hydrationRegimeDiagnostics(
+  project: WorldProject,
+  observations: EarthObservations,
+  pressureSystems?: EarthDownstreamOutput['reconciliation']['circulation']['pressureSystems'],
+) {
   const source = observations.resolution;
   const width = Math.min(128, source.width);
   const height = Math.min(64, source.height);
   const generatedWetness = aggregateRasterLayer(project.primaryWorld.layers.wetness, source, width, height, observations.waterMask);
+  const precipitation = aggregateRasterLayer(project.primaryWorld.layers.climatePrecipitation, source, width, height, observations.waterMask);
+  const atmosphericMoisture = aggregateRasterLayer(project.primaryWorld.layers.climateMoisture, source, width, height, observations.waterMask);
   const observedWetness = aggregateRasterLayer(observations.wetness, source, width, height, observations.waterMask);
   const temperature = aggregateRasterLayer(project.primaryWorld.layers.temperature, source, width, height, observations.waterMask);
   const elevation = aggregateRasterLayer(project.primaryWorld.layers.elevation, source, width, height, observations.waterMask);
@@ -636,6 +697,12 @@ function hydrationRegimeDiagnostics(project: WorldProject, observations: EarthOb
     for (let x = 0; x < width; x += 1) {
       const index = y * width + x;
       if (water[index]) continue;
+      const humidSurface = normalizeMetricValue(precipitation[index], 0.28, 0.7);
+      const warmth = normalizeMetricValue(temperature[index], 5, 30);
+      const recyclableSource = precipitation[index]
+        * humidSurface * humidSurface
+        * (0.35 + warmth * 0.65);
+      const assembledHydration = precipitation[index] * 0.78 + atmosphericMoisture[index] * 0.22;
       samples.push({
         generatedWetness: generatedWetness[index],
         observedWetness: observedWetness[index],
@@ -643,10 +710,20 @@ function hydrationRegimeDiagnostics(project: WorldProject, observations: EarthOb
         coastDistance: coastDistance[index],
         relief: relief[index],
         absoluteLatitude,
+        precipitation: precipitation[index],
+        atmosphericMoisture: atmosphericMoisture[index],
+        recyclableSource,
+        hydrationLoss: Math.max(0, assembledHydration - generatedWetness[index]),
+        subsidence: pressureSystems?.subsidencePotential[index],
+        convergence: pressureSystems?.convergencePotential[index],
       });
     }
   }
   return hydrationRegimeErrorProfiles(samples);
+}
+
+function normalizeMetricValue(value: number, minimum: number, maximum: number): number {
+  return Math.max(0, Math.min(1, (value - minimum) / Math.max(1e-9, maximum - minimum)));
 }
 
 function permanentIceWetnessError(

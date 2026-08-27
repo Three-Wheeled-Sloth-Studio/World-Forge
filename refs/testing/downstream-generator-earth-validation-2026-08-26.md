@@ -6,7 +6,7 @@ Branch: `dev`
 
 ## Outcome
 
-World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after nine measured production corrections.
+World Forge now has a reusable component-metric validation framework and a maintained Earth scenario for atmospheric circulation, ocean circulation, hydration, biome assignment, and downstream performance. Earth observations remain isolated from generator inputs. Fast, Standard, and Ultra diagnostics pass after ten measured production corrections.
 
 This diagnostic is intentionally outside routine push CI. Routine tests cover framework math, schema/report behavior, the production adapter seam, circulation contracts, and small deterministic generation only.
 
@@ -148,6 +148,16 @@ Compared with the preceding checkpoint, Fast wetness rank improves from 0.489 to
 
 The manual 80-case fictional preset harness was made callable from Node by safely handling absent Vite environment metadata. All 80 worlds generated without runtime errors. Its status remains globally red because the harness expects plate-advection-v3 diagnostics that its native-stage generation path does not emit; four cases also retain pre-existing tiny-biome-patch findings. Focused fictional preset, polar-climate, downstream, and determinism tests pass. The stale manual harness contract is recorded as separate validation debt rather than misreported as climate evidence.
 
+### Continental convergence recycling
+
+The next evaluator-only residual audit compared observed-wet deep-interior cells that failed the generated wet quartile with those that succeeded. At Standard, failures averaged 0.451 precipitation, 0.372 atmospheric moisture, and 0.091 recyclable-source potential; successes averaged 0.765, 0.653, and 0.429. Net hydration loss differed by only 0.015, relief by 0.005, and subsidence by 0.036. This identifies insufficient interior moisture supply as the dominant separator, not evaporation or terrain.
+
+Three counterfactuals constrained the correction. Doubling recycling diffusion reach improved Standard false-dry rate by only 0.0027. Globally easing source activation improved it by about 0.004 while wetting dry controls. Raising the cold-source floor also improved it by only 0.0027. All three were rejected. The useful generic separator was generated large-scale convergence over land that is genuinely distant from water. The fixed pressure grid therefore now carries a complementary land-to-water distance field, and final circulation adds a bounded convergence recycling term only beyond two reference cells inland, suppressed to zero by subsidence and capped at 0.13. Basin circulation advances to `basin-circulation-v9`.
+
+The accepted calibration improves Standard wetness rank from 0.5919 to 0.6017, false-dry rate from 0.5634 to 0.5594, Amazon-Sahara contrast from 0.2760 to 0.3000, and humid-region mean from 0.6045 to 0.6375 while leaving the dry-region mean at 0.3135. Ultra wetness rank improves from 0.6370 to 0.6449, balanced accuracy from 0.5442 to 0.5485, false-dry rate from 0.5337 to 0.5218, and humid-region mean from 0.6447 to 0.6752 while dry-region mean remains 0.3032. A stronger calibration improved false-dry further but exceeded the maintained latitude-contrast tolerance and was rejected.
+
+This adds one 32 KiB fixed-grid field, one queue traversal over 8,192 cells when the pressure model is built, and one nearest-cell lookup per final land cell. It adds no full-resolution solver or transport pass. Canonical Ultra core time is 14,942.7 ms versus 14,637.0 ms before the change, about 2.1% higher and within the performance envelope.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -159,22 +169,22 @@ The manual 80-case fictional preset harness was made callable from Node by safel
 | Equatorward-current dry-coast separation | 0.1808 | 0.2655 | 0.2273 |
 | Current-plus-subsidence dry-coast separation | 0.2031 | 0.2820 | 0.2437 |
 | Offshore-Ekman dry-coast separation (rejected) | -0.2278 | -0.1942 | -0.1874 |
-| Köppen wetness rank correlation | 0.5925 | 0.5919 | 0.6370 |
-| Wet/dry extreme balanced accuracy | 0.5442 | 0.5244 | 0.5442 |
-| Observed-dry false-wet rate | 0.4367 | 0.4066 | 0.3956 |
-| Observed-wet false-dry rate | 0.4937 | 0.5634 | 0.5337 |
+| Köppen wetness rank correlation | 0.5999 | 0.6017 | 0.6449 |
+| Wet/dry extreme balanced accuracy | 0.5441 | 0.5282 | 0.5485 |
+| Observed-dry false-wet rate | 0.4367 | 0.4055 | 0.3956 |
+| Observed-wet false-dry rate | 0.4909 | 0.5594 | 0.5218 |
 | Permanent-ice liquid-wetness error | 0.0150 | 0.0572 | 0.0621 |
-| Amazon-Sahara wetness contrast | 0.2032 | 0.2760 | 0.3455 |
-| Orographic precipitation delta | 0.0011 | 0.0140 | 0.0245 |
-| Coastal-interior contrast | 0.3154 | 0.3479 | 0.2901 |
-| Equatorial-subtropical contrast | 0.3979 | 0.4185 | 0.4471 |
-| Equatorial-subtropical contrast error | 0.0068 | 0.0289 | 0.0591 |
-| Representative-region rank correlation | 0.6727 | 0.8545 | 0.8909 |
-| Humid-region mean | 0.7584 | 0.6045 | 0.6447 |
-| Dry-region mean | 0.4502 | 0.3134 | 0.3030 |
-| Köppen biome macro-F1 | 0.4464 | 0.4754 | 0.4839 |
+| Amazon-Sahara wetness contrast | 0.2260 | 0.3000 | 0.3653 |
+| Orographic precipitation delta | 0.0007 | 0.0116 | 0.0222 |
+| Coastal-interior contrast | 0.3063 | 0.3381 | 0.2820 |
+| Equatorial-subtropical contrast | 0.4120 | 0.4374 | 0.4647 |
+| Equatorial-subtropical contrast error | 0.0210 | 0.0477 | 0.0767 |
+| Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
+| Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
+| Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
+| Köppen biome macro-F1 | 0.4483 | 0.4730 | 0.4829 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 171.0 ms | 955.6 ms | 14,637.0 ms |
+| Core downstream time | 176.5 ms | 1,058.5 ms | 14,942.7 ms |
 
 Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
@@ -192,4 +202,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-Hydration now has materially stronger cross-tier Earth ordering, so the next slice should begin with a fresh residual audit rather than continuing polar coefficients. The largest error direction is observed-wet false-dry behavior: 0.563 Standard and 0.534 Ultra, concentrated in deep interiors at 0.846 and 0.772. The opposing residual is observed-dry temperate coasts ranking wet at 0.920 Standard and 0.915 Ultra. Next, segment deep-interior wet failures by generated precipitation, recyclable-source humidity, temperature, relief, and circulation to determine whether the limiting mechanism is source starvation, transport reach, or post-transport loss. Preserve the new permanent-ice semantics, dry-coast gains, latitude error, regional ordering, biome F1, and performance. Do not solve the opposing coastal and interior errors with another global moisture coefficient.
+The deep-interior audit is complete and its bounded convergence-recycling correction is implemented. The largest clearly separated residual is now the opposing observed-dry temperate coast error, which remained about 0.92 Standard and Ultra before this correction and is intentionally untouched by the inland-only term. Re-audit those cells by generated current exposure, subsidence, wind orientation, relief/rain shadow, precipitation source, and coastline geometry before another production change. Preserve permanent-ice semantics, the new inland gains, latitude error, regional ordering, biome F1, and performance. Do not increase global coastal drying or reuse observed coast labels in production.
