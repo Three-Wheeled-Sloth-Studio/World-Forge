@@ -1,4 +1,4 @@
-import { biomeToCode } from '@world-forge/shared';
+import { biomeToCode, buildCubedSphereTopology } from '@world-forge/shared';
 import { describe, expect, it } from 'vitest';
 import { createDefaultConfig, generateProject } from './index';
 import { applyBasinAwareCirculation, continentalConvergenceRecycling } from './basinCirculation';
@@ -58,6 +58,29 @@ describe('climatological pressure and basin-scale circulation', () => {
     expect(equator.convergence).toBeGreaterThan(equator.subsidence);
     expect(subtropicalNorth.subsidence).toBeGreaterThan(subtropicalNorth.convergence);
     expect(midLatitudeNorth.stormTrack).toBeGreaterThan(subtropicalNorth.stormTrack);
+  }, 20_000);
+
+  it('can build the fixed pressure model directly from authoritative topology', () => {
+    const project = sharedPressureProject();
+    const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
+    const layers = project.primaryWorld.topologyLayers;
+    const first = buildClimatologicalPressureModel(project, {
+      topology,
+      water: layers.water,
+      temperature: layers.temperature,
+      elevation: layers.elevation,
+    });
+    const second = buildClimatologicalPressureModel(project, {
+      topology,
+      water: layers.water,
+      temperature: layers.temperature,
+      elevation: layers.elevation,
+    });
+
+    expect(first.resolution).toEqual({ width: 128, height: 64 });
+    expect(first.centers).toEqual(second.centers);
+    expect(hashNumbers(first.pressurePotential)).toBe(hashNumbers(second.pressurePotential));
+    expect(hashNumbers(first.prevailingWindX)).toBe(hashNumbers(second.prevailingWindX));
   }, 20_000);
 
   it('bounds convergence recycling to continental interiors outside subsiding air', () => {

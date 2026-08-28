@@ -18,6 +18,11 @@ import {
   applyBasinAwareCirculation,
   type BasinCirculationDiagnostics
 } from './basinCirculation';
+import {
+  buildClimatologicalPressureModel,
+  sampleClimatologicalPressure,
+  type ClimatologicalPressureModel,
+} from './climatologicalPressure';
 import { forestWetnessThreshold } from './biomeClimate';
 import { applyBiomeCohesion } from './biomeCohesion';
 import {
@@ -2286,11 +2291,31 @@ type PresentClimateRefresh = {
   derivedFields?: PresentClimateDerivedFields;
 };
 
+function refreshTopologyTemperature(project: DeepTimeProject, topology: CubedSphereTopology): void {
+  const world = project.primaryWorld;
+  const layers = world.topologyLayers;
+  const workflowId = (project.config as GenerationConfig & { workflowId?: GenerationWorkflowId }).workflowId;
+  const latitudeTemperatureProfile = latitudeTemperatureProfileForWorkflow(workflowId);
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    const latitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
+    const altitude = Math.max(0, layers.elevation[cell] - world.seaLevel);
+    const ocean = layers.water[cell] === 1;
+    const latitudeOffset = latitudeTemperatureProfile.id === 'legacy-linear-v1'
+      ? 10 - Math.pow(latitude, 1.3) * 38
+      : latitudeTemperatureOffsetC(latitude, latitudeTemperatureProfile);
+    const altitudeCooling = altitude * 20;
+    const oceanModeration = ocean ? 2.5 * (1 - latitude * 0.4) : 0;
+    layers.temperature[cell] = world.averageTemperatureC + latitudeOffset - altitudeCooling + oceanModeration;
+  }
+}
+
 function refreshTopologyClimate(
   project: DeepTimeProject,
   topology: CubedSphereTopology,
   captureDerivedFields = false,
-  optimizeTraversal = false
+  optimizeTraversal = false,
+  pressureModel?: ClimatologicalPressureModel,
+  pressureWindBlend = 1,
 ): PresentClimateRefresh {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
@@ -2313,19 +2338,11 @@ function refreshTopologyClimate(
   const coastalMoistureDonor = new Float32Array(count);
   const orographicLift = captureDerivedFields ? new Float32Array(count) : undefined;
   const orographicShadow = captureDerivedFields ? new Float32Array(count) : undefined;
-  const workflowId = (project.config as GenerationConfig & { workflowId?: GenerationWorkflowId }).workflowId;
-  const latitudeTemperatureProfile = latitudeTemperatureProfileForWorkflow(workflowId);
+  refreshTopologyTemperature(project, topology);
 
   for (let cell = 0; cell < count; cell += 1) {
-    const latitude = Math.abs(topology.latitudes[cell]) / (Math.PI / 2);
     const altitude = Math.max(0, layers.elevation[cell] - world.seaLevel);
     const ocean = layers.water[cell] === 1;
-    const latitudeOffset = latitudeTemperatureProfile.id === 'legacy-linear-v1'
-      ? 10 - Math.pow(latitude, 1.3) * 38
-      : latitudeTemperatureOffsetC(latitude, latitudeTemperatureProfile);
-    const altitudeCooling = altitude * 20;
-    const oceanModeration = ocean ? 2.5 * (1 - latitude * 0.4) : 0;
-    layers.temperature[cell] = world.averageTemperatureC + latitudeOffset - altitudeCooling + oceanModeration;
 
     let fetch: number;
     let orographic: { lift: number; shadow: number };
@@ -2339,7 +2356,14 @@ function refreshTopologyClimate(
       const terrainGradient = topologyGeometry
         ? topologyTerrainGradientWithGeometry(layers.elevation, topology, topologyGeometry, cell)
         : undefined;
-      const wind = presentDayWindVector(
+      const pressureWind = pressureModel
+        ? sampleClimatologicalPressure(
+            pressureModel,
+            topology.longitudes[cell],
+            topology.latitudes[cell],
+          )
+        : undefined;
+      const approximateWind = presentDayWindVector(
         topology,
         layers.elevation,
         layers.temperature,
@@ -2347,6 +2371,12 @@ function refreshTopologyClimate(
         world.averageTemperatureC,
         terrainGradient
       );
+      const blendedWindX = approximateWind.x * (1 - pressureWindBlend)
+        + (pressureWind?.windX ?? approximateWind.x) * pressureWindBlend;
+      const blendedWindY = approximateWind.y * (1 - pressureWindBlend)
+        + (pressureWind?.windY ?? approximateWind.y) * pressureWindBlend;
+      const blendedMagnitude = Math.max(0.001, Math.hypot(blendedWindX, blendedWindY));
+      const wind = { x: blendedWindX / blendedMagnitude, y: blendedWindY / blendedMagnitude };
       windX = wind.x;
       windY = wind.y;
       fetch = presentDayMoistureFetch(
@@ -3093,6 +3123,8 @@ export type PresentDayDownstreamReconciliation = {
 export type PresentDayDownstreamOptions = {
   captureClimateDerivedFields?: boolean;
   optimizeTraversal?: boolean;
+  circulationMoistureOrdering?: 'legacy' | 'pressure-wind-corrector';
+  pressureWindBlend?: number;
 };
 
 /**
@@ -3115,11 +3147,23 @@ export function reconcilePresentDayDownstream(
     return result;
   };
   const optimizeTraversal = options.optimizeTraversal ?? true;
+  let pressureModel: ClimatologicalPressureModel | undefined;
+  if (options.circulationMoistureOrdering === 'pressure-wind-corrector') {
+    timed('temperature-predictor', () => refreshTopologyTemperature(mutable, topology));
+    pressureModel = timed('pressure-model', () => buildClimatologicalPressureModel(mutable, {
+      topology,
+      water: mutable.primaryWorld.topologyLayers.water,
+      temperature: mutable.primaryWorld.topologyLayers.temperature,
+      elevation: mutable.primaryWorld.topologyLayers.elevation,
+    }));
+  }
   const climateRefresh = timed('climate', () => refreshTopologyClimate(
     mutable,
     topology,
     options.captureClimateDerivedFields ?? true,
     optimizeTraversal,
+    pressureModel,
+    options.pressureWindBlend ?? 1,
   ));
   const hydrologyResult = timed('hydrology', () => rebuildTopologyHydrology(mutable, topology, optimizeTraversal));
   mutable.primaryWorld.rivers = hydrologyResult.rivers;
@@ -3135,7 +3179,7 @@ export function reconcilePresentDayDownstream(
     { projectRaster: false },
   ));
   const projectedCellsRefreshed = timed('projection', () => projectFinalTopology(mutable, topology));
-  const circulation = timed('circulation', () => applyBasinAwareCirculation(mutable));
+  const circulation = timed('circulation', () => applyBasinAwareCirculation(mutable, pressureModel));
   mutable.primaryWorld.rivers = timed('river-projection', () => projectRiverPaths(
     mutable,
     topology,

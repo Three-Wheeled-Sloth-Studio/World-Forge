@@ -54,6 +54,10 @@ commands:
     command: npm run validate:downstream-earth:ultra
     purpose: Run the maintained 4096 x 2048 / topology 1024 Earth downstream diagnostic and compare against its manual baseline.
     use_when: An intentional maintained-Earth or scaling checkpoint requires Ultra evidence. Never add this to ordinary push CI.
+  - id: prepare-glwd-reference
+    command: uv run scripts/prepare-glwd-reference.py --source-directory=<extracted GLWD combined GeoTIFF directory> --output=.local/reference-data/glwd-v2-derived --resolution=4096x2048
+    purpose: Reduce the CC BY 4.0 GLWD v2 fractional and dominant-class GeoTIFFs into an ignored local wetland-validation bundle.
+    use_when: Preparing or refreshing the optional observed-wetland slice. Never download or prepare GLWD in ordinary push CI.
 notes:
   - Ordinary dev/release validation is one job: npm ci, npm run verify, and the production page-harness smoke. Ready pull requests and manual checkpoints also run the production rerank smoke.
   - Manual validation exposes a full_test_matrix input that restores the extended generation and geographic seed matrices.

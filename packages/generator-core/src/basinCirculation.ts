@@ -530,10 +530,12 @@ function evaluateCurrentField(
   };
 }
 
-export function applyBasinAwareCirculation(project: WorldProject): BasinCirculationDiagnostics {
+export function applyBasinAwareCirculation(
+  project: WorldProject,
+  pressureModel = buildClimatologicalPressureModel(project),
+): BasinCirculationDiagnostics {
   const world = project.primaryWorld;
   const { width, height } = world.mapModel.resolution;
-  const pressureModel = buildClimatologicalPressureModel(project);
   const gyres = traceGenerationPerformance(
     'basin-circulation.build-large-scale-gyres',
     {

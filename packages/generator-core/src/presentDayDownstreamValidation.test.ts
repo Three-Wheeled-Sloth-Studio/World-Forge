@@ -22,4 +22,23 @@ describe('present-day downstream validation seam', () => {
     expect(project.primaryWorld.layers.windX.some((value) => Math.abs(value) > 0)).toBe(true);
     expect(project.primaryWorld.layers.currentX.some((value) => Math.abs(value) > 0)).toBe(true);
   });
+
+  it('supports an opt-in pressure-wind ordering diagnostic without changing terrain or water', () => {
+    const config = createDefaultConfig('downstream-pressure-ordering-seam', { width: 64, height: 32 });
+    config.topologyResolution = 16;
+    const project = generateProjectWithNativeStages(config);
+    const topologyElevation = new Float32Array(project.primaryWorld.topologyLayers.elevation);
+    const topologyWater = new Uint8Array(project.primaryWorld.topologyLayers.water);
+
+    const result = reconcilePresentDayDownstream(project, {
+      circulationMoistureOrdering: 'pressure-wind-corrector',
+      pressureWindBlend: 0.3,
+    });
+
+    expect(project.primaryWorld.topologyLayers.elevation).toEqual(topologyElevation);
+    expect(project.primaryWorld.topologyLayers.water).toEqual(topologyWater);
+    expect(result.stageTimingsMs['temperature-predictor']).toBeGreaterThanOrEqual(0);
+    expect(result.stageTimingsMs['pressure-model']).toBeGreaterThanOrEqual(0);
+    expect(result.circulation.pressureSystems.resolution).toEqual({ width: 128, height: 64 });
+  });
 });

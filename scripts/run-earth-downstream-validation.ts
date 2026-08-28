@@ -7,8 +7,8 @@ import {
   type ValidationBaseline,
   type ValidationTier,
 } from '@world-forge/validation-core';
-import { earthDownstreamMetrics } from './downstream-validation/earthMetrics';
-import { earthDownstreamAdapter, loadEarthDownstreamScenario } from './downstream-validation/earthScenario';
+import { earthDownstreamMetrics, earthWetlandMetrics } from './downstream-validation/earthMetrics';
+import { createEarthDownstreamAdapter, loadEarthDownstreamScenario } from './downstream-validation/earthScenario';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tier = argument('--tier') as ValidationTier ?? 'fast';
@@ -26,13 +26,25 @@ const scenario = await loadEarthDownstreamScenario({
   resolution,
   topologyResolution,
   bundleDirectory: argument('--input') ?? undefined,
+  wetlandBundleDirectory: argument('--wetland-input') ?? undefined,
 });
 const baselinePath = path.resolve(
   repositoryRoot,
   argument('--baseline') ?? path.join('refs', 'testing', 'downstream-earth-baselines', `${scenario.id}.json`),
 );
 const baseline = await loadBaselineIfPresent(baselinePath);
-const report = await runValidationScenario(scenario, earthDownstreamAdapter, earthDownstreamMetrics, { baseline });
+const circulationMoistureOrdering = process.argv.includes('--pressure-wind-corrector')
+  ? 'pressure-wind-corrector'
+  : 'legacy';
+const pressureWindBlend = Number(argument('--pressure-wind-blend') ?? 1);
+if (!Number.isFinite(pressureWindBlend) || pressureWindBlend < 0 || pressureWindBlend > 1) {
+  throw new Error(`Invalid pressure wind blend: ${pressureWindBlend}`);
+}
+const adapter = createEarthDownstreamAdapter({ circulationMoistureOrdering, pressureWindBlend });
+const metrics = scenario.observations.wetlandPercent
+  ? [...earthDownstreamMetrics, ...earthWetlandMetrics]
+  : earthDownstreamMetrics;
+const report = await runValidationScenario(scenario, adapter, metrics, { baseline });
 const outputDirectory = path.resolve(
   repositoryRoot,
   argument('--output') ?? path.join('.local', 'validation', 'downstream-earth'),

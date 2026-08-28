@@ -1,4 +1,9 @@
-import { clamp, type WorldProject } from '@world-forge/shared';
+import {
+  clamp,
+  cubedSphereCellForLonLat,
+  type CubedSphereTopology,
+  type WorldProject,
+} from '@world-forge/shared';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
 
 export type PressureCenterKind = 'high' | 'low';
@@ -68,6 +73,13 @@ type ReferenceSurface = {
   elevation: Float32Array;
 };
 
+export type ClimatologicalTopologySurface = {
+  topology: CubedSphereTopology;
+  water: Uint8Array;
+  temperature: Float32Array;
+  elevation: Float32Array;
+};
+
 const REFERENCE_WIDTH = 128;
 const REFERENCE_HEIGHT = 64;
 
@@ -121,6 +133,24 @@ function buildReferenceSurface(project: WorldProject): ReferenceSurface {
       water[target] = source.water[sourceIndex];
       temperature[target] = source.temperature[sourceIndex];
       elevation[target] = source.elevation[sourceIndex];
+    }
+  }
+  return { width: REFERENCE_WIDTH, height: REFERENCE_HEIGHT, water, temperature, elevation };
+}
+
+function buildTopologyReferenceSurface(source: ClimatologicalTopologySurface): ReferenceSurface {
+  const water = new Uint8Array(REFERENCE_WIDTH * REFERENCE_HEIGHT);
+  const temperature = new Float32Array(water.length);
+  const elevation = new Float32Array(water.length);
+  for (let y = 0; y < REFERENCE_HEIGHT; y += 1) {
+    const latitude = latitudeForRow(y, REFERENCE_HEIGHT);
+    for (let x = 0; x < REFERENCE_WIDTH; x += 1) {
+      const target = y * REFERENCE_WIDTH + x;
+      const longitude = ((x + 0.5) / REFERENCE_WIDTH) * Math.PI * 2 - Math.PI;
+      const cell = cubedSphereCellForLonLat(source.topology, longitude, latitude);
+      water[target] = source.water[cell];
+      temperature[target] = source.temperature[cell];
+      elevation[target] = source.elevation[cell];
     }
   }
   return { width: REFERENCE_WIDTH, height: REFERENCE_HEIGHT, water, temperature, elevation };
@@ -455,7 +485,10 @@ function buildFields(
   return { pressurePotential, subsidencePotential, convergencePotential, stormTrackPotential, prevailingWindX, prevailingWindY };
 }
 
-export function buildClimatologicalPressureModel(project: WorldProject): ClimatologicalPressureModel {
+export function buildClimatologicalPressureModel(
+  project: WorldProject,
+  topologySurface?: ClimatologicalTopologySurface,
+): ClimatologicalPressureModel {
   return traceGenerationPerformance(
     'climatological-pressure.build-reference-model',
     {
@@ -465,7 +498,9 @@ export function buildClimatologicalPressureModel(project: WorldProject): Climato
       allocatedBufferBytes: REFERENCE_WIDTH * REFERENCE_HEIGHT * (Float32Array.BYTES_PER_ELEMENT * 8 + 1)
     },
     () => {
-      const surface = buildReferenceSurface(project);
+      const surface = topologySurface
+        ? buildTopologyReferenceSurface(topologySurface)
+        : buildReferenceSurface(project);
       const sectors = buildSectors(surface);
       const centers = buildCenters(surface, sectors);
       const fields = buildFields(project, surface, centers);

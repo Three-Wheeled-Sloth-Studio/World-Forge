@@ -248,6 +248,24 @@ Three evaluator-only candidates were screened in native production order:
 
 No production generator behavior or accepted baseline value changed in this diagnostic increment. The result narrows the next material climate task to upstream wetness placement or a deliberately selected observed-wetland reference slice; another final biome threshold is not supported.
 
+### Production-order pressure-wind diagnostic
+
+The authoritative pressure model is still built after topology climate, hydrology, biome classification, cohesion, and raster projection in normal production. An opt-in validation seam now tests the cheapest credible ordering correction without changing that default: it computes topology temperature, builds the existing `128 x 64` pressure model directly from authoritative topology, blends its winds into the single topology moisture solve, and reuses that exact model during final basin circulation. It allocates no topology-sized circulation field and adds no extra full-resolution raster projection.
+
+Fast Earth rejects the correction before Standard or Ultra execution. A full pressure-wind replacement improves Amazon/Sahara contrast and orographic alignment but reduces wetness rank correlation from `0.5998` to `0.5024` and biome macro-F1 from `0.5336` to `0.5173`. Bounded blends of `0.15 / 0.30 / 0.50` produce macro-F1 `0.5289 / 0.5368 / 0.5205`; the only positive result, `+0.0032` at `0.30`, also reduces wetness rank correlation to `0.5933` and fails the component gate. The candidate therefore did not advance to the expensive tiers and production behavior remains unchanged.
+
+This is useful negative evidence: the fixed pressure field is an appropriate large-scale circulation model but is too coarse to replace local terrain-deflected topology winds directly. Future upstream work should separate large-scale moisture-source routing from local orographic flow rather than linearly substituting one wind vector for the other. The diagnostic can be rerun manually with `--pressure-wind-corrector --pressure-wind-blend=<0..1>`; it is not part of routine CI.
+
+### Observed GLWD wetland baseline
+
+The manual evaluator now optionally loads a locally prepared GLWD v2 reference. It compares World Forge's combined lake/river/wetland biome semantics with GLWD inland aquatic and wetland classes 1-32, excludes rice-dominant class 33, project ocean, Antarctica, and nodata, and retains fractional percent coverage rather than forcing a source-wide binary label. The preparation script produces two compact `uint8` layers from the source GeoTIFFs and records hashes and provenance; neither the ~925 MB archive nor its derived layers enter routine CI.
+
+The first native results show that prevalence and placement are separate defects. Fast generates about `26.5%` wetland on comparable land and has `15.16` percentage points prevalence error. Standard generates `11.46%` against `11.10%` observed fractional coverage (`0.36` point error). Ultra generates `8.84%` against `11.08%` (`2.24` point error). High-coverage recall is `46.71% / 22.16% / 17.77%` Fast/Standard/Ultra, while observed-fraction separation is only `5.00 / 6.87 / 9.01` percentage points. This proves that Standard and Ultra have roughly plausible total budgets but weak placement, while Fast also has a severe resolution-scaling problem.
+
+The branch profile explains the weakness. At Standard, high-coverage misses have mean local relief `0.0095` versus `0.0266` on ordinary low-coverage land, but mean generated wetness is nearly identical (`0.519` versus `0.508`). Existing generated wetlands are dominated by generated lake support (`~79%` lake share), including both reference hits and false placements. A budget-preserving evaluator screen that blended flat saturated terrain with river/lake support raised Standard high-coverage recall to `30.0%` and fraction separation to `11.0` points.
+
+The corresponding fixed-threshold end-to-end classifier was rejected. It improved Fast macro-F1 from `0.5336` to `0.5443`, corrected Fast wetland prevalence error to `1.25` points, and raised separation to `9.58` points. At Standard it raised wetland recall from `22.16%` to `27.84%` and separation from `6.87` to `11.29` points, but reduced Köppen macro-F1 from `0.5846` to `0.5673`. It therefore failed the cross-tier multi-objective gate and did not advance to Ultra. All production wetland behavior was removed; the GLWD ingestion and observational diagnostics remain.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -296,3 +314,7 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 ## Next evidence-led work
 
 The resumed native-localization increment confirms that remaining grassland/forest and desert errors are dominated by upstream wetness placement. Seasonal forest stress and final-wind shadow fail the cross-tier gate; final-wind coastal exposure is consistently positive but immaterial. Do not ship any of those overlays. The next material slice should either improve upstream authoritative circulation/moisture ordering from generic evidence or deliberately add an observed wetland reference layer before changing wetland behavior. Keep Earth and expensive performance diagnostics outside routine push CI.
+
+The first direct pressure-wind ordering correction is now also rejected at Fast. Preserve its opt-in production-order seam for future diagnostics, but do not promote a pressure-wind blend. The next evidence target is an observed-wetland reference slice or a moisture-source routing model that retains local terrain winds.
+
+The observed-wetland reference slice is now implemented and has rejected the first flat-saturation classifier at Standard. Next wetland work should improve hydrology placement itself—especially low-relief saturation and lake placement—while preserving both the approximately correct Standard wetland budget and Köppen macro-F1. Do not tune a final wetland classifier alone.

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { access, readFile } from 'node:fs/promises';
 import {
   biomeNames,
   biomeToCode,
@@ -7,6 +8,7 @@ import {
 } from '@world-forge/shared';
 import {
   reconcilePresentDayDownstream,
+  type PresentDayDownstreamOptions,
   type PresentDayDownstreamReconciliation,
 } from '../../packages/generator-core/src/deepTimePipeline';
 import { importReferenceBodyRaster, REFERENCE_BODY_RASTER_SCHEMA } from '../../packages/generator-core/src/referenceBodyImport';
@@ -38,6 +40,8 @@ export type EarthObservations = {
   biomeCodes: Uint8Array;
   iceMask: Uint8Array;
   elevationMeters: Float32Array;
+  wetlandPercent?: Uint8Array;
+  wetlandDominantClass?: Uint8Array;
   provenance: {
     elevation: 'observed';
     wetness: 'derived-proxy';
@@ -58,6 +62,7 @@ export type EarthScenarioOptions = {
   resolution: Resolution;
   topologyResolution: number;
   bundleDirectory?: string;
+  wetlandBundleDirectory?: string;
 };
 
 export async function loadEarthDownstreamScenario(
@@ -76,6 +81,9 @@ export async function loadEarthDownstreamScenario(
     biomeCodes: source.biomeCodes,
     iceMask: source.iceMask,
   });
+  const wetlandBundleDirectory = options.wetlandBundleDirectory
+    ?? path.join(options.repositoryRoot, '.local', 'reference-data', 'glwd-v2-derived');
+  const wetlands = await loadReducedWetlandReference(wetlandBundleDirectory, options.resolution);
   return {
     id: `earth-downstream-${options.tier}-${options.resolution.width}x${options.resolution.height}`,
     label: `Earth downstream ${options.tier}`,
@@ -90,6 +98,7 @@ export async function loadEarthDownstreamScenario(
     observations: {
       resolution: options.resolution,
       ...reduced,
+      ...wetlands,
       provenance: {
         elevation: 'observed',
         wetness: 'derived-proxy',
@@ -101,51 +110,131 @@ export async function loadEarthDownstreamScenario(
       sourceBundle: path.relative(options.repositoryRoot, bundleDirectory).replaceAll('\\', '/'),
       topologyResolution: options.topologyResolution,
       answerKeyIsolation: true,
+      wetlandReference: wetlands
+        ? path.relative(options.repositoryRoot, wetlandBundleDirectory).replaceAll('\\', '/')
+        : undefined,
     },
   };
 }
 
-export const earthDownstreamAdapter: ValidationAdapter<EarthPhysicalInput, EarthDownstreamOutput> = {
-  id: 'world-forge-present-day-downstream',
-  version: '1',
-  run(input) {
-    const totalStarted = performance.now();
-    const importStarted = performance.now();
-    const imported = importPhysicalSurface(input);
-    const project = createSolReferenceProject(imported, {
-      appVersion: 'downstream-validation-v1',
-    }) as WorldProject;
-    resetDownstreamLayers(project, input);
-    const importMs = performance.now() - importStarted;
-    const downstreamStarted = performance.now();
-    const reconciliation = reconcilePresentDayDownstream(project, {
-      captureClimateDerivedFields: true,
-      optimizeTraversal: true,
-    });
-    const downstreamMs = performance.now() - downstreamStarted;
-    const cohesionStarted = performance.now();
-    attachBiomeDiagnostics(project);
-    const cohesionMs = performance.now() - cohesionStarted;
-    const cohesionReassignments = reconciliation.biomeCohesionReassignments;
-    return {
-      output: { project, reconciliation, cohesionReassignments },
-      performance: {
-        wallMs: performance.now() - totalStarted,
-        stages: {
-          'reference-surface-import': importMs,
-          ...Object.fromEntries(Object.entries(reconciliation.stageTimingsMs).map(([name, ms]) => [`downstream.${name}`, ms])),
-          'downstream.cohesion-diagnostics': cohesionMs,
-          'downstream-total': downstreamMs + cohesionMs,
-        },
-        counters: {
-          outputPixels: input.resolution.width * input.resolution.height,
-          topologyCells: project.primaryWorld.topology.cellCount,
-          cohesionReassignments,
-        },
-      },
-    };
-  },
+type GlwdManifest = {
+  schema: 'world-forge-glwd-reference-v1';
+  resolution: Resolution;
+  layers: {
+    wetlandPercent: { file: string; encoding: 'uint8'; nodata: 255 };
+    dominantClass: { file: string; encoding: 'uint8'; nodata: 255 };
+  };
 };
+
+async function loadReducedWetlandReference(
+  directory: string,
+  targetResolution: Resolution,
+): Promise<Pick<EarthObservations, 'wetlandPercent' | 'wetlandDominantClass'> | undefined> {
+  const manifestPath = path.join(directory, 'manifest.json');
+  try {
+    await access(manifestPath);
+  } catch {
+    return undefined;
+  }
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as GlwdManifest;
+  if (manifest.schema !== 'world-forge-glwd-reference-v1') throw new Error('Unsupported GLWD reference schema.');
+  const expectedCells = manifest.resolution.width * manifest.resolution.height;
+  const wetlandPercent = Uint8Array.from(await readFile(path.join(directory, manifest.layers.wetlandPercent.file)));
+  const wetlandDominantClass = Uint8Array.from(await readFile(path.join(directory, manifest.layers.dominantClass.file)));
+  if (wetlandPercent.length !== expectedCells || wetlandDominantClass.length !== expectedCells) {
+    throw new Error('GLWD reference layers do not match their manifest resolution.');
+  }
+  return reduceWetlandReference(manifest.resolution, targetResolution, wetlandPercent, wetlandDominantClass);
+}
+
+export function reduceWetlandReference(
+  sourceResolution: Resolution,
+  targetResolution: Resolution,
+  sourcePercent: Uint8Array,
+  sourceClass: Uint8Array,
+): Pick<EarthObservations, 'wetlandPercent' | 'wetlandDominantClass'> {
+  if (sourceResolution.width % targetResolution.width !== 0 || sourceResolution.height % targetResolution.height !== 0) {
+    throw new Error('GLWD validation resolution must divide the prepared source resolution exactly.');
+  }
+  const stepX = sourceResolution.width / targetResolution.width;
+  const stepY = sourceResolution.height / targetResolution.height;
+  const count = targetResolution.width * targetResolution.height;
+  const wetlandPercent = new Uint8Array(count).fill(255);
+  const wetlandDominantClass = new Uint8Array(count).fill(255);
+  for (let targetY = 0; targetY < targetResolution.height; targetY += 1) {
+    for (let targetX = 0; targetX < targetResolution.width; targetX += 1) {
+      let percentTotal = 0;
+      let valid = 0;
+      const classCounts = new Uint32Array(34);
+      for (let offsetY = 0; offsetY < stepY; offsetY += 1) {
+        const sourceY = targetY * stepY + offsetY;
+        for (let offsetX = 0; offsetX < stepX; offsetX += 1) {
+          const sourceIndex = sourceY * sourceResolution.width + targetX * stepX + offsetX;
+          const percent = sourcePercent[sourceIndex];
+          const dominantClass = sourceClass[sourceIndex];
+          if (percent === 255 || dominantClass === 255) continue;
+          percentTotal += percent;
+          valid += 1;
+          if (dominantClass < classCounts.length) classCounts[dominantClass] += 1;
+        }
+      }
+      if (!valid) continue;
+      const targetIndex = targetY * targetResolution.width + targetX;
+      wetlandPercent[targetIndex] = Math.round(percentTotal / valid);
+      wetlandDominantClass[targetIndex] = modalCode(classCounts);
+    }
+  }
+  return { wetlandPercent, wetlandDominantClass };
+}
+
+export function createEarthDownstreamAdapter(
+  downstreamOptions: PresentDayDownstreamOptions = {},
+): ValidationAdapter<EarthPhysicalInput, EarthDownstreamOutput> {
+  return {
+    id: 'world-forge-present-day-downstream',
+    version: '1',
+    run(input) {
+      const totalStarted = performance.now();
+      const importStarted = performance.now();
+      const imported = importPhysicalSurface(input);
+      const project = createSolReferenceProject(imported, {
+        appVersion: 'downstream-validation-v1',
+      }) as WorldProject;
+      resetDownstreamLayers(project, input);
+      const importMs = performance.now() - importStarted;
+      const downstreamStarted = performance.now();
+      const reconciliation = reconcilePresentDayDownstream(project, {
+        captureClimateDerivedFields: true,
+        optimizeTraversal: true,
+        ...downstreamOptions,
+      });
+      const downstreamMs = performance.now() - downstreamStarted;
+      const cohesionStarted = performance.now();
+      attachBiomeDiagnostics(project);
+      const cohesionMs = performance.now() - cohesionStarted;
+      const cohesionReassignments = reconciliation.biomeCohesionReassignments;
+      return {
+        output: { project, reconciliation, cohesionReassignments },
+        performance: {
+          wallMs: performance.now() - totalStarted,
+          stages: {
+            'reference-surface-import': importMs,
+            ...Object.fromEntries(Object.entries(reconciliation.stageTimingsMs).map(([name, ms]) => [`downstream.${name}`, ms])),
+            'downstream.cohesion-diagnostics': cohesionMs,
+            'downstream-total': downstreamMs + cohesionMs,
+          },
+          counters: {
+            outputPixels: input.resolution.width * input.resolution.height,
+            topologyCells: project.primaryWorld.topology.cellCount,
+            cohesionReassignments,
+          },
+        },
+      };
+    },
+  };
+}
+
+export const earthDownstreamAdapter = createEarthDownstreamAdapter();
 
 type ReferenceLayers = {
   elevationMeters: Float32Array;

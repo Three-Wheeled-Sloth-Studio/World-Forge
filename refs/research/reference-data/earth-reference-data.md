@@ -277,17 +277,26 @@ Do not describe any of these as solved by the Ultra rebuild.
 
 ### Wetland extent evidence
 
-The maintained Earth bundle does not currently include an observed wetland layer. Köppen classes are not a safe wetland answer key, so generated wetland cells remain excluded from biome macro-F1 as a reference class.
+The maintained Earth/Köppen bundle does not include an observed wetland layer. Köppen classes are not a safe wetland answer key, so generated wetland cells remain excluded from biome macro-F1 as a reference class. The separate manual downstream diagnostic can now ingest a locally prepared GLWD v2 fractional reference without adding that large source to the maintained Earth package or ordinary CI.
 
-Published global extent varies substantially with definition and source resolution. GLWD v2 reports a maximum combined waterbody/wetland extent of 18.2 million km², or 13.4% of land excluding Antarctica, while multi-source potential-wetland estimates reach about 21% and narrower inventories report materially less. These values can bound gross global coverage but cannot validate World Forge's spatial wetland placement or justify calibrating river/lake thresholds against Köppen categories.
+Published global extent varies substantially with definition and source resolution. GLWD v2 reports a maximum combined waterbody/wetland extent of 18.2 million km², or 13.4% of land excluding Antarctica, while multi-source potential-wetland estimates reach about 21% and narrower inventories report materially less.
+
+GLWD v2 is selected for the spatial slice because it supplies fractional coverage, a dominant class, a deterministic 33-class typology, WGS84 GeoTIFFs, and CC BY 4.0 terms. The source combined-class archive is about 925 MB and remains ignored under `.local/reference-data/glwd-v2`. `scripts/prepare-glwd-reference.py` creates compact `4096 x 2048` percent-coverage and dominant-class layers under `.local/reference-data/glwd-v2-derived`. Its manifest records source hashes, DOI, license, coverage (`84 N` to `56 S`, excluding Antarctica), and nodata semantics.
+
+The validation scope matches World Forge's current categorical semantics: generated lakes and river wetlands are compared with GLWD inland aquatic/wetland classes 1-32; rice-dominant class 33, project ocean cells, and GLWD nodata are excluded. Fractional prevalence error, recall for cells with at least 50% reference coverage, and reference-fraction separation validate broad spatial association and budget, not exact boundaries, seasonal inundation, subtype, or causal hydrology.
 
 Primary references:
 
 - GLWD v2: https://doi.org/10.5194/essd-17-2277-2025
+- GLWD v2 data deposit: https://doi.org/10.6084/m9.figshare.28519994
 - Multi-source wetland maps: https://doi.org/10.5194/essd-11-189-2019
 - GWL_FCS30: https://doi.org/10.5194/essd-15-265-2023
 
-If wetland behavior becomes a selected correction slice, ingest a compatible fractional observed layer and define how lakes, permanent/seasonal wetlands, floodplains, rice agriculture, coastal wetlands, and World Forge's categorical `wetland` semantics correspond before adding a spatial score.
+Preparation command after staging the combined GLWD GeoTIFFs:
+
+```text
+uv run scripts/prepare-glwd-reference.py --source-directory=.local/reference-data/glwd-v2/extracted/GLWD_v2_0_combined_classes --output=.local/reference-data/glwd-v2-derived --resolution=4096x2048
+```
 
 ## Payload follow-up
 

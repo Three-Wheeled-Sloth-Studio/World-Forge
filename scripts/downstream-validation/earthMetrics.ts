@@ -1,5 +1,6 @@
 import {
   biomeToCode,
+  buildCubedSphereTopology,
   type WorldProject,
 } from '@world-forge/shared';
 import { equatorwardCurrentExposure, forestWetnessThreshold } from '@world-forge/generator-core';
@@ -8,7 +9,7 @@ import type { EarthDownstreamOutput, EarthObservations } from './earthScenario';
 
 type EarthMetric = ValidationMetricDefinition<EarthDownstreamOutput, EarthObservations>;
 
-export const earthDownstreamMetrics: readonly EarthMetric[] = [
+const allEarthDownstreamMetrics: readonly EarthMetric[] = [
   {
     id: 'atmosphere.zonal-band-direction-agreement',
     label: 'Zonal wind-band direction agreement',
@@ -267,6 +268,36 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     evaluate: ({ project }, observations) => referenceRegionGroupMean(project, observations, ['sahara', 'arabia', 'australiaInterior']),
   },
   {
+    id: 'wetlands.glwd-native-prevalence-error',
+    label: 'GLWD native wetland prevalence error',
+    component: 'hydration',
+    evidence: 'observed',
+    unit: 'share-error',
+    proves: 'Generated topology wetland prevalence is compared with GLWD v2 fractional inland aquatic/wetland coverage on comparable non-ocean, non-rice-dominant cells.',
+    doesNotProve: 'Exact wetland boundaries, seasonal inundation, wetland type, or agreement where rice paddies dominate.',
+    evaluate: ({ project }, observations) => wetlandValidationProfile(project, observations).prevalenceError,
+  },
+  {
+    id: 'wetlands.glwd-high-coverage-recall',
+    label: 'GLWD high-coverage wetland recall',
+    component: 'hydration',
+    evidence: 'observed',
+    unit: 'share',
+    proves: 'Generated topology wetlands recover cells where GLWD v2 reports at least 50 percent inland aquatic/wetland coverage.',
+    doesNotProve: 'Precision, wetland subtype, hydrological mechanism, or transient inundation timing.',
+    evaluate: ({ project }, observations) => wetlandValidationProfile(project, observations).highCoverageRecall,
+  },
+  {
+    id: 'wetlands.glwd-fraction-separation',
+    label: 'GLWD wetland-fraction separation',
+    component: 'hydration',
+    evidence: 'observed',
+    unit: 'percentage-points',
+    proves: 'Cells assigned the generated wetland biome carry higher observed GLWD fractional coverage than other comparable land cells.',
+    doesNotProve: 'Calibrated wetland probability, causal hydrology, wetland subtype, or exact spatial boundaries.',
+    evaluate: ({ project }, observations) => wetlandValidationProfile(project, observations).fractionSeparation,
+  },
+  {
     id: 'biomes.koppen-macro-f1',
     label: 'Köppen-derived biome macro-F1',
     component: 'biomes',
@@ -305,6 +336,135 @@ export const earthDownstreamMetrics: readonly EarthMetric[] = [
     }),
   },
 ];
+
+export const earthWetlandMetrics = allEarthDownstreamMetrics.filter((metric) => metric.id.startsWith('wetlands.'));
+export const earthDownstreamMetrics = allEarthDownstreamMetrics.filter((metric) => !metric.id.startsWith('wetlands.'));
+
+type WetlandValidationProfile = {
+  prevalenceError: { value: number; details: Record<string, number> };
+  highCoverageRecall: { value: number; details: Record<string, number> };
+  fractionSeparation: { value: number; details: Record<string, number> };
+};
+
+const wetlandProfileCache = new WeakMap<WorldProject, WeakMap<EarthObservations, WetlandValidationProfile>>();
+
+function wetlandValidationProfile(project: WorldProject, observations: EarthObservations): WetlandValidationProfile {
+  const cached = wetlandProfileCache.get(project)?.get(observations);
+  if (cached) return cached;
+  const observedPercent = observations.wetlandPercent;
+  const observedClass = observations.wetlandDominantClass;
+  if (!observedPercent || !observedClass) {
+    const unavailable = { value: 0, details: { available: 0 } };
+    return { prevalenceError: unavailable, highCoverageRecall: unavailable, fractionSeparation: unavailable };
+  }
+  const world = project.primaryWorld;
+  const topology = buildCubedSphereTopology(world.topology.resolution);
+  const wetlandCode = biomeToCode('wetland');
+  let comparable = 0;
+  let generatedWetland = 0;
+  let observedFractionTotal = 0;
+  let observedHighCoverage = 0;
+  let observedHighCoverageRecovered = 0;
+  let generatedObservedTotal = 0;
+  let otherObservedTotal = 0;
+  let otherCount = 0;
+  const groupCounts = new Uint32Array(4);
+  const groupWetness = new Float64Array(4);
+  const groupRiver = new Float64Array(4);
+  const groupLake = new Float64Array(4);
+  const groupRelief = new Float64Array(4);
+  const groupTemperature = new Float64Array(4);
+  const groupObservedPercent = new Float64Array(4);
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (world.topologyLayers.water[cell]) continue;
+    const x = Math.min(
+      observations.resolution.width - 1,
+      Math.max(0, Math.floor(((topology.longitudes[cell] + Math.PI) / (Math.PI * 2)) * observations.resolution.width)),
+    );
+    const y = Math.min(
+      observations.resolution.height - 1,
+      Math.max(0, Math.floor(((Math.PI / 2 - topology.latitudes[cell]) / Math.PI) * observations.resolution.height)),
+    );
+    const reference = y * observations.resolution.width + x;
+    const percent = observedPercent[reference];
+    const dominantClass = observedClass[reference];
+    if (percent === 255 || dominantClass === 255 || dominantClass === 33) continue;
+    const generated = world.topologyLayers.biomes[cell] === wetlandCode;
+    const observed = percent >= 50;
+    const group = (observed ? 2 : 0) + (generated ? 1 : 0);
+    let localRelief = 0;
+    for (let direction = 0; direction < 4; direction += 1) {
+      const neighbor = topology.neighbors[cell * 4 + direction];
+      if (neighbor < 0) continue;
+      localRelief = Math.max(localRelief, Math.abs(
+        world.topologyLayers.elevation[neighbor] - world.topologyLayers.elevation[cell],
+      ));
+    }
+    groupCounts[group] += 1;
+    groupWetness[group] += world.topologyLayers.wetness[cell];
+    groupRiver[group] += world.topologyLayers.river[cell];
+    groupLake[group] += world.topologyLayers.lakes[cell] ? 1 : 0;
+    groupRelief[group] += localRelief;
+    groupTemperature[group] += world.topologyLayers.temperature[cell];
+    groupObservedPercent[group] += percent;
+    comparable += 1;
+    observedFractionTotal += percent / 100;
+    if (generated) {
+      generatedWetland += 1;
+      generatedObservedTotal += percent;
+    } else {
+      otherCount += 1;
+      otherObservedTotal += percent;
+    }
+    if (percent >= 50) {
+      observedHighCoverage += 1;
+      if (generated) observedHighCoverageRecovered += 1;
+    }
+  }
+  const generatedShare = generatedWetland / Math.max(1, comparable);
+  const observedShare = observedFractionTotal / Math.max(1, comparable);
+  const details = {
+    available: 1,
+    comparableTopologyCells: comparable,
+    generatedWetlandCells: generatedWetland,
+    observedHighCoverageCells: observedHighCoverage,
+    generatedWetlandShare: generatedShare,
+    observedFractionalShare: observedShare,
+    ...Object.fromEntries(
+      ['referenceLowGeneratedOther', 'referenceLowGeneratedWetland', 'referenceHighGeneratedOther', 'referenceHighGeneratedWetland']
+        .flatMap((label, group) => {
+          const count = Math.max(1, groupCounts[group]);
+          return [
+            [`${label}Count`, groupCounts[group]],
+            [`${label}MeanWetness`, groupWetness[group] / count],
+            [`${label}MeanRiver`, groupRiver[group] / count],
+            [`${label}LakeShare`, groupLake[group] / count],
+            [`${label}MeanRelief`, groupRelief[group] / count],
+            [`${label}MeanTemperatureC`, groupTemperature[group] / count],
+            [`${label}MeanObservedPercent`, groupObservedPercent[group] / count],
+          ];
+        }),
+    ),
+  };
+  const profile: WetlandValidationProfile = {
+    prevalenceError: { value: Math.abs(generatedShare - observedShare), details },
+    highCoverageRecall: {
+      value: observedHighCoverageRecovered / Math.max(1, observedHighCoverage),
+      details: { ...details, observedHighCoverageRecovered },
+    },
+    fractionSeparation: {
+      value: generatedObservedTotal / Math.max(1, generatedWetland) - otherObservedTotal / Math.max(1, otherCount),
+      details,
+    },
+  };
+  let observationCache = wetlandProfileCache.get(project);
+  if (!observationCache) {
+    observationCache = new WeakMap<EarthObservations, WetlandValidationProfile>();
+    wetlandProfileCache.set(project, observationCache);
+  }
+  observationCache.set(observations, profile);
+  return profile;
+}
 
 export function spearmanRankCorrelation(left: readonly number[], right: readonly number[]): number {
   if (left.length !== right.length || left.length < 2) return 0;
