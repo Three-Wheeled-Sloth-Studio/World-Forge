@@ -1,24 +1,24 @@
 # Current Handoff
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
-## Paused downstream validation checkpoint
+## Resumed downstream diagnostic checkpoint
 
-The downstream Earth scientific-validation slice is intentionally paused after completing its atmospheric, ocean, hydration, and biome-validation increments. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, native-first counterfactual screening, and measured generator corrections are implemented on `dev`.
+The downstream Earth scientific-validation slice resumed for native biome-confusion localization. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, native-first counterfactual screening, and measured generator corrections remain implemented on `dev`.
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Basin circulation v10 retains permanent-ice liquid semantics and bounded convergence recycling and now carries a materially stronger north-equatorial countercurrent. Standard/Ultra wetness rank is 0.602/0.645. The evaluator-only seasonal pressure model improved coarse scores but both production paths were rejected; a native-resolution/project-then-aggregate counterfactual now prevents that modal-aggregation false positive. Using that screen, a bounded temperature-conditioned forest moisture threshold improved Köppen macro-F1 from 0.5286/0.5735/0.5864 to 0.5336/0.5846/0.5964 Fast/Standard/Ultra, with hydration/circulation unchanged and consistency 1.0. Resume only when this scientific slice is explicitly selected again; the next evidence-led task would be to localize remaining native biome confusion before screening another generic candidate. Do not feed answer keys into production, add named-region rules, retune annual hydration coefficients, mutate annual wetness, reapply the ice factor, or allocate Ultra-scale seasonal layers.
+Native confusion tables now prove the remaining grassland/forest and desert errors are dominated by upstream wetness placement. A targeted seasonal forest signal and final-wind rain-shadow signal fail the cross-tier gate. Final-wind coastal exposure improves native-first macro-F1 by only `+0.0040 / +0.0004 / +0.0018`, too little to ship. Native wetland coverage varies `17.7% / 7.3% / 5.2%`, but Köppen supplies no trustworthy wetland answer key; do not tune it without a deliberately selected observed layer. No production behavior or accepted baseline changed. Next material work is upstream circulation/moisture ordering or an observed-wetland reference slice, not another final classifier coefficient.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`
 
-## Pause checkpoint
+## Accepted production baseline
 
-The downstream Earth validation path has reached an owner-accepted scientific checkpoint and is intentionally paused.
+The downstream Earth generator behavior remains at the owner-accepted scientific checkpoint below. The resumed native diagnostic has not changed production.
 
-Current scientific checkpoint:
+Accepted production checkpoint:
 
 - commit: `05cea6b2c17a4712d718c742550acace75d684ae`
 - `npm run verify`: passed (149 test files, 553 tests, production harnesses, and bundle)

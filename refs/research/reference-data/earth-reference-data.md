@@ -275,6 +275,20 @@ Still requiring separate selection and implementation:
 
 Do not describe any of these as solved by the Ultra rebuild.
 
+### Wetland extent evidence
+
+The maintained Earth bundle does not currently include an observed wetland layer. Köppen classes are not a safe wetland answer key, so generated wetland cells remain excluded from biome macro-F1 as a reference class.
+
+Published global extent varies substantially with definition and source resolution. GLWD v2 reports a maximum combined waterbody/wetland extent of 18.2 million km², or 13.4% of land excluding Antarctica, while multi-source potential-wetland estimates reach about 21% and narrower inventories report materially less. These values can bound gross global coverage but cannot validate World Forge's spatial wetland placement or justify calibrating river/lake thresholds against Köppen categories.
+
+Primary references:
+
+- GLWD v2: https://doi.org/10.5194/essd-17-2277-2025
+- Multi-source wetland maps: https://doi.org/10.5194/essd-11-189-2019
+- GWL_FCS30: https://doi.org/10.5194/essd-15-265-2023
+
+If wetland behavior becomes a selected correction slice, ingest a compatible fractional observed layer and define how lakes, permanent/seasonal wetlands, floodplains, rice agriculture, coastal wetlands, and World Forge's categorical `wetland` semantics correspond before adding a spatial score.
+
 ## Payload follow-up
 
 The Ultra result should not be downgraded to hide package cost.

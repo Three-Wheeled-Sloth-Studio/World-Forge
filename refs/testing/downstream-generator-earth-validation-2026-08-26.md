@@ -232,6 +232,22 @@ The next generic classifier signal used the same native-first screen. Reference 
 
 Production reproduced those predictions exactly. The accepted threshold spans about 0.44 in cold non-tundra climates, 0.48 at 8 C, 0.57 at 14 C, and 0.66 at 20 C and above. It adds only constant arithmetic inside existing classification calls, changes no hydration field, allocates nothing, and keeps final climate-to-biome consistency at 1.0. All hydration and circulation metrics remain unchanged.
 
+### Native biome-confusion localization
+
+The resumed diagnostic now accumulates native reference/generated confusion counts and branch means for temperature, generated/reference wetness, precipitation, moisture, river/lake support, forest-threshold margin, circulation, seasonal drying, and latitude. It retains only fixed-size `9 x 9` count and signal-total tables; it does not retain native samples or allocate resolution-sized diagnostic layers.
+
+The dominant evidence-backed errors are upstream hydration placement rather than another classifier threshold. At Standard, reference grassland generated as forest is about `+0.38` wetter than its reference proxy; reference forest generated as grassland is about `-0.22` drier. Reference desert generated as grassland or forest remains about `+0.31` to `+0.62` too wet. This explains why further final-threshold tuning trades class recall instead of correcting the climate field.
+
+Wetland is the largest native non-Köppen branch. Native wetland share is `17.7% / 7.3% / 5.2%` Fast/Standard/Ultra, while fixed-grid modal wetland cells are `316 / 6 / 1`. The generated cells have strong river and/or lake support, and published global wetland totals vary widely by definition. Because the maintained Earth bundle has no observed wetland layer, this is recorded as resolution/presentation evidence rather than treated as a scored error or used to tune production.
+
+Three evaluator-only candidates were screened in native production order:
+
+- dry-season pressure applied only to forest moisture demand improved Fast from `0.5336` to as high as `0.5431`, but reduced Standard to `0.5790-0.5820`; rejected without production or hydration changes;
+- final-wind rain-shadow drying changed macro-F1 to `0.5340 / 0.5766 / 0.5995`; rejected because Standard regressed materially;
+- final-wind coastal drying changed macro-F1 to `0.5377 / 0.5850 / 0.5982`; directionally positive at every tier, but the `+0.0040 / +0.0004 / +0.0018` gains are too small to justify a production overlay or moving authoritative circulation earlier.
+
+No production generator behavior or accepted baseline value changed in this diagnostic increment. The result narrows the next material climate task to upstream wetness placement or a deliberately selected observed-wetland reference slice; another final biome threshold is not supported.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -279,4 +295,4 @@ All three commands write JSON and Markdown reports beneath ignored `.local/valid
 
 ## Next evidence-led work
 
-This scientific-validation slice is paused at accepted commit `05cea6b2c17a4712d718c742550acace75d684ae`. The annual hydration/desert and explicit-seasonality paths are at measured stopping points, while native-first validation enabled a cross-tier temperature-conditioned forest improvement. If the slice is explicitly resumed, first localize the remaining native biome confusion after this accepted threshold, then screen any generic candidate through native-first Fast/Standard/Ultra scoring before production. Do not apply another seasonal overlay, mutate annual wetness to hide seasonal ecology, or allocate Ultra-scale seasonal rasters. Keep Earth and expensive performance diagnostics outside routine push CI.
+The resumed native-localization increment confirms that remaining grassland/forest and desert errors are dominated by upstream wetness placement. Seasonal forest stress and final-wind shadow fail the cross-tier gate; final-wind coastal exposure is consistently positive but immaterial. Do not ship any of those overlays. The next material slice should either improve upstream authoritative circulation/moisture ordering from generic evidence or deliberately add an observed wetland reference layer before changing wetland behavior. Keep Earth and expensive performance diagnostics outside routine push CI.

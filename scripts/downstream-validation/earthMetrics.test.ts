@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { coldHydrationAvailability, equatorwardCurrentExposure } from '@world-forge/generator-core';
 import {
+  createNativeBiomeConfusionAccumulator,
   hydrationRegimeErrorProfiles,
   offshoreEkmanExposure,
+  recordNativeBiomeConfusion,
+  seasonalForestThresholdAdjustment,
   spearmanRankCorrelation,
+  summarizeNativeBiomeConfusion,
   type HydrationRegimeSample,
 } from './earthMetrics';
 
@@ -75,5 +79,30 @@ describe('Earth downstream metric math', () => {
     expect(profiles.falseDry.details.circulationPolarRate).toBe(0);
     expect(profiles.falseDry.details.deepInteriorWetFailures).toBe(0);
     expect(profiles.falseDry.details.deepInteriorWetSuccesses).toBe(0);
+  });
+
+  it('localizes native biome confusion without retaining native samples', () => {
+    const accumulator = createNativeBiomeConfusionAccumulator();
+    recordNativeBiomeConfusion(accumulator, 4, 5, 12, 0.7, 0.5, 0.75, 0.68, 0.2, 0.1, 0.2, 0.3, 0.1, 40);
+    recordNativeBiomeConfusion(accumulator, 4, 5, 18, 0.8, 0.6, 0.85, 0.72, 0.4, 0.2, 0.4, 0.1, 0.2, 30);
+    recordNativeBiomeConfusion(accumulator, 4, 4, 15, 0.55, 0.55, 0.6, 0.58, 0.3, 0.15, 0.3, 0.2, 0.15, 35);
+
+    const profile = summarizeNativeBiomeConfusion(accumulator);
+
+    expect(profile.nativeReference4Generated5Samples).toBe(2);
+    expect(profile.nativeReference4Generated5MeanTemperature).toBe(15);
+    expect(profile.nativeReference4Generated5MeanGeneratedWetness).toBeCloseTo(0.75);
+    expect(profile.nativeReference4Generated5MeanReferenceWetness).toBeCloseTo(0.55);
+    expect(profile.nativeReference4Generated5MeanWetnessError).toBeCloseTo(0.2);
+    expect(profile.nativeReference4Generated5MeanRiver).toBeCloseTo(0.3);
+    expect(profile.nativeReference4Generated5MeanLakeShare).toBeCloseTo(0.15);
+    expect(profile.nativeReference4Generated4Samples).toBe(1);
+    expect(profile.nativeReference3Generated5Samples).toBe(0);
+  });
+
+  it('bounds dry-season forest moisture demand without rewarding negative stress', () => {
+    expect(seasonalForestThresholdAdjustment(-0.2, 0.4)).toBe(0);
+    expect(seasonalForestThresholdAdjustment(0.2, 0.4)).toBeCloseTo(0.08);
+    expect(seasonalForestThresholdAdjustment(1, 0.4)).toBe(0.12);
   });
 });
