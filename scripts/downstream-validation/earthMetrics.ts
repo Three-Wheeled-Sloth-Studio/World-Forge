@@ -3,7 +3,16 @@ import {
   buildCubedSphereTopology,
   type WorldProject,
 } from '@world-forge/shared';
-import { equatorwardCurrentExposure, forestWetnessThreshold } from '@world-forge/generator-core';
+import {
+  equatorwardCurrentExposure,
+  equirectangularTopologyLookup,
+  forestWetnessThreshold,
+  lakeWetnessSupportForTopology,
+  LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
+  LOWLAND_FLOODPLAIN_MAX_RELIEF,
+  LOWLAND_FLOODPLAIN_MIN_RIVER,
+  LOWLAND_FLOODPLAIN_MIN_WETNESS,
+} from '@world-forge/generator-core';
 import type { ValidationMetricDefinition } from '@world-forge/validation-core';
 import type { EarthDownstreamOutput, EarthObservations } from './earthScenario';
 
@@ -373,6 +382,8 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
   const groupRiver = new Float64Array(4);
   const groupLake = new Float64Array(4);
   const groupRelief = new Float64Array(4);
+  const groupAltitude = new Float64Array(4);
+  const groupLowlandFloodplainSupport = new Float64Array(4);
   const groupTemperature = new Float64Array(4);
   const groupObservedPercent = new Float64Array(4);
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
@@ -405,6 +416,14 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
     groupRiver[group] += world.topologyLayers.river[cell];
     groupLake[group] += world.topologyLayers.lakes[cell] ? 1 : 0;
     groupRelief[group] += localRelief;
+    const altitude = Math.max(0, world.topologyLayers.elevation[cell] - world.seaLevel);
+    groupAltitude[group] += altitude;
+    if (altitude < LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+      && localRelief < LOWLAND_FLOODPLAIN_MAX_RELIEF
+      && world.topologyLayers.river[cell] > LOWLAND_FLOODPLAIN_MIN_RIVER
+      && world.topologyLayers.wetness[cell] > LOWLAND_FLOODPLAIN_MIN_WETNESS) {
+      groupLowlandFloodplainSupport[group] += 1;
+    }
     groupTemperature[group] += world.topologyLayers.temperature[cell];
     groupObservedPercent[group] += percent;
     comparable += 1;
@@ -440,6 +459,8 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
             [`${label}MeanRiver`, groupRiver[group] / count],
             [`${label}LakeShare`, groupLake[group] / count],
             [`${label}MeanRelief`, groupRelief[group] / count],
+            [`${label}MeanAltitudeAboveSeaLevel`, groupAltitude[group] / count],
+            [`${label}LowlandFloodplainSupportShare`, groupLowlandFloodplainSupport[group] / count],
             [`${label}MeanTemperatureC`, groupTemperature[group] / count],
             [`${label}MeanObservedPercent`, groupObservedPercent[group] / count],
           ];
@@ -2396,20 +2417,46 @@ function metricWrappedDelta(value: number, center: number, period: number): numb
 
 function finalBiomeConsistency(project: WorldProject) {
   const layers = project.primaryWorld.layers;
+  const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
+  const topologyLookup = equirectangularTopologyLookup(
+    topology,
+    project.primaryWorld.mapModel.resolution.width,
+    project.primaryWorld.mapModel.resolution.height,
+  );
+  const lakeWetnessSupport = lakeWetnessSupportForTopology(topology.resolution);
+  const wetlandCode = biomeToCode('wetland');
   let supported = 0;
   let land = 0;
   for (let index = 0; index < layers.biomes.length; index += 1) {
     if (layers.water[index]) continue;
     land += 1;
-    if (layers.biomes[index] === expectedBiomeCode(project, index)) supported += 1;
+    const topologyCell = topologyLookup[index];
+    const topologyWetland = project.primaryWorld.topologyLayers.biomes[topologyCell] === wetlandCode;
+    if (layers.biomes[index] === expectedBiomeCode(
+      project,
+      index,
+      topologyWetland,
+      lakeWetnessSupport,
+    )) supported += 1;
   }
   return { value: supported / Math.max(1, land), sampleCount: land };
 }
 
-function expectedBiomeCode(project: WorldProject, index: number): number {
+function expectedBiomeCode(
+  project: WorldProject,
+  index: number,
+  topologyWetland = false,
+  lakeWetnessSupport = 0,
+): number {
   const layers = project.primaryWorld.layers;
   if (layers.ice[index]) return biomeToCode('ice_cap');
-  if (layers.lakes[index] || (layers.river[index] > 0.5 && layers.wetness[index] > 0.66)) return biomeToCode('wetland');
+  const supportedLake = Boolean(layers.lakes[index]) && topologyWetland && layers.wetness[index] >= lakeWetnessSupport;
+  const lowlandFloodplain = topologyWetland
+    && layers.elevation[index] >= project.primaryWorld.seaLevel
+    && layers.elevation[index] < project.primaryWorld.seaLevel + LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+    && layers.river[index] > LOWLAND_FLOODPLAIN_MIN_RIVER
+    && layers.wetness[index] > LOWLAND_FLOODPLAIN_MIN_WETNESS;
+  if (supportedLake || lowlandFloodplain || (layers.river[index] > 0.5 && layers.wetness[index] > 0.66)) return biomeToCode('wetland');
   if (layers.temperature[index] <= 1.5) return biomeToCode('tundra');
   if (layers.wetness[index] < 0.2) return biomeToCode('desert');
   if (layers.temperature[index] > 20 && layers.wetness[index] > 0.72) return biomeToCode('rainforest');

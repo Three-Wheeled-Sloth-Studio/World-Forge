@@ -7,6 +7,12 @@ import {
   type WorldProject
 } from '@world-forge/shared';
 import { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
+import {
+  LOWLAND_FLOODPLAIN_COHESION_SUPPORT,
+  LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
+  LOWLAND_FLOODPLAIN_MIN_RIVER,
+  LOWLAND_FLOODPLAIN_MIN_WETNESS,
+} from './wetlandHydrology';
 
 type BiomeInputs = {
   temperature: number;
@@ -46,10 +52,25 @@ function inputs(project: WorldProject, cell: number): BiomeInputs {
   };
 }
 
-function supportScore(project: WorldProject, cell: number, biome: Biome): number {
+type BiomeCohesionOptions = {
+  projectRaster?: boolean;
+  preserveLowlandFloodplains?: boolean;
+};
+
+function supportScore(project: WorldProject, cell: number, biome: Biome, options: BiomeCohesionOptions = {}): number {
   const value = inputs(project, cell);
   if (biome === 'ice_cap') return value.temperature <= -8 ? 1 : value.temperature <= -2 ? 0.65 : 0;
-  if (biome === 'wetland') return Math.min(1, (value.lake ? 0.75 : 0) + value.river * 0.5 + value.precipitation * 0.35);
+  if (biome === 'wetland') {
+    const altitude = value.elevation - project.primaryWorld.seaLevel;
+    const lowlandFloodplain = options.preserveLowlandFloodplains
+      && altitude >= 0
+      && altitude < LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+      && value.river > LOWLAND_FLOODPLAIN_MIN_RIVER
+      && value.wetness > LOWLAND_FLOODPLAIN_MIN_WETNESS;
+    return lowlandFloodplain
+      ? LOWLAND_FLOODPLAIN_COHESION_SUPPORT
+      : Math.min(1, (value.lake ? 0.75 : 0) + value.river * 0.5 + value.precipitation * 0.35);
+  }
   if (biome === 'tundra') return value.temperature <= -1 ? 1 : value.temperature <= 5 ? 0.55 : 0;
   if (biome === 'desert') return value.wetness <= 0.14 ? 1 : value.wetness <= 0.28 ? 0.55 : 0;
   if (biome === 'rainforest') return value.temperature >= 22 && value.precipitation >= 0.78 ? 1 : value.temperature >= 17 && value.precipitation >= 0.62 ? 0.6 : 0;
@@ -58,12 +79,12 @@ function supportScore(project: WorldProject, cell: number, biome: Biome): number
   return 0;
 }
 
-function stronglySupported(project: WorldProject, cell: number, biome: Biome): boolean {
-  return supportScore(project, cell, biome) >= 0.8;
+function stronglySupported(project: WorldProject, cell: number, biome: Biome, options: BiomeCohesionOptions): boolean {
+  return supportScore(project, cell, biome, options) >= 0.8;
 }
 
-function compatible(project: WorldProject, cell: number, biome: Biome): boolean {
-  return supportScore(project, cell, biome) >= 0.45;
+function compatible(project: WorldProject, cell: number, biome: Biome, options: BiomeCohesionOptions): boolean {
+  return supportScore(project, cell, biome, options) >= 0.45;
 }
 
 function minimumComponentSize(biome: Biome): number {
@@ -86,7 +107,7 @@ export function projectBiomeLayer(
   }
 }
 
-function summarizeCollapsed(project: WorldProject, cells: number[], originalBiome: Biome, replacementBiome: Biome): CollapsedBiomeDetail {
+function summarizeCollapsed(project: WorldProject, cells: number[], originalBiome: Biome, replacementBiome: Biome, options: BiomeCohesionOptions): CollapsedBiomeDetail {
   let temperature = 0;
   let wetness = 0;
   let precipitation = 0;
@@ -101,7 +122,7 @@ function summarizeCollapsed(project: WorldProject, cells: number[], originalBiom
     precipitation += value.precipitation;
     minElevation = Math.min(minElevation, value.elevation);
     maxElevation = Math.max(maxElevation, value.elevation);
-    climateSupport += supportScore(project, cell, originalBiome);
+    climateSupport += supportScore(project, cell, originalBiome, options);
     hydrologySupport += Math.min(1, (value.lake ? 0.8 : 0) + value.river * 0.6);
   }
   const count = Math.max(1, cells.length);
@@ -123,7 +144,7 @@ function summarizeCollapsed(project: WorldProject, cells: number[], originalBiom
 export function applyBiomeCohesion(
   project: WorldProject,
   topology: CubedSphereTopology = buildCubedSphereTopology(project.primaryWorld.topology.resolution),
-  options: { projectRaster?: boolean } = {},
+  options: BiomeCohesionOptions = {},
 ): number {
   const layers = project.primaryWorld.topologyLayers;
   const next = new Uint8Array(layers.biomes);
@@ -144,11 +165,11 @@ export function applyBiomeCohesion(
       counts.set(code, (counts.get(code) ?? 0) + 1);
       if (code === currentCode) same += 1;
     }
-    if (landNeighbors < 3 || same > 0 || stronglySupported(project, cell, currentBiome)) continue;
+    if (landNeighbors < 3 || same > 0 || stronglySupported(project, cell, currentBiome, options)) continue;
     const [candidateCode, support] = [...counts.entries()].sort((left, right) => right[1] - left[1])[0] ?? [-1, 0];
     if (support < 3 || candidateCode < 0 || candidateCode === currentCode) continue;
     const candidateBiome = codeToBiome(candidateCode);
-    if (!compatible(project, cell, candidateBiome)) continue;
+    if (!compatible(project, cell, candidateBiome, options)) continue;
     next[cell] = biomeToCode(candidateBiome);
     reassigned += 1;
   }
@@ -175,7 +196,7 @@ export function applyBiomeCohesion(
       }
     }
     if (component.length >= minimumComponentSize(biome)) continue;
-    const meanSupport = component.reduce((sum, cell) => sum + supportScore(project, cell, biome), 0) / Math.max(1, component.length);
+    const meanSupport = component.reduce((sum, cell) => sum + supportScore(project, cell, biome, options), 0) / Math.max(1, component.length);
     if (meanSupport >= 0.68) continue;
     const boundaryCounts = new Map<number, number>();
     for (const cell of component) {
@@ -183,14 +204,14 @@ export function applyBiomeCohesion(
         const neighbor = topology.neighbors[cell * 4 + direction];
         if (neighbor < 0 || layers.water[neighbor] || layers.biomes[neighbor] === biomeCode) continue;
         const candidateCode = layers.biomes[neighbor];
-        if (!compatible(project, cell, codeToBiome(candidateCode))) continue;
+        if (!compatible(project, cell, codeToBiome(candidateCode), options)) continue;
         boundaryCounts.set(candidateCode, (boundaryCounts.get(candidateCode) ?? 0) + 1);
       }
     }
     const [replacementCode] = [...boundaryCounts.entries()].sort((left, right) => right[1] - left[1])[0] ?? [-1, 0];
     if (replacementCode < 0) continue;
     const replacementBiome = codeToBiome(replacementCode);
-    collapsed.push(summarizeCollapsed(project, component, biome, replacementBiome));
+    collapsed.push(summarizeCollapsed(project, component, biome, replacementBiome, options));
     for (const cell of component) layers.biomes[cell] = replacementCode;
     reassigned += component.length;
   }

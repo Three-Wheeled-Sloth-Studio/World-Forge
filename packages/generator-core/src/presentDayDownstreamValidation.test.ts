@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { biomeToCode } from '@world-forge/shared';
 import { createDefaultConfig } from './generatorCoreBase';
 import { reconcilePresentDayDownstream } from './deepTimePipeline';
 import { generateProjectWithNativeStages } from './nativeStagePipeline';
@@ -57,5 +58,23 @@ describe('present-day downstream validation seam', () => {
     expect(normalized.hydrology.acceptedRiverCount).toBe(legacy.hydrology.acceptedRiverCount);
     expect(normalizedProject.primaryWorld.rivers).toEqual(legacyProject.primaryWorld.rivers);
     expect(normalized.hydrology.topologyRiverCellShare).toBeLessThan(legacy.hydrology.topologyRiverCellShare);
+  });
+
+  it('carries lowland floodplain decisions through final raster circulation', () => {
+    const config = createDefaultConfig('downstream-lowland-floodplain', { width: 64, height: 32 });
+    config.topologyResolution = 16;
+    const floodplainProject = generateProjectWithNativeStages(config);
+    const legacyProject = generateProjectWithNativeStages(config);
+
+    const floodplain = reconcilePresentDayDownstream(floodplainProject);
+    reconcilePresentDayDownstream(legacyProject, { wetlandHydrologyModel: 'legacy' });
+    const wetland = biomeToCode('wetland');
+    const floodplainWetlands = floodplainProject.primaryWorld.layers.biomes
+      .reduce((count, biome) => count + (biome === wetland ? 1 : 0), 0);
+    const legacyWetlands = legacyProject.primaryWorld.layers.biomes
+      .reduce((count, biome) => count + (biome === wetland ? 1 : 0), 0);
+
+    expect(floodplainWetlands).not.toBe(legacyWetlands);
+    expect(floodplain.consistency.biomeCorrections).toBeGreaterThanOrEqual(0);
   });
 });

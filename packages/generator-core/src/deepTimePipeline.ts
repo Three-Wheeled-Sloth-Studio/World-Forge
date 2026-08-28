@@ -53,6 +53,14 @@ import {
   stabilizeTopologyField,
   transportMaskedTopologySignal,
 } from './topologyScaleField';
+import {
+  lakeWetnessSupportForTopology,
+  LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
+  LOWLAND_FLOODPLAIN_MAX_RELIEF,
+  LOWLAND_FLOODPLAIN_MIN_RIVER,
+  LOWLAND_FLOODPLAIN_MIN_WETNESS,
+  type WetlandHydrologyModel,
+} from './wetlandHydrology';
 import { coherentSphericalNoise } from './graph/nodes/crust-fields-node';
 import { buildRigidPlateRotations, repairVacatedFragmentCorridors } from './fragmentPlacementRepair';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
@@ -2985,7 +2993,11 @@ function topologyLocalRelief(layer: Float32Array, topology: CubedSphereTopology,
   return max - min;
 }
 
-function classifyTopologyBiomes(project: DeepTimeProject): number {
+function classifyTopologyBiomes(
+  project: DeepTimeProject,
+  topology: CubedSphereTopology,
+  wetlandHydrologyModel: WetlandHydrologyModel = 'lowland-floodplain-v1',
+): number {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
   const ocean = biomeToCode('ocean');
@@ -2996,14 +3008,36 @@ function classifyTopologyBiomes(project: DeepTimeProject): number {
   const forest = biomeToCode('forest');
   const rainforest = biomeToCode('rainforest');
   const wetland = biomeToCode('wetland');
+  const coarseLakeWetnessSupport = lakeWetnessSupportForTopology(topology.resolution);
   let corrections = 0;
 
   for (let cell = 0; cell < layers.biomes.length; cell += 1) {
     let next = grassland;
     const altitude = layers.elevation[cell] - world.seaLevel;
+    const legacyRiverWetland = layers.river[cell] > 0.5 && layers.wetness[cell] > 0.66;
+    let hydrologyWetland = layers.lakes[cell] || legacyRiverWetland;
+    if (wetlandHydrologyModel === 'lowland-floodplain-v1') {
+      const supportedLake = Boolean(layers.lakes[cell]) && layers.wetness[cell] >= coarseLakeWetnessSupport;
+      let lowlandFloodplain = false;
+      if (altitude >= 0
+        && altitude < LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+        && layers.river[cell] > LOWLAND_FLOODPLAIN_MIN_RIVER
+        && layers.wetness[cell] > LOWLAND_FLOODPLAIN_MIN_WETNESS) {
+        let localRelief = 0;
+        for (let direction = 0; direction < 4; direction += 1) {
+          const neighbor = topology.neighbors[cell * 4 + direction];
+          if (neighbor >= 0) localRelief = Math.max(
+            localRelief,
+            Math.abs(layers.elevation[neighbor] - layers.elevation[cell]),
+          );
+        }
+        lowlandFloodplain = localRelief < LOWLAND_FLOODPLAIN_MAX_RELIEF;
+      }
+      hydrologyWetland = supportedLake || legacyRiverWetland || lowlandFloodplain;
+    }
     if (layers.water[cell]) next = ocean;
     else if (layers.ice[cell]) next = iceCap;
-    else if (layers.lakes[cell] || (layers.river[cell] > 0.5 && layers.wetness[cell] > 0.66)) next = wetland;
+    else if (hydrologyWetland) next = wetland;
     else if (layers.temperature[cell] <= 1.5) next = tundra;
     else if (layers.wetness[cell] < 0.2) next = desert;
     else if (layers.temperature[cell] > 20 && layers.wetness[cell] > 0.72) next = rainforest;
@@ -3136,6 +3170,7 @@ export type PresentDayDownstreamOptions = {
   circulationMoistureOrdering?: 'legacy' | 'pressure-wind-corrector';
   pressureWindBlend?: number;
   normalizeRiverIntensityByTopologyScale?: boolean;
+  wetlandHydrologyModel?: WetlandHydrologyModel;
 };
 
 /**
@@ -3158,6 +3193,7 @@ export function reconcilePresentDayDownstream(
     return result;
   };
   const optimizeTraversal = options.optimizeTraversal ?? true;
+  const wetlandHydrologyModel = options.wetlandHydrologyModel ?? 'lowland-floodplain-v1';
   let pressureModel: ClimatologicalPressureModel | undefined;
   if (options.circulationMoistureOrdering === 'pressure-wind-corrector') {
     timed('temperature-predictor', () => refreshTopologyTemperature(mutable, topology));
@@ -3188,14 +3224,23 @@ export function reconcilePresentDayDownstream(
     topology,
     climateRefresh.derivedFields,
   ));
-  const topologyBiomeCorrections = timed('biomes', () => classifyTopologyBiomes(mutable));
+  const topologyBiomeCorrections = timed('biomes', () => classifyTopologyBiomes(
+    mutable,
+    topology,
+    wetlandHydrologyModel,
+  ));
   const biomeCohesionReassignments = timed('biome-cohesion', () => applyBiomeCohesion(
     mutable,
     topology,
-    { projectRaster: false },
+    {
+      projectRaster: false,
+      preserveLowlandFloodplains: wetlandHydrologyModel === 'lowland-floodplain-v1',
+    },
   ));
   const projectedCellsRefreshed = timed('projection', () => projectFinalTopology(mutable, topology));
-  const circulation = timed('circulation', () => applyBasinAwareCirculation(mutable, pressureModel));
+  const circulation = timed('circulation', () => applyBasinAwareCirculation(mutable, pressureModel, {
+    wetlandHydrologyModel,
+  }));
   mutable.primaryWorld.rivers = timed('river-projection', () => projectRiverPaths(
     mutable,
     topology,
@@ -3379,7 +3424,7 @@ export function applyDeepTimeFoundation(
       fullTopologyPasses: 1,
       allocatedBufferBytes: 0
     },
-    () => classifyTopologyBiomes(mutable)
+    () => classifyTopologyBiomes(mutable, topology)
   );
   const biomeCohesionReassignments = traceGenerationPerformance(
     'deep-time.final.biome-cohesion',
@@ -3389,7 +3434,10 @@ export function applyDeepTimeFoundation(
       fullTopologyPasses: 2,
       allocatedBufferBytes: topology.cellCount
     },
-    () => applyBiomeCohesion(mutable, topology, { projectRaster: false })
+    () => applyBiomeCohesion(mutable, topology, {
+      projectRaster: false,
+      preserveLowlandFloodplains: true,
+    })
   );
   const projectedCellsRefreshed = traceGenerationPerformance(
     'topology-to-raster-final-projection',

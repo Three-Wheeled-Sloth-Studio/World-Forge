@@ -11,6 +11,13 @@ import {
 } from './climatologicalPressure';
 import { traceGenerationPerformance } from './generationPerformanceTrace';
 import { forestWetnessThreshold } from './biomeClimate';
+import {
+  lakeWetnessSupportForTopology,
+  LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
+  LOWLAND_FLOODPLAIN_MIN_RIVER,
+  LOWLAND_FLOODPLAIN_MIN_WETNESS,
+  type WetlandHydrologyModel,
+} from './wetlandHydrology';
 
 const BIOME_CODE = {
   ocean: biomeToCode('ocean'),
@@ -179,12 +186,28 @@ function buildLargeScaleGyres(
     .slice(0, 10);
 }
 
-function classifyAdjustedBiome(project: WorldProject, index: number): number {
+function classifyAdjustedBiome(
+  project: WorldProject,
+  index: number,
+  topologyWetland: boolean,
+  wetlandHydrologyModel: WetlandHydrologyModel,
+  lakeWetnessSupport: number,
+): number {
   const world = project.primaryWorld;
   const layers = world.layers;
   if (layers.water[index]) return BIOME_CODE.ocean;
   if (layers.ice[index]) return BIOME_CODE.iceCap;
-  if (layers.lakes[index] || (layers.river[index] > 0.5 && layers.wetness[index] > 0.66)) return BIOME_CODE.wetland;
+  const legacyRiverWetland = layers.river[index] > 0.5 && layers.wetness[index] > 0.66;
+  const supportedLake = wetlandHydrologyModel === 'legacy'
+    ? Boolean(layers.lakes[index])
+    : topologyWetland && Boolean(layers.lakes[index]) && layers.wetness[index] >= lakeWetnessSupport;
+  const topologySupportedFloodplain = wetlandHydrologyModel === 'lowland-floodplain-v1'
+    && topologyWetland
+    && layers.elevation[index] >= world.seaLevel
+    && layers.elevation[index] < world.seaLevel + LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+    && layers.river[index] > LOWLAND_FLOODPLAIN_MIN_RIVER
+    && layers.wetness[index] > LOWLAND_FLOODPLAIN_MIN_WETNESS;
+  if (supportedLake || legacyRiverWetland || topologySupportedFloodplain) return BIOME_CODE.wetland;
   if (layers.biomes[index] === BIOME_CODE.mountain) return BIOME_CODE.mountain;
   if (layers.temperature[index] <= 1.5) return BIOME_CODE.tundra;
   if (layers.wetness[index] < 0.2) return BIOME_CODE.desert;
@@ -197,6 +220,7 @@ function applyPressureSystems(
   project: WorldProject,
   model: ClimatologicalPressureModel,
   coolCurrentPotential: Float32Array,
+  wetlandHydrologyModel: WetlandHydrologyModel,
 ): {
   windTerrainDeflectionIndex: number;
   stagnantWindShare: number;
@@ -218,6 +242,7 @@ function applyPressureSystems(
   let orographicAdjustmentTotal = 0;
   let coolCurrentAdjustedCells = 0;
   let coolCurrentDryingTotal = 0;
+  const lakeWetnessSupport = lakeWetnessSupportForTopology(world.topology.resolution);
 
   for (let y = 0; y < height; y += 1) {
     const latitude = latitudeForY(y, height);
@@ -246,6 +271,7 @@ function applyPressureSystems(
       if (layers.water[cell]) continue;
       const previousPrecipitation = layers.climatePrecipitation[cell];
       const previousWetness = layers.wetness[cell];
+      const topologyWetland = layers.biomes[cell] === BIOME_CODE.wetland;
       const windSlopeAlignment = slope > 1e-7
         ? clamp((terrain.x * wind.x - terrain.y * wind.y) / Math.max(1e-7, slope * windSpeed), -1, 1)
         : 0;
@@ -294,7 +320,13 @@ function applyPressureSystems(
       layers.climateMoisture[cell] = nextMoisture;
       layers.wetness[cell] = nextWetness;
       layers.climateWetnessDelta[cell] += nextWetness - previousWetness;
-      layers.biomes[cell] = classifyAdjustedBiome(project, cell);
+      layers.biomes[cell] = classifyAdjustedBiome(
+        project,
+        cell,
+        topologyWetland,
+        wetlandHydrologyModel,
+        lakeWetnessSupport,
+      );
       adjustedCells += 1;
       adjustmentTotal += nextPrecipitation - previousPrecipitation;
       if (Math.abs(orographicAdjustment) > 1e-6) {
@@ -533,6 +565,7 @@ function evaluateCurrentField(
 export function applyBasinAwareCirculation(
   project: WorldProject,
   pressureModel = buildClimatologicalPressureModel(project),
+  options: { wetlandHydrologyModel?: WetlandHydrologyModel } = {},
 ): BasinCirculationDiagnostics {
   const world = project.primaryWorld;
   const { width, height } = world.mapModel.resolution;
@@ -567,7 +600,12 @@ export function applyBasinAwareCirculation(
       fullTopologyPasses: 1,
       allocatedBufferBytes: 0
     },
-    () => applyPressureSystems(project, pressureModel, currentResult.coolCurrentPotential)
+    () => applyPressureSystems(
+      project,
+      pressureModel,
+      currentResult.coolCurrentPotential,
+      options.wetlandHydrologyModel ?? 'lowland-floodplain-v1',
+    )
   );
   const subtropicalSectors = pressureModel.sectors.filter((sector) => sector.regime === 'subtropical');
   const totalSectorSpan = subtropicalSectors.reduce((sum, sector) => sum + sector.spanColumns, 0);

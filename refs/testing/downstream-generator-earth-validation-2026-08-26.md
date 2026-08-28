@@ -276,6 +276,18 @@ Fast Earth wetland prevalence error falls from `15.16` to `6.18` percentage poin
 
 An 80-case short preset matrix provides the generic-world guard. The correction removes the prior aggregate `Earthlike desert/wetland overlap is high` finding and adds no finding; the two remaining findings are unchanged plate-advection coverage/continuity issues. Earthlike median wetland share falls from `19%` to `12%` and desert/wetland overlap from `5%` to `3%`. Named-river source counts, accepted counts, paths, capacity use, and distribution are preserved across every preset because network construction remains on raw drainage. The matrix's case-level failures predate this slice and are driven by the recorded plate diagnostic gaps.
 
+### Lowland floodplain connectivity
+
+The next diagnostic decomposed the Standard GLWD miss by geomorphic and drainage context. High-coverage misses average only `0.0224` normalized altitude above sea level versus `0.0811` on ordinary low-coverage land, local relief `0.0095` versus `0.0266`, and log accumulation `1.232` versus `0.904`. Their mean generated wetness is nearly unchanged (`0.519` versus `0.508`). This establishes that the missing signal is lowland drainage connectivity, not another global moisture threshold. The evaluator now records mean altitude and lowland-floodplain support for each observed/generated wetland confusion branch.
+
+Simple flat/river threshold replacement was rejected first: it changed `7-10%` of comparable Standard land but improved high-coverage recall by only about `1.5` points with no material separation gain. The accepted production-order model instead retains the legacy strong-river branch, requires coarse sink-lakes to carry scale-adjusted moisture support, and adds wetlands only where moderate drainage, sufficient wetness, low altitude, and low local relief coincide. The lake support floor is `0.50 / 0.35 / 0.00` at Fast/Standard/Ultra topology resolution; coarse cells need stronger evidence because each depression represents a broader area. The final circulation pass carries the topology-scale relief decision into the delivered raster rather than silently replacing it with the old classifier.
+
+Against GLWD, Fast prevalence error is effectively stable (`6.18` to `6.13` points), recall changes from `38.06%` to `37.72%`, and separation improves from `6.35` to `7.34` points. Standard prevalence error improves from `0.36` to `0.15` points, recall from `22.16%` to `24.34%`, and separation from `6.87` to `8.78` points. Ultra prevalence error improves from `2.12` to `1.62` points, recall from `18.03%` to `19.85%`, and separation from `9.03` to `9.76` points.
+
+The tradeoff is visible and bounded. Köppen-derived macro-F1 changes from `0.5607 / 0.5846 / 0.5964` to `0.5557 / 0.5740 / 0.5955`; the derived Köppen mapping has no wetland reference class, so assigning observed wetland evidence necessarily takes some cells from its grassland/forest categories. The Standard reduction (`0.0106`) remains within the maintained `0.02` regression tolerance and is substantially smaller than the rejected flat-saturation classifier's `0.0173` loss. Final climate/classification consistency remains `1.0` after teaching the validator about the topology-supported floodplain decision.
+
+The final 80-case preset matrix adds no aggregate finding and leaves named-river counts unchanged for every preset. Median wetland share moves Earthlike `12% -> 13%`, Habitable `11% -> 12%`, Waterworld `12% -> 15%`, Archipelago remains `12%`, Desert `3% -> 2%`, Pangea remains about `9%`, and Random `9% -> 8%`. Unsupported-wetland share remains zero and desert/wetland overlap is unchanged. Expensive Earth and preset evidence remains manual and outside routine CI. The legacy comparator is available with `--legacy-wetland-hydrology`.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -303,9 +315,9 @@ An 80-case short preset matrix provides the generic-world guard. The correction 
 | Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
 | Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
 | Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
-| Köppen biome macro-F1 | 0.5607 | 0.5846 | 0.5964 |
+| Köppen biome macro-F1 | 0.5557 | 0.5740 | 0.5955 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 189.4 ms | 987.8 ms | 15,892.0 ms |
+| Core downstream time | 168.0 ms | 998.0 ms | 15,471.6 ms |
 
 Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
@@ -327,4 +339,4 @@ The resumed native-localization increment confirms that remaining grassland/fore
 
 The first direct pressure-wind ordering correction is now also rejected at Fast. Preserve its opt-in production-order seam for future diagnostics, but do not promote a pressure-wind blend. The next evidence target is an observed-wetland reference slice or a moisture-source routing model that retains local terrain winds.
 
-The observed-wetland reference slice has now accepted a resolution-scaling correction for delivered river intensity while preserving the named drainage network. Fast's large wetland-budget error is materially reduced, but high-coverage recall remains weak and Standard/Ultra placement is still poor. Next wetland work should target low-relief basin/lake placement or floodplain connectivity from drainage evidence while preserving the now-stable cross-resolution budget, named rivers, and Köppen macro-F1. Do not tune a final wetland classifier alone.
+The observed-wetland slice now includes both resolution-normalized river intensity and an accepted lowland-floodplain connectivity model. Cross-resolution budgets and observed-fraction separation improve while named rivers remain stable, but absolute high-coverage recall remains weak. The next material wetland task should distinguish true standing-water lakes, riverine floodplains, and saturated non-river wetlands in the generator's semantic layers, or add regional attribution that can identify which physical branch is still missing. Do not add another undifferentiated final wetland threshold.

@@ -20,6 +20,8 @@ export {
   equatorwardCurrentExposure,
 } from './basinCirculation';
 export { forestWetnessThreshold } from './biomeClimate';
+export { equirectangularTopologyLookup } from './equirectangularTopologyLookup';
+export * from './wetlandHydrology';
 
 export const CURRENT_GENERATOR_VERSION = '0.1.2-mvp' as const;
 
