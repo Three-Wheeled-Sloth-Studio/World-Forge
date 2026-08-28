@@ -41,4 +41,21 @@ describe('present-day downstream validation seam', () => {
     expect(result.stageTimingsMs['pressure-model']).toBeGreaterThanOrEqual(0);
     expect(result.circulation.pressureSystems.resolution).toEqual({ width: 128, height: 64 });
   });
+
+  it('normalizes delivered river intensity without changing the constructed river network', () => {
+    const config = createDefaultConfig('downstream-river-intensity-scale', { width: 64, height: 32 });
+    config.topologyResolution = 16;
+    const normalizedProject = generateProjectWithNativeStages(config);
+    const legacyProject = generateProjectWithNativeStages(config);
+
+    const normalized = reconcilePresentDayDownstream(normalizedProject);
+    const legacy = reconcilePresentDayDownstream(legacyProject, {
+      normalizeRiverIntensityByTopologyScale: false,
+    });
+
+    expect(normalized.hydrology.sourceCandidateCount).toBe(legacy.hydrology.sourceCandidateCount);
+    expect(normalized.hydrology.acceptedRiverCount).toBe(legacy.hydrology.acceptedRiverCount);
+    expect(normalizedProject.primaryWorld.rivers).toEqual(legacyProject.primaryWorld.rivers);
+    expect(normalized.hydrology.topologyRiverCellShare).toBeLessThan(legacy.hydrology.topologyRiverCellShare);
+  });
 });

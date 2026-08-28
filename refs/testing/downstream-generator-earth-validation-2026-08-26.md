@@ -266,6 +266,16 @@ The branch profile explains the weakness. At Standard, high-coverage misses have
 
 The corresponding fixed-threshold end-to-end classifier was rejected. It improved Fast macro-F1 from `0.5336` to `0.5443`, corrected Fast wetland prevalence error to `1.25` points, and raised separation to `9.58` points. At Standard it raised wetland recall from `22.16%` to `27.84%` and separation from `6.87` to `11.29` points, but reduced Köppen macro-F1 from `0.5846` to `0.5673`. It therefore failed the cross-tier multi-objective gate and did not advance to Ultra. All production wetland behavior was removed; the GLWD ingestion and observational diagnostics remain.
 
+### Resolution-normalized river intensity
+
+The next hydrology audit isolated the Fast wetland excess to river intensity rather than lake count. Fast and Standard lake shares are similar (about `8.7%` and `9.3%`), but the old global-maximum normalization made the wetland river cutoff equivalent to only about `2.05` accumulation units at Fast versus `7.22` at Standard. As topology resolution increased, maximum accumulation grew much faster than local drainage, so the same physical-looking channel received a different normalized intensity.
+
+Production now applies a bounded cube-root topology correction to the delivered river-intensity field, anchored at topology resolution `256`. This is deliberately downstream of the raw drainage semantics: source qualification, route tracing, and named-river selection continue to use unscaled accumulation. The correction is folded into the existing hydrology loop, adds no traversal or resolution-sized allocation, and can be disabled in the manual Earth runner with `--legacy-river-intensity` for comparison.
+
+Fast Earth wetland prevalence error falls from `15.16` to `6.18` percentage points, GLWD fraction separation rises from `5.00` to `6.35` points, and Köppen macro-F1 rises from `0.5336` to `0.5607`. High-coverage recall falls from `46.71%` to `38.06%`; this is an explicit placement tradeoff, not a claim that wetland localization is solved. Standard is unchanged by construction: `0.36` point prevalence error, `22.16%` recall, `6.87` point separation, and `0.5846` macro-F1. Ultra improves slightly to `2.12` points prevalence error, `18.03%` recall, and `9.03` points separation while retaining `0.5964` macro-F1.
+
+An 80-case short preset matrix provides the generic-world guard. The correction removes the prior aggregate `Earthlike desert/wetland overlap is high` finding and adds no finding; the two remaining findings are unchanged plate-advection coverage/continuity issues. Earthlike median wetland share falls from `19%` to `12%` and desert/wetland overlap from `5%` to `3%`. Named-river source counts, accepted counts, paths, capacity use, and distribution are preserved across every preset because network construction remains on raw drainage. The matrix's case-level failures predate this slice and are driven by the recorded plate diagnostic gaps.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
@@ -293,9 +303,9 @@ The corresponding fixed-threshold end-to-end classifier was rejected. It improve
 | Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
 | Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
 | Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
-| Köppen biome macro-F1 | 0.5336 | 0.5846 | 0.5964 |
+| Köppen biome macro-F1 | 0.5607 | 0.5846 | 0.5964 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 176.5 ms | 1,058.5 ms | 14,942.7 ms |
+| Core downstream time | 189.4 ms | 987.8 ms | 15,892.0 ms |
 
 Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 
@@ -317,4 +327,4 @@ The resumed native-localization increment confirms that remaining grassland/fore
 
 The first direct pressure-wind ordering correction is now also rejected at Fast. Preserve its opt-in production-order seam for future diagnostics, but do not promote a pressure-wind blend. The next evidence target is an observed-wetland reference slice or a moisture-source routing model that retains local terrain winds.
 
-The observed-wetland reference slice is now implemented and has rejected the first flat-saturation classifier at Standard. Next wetland work should improve hydrology placement itself—especially low-relief saturation and lake placement—while preserving both the approximately correct Standard wetland budget and Köppen macro-F1. Do not tune a final wetland classifier alone.
+The observed-wetland reference slice has now accepted a resolution-scaling correction for delivered river intensity while preserving the named drainage network. Fast's large wetland-budget error is materially reduced, but high-coverage recall remains weak and Standard/Ultra placement is still poor. Next wetland work should target low-relief basin/lake placement or floodplain connectivity from drainage evidence while preserving the now-stable cross-resolution budget, named rivers, and Köppen macro-F1. Do not tune a final wetland classifier alone.

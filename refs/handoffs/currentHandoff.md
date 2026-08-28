@@ -8,7 +8,7 @@ The downstream Earth scientific-validation slice resumed for native biome-confus
 
 See `refs/testing/downstream-generator-earth-validation-2026-08-26.md` for architecture, evidence limits, metric values, timings, and next work. Fast, Standard, and Ultra diagnostics are intentional manual commands and must remain outside ordinary push CI.
 
-Native confusion tables prove the remaining grassland/forest and desert errors are dominated by upstream wetness placement. A targeted seasonal forest signal, final-wind rain-shadow, and direct pressure-wind ordering correction all fail the cross-tier gate; the ordering candidate is rejected at Fast before expensive tiers. Final-wind coastal exposure improves native-first macro-F1 by only `+0.0040 / +0.0004 / +0.0018`, too little to ship. A local-only GLWD v2 ingestion path and three observed wetland diagnostics are now implemented. Generated versus observed fractional wetland prevalence is `26.5% vs ~11.3%` Fast, `11.46% vs 11.10%` Standard, and `8.84% vs 11.08%` Ultra; high-coverage recall is `46.71% / 22.16% / 17.77%`. A flat-saturation classifier improved wetland placement but reduced Standard Köppen macro-F1 from `0.5846` to `0.5673`, so it was removed. No production behavior or accepted baseline changed. Next material work is hydrology/moisture-source placement that preserves local terrain winds and the existing cross-class biome score, not another final classifier coefficient.
+Native confusion tables prove the remaining grassland/forest and desert errors are dominated by upstream wetness placement. A targeted seasonal forest signal, final-wind rain-shadow, and direct pressure-wind ordering correction all fail the cross-tier gate; the ordering candidate is rejected at Fast before expensive tiers. Final-wind coastal exposure improves native-first macro-F1 by only `+0.0040 / +0.0004 / +0.0018`, too little to ship. A local-only GLWD v2 ingestion path and three observed wetland diagnostics are implemented. A bounded cube-root topology correction is now accepted for the delivered river-intensity field while source qualification and named-river routing remain on raw drainage. It cuts Fast GLWD prevalence error from `15.16` to `6.18` points, raises Fast macro-F1 from `0.5336` to `0.5607`, leaves Standard unchanged, slightly improves Ultra wetland metrics, and removes the short preset matrix's prior Earthlike desert/wetland-overlap finding without changing named rivers. High-coverage recall remains only `38.06% / 22.16% / 18.03%`, so the next material slice is low-relief basin/lake placement or floodplain connectivity—not another final classifier coefficient.
 
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
@@ -16,7 +16,7 @@ Branch: `dev`
 
 ## Accepted production baseline
 
-The downstream Earth generator behavior remains at the owner-accepted scientific checkpoint below. The resumed native diagnostic has not changed production.
+The downstream Earth generator behavior includes the accepted river-intensity resolution correction described above. Expensive Earth and preset evidence remains manual and outside push CI.
 
 Accepted production checkpoint:
 

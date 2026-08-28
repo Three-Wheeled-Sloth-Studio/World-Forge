@@ -2654,7 +2654,8 @@ function buildPresentClimateDiagnostics(
 function rebuildTopologyHydrology(
   project: DeepTimeProject,
   topology: CubedSphereTopology,
-  optimizeTraversal = false
+  optimizeTraversal = false,
+  normalizeRiverIntensityByTopologyScale = true,
 ): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
@@ -2694,13 +2695,22 @@ function rebuildTopologyHydrology(
   let maxAccumulation = 0;
   for (let cell = 0; cell < count; cell += 1) maxAccumulation = Math.max(maxAccumulation, accumulation[cell]);
   const riverThreshold = clamp(0.075 / Math.max(0.4, project.selectedValues.riverDensity), 0.018, 0.12);
+  const topologyScale = normalizeRiverIntensityByTopologyScale
+    ? clamp(Math.cbrt(topology.resolution / 256), 0.5, 2)
+    : 1;
+  const sourceCandidateAccumulation = maxAccumulation * riverThreshold * 0.72;
   for (let cell = 0; cell < count; cell += 1) {
     if (layers.water[cell]) continue;
-    layers.river[cell] = clamp(accumulation[cell] / Math.max(0.001, maxAccumulation) / riverThreshold, 0, 1);
+    const rawIntensity = accumulation[cell] / Math.max(0.001, maxAccumulation) / riverThreshold;
+    layers.river[cell] = clamp(rawIntensity * topologyScale, 0, 1);
   }
 
   const candidateSources = Array.from(order)
-    .filter((cell) => !layers.water[cell] && layers.river[cell] > 0.72 && layers.elevation[cell] > world.seaLevel + 0.04);
+    // Source selection deliberately uses the unscaled drainage signal so topology
+    // resolution cannot change the constructed and named river network.
+    .filter((cell) => !layers.water[cell]
+      && accumulation[cell] > sourceCandidateAccumulation
+      && layers.elevation[cell] > world.seaLevel + 0.04);
   const routeCache = optimizeTraversal
     ? new Map<number, { path: number[]; terminus: River['terminus'] }>()
     : undefined;
@@ -3125,6 +3135,7 @@ export type PresentDayDownstreamOptions = {
   optimizeTraversal?: boolean;
   circulationMoistureOrdering?: 'legacy' | 'pressure-wind-corrector';
   pressureWindBlend?: number;
+  normalizeRiverIntensityByTopologyScale?: boolean;
 };
 
 /**
@@ -3165,7 +3176,12 @@ export function reconcilePresentDayDownstream(
     pressureModel,
     options.pressureWindBlend ?? 1,
   ));
-  const hydrologyResult = timed('hydrology', () => rebuildTopologyHydrology(mutable, topology, optimizeTraversal));
+  const hydrologyResult = timed('hydrology', () => rebuildTopologyHydrology(
+    mutable,
+    topology,
+    optimizeTraversal,
+    options.normalizeRiverIntensityByTopologyScale ?? true,
+  ));
   mutable.primaryWorld.rivers = hydrologyResult.rivers;
   const climate = timed('climate-diagnostics', () => buildPresentClimateDiagnostics(
     mutable,
