@@ -13,6 +13,7 @@ import { traceGenerationPerformance } from './generationPerformanceTrace';
 import { forestWetnessThreshold } from './biomeClimate';
 import {
   lakeWetnessSupportForTopology,
+  DEFAULT_WETLAND_HYDROLOGY_MODEL,
   LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
   LOWLAND_FLOODPLAIN_MIN_RIVER,
   LOWLAND_FLOODPLAIN_MIN_WETNESS,
@@ -605,7 +606,7 @@ export function applyBasinAwareCirculation(
       project,
       pressureModel,
       currentResult.coolCurrentPotential,
-      options.wetlandHydrologyModel ?? 'lowland-floodplain-v1',
+      options.wetlandHydrologyModel ?? DEFAULT_WETLAND_HYDROLOGY_MODEL,
     )
   );
   const subtropicalSectors = pressureModel.sectors.filter((sector) => sector.regime === 'subtropical');

@@ -18,6 +18,7 @@ describe('present-day downstream validation seam', () => {
     expect(project.primaryWorld.topologyLayers.water).toEqual(topologyWater);
     expect(result.projectedCellsRefreshed).toBe(64 * 32);
     expect(result.hydrology.landCellCount).toBeGreaterThan(0);
+    expect(result.wetlandHydrologyModel).toBe('catchment-budget-v1');
     expect(result.circulation.pressureSystems.resolution).toEqual({ width: 128, height: 64 });
     expect(Object.values(result.stageTimingsMs).every((value) => Number.isFinite(value) && value >= 0)).toBe(true);
     expect(project.primaryWorld.layers.windX.some((value) => Math.abs(value) > 0)).toBe(true);
@@ -90,7 +91,9 @@ describe('present-day downstream validation seam', () => {
     const floodplainProject = generateProjectWithNativeStages(config);
     const legacyProject = generateProjectWithNativeStages(config);
 
-    const floodplain = reconcilePresentDayDownstream(floodplainProject);
+    const floodplain = reconcilePresentDayDownstream(floodplainProject, {
+      wetlandHydrologyModel: 'lowland-floodplain-v1',
+    });
     reconcilePresentDayDownstream(legacyProject, { wetlandHydrologyModel: 'legacy' });
     const wetland = biomeToCode('wetland');
     const floodplainWetlands = floodplainProject.primaryWorld.layers.biomes

@@ -2842,7 +2842,7 @@ function expectedBiomeCode(
   index: number,
   topologyWetland = false,
   lakeWetnessSupport = 0,
-  wetlandHydrologyModel: EarthDownstreamOutput['reconciliation']['wetlandHydrologyModel'] = 'lowland-floodplain-v1',
+  wetlandHydrologyModel: EarthDownstreamOutput['reconciliation']['wetlandHydrologyModel'] = 'catchment-budget-v1',
 ): number {
   const layers = project.primaryWorld.layers;
   if (layers.ice[index]) return biomeToCode('ice_cap');

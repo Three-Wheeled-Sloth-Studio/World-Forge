@@ -477,8 +477,8 @@ async function main(): Promise<void> {
     try {
       const config = prepareSystemOrbitConfig(configForTestCase(baseConfig, testCase));
       const generated = generateProjectWithNativeStages(config, { appVersion: APP_VERSION });
-      if (process.argv.includes('--catchment-budget-wetlands')) {
-        reconcilePresentDayDownstream(generated, { wetlandHydrologyModel: 'catchment-budget-v1' });
+      if (process.argv.includes('--lowland-floodplain-wetlands')) {
+        reconcilePresentDayDownstream(generated, { wetlandHydrologyModel: 'lowland-floodplain-v1' });
       }
       const project = reconcileSystemOrbitPresets(generated);
       const fingerprint = { ...fingerprintProject(project), ...fingerprintInitialTerrain(project), ...fingerprintDeepTimeLedger(project) } as TerrainFingerprint;

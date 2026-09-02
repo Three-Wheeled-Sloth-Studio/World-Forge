@@ -56,6 +56,7 @@ import {
 import {
   lakeWetnessSupportForTopology,
   catchmentIncumbentShareForTopology,
+  DEFAULT_WETLAND_HYDROLOGY_MODEL,
   LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
   LOWLAND_FLOODPLAIN_MAX_RELIEF,
   LOWLAND_FLOODPLAIN_MIN_RIVER,
@@ -2665,7 +2666,7 @@ function rebuildTopologyHydrology(
   topology: CubedSphereTopology,
   optimizeTraversal = false,
   normalizeRiverIntensityByTopologyScale = true,
-  wetlandHydrologyModel: WetlandHydrologyModel = 'lowland-floodplain-v1',
+  wetlandHydrologyModel: WetlandHydrologyModel = DEFAULT_WETLAND_HYDROLOGY_MODEL,
   observer?: (fields: TransientHydrologyFields) => void,
 ): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics; catchmentWetlands?: Uint8Array } {
   const world = project.primaryWorld;
@@ -3080,7 +3081,7 @@ function topologyLocalRelief(layer: Float32Array, topology: CubedSphereTopology,
 function classifyTopologyBiomes(
   project: DeepTimeProject,
   topology: CubedSphereTopology,
-  wetlandHydrologyModel: WetlandHydrologyModel = 'lowland-floodplain-v1',
+  wetlandHydrologyModel: WetlandHydrologyModel = DEFAULT_WETLAND_HYDROLOGY_MODEL,
   catchmentWetlands?: Uint8Array,
 ): number {
   const world = project.primaryWorld;
@@ -3293,7 +3294,7 @@ export function reconcilePresentDayDownstream(
     return result;
   };
   const optimizeTraversal = options.optimizeTraversal ?? true;
-  const wetlandHydrologyModel = options.wetlandHydrologyModel ?? 'lowland-floodplain-v1';
+  const wetlandHydrologyModel = options.wetlandHydrologyModel ?? DEFAULT_WETLAND_HYDROLOGY_MODEL;
   let pressureModel: ClimatologicalPressureModel | undefined;
   if (options.circulationMoistureOrdering === 'pressure-wind-corrector') {
     timed('temperature-predictor', () => refreshTopologyTemperature(mutable, topology));
@@ -3529,7 +3530,12 @@ export function applyDeepTimeFoundation(
       fullTopologyPasses: 1,
       allocatedBufferBytes: 0
     },
-    () => classifyTopologyBiomes(mutable, topology)
+    () => classifyTopologyBiomes(
+      mutable,
+      topology,
+      DEFAULT_WETLAND_HYDROLOGY_MODEL,
+      hydrology.catchmentWetlands,
+    )
   );
   const biomeCohesionReassignments = traceGenerationPerformance(
     'deep-time.final.biome-cohesion',
@@ -3541,7 +3547,8 @@ export function applyDeepTimeFoundation(
     },
     () => applyBiomeCohesion(mutable, topology, {
       projectRaster: false,
-      preserveLowlandFloodplains: true,
+      preserveLowlandFloodplains: DEFAULT_WETLAND_HYDROLOGY_MODEL === 'lowland-floodplain-v1',
+      preserveAssignedWetlands: DEFAULT_WETLAND_HYDROLOGY_MODEL === 'catchment-budget-v1',
     })
   );
   const projectedCellsRefreshed = traceGenerationPerformance(

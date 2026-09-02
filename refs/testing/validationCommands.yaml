@@ -65,3 +65,4 @@ notes:
   - The former dedicated Ultra Earth acceptance workflow was removed after owner acceptance because its tests and full verification duplicated the ordinary suite.
   - Real scientific-source rebuilds and geographic evaluation remain intentional diagnostics because they provide evidence ordinary CI does not.
   - Downstream Earth validation uses observed elevation plus derived Köppen wetness/biome/ice answer keys. Fast, Standard, and Ultra runs are manual diagnostics; only framework math and small deterministic contracts belong in routine tests.
+  - Catchment-budget wetlands are the production default. Use --lowland-floodplain-wetlands for the immediate predecessor comparator or --legacy-wetland-hydrology for the older comparator when invoking the Earth runner directly.

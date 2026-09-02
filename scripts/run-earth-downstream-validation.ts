@@ -41,11 +41,11 @@ if (!Number.isFinite(pressureWindBlend) || pressureWindBlend < 0 || pressureWind
   throw new Error(`Invalid pressure wind blend: ${pressureWindBlend}`);
 }
 const normalizeRiverIntensityByTopologyScale = !process.argv.includes('--legacy-river-intensity');
-const wetlandHydrologyModel = process.argv.includes('--catchment-budget-wetlands')
-  ? 'catchment-budget-v1' as const
+const wetlandHydrologyModel = process.argv.includes('--lowland-floodplain-wetlands')
+  ? 'lowland-floodplain-v1' as const
   : process.argv.includes('--legacy-wetland-hydrology')
     ? 'legacy' as const
-    : 'lowland-floodplain-v1' as const;
+    : 'catchment-budget-v1' as const;
 const adapter = createEarthDownstreamAdapter({
   circulationMoistureOrdering,
   pressureWindBlend,

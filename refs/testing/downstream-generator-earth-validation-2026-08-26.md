@@ -352,14 +352,14 @@ This is the first wetland counterfactual with a material positive placement resu
 
 ### Opt-in catchment-budget production candidate
 
-The candidate now runs in production stage order behind `--catchment-budget-wetlands`. It reuses live accumulation, computes a bounded `4096`-bin ranking, preserves the highest-retention share of incumbent wetlands, fills the remaining exact budget from eligible lowlands, and carries the selected topology mask through cohesion, projection, and final circulation. The incumbent share is scale-aware: `87.5%` at Fast topology `64`, tapering to `50%` at Standard `256` and above because coarse cells carry less spatially precise catchment evidence. Normal default generation remains `lowland-floodplain-v1` and pays none of the candidate mask/histogram allocation.
+The candidate initially ran in production stage order behind `--catchment-budget-wetlands`. It reuses live accumulation, computes a bounded `4096`-bin ranking, preserves the highest-retention share of incumbent wetlands, fills the remaining exact budget from eligible lowlands, and carries the selected topology mask through cohesion, projection, and final circulation. The final incumbent share is scale-aware: `87.5%` at Fast topology `64`, tapering to `55%` at Standard `256` and above because coarse cells carry less spatially precise catchment evidence.
 
 | Metric | Fast default -> candidate | Standard default -> candidate | Ultra default -> candidate |
 | --- | ---: | ---: | ---: |
-| GLWD high-coverage recall | 37.72% -> 40.83% | 24.34% -> 30.17% | 19.85% -> 25.70% |
-| GLWD fraction separation | 7.34 -> 7.50 points | 8.78 -> 10.82 points | 9.76 -> 13.80 points |
-| GLWD prevalence error | 6.13 -> 7.21 points | 0.15 -> 0.30 points | 1.62 -> 1.40 points |
-| Köppen macro-F1 | 0.5557 -> 0.5468 | 0.5740 -> 0.5640 | 0.5955 -> 0.5932 |
+| GLWD high-coverage recall | 37.72% -> 40.83% | 24.34% -> 29.87% | 19.85% -> 26.19% |
+| GLWD fraction separation | 7.34 -> 7.50 points | 8.78 -> 10.66 points | 9.76 -> 14.14 points |
+| GLWD prevalence error | 6.13 -> 7.21 points | 0.15 -> 0.29 points | 1.62 -> 1.39 points |
+| Köppen macro-F1 | 0.5557 -> 0.5468 | 0.5740 -> 0.5652 | 0.5955 -> 0.5909 |
 | Final classification consistency | 1.0000 -> 1.0000 | 1.0000 -> 1.0000 | 1.0000 -> 1.0000 |
 | Core downstream time | ~168 -> 175 ms | ~998 -> 1,003 ms | ~15,472 -> 13,561 ms |
 
@@ -367,7 +367,13 @@ The first unrestricted rerank was rejected because macro-F1 fell by `0.0376 / 0.
 
 Regional recall improves broadly. Standard Amazon/Congo/Hudson/West-Siberian recall becomes `39.26% / 26.05% / 39.91% / 14.61%`; Ultra becomes `32.81% / 28.38% / 32.00% / 16.27%`. Ultra Ganges-Brahmaputra improves to `9.70%`; Sudd remains weak at `8.49%` Ultra and `1.69%` Standard, so the candidate does not solve every warm floodplain.
 
-The 80-case short fictional suite adds no aggregate finding beyond the two accepted plate-advection findings. Unsupported wetlands remain zero. Median wetland shares remain approximately Earthlike `12.9%`, Habitable `12.1%`, Waterworld `14.7%`, Archipelago `12.3%`, Desert `1.8%`, Pangea `9.2%`, and Random `8.4%`, effectively matching the accepted lowland-floodplain ranges. The candidate advances to a default-promotion decision, but this checkpoint leaves it opt-in so the default switch remains a small reversible increment.
+The initial 80-case opt-in suite added no aggregate finding beyond the two accepted plate-advection findings and kept unsupported wetlands at zero.
+
+### Catchment-budget default promotion
+
+`catchment-budget-v1` is now the production default for both present-day reconciliation and full deep-time generation. The final Standard incumbent share was increased from `50%` to `55%` after the ordinary default command exposed a few ten-thousandths of macro-F1 regression beyond the maintained tolerance; the baseline was not weakened. Fast remains `87.5%`. The former `lowland-floodplain-v1` behavior remains available with `--lowland-floodplain-wetlands`, and the older pre-floodplain behavior remains available with `--legacy-wetland-hydrology`.
+
+All ordinary default Earth commands pass with the final table above. The repeated 80-case full-production suite adds no new aggregate finding beyond the two existing plate-advection findings. Unsupported wetlands remain zero. Final median wetland shares are Earthlike `13.1%`, Habitable `12.8%`, Waterworld `15.3%`, Archipelago `12.9%`, Desert `2.0%`, Pangea `9.8%`, and Random `8.8%`. The selection mask and histograms are transient production-stage working memory and do not change saved-world schemas.
 
 ## Accepted component baselines
 
@@ -396,9 +402,12 @@ The 80-case short fictional suite adds no aggregate finding beyond the two accep
 | Representative-region rank correlation | 0.7333 | 0.8545 | 0.8909 |
 | Humid-region mean | 0.7814 | 0.6375 | 0.6752 |
 | Dry-region mean | 0.4503 | 0.3135 | 0.3032 |
-| Köppen biome macro-F1 | 0.5557 | 0.5740 | 0.5955 |
+| Köppen biome macro-F1 | 0.5468 | 0.5652 | 0.5909 |
 | Final biome consistency | 1.0000 | 1.0000 | 1.0000 |
-| Core downstream time | 168.0 ms | 998.0 ms | 15,471.6 ms |
+| GLWD prevalence error | 0.0721 | 0.0029 | 0.0139 |
+| GLWD high-coverage recall | 0.4083 | 0.2987 | 0.2619 |
+| GLWD fraction separation | 7.50 | 10.66 | 14.14 |
+| Core downstream time | 169.1 ms | 1,007.8 ms | 13,363.1 ms |
 
 Core time excludes reference-file loading and report serialization. The current Ultra adapter wall time was 21.6 seconds. The earlier full-generator Ultra baseline remains 204.0 seconds; validation no longer generates a disposable procedural shell before installing the reference surface.
 

@@ -1,6 +1,7 @@
 import { clamp } from '@world-forge/shared';
 
 export type WetlandHydrologyModel = 'legacy' | 'lowland-floodplain-v1' | 'catchment-budget-v1';
+export const DEFAULT_WETLAND_HYDROLOGY_MODEL: WetlandHydrologyModel = 'catchment-budget-v1';
 
 export const LOWLAND_FLOODPLAIN_MAX_ALTITUDE = 0.02;
 export const LOWLAND_FLOODPLAIN_MIN_RIVER = 0.2;
@@ -13,5 +14,5 @@ export function lakeWetnessSupportForTopology(topologyResolution: number): numbe
 }
 
 export function catchmentIncumbentShareForTopology(topologyResolution: number): number {
-  return clamp(0.5 + Math.max(0, Math.log2(256 / topologyResolution)) * 0.1875, 0.5, 0.875);
+  return clamp(0.55 + Math.max(0, Math.log2(256 / topologyResolution)) * 0.1625, 0.55, 0.875);
 }
