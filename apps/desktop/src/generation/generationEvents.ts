@@ -6,7 +6,7 @@ export const generationStageTelemetryEvent = 'world-forge:generation-stage-telem
 export const developerGenerationRunEvent = 'world-forge:developer-generation-run';
 
 export type GenerationTelemetryDetail = {
-  phase: 'started' | 'progress' | 'completed' | 'failed';
+  phase: 'started' | 'progress' | 'completed' | 'failed' | 'cancelled';
   taskId: string;
   progress: number;
   label: string;
