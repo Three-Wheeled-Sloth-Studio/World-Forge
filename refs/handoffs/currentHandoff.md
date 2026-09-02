@@ -2,6 +2,14 @@
 
 Updated: 2026-09-02
 
+## Plate diagnostic validation audit checkpoint
+
+The fictional preset suite's `plate-advection-v3` failure is now classified as stale validation-contract debt, not evidence that the native production path skips plate evolution. Current production/shared deep-time schema exposes `fragmentPlacement` diagnostics with model version `fragment-placement-v2`; it does not define `plateAdvection`. The surviving `plate-advection-v3` and `plateAdvectionMarginContinuityScore` references are confined to the stale fingerprint/harness/reporting surface.
+
+The old Earthlike margin-continuity warning is therefore reclassified as an obsolete-metric finding, not a demonstrated current scientific defect. No plate, terrain, climate, hydrology, or biome generation behavior changed. See `refs/testing/plate-diagnostic-contract-audit-2026-09-02.md`.
+
+Focused regression coverage now verifies active fragment-placement diagnostic presence, schema consistency, representative preset-path compatibility, and fixed-seed determinism. The remaining behavior-neutral cleanup is to remove/replace the retired `plateAdvection*` reporting surface in the large preset validation files from a normal local checkout, then run focused tests plus `npm run verify`. The expensive fictional preset matrix remains manual-only and outside ordinary push CI. This chat environment did not have a network-capable local World Forge checkout, so the manual matrix and local npm verification could not be run here; GitHub Actions PR validation is the available clean-environment gate.
+
 ## Resumed downstream diagnostic checkpoint
 
 The downstream Earth scientific-validation slice resumed for native biome-confusion localization. A generic validation core, production present-day adapter, fixed-grid Earth metrics, three resolution-tier baselines, native-first counterfactual screening, and measured generator corrections remain implemented on `dev`.
