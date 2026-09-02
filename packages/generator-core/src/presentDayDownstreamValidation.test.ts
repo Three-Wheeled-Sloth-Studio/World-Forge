@@ -60,6 +60,30 @@ describe('present-day downstream validation seam', () => {
     expect(normalized.hydrology.topologyRiverCellShare).toBeLessThan(legacy.hydrology.topologyRiverCellShare);
   });
 
+  it('exposes solver-owned hydrology fields only through an opt-in observer', () => {
+    const config = createDefaultConfig('downstream-hydrology-observer', { width: 64, height: 32 });
+    config.topologyResolution = 16;
+    const project = generateProjectWithNativeStages(config);
+    let captured: { cells: number; routed: number; maxAccumulation: number; riverThreshold: number } | undefined;
+
+    reconcilePresentDayDownstream(project, {
+      observeHydrology(fields) {
+        captured = {
+          cells: fields.accumulation.length,
+          routed: fields.downstream.reduce((count, target) => count + (target >= 0 ? 1 : 0), 0),
+          maxAccumulation: fields.maxAccumulation,
+          riverThreshold: fields.riverThreshold,
+        };
+      },
+    });
+
+    expect(captured).toEqual(expect.objectContaining({ cells: 6 * 16 * 16 }));
+    expect(captured?.routed).toBeGreaterThan(0);
+    expect(captured?.maxAccumulation).toBeGreaterThan(0);
+    expect(captured?.riverThreshold).toBeGreaterThan(0);
+    expect('hydrologyTrace' in project.primaryWorld).toBe(false);
+  });
+
   it('carries lowland floodplain decisions through final raster circulation', () => {
     const config = createDefaultConfig('downstream-lowland-floodplain', { width: 64, height: 32 });
     config.topologyResolution = 16;

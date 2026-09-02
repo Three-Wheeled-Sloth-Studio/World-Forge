@@ -2664,6 +2664,7 @@ function rebuildTopologyHydrology(
   topology: CubedSphereTopology,
   optimizeTraversal = false,
   normalizeRiverIntensityByTopologyScale = true,
+  observer?: (fields: TransientHydrologyFields) => void,
 ): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
@@ -2712,6 +2713,7 @@ function rebuildTopologyHydrology(
     const rawIntensity = accumulation[cell] / Math.max(0.001, maxAccumulation) / riverThreshold;
     layers.river[cell] = clamp(rawIntensity * topologyScale, 0, 1);
   }
+  observer?.({ accumulation, downstream, maxAccumulation, riverThreshold });
 
   const candidateSources = Array.from(order)
     // Source selection deliberately uses the unscaled drainage signal so topology
@@ -3164,6 +3166,17 @@ export type PresentDayDownstreamReconciliation = {
   stageTimingsMs: Record<string, number>;
 };
 
+/**
+ * Solver-owned fields exposed only for the duration of an optional diagnostic
+ * callback. Consumers must copy anything they need after the callback returns.
+ */
+export type TransientHydrologyFields = {
+  accumulation: Float32Array;
+  downstream: Int32Array;
+  maxAccumulation: number;
+  riverThreshold: number;
+};
+
 export type PresentDayDownstreamOptions = {
   captureClimateDerivedFields?: boolean;
   optimizeTraversal?: boolean;
@@ -3171,6 +3184,7 @@ export type PresentDayDownstreamOptions = {
   pressureWindBlend?: number;
   normalizeRiverIntensityByTopologyScale?: boolean;
   wetlandHydrologyModel?: WetlandHydrologyModel;
+  observeHydrology?: (fields: TransientHydrologyFields) => void;
 };
 
 /**
@@ -3217,6 +3231,7 @@ export function reconcilePresentDayDownstream(
     topology,
     optimizeTraversal,
     options.normalizeRiverIntensityByTopologyScale ?? true,
+    options.observeHydrology,
   ));
   mutable.primaryWorld.rivers = hydrologyResult.rivers;
   const climate = timed('climate-diagnostics', () => buildPresentClimateDiagnostics(

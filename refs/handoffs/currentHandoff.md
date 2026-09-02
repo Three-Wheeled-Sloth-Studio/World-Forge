@@ -14,6 +14,8 @@ The manual evaluator now attributes generated wetlands to supported standing wat
 
 The subsequent water-table proxy screen rejects bounded neighborhood smearing too. Two-ring drainage-margin candidates reach only `6.13% / 7.39% / 8.99%` high-coverage precision; a cold flatland/peatland branch reaches `14.37% / 12.36% / 12.25%` but selects `152,836` Ultra cells. Their Ultra union selects `314,851` cells at `9.53%` high-coverage precision. No production behavior changed. Next work should expose the hydrology solver's transient raw accumulation/downstream fields to the manual adapter with zero normal-production overhead, then screen a true catchment-retention/topographic-wetness proxy.
 
+That transient observer and manual-adapter capture are now implemented. Raw topographic wetness separates unrecovered GLWD wetlands from ordinary land by about `1.0-1.15` score units at every tier, but its absolute value shifts with resolution. Percentile tails solve the scale problem: Standard/Ultra top-5% eligible candidates are `18.44% / 19.78%` high-coverage with about `23%` mean GLWD coverage. A budget-matched replacement of the weak strong-river branch changes recall by `-0.69 / +4.36 / +0.18` points Fast/Standard/Ultra, so it is rejected. No production behavior changed. Next screen should jointly rank the entire non-standing-water/non-floodplain wetland budget with a bounded histogram, rather than replacing one branch uniformly.
+
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`

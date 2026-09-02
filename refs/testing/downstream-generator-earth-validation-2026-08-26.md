@@ -320,6 +320,24 @@ Both branches enrich observed wetland coverage relative to the naive saturated n
 
 The important architectural finding is that the hydrology solver already computes raw catchment accumulation and downstream receivers, then discards them after deriving the normalized river layer. The next diagnostic should expose those transient solver fields through an optional manual-validation observer, with zero allocation or callback work in normal production. That will allow a genuine topographic-wetness/catchment-retention screen rather than broadening river/lake influence. The observer must not persist reference data or hydrology diagnostics in saved projects.
 
+### Transient catchment-retention diagnostic
+
+The production present-day reconciliation seam now accepts an optional hydrology observer. It receives the solver-owned raw accumulation and downstream arrays only during the hydrology callback. Normal generation supplies no observer and performs no new allocation, callback, or persistence. The manual Earth adapter copies the two arrays into its transient output so metrics can compare catchment state with GLWD after generation; these fields never enter a `WorldProject` or saved-world contract.
+
+Raw topographic wetness is defined for screening as `log1p(accumulation) - log(local relief + 0.002)`. At Standard, unrecovered high-coverage GLWD cells average `6.14` versus `4.99` on ordinary low-coverage land. The same separation persists at Fast (`4.86` versus `3.86`) and Ultra (`6.77` versus `5.77`), proving that catchment accumulation adds information beyond the normalized river layer. Absolute values shift with topology resolution, so fixed TWI cutoffs are rejected.
+
+The scale-safe screen ranks physically eligible lowland cells within each topology tier and inspects fixed percentile tails:
+
+| Tier | Top 10% cells / high-coverage rate / mean GLWD % | Top 5% cells / high-coverage rate / mean GLWD % | Top 1% cells / high-coverage rate / mean GLWD % |
+| --- | ---: | ---: | ---: |
+| Fast | 144 / 5.56% / 14.26 | 72 / 5.56% / 14.68 | 14 / 28.57% / 33.29 |
+| Standard | 2,291 / 18.51% / 22.54 | 1,182 / 18.44% / 22.50 | 243 / 17.70% / 22.54 |
+| Ultra | 43,965 / 18.77% / 22.69 | 23,320 / 19.78% / 23.62 | 5,083 / 19.58% / 23.55 |
+
+Standard and Ultra are materially and consistently enriched; Fast tails are too small and noisy to support the same selection behavior. A budget-matched counterfactual then replaces the legacy strong-river branch with the highest-ranked catchment candidates. Candidate mean GLWD coverage improves from `14.06% -> 15.30%`, `8.72% -> 22.87%`, and `7.38% -> 22.44%` Fast/Standard/Ultra, but high-coverage recall changes by `-0.69 / +4.36 / +0.18` points. The replacement is rejected because it regresses Fast and barely moves Ultra.
+
+The next evaluator candidate should rank the complete generated wetland budget jointly, preserving explicit standing-water and floodplain semantics while using catchment retention to compete for the remaining budget. It must use a bounded histogram/percentile calculation rather than a fixed TWI constant, because the absolute score is resolution-dependent. No production wetland behavior changes in this checkpoint.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |

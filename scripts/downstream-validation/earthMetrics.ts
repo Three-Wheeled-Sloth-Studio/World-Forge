@@ -284,7 +284,7 @@ const allEarthDownstreamMetrics: readonly EarthMetric[] = [
     unit: 'share-error',
     proves: 'Generated topology wetland prevalence is compared with GLWD v2 fractional inland aquatic/wetland coverage on comparable non-ocean, non-rice-dominant cells.',
     doesNotProve: 'Exact wetland boundaries, seasonal inundation, wetland type, or agreement where rice paddies dominate.',
-    evaluate: ({ project }, observations) => wetlandValidationProfile(project, observations).prevalenceError,
+    evaluate: ({ project, hydrologyTrace }, observations) => wetlandValidationProfile(project, observations, hydrologyTrace).prevalenceError,
   },
   {
     id: 'wetlands.glwd-high-coverage-recall',
@@ -294,7 +294,7 @@ const allEarthDownstreamMetrics: readonly EarthMetric[] = [
     unit: 'share',
     proves: 'Generated topology wetlands recover cells where GLWD v2 reports at least 50 percent inland aquatic/wetland coverage.',
     doesNotProve: 'Precision, wetland subtype, hydrological mechanism, or transient inundation timing.',
-    evaluate: ({ project }, observations) => wetlandValidationProfile(project, observations).highCoverageRecall,
+    evaluate: ({ project, hydrologyTrace }, observations) => wetlandValidationProfile(project, observations, hydrologyTrace).highCoverageRecall,
   },
   {
     id: 'wetlands.glwd-fraction-separation',
@@ -304,7 +304,7 @@ const allEarthDownstreamMetrics: readonly EarthMetric[] = [
     unit: 'percentage-points',
     proves: 'Cells assigned the generated wetland biome carry higher observed GLWD fractional coverage than other comparable land cells.',
     doesNotProve: 'Calibrated wetland probability, causal hydrology, wetland subtype, or exact spatial boundaries.',
-    evaluate: ({ project }, observations) => wetlandValidationProfile(project, observations).fractionSeparation,
+    evaluate: ({ project, hydrologyTrace }, observations) => wetlandValidationProfile(project, observations, hydrologyTrace).fractionSeparation,
   },
   {
     id: 'biomes.koppen-macro-f1',
@@ -438,6 +438,37 @@ function createWetlandCandidateAccumulator(): WetlandCandidateAccumulator {
   return { cells: 0, highCoverage: 0, observedPercent: 0 };
 }
 
+function summarizeWetlandCandidateTail(
+  counts: Uint32Array,
+  highCoverage: Uint32Array,
+  observedPercent: Float64Array,
+  tailShare: number,
+): WetlandCandidateAccumulator {
+  const target = counts.reduce((sum, count) => sum + count, 0) * tailShare;
+  const result = createWetlandCandidateAccumulator();
+  for (let bin = counts.length - 1; bin >= 0 && result.cells < target; bin -= 1) {
+    result.cells += counts[bin];
+    result.highCoverage += highCoverage[bin];
+    result.observedPercent += observedPercent[bin];
+  }
+  return result;
+}
+
+function summarizeWetlandCandidateTarget(
+  counts: Uint32Array,
+  highCoverage: Uint32Array,
+  observedPercent: Float64Array,
+  targetCells: number,
+): WetlandCandidateAccumulator {
+  const result = createWetlandCandidateAccumulator();
+  for (let bin = counts.length - 1; bin >= 0 && result.cells < targetCells; bin -= 1) {
+    result.cells += counts[bin];
+    result.highCoverage += highCoverage[bin];
+    result.observedPercent += observedPercent[bin];
+  }
+  return result;
+}
+
 function createWetlandAttributionAccumulator(): WetlandAttributionAccumulator {
   return {
     highCoverage: 0,
@@ -452,7 +483,11 @@ function createWetlandAttributionAccumulator(): WetlandAttributionAccumulator {
 
 const wetlandProfileCache = new WeakMap<WorldProject, WeakMap<EarthObservations, WetlandValidationProfile>>();
 
-function wetlandValidationProfile(project: WorldProject, observations: EarthObservations): WetlandValidationProfile {
+function wetlandValidationProfile(
+  project: WorldProject,
+  observations: EarthObservations,
+  hydrologyTrace?: EarthDownstreamOutput['hydrologyTrace'],
+): WetlandValidationProfile {
   const cached = wetlandProfileCache.get(project)?.get(observations);
   if (cached) return cached;
   const observedPercent = observations.wetlandPercent;
@@ -481,6 +516,8 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
   const groupLowlandFloodplainSupport = new Float64Array(4);
   const groupTemperature = new Float64Array(4);
   const groupObservedPercent = new Float64Array(4);
+  const groupLogAccumulation = new Float64Array(4);
+  const groupTopographicWetness = new Float64Array(4);
   const attributionTotals = createWetlandAttributionAccumulator();
   const attributionObservedPercent = {
     standingWater: 0,
@@ -506,6 +543,14 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
     coldPeatland: createWetlandCandidateAccumulator(),
     combined: createWetlandCandidateAccumulator(),
   };
+  const catchmentCandidates = {
+    twi5: createWetlandCandidateAccumulator(),
+    twi6: createWetlandCandidateAccumulator(),
+    twi7: createWetlandCandidateAccumulator(),
+  };
+  const catchmentHistogramCounts = new Uint32Array(256);
+  const catchmentHistogramHighCoverage = new Uint32Array(256);
+  const catchmentHistogramObservedPercent = new Float64Array(256);
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (world.topologyLayers.water[cell]) continue;
     const x = Math.min(
@@ -556,6 +601,10 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
     }
     groupTemperature[group] += world.topologyLayers.temperature[cell];
     groupObservedPercent[group] += percent;
+    const logAccumulation = Math.log1p(hydrologyTrace?.accumulation[cell] ?? 0);
+    const topographicWetness = logAccumulation - Math.log(localRelief + 0.002);
+    groupLogAccumulation[group] += logAccumulation;
+    groupTopographicWetness[group] += topographicWetness;
     const attribution = attributeWetlandHydrology({
       generatedWetland: generated,
       lake: Boolean(world.topologyLayers.lakes[cell]),
@@ -599,6 +648,24 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
       waterTableCandidates.combined.observedPercent += percent;
       if (observed) waterTableCandidates.combined.highCoverage += 1;
     }
+    if (!generated
+      && altitude < 0.05
+      && world.topologyLayers.wetness[cell] > 0.5
+      && hydrologyTrace) {
+      const histogramBin = Math.max(0, Math.min(
+        catchmentHistogramCounts.length - 1,
+        Math.floor(((topographicWetness + 4) / 16) * catchmentHistogramCounts.length),
+      ));
+      catchmentHistogramCounts[histogramBin] += 1;
+      catchmentHistogramObservedPercent[histogramBin] += percent;
+      if (observed) catchmentHistogramHighCoverage[histogramBin] += 1;
+      for (const [id, threshold] of [['twi5', 5], ['twi6', 6], ['twi7', 7]] as const) {
+        if (topographicWetness < threshold) continue;
+        catchmentCandidates[id].cells += 1;
+        catchmentCandidates[id].observedPercent += percent;
+        if (observed) catchmentCandidates[id].highCoverage += 1;
+      }
+    }
     if (observed) {
       attributionTotals.highCoverage += 1;
       if (generated) {
@@ -638,6 +705,32 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
   }
   const generatedShare = generatedWetland / Math.max(1, comparable);
   const observedShare = observedFractionTotal / Math.max(1, comparable);
+  const catchmentPercentileCandidates = {
+    top10Percent: summarizeWetlandCandidateTail(
+      catchmentHistogramCounts,
+      catchmentHistogramHighCoverage,
+      catchmentHistogramObservedPercent,
+      0.1,
+    ),
+    top5Percent: summarizeWetlandCandidateTail(
+      catchmentHistogramCounts,
+      catchmentHistogramHighCoverage,
+      catchmentHistogramObservedPercent,
+      0.05,
+    ),
+    top1Percent: summarizeWetlandCandidateTail(
+      catchmentHistogramCounts,
+      catchmentHistogramHighCoverage,
+      catchmentHistogramObservedPercent,
+      0.01,
+    ),
+  };
+  const strongRiverReplacement = summarizeWetlandCandidateTarget(
+    catchmentHistogramCounts,
+    catchmentHistogramHighCoverage,
+    catchmentHistogramObservedPercent,
+    attributionGeneratedCount.strongRiver,
+  );
   const details = {
     available: 1,
     comparableTopologyCells: comparable,
@@ -655,6 +748,13 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
         ];
       }),
     ),
+    catchmentStrongRiverReplacementCandidateCells: strongRiverReplacement.cells,
+    catchmentStrongRiverReplacementHighCoverageShare:
+      strongRiverReplacement.highCoverage / Math.max(1, strongRiverReplacement.cells),
+    catchmentStrongRiverReplacementMeanObservedPercent:
+      strongRiverReplacement.observedPercent / Math.max(1, strongRiverReplacement.cells),
+    catchmentStrongRiverReplacementRecallDelta:
+      (strongRiverReplacement.highCoverage - attributionTotals.strongRiver) / Math.max(1, observedHighCoverage),
     attributionSaturatedNonRiverHighCoverageMisses: attributionTotals.saturatedNonRiverMiss,
     attributionSaturatedNonRiverHighCoverageMissShare:
       attributionTotals.saturatedNonRiverMiss / Math.max(1, attributionTotals.highCoverage - attributionTotals.recovered),
@@ -670,6 +770,27 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
           [`waterTable${capitalizeMetricId(id)}CandidateCells`, candidate.cells],
           [`waterTable${capitalizeMetricId(id)}HighCoverageShare`, candidate.highCoverage / Math.max(1, candidate.cells)],
           [`waterTable${capitalizeMetricId(id)}MeanObservedPercent`, candidate.observedPercent / Math.max(1, candidate.cells)],
+        ];
+      }),
+    ),
+    hydrologyTraceAvailable: hydrologyTrace ? 1 : 0,
+    ...Object.fromEntries(
+      (['twi5', 'twi6', 'twi7'] as const).flatMap((id) => {
+        const candidate = catchmentCandidates[id];
+        return [
+          [`catchment${capitalizeMetricId(id)}CandidateCells`, candidate.cells],
+          [`catchment${capitalizeMetricId(id)}HighCoverageShare`, candidate.highCoverage / Math.max(1, candidate.cells)],
+          [`catchment${capitalizeMetricId(id)}MeanObservedPercent`, candidate.observedPercent / Math.max(1, candidate.cells)],
+        ];
+      }),
+    ),
+    ...Object.fromEntries(
+      (['top10Percent', 'top5Percent', 'top1Percent'] as const).flatMap((id) => {
+        const candidate = catchmentPercentileCandidates[id];
+        return [
+          [`catchment${capitalizeMetricId(id)}CandidateCells`, candidate.cells],
+          [`catchment${capitalizeMetricId(id)}HighCoverageShare`, candidate.highCoverage / Math.max(1, candidate.cells)],
+          [`catchment${capitalizeMetricId(id)}MeanObservedPercent`, candidate.observedPercent / Math.max(1, candidate.cells)],
         ];
       }),
     ),
@@ -701,6 +822,8 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
             [`${label}LowlandFloodplainSupportShare`, groupLowlandFloodplainSupport[group] / count],
             [`${label}MeanTemperatureC`, groupTemperature[group] / count],
             [`${label}MeanObservedPercent`, groupObservedPercent[group] / count],
+            [`${label}MeanLogAccumulation`, groupLogAccumulation[group] / count],
+            [`${label}MeanTopographicWetness`, groupTopographicWetness[group] / count],
           ];
         }),
     ),

@@ -10,6 +10,7 @@ import {
   reconcilePresentDayDownstream,
   type PresentDayDownstreamOptions,
   type PresentDayDownstreamReconciliation,
+  type TransientHydrologyFields,
 } from '../../packages/generator-core/src/deepTimePipeline';
 import { importReferenceBodyRaster, REFERENCE_BODY_RASTER_SCHEMA } from '../../packages/generator-core/src/referenceBodyImport';
 import { attachBiomeDiagnostics } from '../../packages/generator-core/src/biomeDiagnostics';
@@ -54,6 +55,7 @@ export type EarthDownstreamOutput = {
   project: WorldProject;
   reconciliation: PresentDayDownstreamReconciliation;
   cohesionReassignments: number;
+  hydrologyTrace?: TransientHydrologyFields;
 };
 
 export type EarthScenarioOptions = {
@@ -203,10 +205,21 @@ export function createEarthDownstreamAdapter(
       resetDownstreamLayers(project, input);
       const importMs = performance.now() - importStarted;
       const downstreamStarted = performance.now();
+      let hydrologyTrace: TransientHydrologyFields | undefined;
+      const requestedObserver = downstreamOptions.observeHydrology;
       const reconciliation = reconcilePresentDayDownstream(project, {
         captureClimateDerivedFields: true,
         optimizeTraversal: true,
         ...downstreamOptions,
+        observeHydrology(fields) {
+          requestedObserver?.(fields);
+          hydrologyTrace = {
+            accumulation: fields.accumulation.slice(),
+            downstream: fields.downstream.slice(),
+            maxAccumulation: fields.maxAccumulation,
+            riverThreshold: fields.riverThreshold,
+          };
+        },
       });
       const downstreamMs = performance.now() - downstreamStarted;
       const cohesionStarted = performance.now();
@@ -214,7 +227,7 @@ export function createEarthDownstreamAdapter(
       const cohesionMs = performance.now() - cohesionStarted;
       const cohesionReassignments = reconciliation.biomeCohesionReassignments;
       return {
-        output: { project, reconciliation, cohesionReassignments },
+        output: { project, reconciliation, cohesionReassignments, hydrologyTrace },
         performance: {
           wallMs: performance.now() - totalStarted,
           stages: {
