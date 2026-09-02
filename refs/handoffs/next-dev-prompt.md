@@ -1,12 +1,12 @@
 # Next Dev Prompt: Paused Downstream Earth Validation
 
-Updated: 2026-08-28
+Updated: 2026-09-02
 
-The downstream Earth validation slice resumed for native biome-confusion localization. Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
+The downstream Earth validation slice now has observed GLWD wetland metrics, accepted river-scale and lowland-floodplain corrections, and hydrology-branch/regional attribution. Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
 
 The reusable framework, Earth production adapter, fixed 128 x 64 analysis grid, and Fast/Standard/Ultra baselines are established. Final biome ownership and final-wind orographic reconciliation have been corrected from measured evidence. Stored flow vectors remain geographic north-positive; presentation converts them to south-increasing raster rows.
 
-Native confusion tables now localize temperature, generated/reference wetness, hydrology, circulation, and classifier margins without retaining native samples. Remaining grassland/forest and desert confusion is dominated by upstream wetness error. Targeted seasonal forest stress and final-wind shadow fail cross-tier validation; final-wind coastal drying is positive but immaterial. Wetland coverage is resolution-dependent, but no observed wetland layer exists in the maintained bundle. Do not ship these overlays or tune wetland thresholds from Köppen. The next material slice is either upstream authoritative circulation/moisture ordering from generic evidence or a deliberately selected observed-wetland reference integration.
+Native confusion tables localize temperature, generated/reference wetness, hydrology, circulation, and classifier margins without retaining native samples. Remaining grassland/forest and desert confusion is dominated by upstream wetness error. The optional local GLWD v2 evaluator separately measures wetlands without leaking the answer key into production or CI. Its latest attribution shows riverine floodplains have the strongest observed association, while a flat saturated non-river predicate is unsafe: only `4.98% / 5.06% / 5.79%` of its Fast/Standard/Ultra candidates are high-coverage reference wetlands despite capturing up to `28.35%` of remaining misses. Do not ship another global saturation threshold. The next material wetland slice should screen a generic persistent-drainage/water-table proxy and separately test whether sink-lake support implies too broad a wetland footprint.
 
 Continue implementation in:
 

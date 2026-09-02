@@ -288,6 +288,24 @@ The tradeoff is visible and bounded. Köppen-derived macro-F1 changes from `0.56
 
 The final 80-case preset matrix adds no aggregate finding and leaves named-river counts unchanged for every preset. Median wetland share moves Earthlike `12% -> 13%`, Habitable `11% -> 12%`, Waterworld `12% -> 15%`, Archipelago remains `12%`, Desert `3% -> 2%`, Pangea remains about `9%`, and Random `9% -> 8%`. Unsupported-wetland share remains zero and desert/wetland overlap is unchanged. Expensive Earth and preset evidence remains manual and outside routine CI. The legacy comparator is available with `--legacy-wetland-hydrology`.
 
+### Wetland hydrology and regional attribution
+
+The next diagnostic separates generated wetland cells into mutually exclusive production-order branches: supported standing water, lowland riverine floodplain, legacy strong-river wetland, and cohesion/residual classification. It also records high-coverage GLWD recovery across six approximate evaluator-only geographic windows. The result changes the next implementation decision: a flat, saturated, non-river predicate finds real misses, but it is far too nonspecific to become production behavior.
+
+| Tier | Standing-water cells / high-coverage hits / mean GLWD % | Floodplain cells / hits / mean GLWD % | Strong-river cells / hits / mean GLWD % | Saturated non-river candidate cells / high-coverage rate / mean GLWD % | Share of remaining high-coverage misses found |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fast | 362 / 30 / 15.92 | 299 / 47 / 24.89 | 452 / 32 / 14.06 | 603 / 4.98% / 12.58 | 16.67% |
+| Standard | 5,935 / 686 / 17.53 | 3,849 / 725 / 25.11 | 1,512 / 60 / 8.72 | 17,575 / 5.06% / 11.00 | 19.40% |
+| Ultra | 145,961 / 21,315 / 19.29 | 9,336 / 2,524 / 31.46 | 1,256 / 35 / 7.38 | 472,197 / 5.79% / 10.07 | 28.35% |
+
+The audit table is more useful than a chart here because the decision depends on exact branch denominators as well as recovery. Riverine floodplains have the strongest observed fractional association at every tier. Standing-water support recovers most Ultra high-coverage cells but is spatially broad: its generated cells average only `19.29%` GLWD coverage. The legacy strong-river branch is weaker still. A direct saturated non-river expansion would add `472,197` Ultra topology cells while only `5.79%` meet the high-coverage reference threshold, so it would destroy the existing prevalence budget despite recovering `28.35%` of current misses.
+
+Approximate regional windows expose where aggregate recall is hiding weak behavior. Standard recall is `23.70%` Amazon lowlands, `15.97%` Congo lowlands, `28.47%` Hudson Bay lowlands, `9.44%` West Siberian lowlands, `0%` Sudd, and `3.57%` Ganges-Brahmaputra. Ultra recall is `17.70% / 23.67% / 16.04% / 13.27% / 8.59% / 6.95%` in the same order. These windows are attribution aids, not production masks or acceptance gates; their rectangles include non-wetland terrain and do not assert exact ecosystem boundaries.
+
+This diagnostic is fixed-size apart from the existing topology traversal: four branch accumulators and six regional accumulators are added to report details, with no new resolution-sized layer. GLWD remains independent evaluation evidence and the coordinates exist only in the manual Earth evaluator. Branch precedence mirrors production behavior, while the saturated non-river counterfactual requires wetness above `0.66`, low relief, no generated lake, and river intensity no greater than the floodplain minimum.
+
+The next material model should therefore add a generic persistent drainage or water-table proxy—something that distinguishes accumulated saturation from merely humid, flat ground—and separately revisit whether every generated sink-lake should imply a wetland-sized footprint. Any candidate must first run as an evaluator/adapter counterfactual, improve the weak regional windows and observed fraction separation, retain the global prevalence budget and Köppen tolerances, and remain linear-time. No production generator behavior changes in this attribution checkpoint.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |

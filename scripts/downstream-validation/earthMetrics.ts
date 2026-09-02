@@ -355,6 +355,66 @@ type WetlandValidationProfile = {
   fractionSeparation: { value: number; details: Record<string, number> };
 };
 
+export type WetlandHydrologyAttribution =
+  | 'standingWater'
+  | 'riverineFloodplain'
+  | 'strongRiver'
+  | 'cohesionOrResidual'
+  | 'notWetland';
+
+export type WetlandHydrologyEvidence = {
+  generatedWetland: boolean;
+  lake: boolean;
+  wetness: number;
+  river: number;
+  altitude: number;
+  localRelief: number;
+  lakeWetnessSupport: number;
+};
+
+export function attributeWetlandHydrology(evidence: WetlandHydrologyEvidence): WetlandHydrologyAttribution {
+  if (!evidence.generatedWetland) return 'notWetland';
+  if (evidence.lake && evidence.wetness >= evidence.lakeWetnessSupport) return 'standingWater';
+  if (evidence.altitude >= 0
+    && evidence.altitude < LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+    && evidence.localRelief < LOWLAND_FLOODPLAIN_MAX_RELIEF
+    && evidence.river > LOWLAND_FLOODPLAIN_MIN_RIVER
+    && evidence.wetness > LOWLAND_FLOODPLAIN_MIN_WETNESS) return 'riverineFloodplain';
+  if (evidence.river > 0.5 && evidence.wetness > 0.66) return 'strongRiver';
+  return 'cohesionOrResidual';
+}
+
+const WETLAND_ATTRIBUTION_REGIONS = [
+  { id: 'amazonLowlands', minLatitude: -20, maxLatitude: 5, minLongitude: -80, maxLongitude: -45 },
+  { id: 'congoLowlands', minLatitude: -12, maxLatitude: 5, minLongitude: 10, maxLongitude: 32 },
+  { id: 'hudsonBayLowlands', minLatitude: 45, maxLatitude: 60, minLongitude: -100, maxLongitude: -75 },
+  { id: 'westSiberianLowlands', minLatitude: 50, maxLatitude: 70, minLongitude: 55, maxLongitude: 90 },
+  { id: 'sudd', minLatitude: 5, maxLatitude: 12, minLongitude: 25, maxLongitude: 35 },
+  { id: 'gangesBrahmaputra', minLatitude: 20, maxLatitude: 28, minLongitude: 85, maxLongitude: 93 },
+] as const;
+
+type WetlandAttributionAccumulator = {
+  highCoverage: number;
+  recovered: number;
+  standingWater: number;
+  riverineFloodplain: number;
+  strongRiver: number;
+  cohesionOrResidual: number;
+  saturatedNonRiverMiss: number;
+};
+
+function createWetlandAttributionAccumulator(): WetlandAttributionAccumulator {
+  return {
+    highCoverage: 0,
+    recovered: 0,
+    standingWater: 0,
+    riverineFloodplain: 0,
+    strongRiver: 0,
+    cohesionOrResidual: 0,
+    saturatedNonRiverMiss: 0,
+  };
+}
+
 const wetlandProfileCache = new WeakMap<WorldProject, WeakMap<EarthObservations, WetlandValidationProfile>>();
 
 function wetlandValidationProfile(project: WorldProject, observations: EarthObservations): WetlandValidationProfile {
@@ -386,6 +446,26 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
   const groupLowlandFloodplainSupport = new Float64Array(4);
   const groupTemperature = new Float64Array(4);
   const groupObservedPercent = new Float64Array(4);
+  const attributionTotals = createWetlandAttributionAccumulator();
+  const attributionObservedPercent = {
+    standingWater: 0,
+    riverineFloodplain: 0,
+    strongRiver: 0,
+    cohesionOrResidual: 0,
+  };
+  const attributionGeneratedCount = {
+    standingWater: 0,
+    riverineFloodplain: 0,
+    strongRiver: 0,
+    cohesionOrResidual: 0,
+  };
+  const regionAttribution = Object.fromEntries(
+    WETLAND_ATTRIBUTION_REGIONS.map((region) => [region.id, createWetlandAttributionAccumulator()]),
+  ) as Record<(typeof WETLAND_ATTRIBUTION_REGIONS)[number]['id'], WetlandAttributionAccumulator>;
+  const lakeWetnessSupport = lakeWetnessSupportForTopology(topology.resolution);
+  let saturatedNonRiverCandidateCells = 0;
+  let saturatedNonRiverCandidateHighCoverage = 0;
+  let saturatedNonRiverCandidateObservedPercent = 0;
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (world.topologyLayers.water[cell]) continue;
     const x = Math.min(
@@ -426,6 +506,49 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
     }
     groupTemperature[group] += world.topologyLayers.temperature[cell];
     groupObservedPercent[group] += percent;
+    const attribution = attributeWetlandHydrology({
+      generatedWetland: generated,
+      lake: Boolean(world.topologyLayers.lakes[cell]),
+      wetness: world.topologyLayers.wetness[cell],
+      river: world.topologyLayers.river[cell],
+      altitude: world.topologyLayers.elevation[cell] - world.seaLevel,
+      localRelief,
+      lakeWetnessSupport,
+    });
+    const saturatedNonRiverCandidate = !generated
+      && !world.topologyLayers.lakes[cell]
+      && world.topologyLayers.river[cell] <= LOWLAND_FLOODPLAIN_MIN_RIVER
+      && world.topologyLayers.wetness[cell] > 0.66
+      && localRelief < LOWLAND_FLOODPLAIN_MAX_RELIEF;
+    const saturatedNonRiverMiss = observed && saturatedNonRiverCandidate;
+    if (saturatedNonRiverCandidate) {
+      saturatedNonRiverCandidateCells += 1;
+      saturatedNonRiverCandidateObservedPercent += percent;
+      if (observed) saturatedNonRiverCandidateHighCoverage += 1;
+    }
+    if (observed) {
+      attributionTotals.highCoverage += 1;
+      if (generated) {
+        attributionTotals.recovered += 1;
+        attributionTotals[attribution as Exclude<WetlandHydrologyAttribution, 'notWetland'>] += 1;
+      } else if (saturatedNonRiverMiss) attributionTotals.saturatedNonRiverMiss += 1;
+      const latitude = topology.latitudes[cell] * 180 / Math.PI;
+      const longitude = topology.longitudes[cell] * 180 / Math.PI;
+      for (const region of WETLAND_ATTRIBUTION_REGIONS) {
+        if (latitude < region.minLatitude || latitude > region.maxLatitude
+          || longitude < region.minLongitude || longitude > region.maxLongitude) continue;
+        const regionTotals = regionAttribution[region.id];
+        regionTotals.highCoverage += 1;
+        if (generated) {
+          regionTotals.recovered += 1;
+          regionTotals[attribution as Exclude<WetlandHydrologyAttribution, 'notWetland'>] += 1;
+        } else if (saturatedNonRiverMiss) regionTotals.saturatedNonRiverMiss += 1;
+      }
+    }
+    if (generated && attribution !== 'notWetland') {
+      attributionObservedPercent[attribution] += percent;
+      attributionGeneratedCount[attribution] += 1;
+    }
     comparable += 1;
     observedFractionTotal += percent / 100;
     if (generated) {
@@ -449,6 +572,38 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
     observedHighCoverageCells: observedHighCoverage,
     generatedWetlandShare: generatedShare,
     observedFractionalShare: observedShare,
+    ...Object.fromEntries(
+      (['standingWater', 'riverineFloodplain', 'strongRiver', 'cohesionOrResidual'] as const).flatMap((branch) => {
+        const count = attributionTotals[branch];
+        return [
+          [`attribution${capitalizeMetricId(branch)}GeneratedCells`, attributionGeneratedCount[branch]],
+          [`attribution${capitalizeMetricId(branch)}HighCoverageRecovered`, count],
+          [`attribution${capitalizeMetricId(branch)}GeneratedMeanObservedPercent`, attributionObservedPercent[branch] / Math.max(1, attributionGeneratedCount[branch])],
+        ];
+      }),
+    ),
+    attributionSaturatedNonRiverHighCoverageMisses: attributionTotals.saturatedNonRiverMiss,
+    attributionSaturatedNonRiverHighCoverageMissShare:
+      attributionTotals.saturatedNonRiverMiss / Math.max(1, attributionTotals.highCoverage - attributionTotals.recovered),
+    attributionSaturatedNonRiverCandidateCells: saturatedNonRiverCandidateCells,
+    attributionSaturatedNonRiverCandidateHighCoverageShare:
+      saturatedNonRiverCandidateHighCoverage / Math.max(1, saturatedNonRiverCandidateCells),
+    attributionSaturatedNonRiverCandidateMeanObservedPercent:
+      saturatedNonRiverCandidateObservedPercent / Math.max(1, saturatedNonRiverCandidateCells),
+    ...Object.fromEntries(
+      WETLAND_ATTRIBUTION_REGIONS.flatMap((region) => {
+        const totals = regionAttribution[region.id];
+        return [
+          [`region${capitalizeMetricId(region.id)}HighCoverageCells`, totals.highCoverage],
+          [`region${capitalizeMetricId(region.id)}Recall`, totals.recovered / Math.max(1, totals.highCoverage)],
+          [`region${capitalizeMetricId(region.id)}StandingWaterRecovered`, totals.standingWater],
+          [`region${capitalizeMetricId(region.id)}RiverineFloodplainRecovered`, totals.riverineFloodplain],
+          [`region${capitalizeMetricId(region.id)}StrongRiverRecovered`, totals.strongRiver],
+          [`region${capitalizeMetricId(region.id)}CohesionOrResidualRecovered`, totals.cohesionOrResidual],
+          [`region${capitalizeMetricId(region.id)}SaturatedNonRiverMisses`, totals.saturatedNonRiverMiss],
+        ];
+      }),
+    ),
     ...Object.fromEntries(
       ['referenceLowGeneratedOther', 'referenceLowGeneratedWetland', 'referenceHighGeneratedOther', 'referenceHighGeneratedWetland']
         .flatMap((label, group) => {

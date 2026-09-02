@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { coldHydrationAvailability, equatorwardCurrentExposure } from '@world-forge/generator-core';
 import {
+  attributeWetlandHydrology,
   createNativeBiomeConfusionAccumulator,
   hydrationRegimeErrorProfiles,
   offshoreEkmanExposure,
@@ -12,6 +13,24 @@ import {
 } from './earthMetrics';
 
 describe('Earth downstream metric math', () => {
+  it('attributes generated wetlands to mutually exclusive production hydrology branches', () => {
+    const common = {
+      generatedWetland: true,
+      lake: false,
+      wetness: 0.7,
+      river: 0.6,
+      altitude: 0.01,
+      localRelief: 0.01,
+      lakeWetnessSupport: 0.35,
+    };
+
+    expect(attributeWetlandHydrology({ ...common, lake: true })).toBe('standingWater');
+    expect(attributeWetlandHydrology(common)).toBe('riverineFloodplain');
+    expect(attributeWetlandHydrology({ ...common, altitude: 0.08 })).toBe('strongRiver');
+    expect(attributeWetlandHydrology({ ...common, river: 0.1 })).toBe('cohesionOrResidual');
+    expect(attributeWetlandHydrology({ ...common, generatedWetland: false })).toBe('notWetland');
+  });
+
   it('reports perfect monotonic agreement independent of scale', () => {
     expect(spearmanRankCorrelation([1, 2, 3, 4], [10, 20, 30, 40])).toBeCloseTo(1, 10);
   });
