@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import type { BodyGenerationFidelity } from '@world-forge/shared';
 import type { BodyGenerationQueueController } from '../enrichment/useBodyGenerationQueue';
 import type { SystemCatalogEntry } from './systemPresentation';
@@ -11,21 +11,16 @@ export function BodyGenerationPanel({
   controller: BodyGenerationQueueController;
 }) {
   const record = selectedEntry ? controller.lifecycle?.records[selectedEntry.id] ?? null : null;
-  const [fidelity, setFidelity] = useState<BodyGenerationFidelity>(record?.requestedFidelity ?? 'preview');
-  useEffect(() => {
-    setFidelity(record?.requestedFidelity ?? 'preview');
-  }, [record?.bodyId, record?.requestedFidelity]);
-
+  const generatedFidelity = record ? controller.generatedFidelityForBody(record.bodyId) : null;
   const queuePosition = useMemo(() => {
     if (!record || !controller.lifecycle) return 0;
     const index = controller.lifecycle.queue.indexOf(record.bodyId);
     return index >= 0 ? index + 1 : 0;
   }, [controller.lifecycle, record]);
-  const unresolvedCount = Object.values(controller.lifecycle?.records ?? {})
-    .filter((candidate) => candidate.eligible && candidate.status !== 'generated' && candidate.status !== 'generating' && candidate.status !== 'queued')
-    .length;
-  const eligibleCount = Object.values(controller.lifecycle?.records ?? {}).filter((candidate) => candidate.eligible).length;
-  const generatedCount = Object.values(controller.lifecycle?.records ?? {}).filter((candidate) => candidate.eligible && candidate.status === 'generated').length;
+  const eligibleRecords = Object.values(controller.lifecycle?.records ?? {}).filter((candidate) => candidate.eligible);
+  const generatedCount = eligibleRecords.filter((candidate) => candidate.status === 'generated').length;
+  const previewCount = eligibleRecords.filter((candidate) => controller.generatedFidelityForBody(candidate.bodyId) === 'preview').length;
+  const standardCount = eligibleRecords.filter((candidate) => controller.generatedFidelityForBody(candidate.bodyId) === 'standard').length;
   const activeBodyId = controller.lifecycle?.activeBodyId ?? null;
   const queueCount = controller.lifecycle?.queue.length ?? 0;
   const isActive = Boolean(record && activeBodyId === record.bodyId);
@@ -40,43 +35,54 @@ export function BodyGenerationPanel({
       data-body-queue-count={queueCount}
       data-body-active-id={activeBodyId ?? 'none'}
       data-body-generated-count={generatedCount}
-      data-body-eligible-count={eligibleCount}
+      data-body-eligible-count={eligibleRecords.length}
+      data-body-background-enabled={controller.backgroundEnabled}
+      data-body-foreground-busy={controller.foregroundBusy}
     >
       <div className="system-generation-heading">
-        <strong>Body generation</strong>
+        <strong>Body detail</strong>
         <span>{formatStatus(record?.status ?? 'none')}</span>
       </div>
+
       {record ? (
         <>
           <dl>
-            <div><dt>Eligible</dt><dd>{record.eligible ? 'Yes' : 'No'}</dd></div>
-            <div><dt>Profile</dt><dd>{record.profile ?? 'Not assigned'}</dd></div>
-            <div><dt>Workflow</dt><dd title={record.workflow.id}>{record.workflow.id || 'N/A'}</dd></div>
-            <div><dt>Version</dt><dd>{record.workflow.version || 'N/A'}</dd></div>
-            <div><dt>Queue</dt><dd>{queuePosition ? `#${queuePosition}` : isActive ? 'Active' : 'Not queued'}</dd></div>
+            <div><dt>Profile</dt><dd>{record.profile ? formatProfile(record.profile) : 'Primary workflow'}</dd></div>
+            <div><dt>Generated quality</dt><dd>{generatedFidelity ? fidelityLabel(generatedFidelity) : 'Not generated yet'}</dd></div>
+            {(record.status === 'queued' || record.status === 'generating') && (
+              <div><dt>Requested quality</dt><dd>{fidelityLabel(record.requestedFidelity)}</dd></div>
+            )}
+            {(record.status === 'queued' || isActive) && (
+              <div><dt>Queue</dt><dd>{queuePosition ? `#${queuePosition}` : isActive ? 'Active' : 'Not queued'}</dd></div>
+            )}
           </dl>
-          <label className="system-fidelity-control" htmlFor="body-generation-fidelity">
-            <span>Fidelity</span>
-            <select
-              id="body-generation-fidelity"
-              aria-label="Body generation fidelity"
-              value={fidelity}
-              disabled={!record.eligible || record.status === 'queued' || record.status === 'generating'}
-              onChange={(event) => setFidelity(event.target.value as BodyGenerationFidelity)}
-            >
-              <option value="preview">Preview 64 x 32</option>
-              <option value="standard">Standard 128 x 64</option>
-            </select>
-          </label>
+
+          {(record.status === 'ready' || record.status === 'placeholder') && record.eligible && (
+            <small>
+              {controller.backgroundEnabled
+                ? 'A lightweight Preview will be generated automatically in the background.'
+                : 'Background preview generation is paused.'}
+            </small>
+          )}
+
           <div className="system-generation-actions">
-            {record.eligible && (record.status === 'ready' || record.status === 'placeholder') && (
+            {record.status === 'generated' && record.eligible && generatedFidelity === 'preview' && (
               <button
                 type="button"
                 className="primary-button"
-                aria-label="Generate selected body"
-                onClick={() => controller.queueBody(record.bodyId, fidelity, true)}
+                aria-label="Upgrade selected body to standard detail"
+                onClick={() => controller.upgradeBody(record.bodyId)}
               >
-                Generate selected
+                Upgrade to Standard
+              </button>
+            )}
+            {record.status === 'generated' && record.eligible && generatedFidelity === 'standard' && (
+              <button
+                type="button"
+                aria-label="Regenerate selected body at standard detail"
+                onClick={() => controller.queueBody(record.bodyId, 'standard', true)}
+              >
+                Regenerate Standard
               </button>
             )}
             {record.status === 'queued' && (
@@ -84,7 +90,7 @@ export function BodyGenerationPanel({
                 Remove from queue
               </button>
             )}
-            {record.status === 'generating' && (
+            {record.status === 'generating' && isActive && (
               <button type="button" aria-label="Cancel selected body generation" onClick={controller.cancelActive}>
                 Cancel generation
               </button>
@@ -94,46 +100,46 @@ export function BodyGenerationPanel({
                 Retry generation
               </button>
             )}
-            {(record.status === 'generated' || record.status === 'stale') && record.eligible && (
-              <button type="button" aria-label="Regenerate selected body" onClick={() => controller.regenerateBody(record.bodyId)}>
-                Regenerate
+            {record.status === 'stale' && record.eligible && (
+              <button type="button" className="primary-button" aria-label="Regenerate stale selected body" onClick={() => controller.regenerateBody(record.bodyId)}>
+                Regenerate body
               </button>
             )}
           </div>
+
           <small>{record.eligibilityReason}</small>
+          {generatedFidelity === 'preview' && record.status === 'generated' && (
+            <small>Preview uses a 64 x 32 persisted field. Standard regenerates the body at 128 x 64 while keeping the Preview visible until the upgrade succeeds.</small>
+          )}
+          {generatedFidelity === 'standard' && (
+            <small>Standard uses a 128 x 64 persisted field and higher-detail inspection textures.</small>
+          )}
           {record.failureReason && <small className="system-generation-error">{record.failureReason}</small>}
           {record.staleReason && <small className="system-generation-warning">{record.staleReason}</small>}
         </>
       ) : (
-        <small>Select a system body to inspect generation eligibility.</small>
+        <small>Select a system body to inspect its generated detail.</small>
       )}
 
       <div className="system-queue-actions">
-        <button
-          type="button"
-          aria-label="Queue unresolved system bodies"
-          disabled={unresolvedCount === 0}
-          onClick={() => controller.queueUnresolvedBodies(fidelity)}
-        >
-          Queue bodies ({unresolvedCount})
-        </button>
-        <button
-          type="button"
-          className="primary-button"
-          aria-label="Start body generation queue"
-          disabled={queueCount === 0 || Boolean(activeBodyId)}
-          onClick={controller.startQueue}
-        >
-          Start queue ({queueCount})
-        </button>
-        {activeBodyId && (
-          <button type="button" aria-label="Pause body generation queue after active body" onClick={controller.pauseQueue}>
-            Pause after active
+        {controller.backgroundEnabled ? (
+          <button type="button" aria-label="Pause automatic background body generation" onClick={controller.pauseQueue}>
+            Pause background
+          </button>
+        ) : (
+          <button type="button" className="primary-button" aria-label="Resume automatic background body generation" onClick={controller.startQueue}>
+            Resume background
           </button>
         )}
       </div>
-      <small>{generatedCount} of {eligibleCount} non-primary bodies generated.</small>
-      {(activeBodyId || controller.activeNodeLabel) && (
+
+      <small>
+        Background previews: {generatedCount} of {eligibleRecords.length} bodies ready ({previewCount} Preview, {standardCount} Standard){queueCount ? `, ${queueCount} queued` : ''}.
+      </small>
+      {controller.foregroundBusy && (
+        <small>Foreground work has priority. Background body generation will resume automatically when it is clear.</small>
+      )}
+      {(activeBodyId || controller.activeNodeLabel) && !controller.foregroundBusy && (
         <div className="system-generation-progress" role="status">
           <strong>{controller.activeNodeLabel || 'Generating body'}</strong>
           <span>{formatElapsed(controller.elapsedMs)}</span>
@@ -148,6 +154,14 @@ function formatStatus(status: string): string {
   return status === 'none'
     ? 'No selection'
     : status.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+function formatProfile(profile: string): string {
+  return profile.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+function fidelityLabel(fidelity: BodyGenerationFidelity): string {
+  return fidelity === 'standard' ? 'Standard (128 x 64)' : 'Preview (64 x 32)';
 }
 
 function formatElapsed(milliseconds: number): string {
