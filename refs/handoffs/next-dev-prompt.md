@@ -1,135 +1,74 @@
-# Next Dev Prompt: Paused Downstream Earth Validation
+# Next Dev Prompt: Plate Diagnostic Harness Cleanup
 
 Updated: 2026-09-02
-
-The downstream Earth validation slice now has observed GLWD wetland metrics, accepted river-scale and lowland-floodplain corrections, and hydrology-branch/regional attribution. Continue from `refs/testing/downstream-generator-earth-validation-2026-08-26.md`.
-
-The reusable framework, Earth production adapter, fixed 128 x 64 analysis grid, and Fast/Standard/Ultra baselines are established. Final biome ownership and final-wind orographic reconciliation have been corrected from measured evidence. Stored flow vectors remain geographic north-positive; presentation converts them to south-increasing raster rows.
-
-Native confusion tables localize temperature, generated/reference wetness, hydrology, circulation, and classifier margins without retaining native samples. The optional GLWD evaluator remains manual and answer-key data never enters production. `catchment-budget-v1` is now the production default across present-day and full deep-time generation. It improves GLWD recall to `40.83% / 29.87% / 26.19%` and separation to `7.50 / 10.66 / 14.14` points while Köppen macro-F1 remains within tolerance at `0.5468 / 0.5652 / 0.5909`. The repeated 80-case suite adds no aggregate finding and unsupported wetlands remain zero. The immediate predecessor remains available with `--lowland-floodplain-wetlands`. The next wetland diagnostic should target the remaining warm-floodplain regional gap, especially Sudd, without widening the global budget.
 
 Continue implementation in:
 
 `https://github.com/Three-Wheeled-Sloth-Studio/World-Forge`
 
-Work directly on `dev`.
+Work from the latest `dev` after the plate diagnostic audit is accepted.
 
 ## Starting point
 
-The maintained Ultra Earth integration is accepted far enough to pause. Do not restart the source-resolution investigation or rebuild the same acceptance machinery without new evidence.
+The accepted production generator remains unchanged. Catchment-budget wetlands remain the production default, and the maintained Ultra Earth baseline remains paused and accepted. Do not reopen climate, hydrology, biome, plate-generation, source-resolution, or performance tuning without measured evidence.
 
-Validated functional/CI checkpoint before the current documentation update:
+The plate diagnostic audit in `refs/testing/plate-diagnostic-contract-audit-2026-09-02.md` establishes that the fictional preset harness contains stale validation plumbing:
 
-- commit: `8a8b4d259e46945e768d9e4168ecc24bd48efef8`
-- visible runtime: `0.3.81`
-- validation run: `32894204075`
-- `npm run verify`: green
-- production page-harness smoke: green
-- production attribution-rerank smoke: green
+- current production/shared deep-time diagnostics expose `fragmentPlacement` with model version `fragment-placement-v2`;
+- current production/shared schema does not define `plateAdvection`;
+- `plate-advection-v3`, `plateAdvectionMarginContinuityScore`, and the associated threshold survive only in the stale preset fingerprint/harness/reporting surface;
+- therefore the missing-diagnostic failure is validation-contract debt, not evidence that native production skips a plate stage;
+- the old margin-continuity warning is an obsolete-metric finding, not demonstrated evidence of a current scientific generator defect.
 
-Read first:
+Focused regression coverage now verifies active diagnostic presence, schema consistency, preset-path compatibility, and determinism without changing generation behavior.
 
-1. `AGENTS.md`
-2. `refs/README.md`
-3. `refs/project.yaml`
-4. `refs/handoffs/currentHandoff.md`
-5. `refs/testing/ci-suite-audit-2026-08-25.md`
-6. `refs/testing/validationCommands.yaml`
-7. `refs/research/reference-data/earth-reference-data.md`
-8. World Forge issue #124
-9. Parchment Worlds issue #22 when sibling access is available
+## Immediate next slice
 
-## Accepted contracts
+Use a normal local checkout so the large preset validation files can be edited and exercised atomically.
 
-Maintained Earth:
+1. Remove the retired local `PlateAdvection` pseudo-schema and `plateAdvection*` fingerprint fields from `apps/desktop/src/dev/deepTimeLedgerFingerprint.ts`.
+2. Replace the stale `plate-advection-v3` case failure, aggregates, and markdown summary in `scripts/run-preset-validation.ts` with reporting based on the active `fragment-placement-v2` contract where useful.
+3. Keep the change diagnostic-only. Do not change fragment placement, plate construction, deep-time motion, terrain response, climate, hydrology, or biome outputs.
+4. Run the focused active-contract test and the repository's normal `npm run verify` gate.
+5. Run the fictional preset matrix only as an intentional manual diagnostic if the environment can support it. It must remain outside ordinary push CI.
+6. Update `refs/testing/downstream-generator-earth-validation-2026-08-26.md` so its historical globally-red preset note clearly records that the missing `plate-advection-v3` finding was retired as stale harness debt. Preserve the historical 80-world evidence rather than rewriting history.
+7. Update `refs/handoffs/currentHandoff.md` with the final cleanup commit, test/run IDs, and before/after manual preset findings if a manual run was performed.
 
-- raster: `4096 x 2048`
-- canonical topology: `1024`
+## Validation posture
 
-Ordinary fictional generation remains independent:
-
-- default: `1024 x 512`
-- lower Standard tier: `512 x 256`
-
-One maintained Sol package remains one project with 23 bodies. Do not split Earth out of Sol or drop Jupiter/Mars.
-
-## Owner QA already established
-
-Do not ask the owner to repeat these checks without a concrete reason:
-
-- Parchment login works when its machine-local `.env.local` is present;
-- a Parchment project loads;
-- the Sol handoff reaches World Forge;
-- Earth reports `4096 x 2048` map scale;
-- the high-resolution 3D/globe presentation is slow to appear but eventually loads;
-- secondary planets continue to load/display.
-
-The temporary local login failure was missing machine-local Firebase web configuration, not reverted auth code.
-
-## Canonical local/source workflow
-
-Normal local Parchment startup owns maintained-reference preparation. Do not restore manual owner instructions for separate Mars/Earth commands.
-
-The canonical World Forge command remains:
+Routine checkpoint:
 
 ```text
-npm run reference:build-sol
-```
-
-Use it directly only for World Forge-maintained reference work or diagnostics. Parchment invokes/reuses it automatically during its normal starter preparation.
-
-## CI posture
-
-Ordinary World Forge CI is now intentionally simple:
-
-- one GitHub-hosted validation job;
-- one `npm ci`;
-- `npm run verify`;
-- production page-harness smoke;
-- production attribution-rerank smoke.
-
-The old dedicated Ultra acceptance workflow was deleted because it duplicated tests and full verification already present in ordinary CI.
-
-Keep these intentional manual diagnostics:
-
-- Geographic Drilldown Diagnostic, because it runs `evaluate:regions`;
-- Ultra Earth Reference Diagnostic, because it performs the expensive real scientific-source build and records package/resource evidence.
-
-Do not add a new path-specific workflow for tests already contained in the ordinary suite unless it provides genuinely different evidence.
-
-## If payload/performance optimization is selected next
-
-The observed slow 3D startup and measured package costs make this a legitimate next slice, but it is not automatically authorized merely because the Ultra baseline is accepted.
-
-When selected, work in this order:
-
-1. binary typed-layer entries inside `.wforge` instead of JSON numeric arrays;
-2. backward-compatible current-package reader;
-3. remeasure `.wforge` size, package save/reopen, Parchment handoff/import, memory, and Globe/3D startup latency;
-4. staged/lazy hydration only if measurements still justify it;
-5. then evaluate Parchment's base64 JSON attachment envelope.
-
-Preserve Earth `4096 x 2048` / topology `1024` throughout. Do not optimize by reducing resolution.
-
-## If another roadmap slice is selected instead
-
-Treat the Ultra work as a stable dependency. Do not broaden unrelated work into new Earth climate/source ingestion, package rewrites, or presentation churn unless the selected slice requires it.
-
-## Validation
-
-During implementation, run focused tests for the touched seam. For a functional checkpoint:
-
-```text
+npx vitest run apps/desktop/src/dev/plateDiagnosticContract.test.ts
 npm run verify
 ```
 
-Ordinary CI also runs the two production browser smokes. Real scientific-source rebuilds remain intentional diagnostics, not push CI.
+Intentional manual preset checkpoint only:
+
+```text
+npm run validate:presets -- --mode full
+```
+
+Do not wire the preset matrix, Fast/Standard/Ultra Earth diagnostics, real-source Earth/Sol build, or performance diagnostics into ordinary push CI.
+
+## Accepted deployment/provenance contracts
+
+- QA and main remain exact-SHA promotion targets.
+- Deployment requires a successful `Validate World Forge` run for the exact source SHA.
+- QA/main deployment remains build-only compilation/bundling rather than duplicate full verification.
+- Do not move deployment secrets or deployment workflow ownership into this public repository.
+
+## Maintained Earth/Sol contracts
+
+- Earth raster: `4096 x 2048`.
+- canonical topology: `1024`.
+- one maintained Sol project with 23 bodies, including Earth, Jupiter, and Mars.
+- ordinary fictional generation defaults remain independent of the maintained reference fixture.
 
 ## Guardrails
 
-- Work directly on `dev`.
-- Keep the current handoff and next-dev prompt aligned with the selected next slice.
+- Do not recreate `plate-advection-v3` merely to satisfy the stale harness.
+- Do not invent a new margin-continuity threshold without a current-model scientific question and measured evidence.
 - Preserve deterministic IDs and package compatibility.
-- Keep one Sol project with Earth, Jupiter, Mars, and the remaining catalog.
-- Do not reintroduce duplicate CI just to get faster status comments.
-- Do not commit local Firebase/server credentials.
+- Do not commit local Firebase/server credentials or local scientific answer-key assets.
+- Keep expensive diagnostics deliberate and manual.
