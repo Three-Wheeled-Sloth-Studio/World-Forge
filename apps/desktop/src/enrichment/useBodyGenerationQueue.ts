@@ -12,10 +12,13 @@ import {
   type SystemBodyGenerationSource
 } from '@world-forge/generation-runtime/enrichment/systemBodyGeneration';
 import {
+  bodyArtifactForBody,
   cancelActiveBodyGeneration,
   completeBodyGeneration,
   failBodyGeneration,
   pauseBodyGenerationQueue,
+  preemptActiveBodyGeneration,
+  queueBackgroundPreviewBodies,
   queueBodyGeneration,
   queueUnresolvedBodies,
   reconcileBodyGenerationLifecycle,
@@ -37,6 +40,8 @@ export type BodyGenerationQueueController = {
   activeNodeLabel: string;
   elapsedMs: number;
   error: string;
+  backgroundEnabled: boolean;
+  foregroundBusy: boolean;
   queueBody: (bodyId: string, fidelity?: BodyGenerationFidelity, start?: boolean) => void;
   queueUnresolvedBodies: (fidelity?: BodyGenerationFidelity) => void;
   queueUnresolvedMoons: (fidelity?: BodyGenerationFidelity) => void;
@@ -46,6 +51,8 @@ export type BodyGenerationQueueController = {
   cancelActive: () => void;
   retryBody: (bodyId: string) => void;
   regenerateBody: (bodyId: string) => void;
+  upgradeBody: (bodyId: string) => void;
+  generatedFidelityForBody: (bodyId: string) => BodyGenerationFidelity | null;
 };
 
 type WorkerResponse =
@@ -57,21 +64,27 @@ type WorkerResponse =
 export function useBodyGenerationQueue({
   project,
   orbitalContext,
-  onProjectEnriched
+  onProjectEnriched,
+  automaticPreviewGeneration = false,
+  foregroundBusy = false
 }: {
   project: WorldProject | null;
   orbitalContext: SystemOrbitalContextArtifact | null;
   onProjectEnriched: (project: WorldProject) => void;
+  automaticPreviewGeneration?: boolean;
+  foregroundBusy?: boolean;
 }): BodyGenerationQueueController {
   const [activeNodeLabel, setActiveNodeLabel] = useState('');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [error, setError] = useState('');
+  const [backgroundEnabled, setBackgroundEnabled] = useState(automaticPreviewGeneration);
   const workerRef = useRef<Worker | null>(null);
   const taskIdRef = useRef('');
   const taskStartedAtRef = useRef(0);
   const activeBodyIdRef = useRef('');
   const activeWorkflowNodesRef = useRef<ReturnType<typeof systemBodyGenerationWorkflowDescriptor>['nodes']>([]);
   const interruptionCheckKeyRef = useRef('');
+  const preemptedForForegroundRef = useRef(false);
   const projectRef = useRef(project);
   const orbitalContextRef = useRef(orbitalContext);
   const onProjectEnrichedRef = useRef(onProjectEnriched);
@@ -79,6 +92,10 @@ export function useBodyGenerationQueue({
   useEffect(() => { projectRef.current = project; }, [project]);
   useEffect(() => { orbitalContextRef.current = orbitalContext; }, [orbitalContext]);
   useEffect(() => { onProjectEnrichedRef.current = onProjectEnriched; }, [onProjectEnriched]);
+  useEffect(() => {
+    setBackgroundEnabled(automaticPreviewGeneration);
+    preemptedForForegroundRef.current = false;
+  }, [automaticPreviewGeneration, project?.projectId]);
 
   const lifecycle = useMemo(() => {
     if (!project || !orbitalContext) return null;
@@ -123,7 +140,7 @@ export function useBodyGenerationQueue({
     const currentProject = projectRef.current;
     const currentOrbitalContext = orbitalContextRef.current;
     const worker = workerRef.current;
-    if (!currentProject || !currentOrbitalContext || !worker || taskIdRef.current) return;
+    if (!currentProject || !currentOrbitalContext || !worker || taskIdRef.current || foregroundBusy) return;
     let nextLifecycle = inputLifecycle ?? reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext);
     nextLifecycle = startNextBodyGeneration(nextLifecycle);
     if (!nextLifecycle.activeBodyId) {
@@ -161,7 +178,7 @@ export function useBodyGenerationQueue({
     };
     window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
     worker.postMessage({ type: 'run-system-body', id, source });
-  }, [persistLifecycle]);
+  }, [foregroundBusy, persistLifecycle]);
 
   useEffect(() => {
     const worker = new Worker(new URL('../enrichmentWorker.ts', import.meta.url), { type: 'module' });
@@ -169,7 +186,7 @@ export function useBodyGenerationQueue({
     window.setTimeout(() => {
       const currentProject = projectRef.current;
       const currentOrbitalContext = orbitalContextRef.current;
-      if (!currentProject || !currentOrbitalContext || taskIdRef.current) return;
+      if (!currentProject || !currentOrbitalContext || taskIdRef.current || foregroundBusy) return;
       const pendingLifecycle = reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext);
       if (!pendingLifecycle.paused && !pendingLifecycle.activeBodyId && pendingLifecycle.queue.length > 0) {
         runNext(pendingLifecycle);
@@ -232,14 +249,19 @@ export function useBodyGenerationQueue({
           project: projectRef.current ?? undefined
         };
         window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
+        preemptedForForegroundRef.current = false;
         activeBodyIdRef.current = '';
         taskIdRef.current = '';
         activeWorkflowNodesRef.current = [];
 
       } else if (message.type === 'cancelled') {
-        const cancelledLifecycle = cancelActiveBodyGeneration(currentLifecycle, bodyId);
+        const wasForegroundPreemption = preemptedForForegroundRef.current;
+        const cancelledLifecycle = wasForegroundPreemption
+          ? preemptActiveBodyGeneration(currentLifecycle, bodyId)
+          : cancelActiveBodyGeneration(currentLifecycle, bodyId);
         persistLifecycle(cancelledLifecycle);
-        setActiveNodeLabel('Generation cancelled');
+        setActiveNodeLabel(wasForegroundPreemption ? 'Background generation paused for foreground work' : 'Generation cancelled');
+        preemptedForForegroundRef.current = false;
         activeBodyIdRef.current = '';
         taskIdRef.current = '';
         activeWorkflowNodesRef.current = [];
@@ -260,6 +282,7 @@ export function useBodyGenerationQueue({
           error: message.message
         };
         window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
+        preemptedForForegroundRef.current = false;
         activeBodyIdRef.current = '';
         taskIdRef.current = '';
         activeWorkflowNodesRef.current = [];
@@ -269,7 +292,31 @@ export function useBodyGenerationQueue({
       worker.terminate();
       if (workerRef.current === worker) workerRef.current = null;
     };
-  }, [persistLifecycle, runNext]);
+  }, [foregroundBusy, persistLifecycle, runNext]);
+
+  useEffect(() => {
+    if (!foregroundBusy) return;
+    const currentProject = projectRef.current;
+    const currentOrbitalContext = orbitalContextRef.current;
+    if (!currentProject || !currentOrbitalContext) return;
+    const currentLifecycle = reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext);
+    if (taskIdRef.current && activeBodyIdRef.current) {
+      preemptedForForegroundRef.current = true;
+      workerRef.current?.postMessage({ type: 'cancel', id: taskIdRef.current });
+      return;
+    }
+    if (!currentLifecycle.paused && currentLifecycle.queue.length > 0) {
+      persistLifecycle(pauseBodyGenerationQueue(currentLifecycle));
+    }
+  }, [foregroundBusy, persistLifecycle]);
+
+  useEffect(() => {
+    if (!automaticPreviewGeneration || !backgroundEnabled || foregroundBusy || !lifecycle || lifecycle.activeBodyId || taskIdRef.current) return;
+    const queued = queueBackgroundPreviewBodies(lifecycle);
+    if (queued.queue.length === 0) return;
+    const prepared = queued.paused ? resumeBodyGenerationQueue(queued) : queued;
+    if (prepared !== lifecycle) persistLifecycle(prepared);
+  }, [automaticPreviewGeneration, backgroundEnabled, foregroundBusy, lifecycle, persistLifecycle]);
 
   useEffect(() => {
     if (!lifecycle?.activeBodyId) return;
@@ -281,16 +328,17 @@ export function useBodyGenerationQueue({
 
   const queuedBodyIds = lifecycle?.queue.join('|') ?? '';
   useEffect(() => {
-    if (!lifecycle || lifecycle.paused || lifecycle.activeBodyId || lifecycle.queue.length === 0 || taskIdRef.current) return;
-    const timer = window.setTimeout(() => runNext(lifecycle), 0);
+    if (foregroundBusy || !lifecycle || lifecycle.paused || lifecycle.activeBodyId || lifecycle.queue.length === 0 || taskIdRef.current) return;
+    const timer = window.setTimeout(() => runNext(lifecycle), 150);
     return () => window.clearTimeout(timer);
-  }, [lifecycle?.activeBodyId, lifecycle?.paused, queuedBodyIds, runNext]);
+  }, [foregroundBusy, lifecycle?.activeBodyId, lifecycle?.paused, queuedBodyIds, runNext]);
 
   const updateAndMaybeRun = useCallback((nextLifecycle: BodyGenerationLifecycle, start: boolean) => {
+    if (start) setBackgroundEnabled(true);
     const prepared = start ? resumeBodyGenerationQueue(nextLifecycle) : nextLifecycle;
     persistLifecycle(prepared);
-    if (start) window.setTimeout(() => runNext(prepared), 0);
-  }, [persistLifecycle, runNext]);
+    if (start && !foregroundBusy) window.setTimeout(() => runNext(prepared), 0);
+  }, [foregroundBusy, persistLifecycle, runNext]);
 
   const queueBody = useCallback((bodyId: string, fidelity: BodyGenerationFidelity = 'preview', start = false) => {
     const currentProject = projectRef.current;
@@ -312,15 +360,17 @@ export function useBodyGenerationQueue({
     const currentProject = projectRef.current;
     const currentOrbitalContext = orbitalContextRef.current;
     if (!currentProject || !currentOrbitalContext) return;
+    setBackgroundEnabled(true);
     const current = resumeBodyGenerationQueue(reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext));
     persistLifecycle(current);
-    window.setTimeout(() => runNext(current), 0);
-  }, [persistLifecycle, runNext]);
+    if (!foregroundBusy) window.setTimeout(() => runNext(current), 0);
+  }, [foregroundBusy, persistLifecycle, runNext]);
 
   const pauseQueue = useCallback(() => {
     const currentProject = projectRef.current;
     const currentOrbitalContext = orbitalContextRef.current;
     if (!currentProject || !currentOrbitalContext) return;
+    setBackgroundEnabled(false);
     persistLifecycle(pauseBodyGenerationQueue(reconcileBodyGenerationLifecycle(currentProject, currentOrbitalContext)));
   }, [persistLifecycle]);
 
@@ -334,6 +384,8 @@ export function useBodyGenerationQueue({
 
   const cancelActive = useCallback(() => {
     if (!taskIdRef.current) return;
+    setBackgroundEnabled(false);
+    preemptedForForegroundRef.current = false;
     workerRef.current?.postMessage({ type: 'cancel', id: taskIdRef.current });
   }, []);
 
@@ -349,11 +401,25 @@ export function useBodyGenerationQueue({
     queueBody(bodyId, lifecycle?.records[bodyId]?.requestedFidelity ?? 'preview', true);
   }, [lifecycle, queueBody]);
 
+  const upgradeBody = useCallback((bodyId: string) => {
+    queueBody(bodyId, 'standard', true);
+  }, [queueBody]);
+
+  const generatedFidelityForBody = useCallback((bodyId: string): BodyGenerationFidelity | null => {
+    const currentProject = projectRef.current;
+    const currentOrbitalContext = orbitalContextRef.current;
+    if (!currentProject || !currentOrbitalContext) return null;
+    const requested = currentProject.bodyGeneration?.records[bodyId]?.requestedFidelity ?? 'preview';
+    return bodyArtifactForBody(currentProject, currentOrbitalContext, bodyId, requested)?.requestedFidelity ?? null;
+  }, []);
+
   return {
     lifecycle,
     activeNodeLabel,
     elapsedMs,
     error,
+    backgroundEnabled,
+    foregroundBusy,
     queueBody,
     queueUnresolvedBodies: queueAll,
     queueUnresolvedMoons: queueAll,
@@ -362,6 +428,8 @@ export function useBodyGenerationQueue({
     removeQueuedBody,
     cancelActive,
     retryBody,
-    regenerateBody
+    regenerateBody,
+    upgradeBody,
+    generatedFidelityForBody
   };
 }
