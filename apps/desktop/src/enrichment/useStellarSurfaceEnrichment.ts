@@ -122,6 +122,11 @@ export function useStellarSurfaceEnrichment({ project, orbitalContext, onProject
       } else if (message.type === 'cancelled') {
         setStatus(availability.available ? 'idle' : 'unavailable');
         setActiveNodeLabel('');
+        const detail: GenerationTelemetryDetail = {
+          phase: 'cancelled', taskId: message.id, progress: 1, label: workflow.label, seed: projectRef.current?.seed ?? '', startNodeId: null,
+          startedAt: taskStartedAtRef.current, timestamp: performance.now()
+        };
+        window.dispatchEvent(new CustomEvent<GenerationTelemetryDetail>(generationTelemetryEvent, { detail }));
       } else {
         setStatus('failed');
         setError(message.message);
