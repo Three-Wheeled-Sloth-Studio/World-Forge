@@ -20,15 +20,15 @@ The preset harness executes the normal native production path:
 
 The current production/shared deep-time schema exposes `fragmentPlacement?: DeepTimeFragmentPlacementDiagnostics`, whose active model version is `fragment-placement-v2`. It does not define a `plateAdvection` diagnostic field.
 
-The stale validation layer still contains a locally invented optional `PlateAdvection` shape in `apps/desktop/src/dev/deepTimeLedgerFingerprint.ts` and turns its absence into `plateAdvectionDiagnosticsVersion: missing`. `scripts/run-preset-validation.ts` then requires that nonexistent field to equal `plate-advection-v3` and fails every affected case.
+Before this cleanup, the validation layer still contained a locally invented optional `PlateAdvection` shape in `apps/desktop/src/dev/deepTimeLedgerFingerprint.ts`, turned its absence into `plateAdvectionDiagnosticsVersion: missing`, and required that nonexistent field to equal `plate-advection-v3` in `scripts/run-preset-validation.ts`.
 
-Searches of the current repository found `plate-advection-v3`, `PlateAdvectionDiagnostics`, and `marginContinuityScore` only in the stale validation/fingerprint/report surface, not in the production generator or shared schema.
+Searches of the current production and shared schema found no active `plate-advection-v3` or `marginContinuityScore` contract.
 
 ## Finding classification
 
 ### Missing `plate-advection-v3`
 
-Reclassified as a stale harness contract.
+Reclassified as a stale harness contract and fixed in validation plumbing.
 
 There is no evidence in this audit that a current production stage is being skipped. Current production generation emits the active `fragment-placement-v2` diagnostics through the same native path used by the preset harness.
 
@@ -36,9 +36,22 @@ There is no evidence in this audit that a current production stage is being skip
 
 Reclassified as an obsolete-metric finding, not a demonstrated current scientific defect.
 
-`plateAdvectionMarginContinuityScore` belongs to the same retired `plate-advection-v3` contract and is not produced by the current generator. A threshold against a metric the active model does not define cannot establish a present generator defect.
+`plateAdvectionMarginContinuityScore` belonged to the retired validation contract and is not produced by the current generator. Its old threshold has been removed rather than recreated against a different model.
 
-This audit does not claim that present-day plate margins are scientifically optimal. It establishes only that the old continuity warning is not valid current evidence. Any future continuity investigation should begin by defining a model-independent or current-model metric and collecting measured evidence before production tuning.
+This audit does not claim that present-day plate margins are scientifically optimal. Any future continuity investigation should begin by defining a model-independent or current-model metric and collecting measured evidence before production tuning.
+
+## Cleanup implemented
+
+The diagnostic-only cleanup now:
+
+- removes the local `PlateAdvection` pseudo-schema from `apps/desktop/src/dev/deepTimeLedgerFingerprint.ts`;
+- removes all `plateAdvection*` fingerprint fields;
+- fingerprints the active `fragmentPlacement` contract instead;
+- replaces the manual preset harness's stale case failure and aggregate coverage checks with `fragment-placement-v2` presence and schema invariants;
+- replaces the old plate-advection markdown table with current fragment-placement reporting;
+- removes the obsolete margin-continuity, frontier-advance, and orphan-risk findings rather than inventing replacement thresholds.
+
+No production generator, plate construction, fragment placement, terrain response, climate, hydrology, or biome logic changed.
 
 ## Regression coverage
 
@@ -48,15 +61,11 @@ This audit does not claim that present-day plate margins are scientifically opti
 - compatibility with both Sol-like and habitable-star preset preparation;
 - exact `fragment-placement-v2` model identification;
 - finite and bounded schema values for the current share metrics;
-- deterministic diagnostics for a fixed prepared preset case.
+- deterministic diagnostics for a fixed prepared preset case;
+- fingerprint agreement with the emitted diagnostics;
+- absence of the retired `plateAdvectionDiagnosticsVersion` fingerprint key.
 
-The test intentionally does not recreate `plate-advection-v3` or encode its margin-continuity threshold.
-
-## Remaining harness cleanup
-
-The stale `plateAdvection*` fingerprint, aggregate, case-failure, and markdown-summary fields in the large preset validation files should be removed or replaced with current `fragmentPlacement*` reporting in a normal local checkout where those files can be edited and exercised atomically.
-
-That cleanup is behavior-neutral validation plumbing. It must not alter production plate generation. The expensive preset suite must remain manual/workflow-dispatch only.
+The manual harness now checks only contract invariants such as bounded shares, nonnegative counts, moving-fragment count not exceeding total fragments, source/target consistency, and mean displacement not exceeding maximum displacement. These are schema-consistency checks, not scientific tuning thresholds.
 
 ## Validation posture
 
@@ -68,8 +77,12 @@ Routine validation remains:
 
 The fictional preset matrix remains an intentional manual diagnostic and must not be added to ordinary push CI.
 
-## Evidence boundary
+A clean pre-cleanup branch checkpoint passed `Validate World Forge` run `33649692255`, including canonical repository verification and both production browser smokes. The final cleanup head must also pass the ordinary validation gate before merge.
 
-This audit was performed against the public repository and current `dev` source. The chat execution environment does not have a network-capable local World Forge checkout, so it cannot safely run npm-based local validation or the expensive preset matrix. GitHub Actions should be used for branch/PR verification, while the full preset run remains a deliberate manual checkpoint.
+## Manual preset evidence boundary
 
-No private Earth reference data, GLWD assets, workspace helper scripts, or Hostinger access are required to establish this root cause. Those assets are also not required for the focused active-contract tests.
+The chat execution environment cannot establish a network-capable local World Forge checkout, and the repository intentionally has no ordinary CI workflow that runs `npm run validate:presets -- --mode full`. Therefore the repeated 80-case suite was not run from this environment.
+
+The before-state is preserved as historical evidence: all 80 worlds generated without runtime errors, the suite was globally red because of the stale `plate-advection-v3` contract, and four cases retained pre-existing tiny-biome-patch findings. After the cleanup, the stale plate diagnostic failures are expected to disappear; that expectation must be confirmed by the next deliberate local/manual preset run rather than asserted as measured evidence.
+
+No private Earth reference data, GLWD assets, workspace helper scripts, or Hostinger access are required for that fictional preset run.
