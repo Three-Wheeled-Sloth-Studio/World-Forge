@@ -149,9 +149,12 @@ export function useProjectEnrichment({ project, onProjectEnriched }: {
     if (!project || (status !== 'idle' && status !== 'stale')) return;
     const currentArtifact = project.enrichmentArtifacts?.[SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID];
     if (currentArtifact && isCurrentSystemOrbitalContextArtifact(project, currentArtifact)) return;
-    const timer = window.setTimeout(() => ensureOrbitalContext(), 250);
+    const timer = window.setTimeout(() => {
+      if (document.documentElement.dataset.generationSource) return;
+      ensureOrbitalContext();
+    }, 250);
     return () => window.clearTimeout(timer);
-  }, [artifact, ensureOrbitalContext, project?.projectId, status]);
+  }, [artifact, ensureOrbitalContext, project?.projectId, project?.updatedAt, status]);
 
   const cancelOrbitalContext = useCallback(() => {
     if (status !== 'running' || !taskIdRef.current) return;
