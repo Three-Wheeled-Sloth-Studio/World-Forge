@@ -5,6 +5,8 @@ import {
   cancelActiveBodyGeneration,
   completeBodyGeneration,
   failBodyGeneration,
+  preemptActiveBodyGeneration,
+  queueBackgroundPreviewBodies,
   queueBodyGeneration,
   queueUnresolvedBodies,
   reconcileBodyGenerationLifecycle,
@@ -100,6 +102,33 @@ describe('body generation lifecycle', () => {
     expect(cancelled.records['primary-world:moon-1'].status).toBe('ready');
   });
 
+  it('queues only pristine bodies for automatic preview generation', () => {
+    const initial = reconcileBodyGenerationLifecycle(project, orbitalContext, '2026-08-01T00:00:00.000Z');
+    const failed = {
+      ...initial,
+      records: {
+        ...initial.records,
+        'body-4': { ...initial.records['body-4'], status: 'failed' as const, failureReason: 'synthetic failure' }
+      }
+    };
+    const queued = queueBackgroundPreviewBodies(failed, '2026-08-01T00:01:00.000Z');
+    expect(queued.queue).toEqual(['primary-world:moon-1', 'body-2', 'body-3', 'body-5']);
+    expect(queued.records['body-4'].status).toBe('failed');
+    for (const id of queued.queue) expect(queued.records[id].requestedFidelity).toBe('preview');
+  });
+
+  it('preempts an active body back to the front of the queue without losing its request', () => {
+    const initial = reconcileBodyGenerationLifecycle(project, orbitalContext, '2026-08-01T00:00:00.000Z');
+    const queued = queueBodyGeneration(initial, 'body-2', 'standard', '2026-08-01T00:01:00.000Z');
+    const running = startNextBodyGeneration(resumeBodyGenerationQueue(queued), '2026-08-01T00:02:00.000Z');
+    const preempted = preemptActiveBodyGeneration(running, 'body-2', '2026-08-01T00:03:00.000Z');
+    expect(preempted.activeBodyId).toBeNull();
+    expect(preempted.paused).toBe(true);
+    expect(preempted.queue[0]).toBe('body-2');
+    expect(preempted.records['body-2'].status).toBe('queued');
+    expect(preempted.records['body-2'].requestedFidelity).toBe('standard');
+  });
+
   it('records failure and retry without losing deterministic identity', () => {
     const initial = reconcileBodyGenerationLifecycle(project, orbitalContext, '2026-08-01T00:00:00.000Z');
     const queued = queueBodyGeneration(initial, 'body-2');
@@ -109,6 +138,27 @@ describe('body generation lifecycle', () => {
     const retried = retryBodyGeneration(failed, 'body-2');
     expect(retried.records['body-2'].status).toBe('queued');
     expect(retried.records['body-2'].stableSeed).toBe(initial.records['body-2'].stableSeed);
+  });
+
+  it('keeps a valid preview visible while a standard-fidelity upgrade is queued', async () => {
+    const initial = reconcileBodyGenerationLifecycle(project, orbitalContext, '2026-08-01T00:00:00.000Z');
+    const previewSource = systemBodyGenerationSourceFromProject(project, orbitalContext, 'body-2', 'preview');
+    const previewArtifact = await runSystemBodyGenerationWorkflow(previewSource);
+    const completed = completeBodyGeneration(initial, previewArtifact, '2026-08-01T00:05:00.000Z');
+    const previewProject = {
+      ...project,
+      bodyGeneration: completed,
+      enrichmentArtifacts: { ...project.enrichmentArtifacts, [previewArtifact.artifactKey]: previewArtifact }
+    } as WorldProject;
+    const reconciledPreview = reconcileBodyGenerationLifecycle(previewProject, orbitalContext, '2026-08-01T00:06:00.000Z');
+    const upgradeQueued = queueBodyGeneration(reconciledPreview, 'body-2', 'standard', '2026-08-01T00:07:00.000Z');
+    const upgradingProject = { ...previewProject, bodyGeneration: upgradeQueued } as WorldProject;
+    const reconciledUpgrade = reconcileBodyGenerationLifecycle(upgradingProject, orbitalContext, '2026-08-01T00:08:00.000Z');
+
+    expect(reconciledUpgrade.records['body-2'].status).toBe('queued');
+    expect(reconciledUpgrade.records['body-2'].requestedFidelity).toBe('standard');
+    expect(reconciledUpgrade.queue).toContain('body-2');
+    expect(bodyArtifactForBody(upgradingProject, orbitalContext, 'body-2', 'standard')?.requestedFidelity).toBe('preview');
   });
 
   it('marks generated output stale when the orbital source changes', async () => {
