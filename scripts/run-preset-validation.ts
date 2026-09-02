@@ -24,6 +24,18 @@ type TerrainFingerprint = WorldFingerprint & InitialTerrainFingerprint & Record<
 const PRESETS = ['Earthlike', 'Habitable World', 'Waterworld', 'Archipelago', 'Desert World', 'Pangea', 'Random World'] as const;
 const BIOME_SHARE_KEYS = ['IceCap', 'Tundra', 'Desert', 'Grassland', 'Forest', 'Rainforest', 'Wetland', 'Mountain'] as const;
 const CLIMATE_REGIME_KEYS = ['Maritime', 'Continental', 'Monsoonal', 'AridSeasonal', 'StableTropical'] as const;
+const FRAGMENT_PLACEMENT_SHARE_KEYS = [
+  'fragmentPlacementResolvedRecordShare',
+  'fragmentPlacementSourceCellShare',
+  'fragmentPlacementTargetCellShare',
+  'fragmentPlacementDirectPlacementCellShare',
+  'fragmentPlacementCollisionCellShare',
+  'fragmentPlacementCollisionResolvedCellShare',
+  'fragmentPlacementMergedCollisionCellShare',
+  'fragmentPlacementVacatedSourceCellShare',
+  'fragmentPlacementYoungOceanCrustCellShare',
+  'fragmentPlacementOwnershipChangedCellShare'
+] as const;
 
 function percentile(values: number[], fraction: number): number {
   if (!values.length) return 0;
@@ -112,17 +124,26 @@ function compareResult(result: PresetTestResult, starBaseline?: PresetTestResult
     if (b.cratonCount <= 0 || b.cratonPlateShare <= 0) fail('Earthlike baseline retained no cratons.');
   }
 
-  const advectionVersion = readText(b, 'plateAdvectionDiagnosticsVersion');
-  if (advectionVersion !== 'plate-advection-v3') {
-    fail(`Plate-advection diagnostics are missing or unexpected (${advectionVersion || 'missing'}).`);
+  const fragmentPlacementVersion = readText(b, 'fragmentPlacementDiagnosticsVersion');
+  if (fragmentPlacementVersion !== 'fragment-placement-v2') {
+    fail(`Fragment-placement diagnostics are missing or unexpected (${fragmentPlacementVersion || 'missing'}).`);
   } else {
-    const ownershipChanged = readMetric(b, 'plateAdvectionOwnershipChangedCellShare');
-    const frontierAdvance = readMetric(b, 'plateAdvectionCoherentFrontierAdvanceShare');
-    const marginContinuity = readMetric(b, 'plateAdvectionMarginContinuityScore');
-    const orphanRisk = readMetric(b, 'plateAdvectionOrphanRiskCellShare');
-    if (ownershipChanged > 0.01 && frontierAdvance <= 0) warn('Plate advection changed ownership without reporting coherent frontier advance.');
-    if (ownershipChanged > 0.01 && marginContinuity < 0.25) warn(`Plate-advection margin continuity is low (${marginContinuity.toFixed(2)}).`);
-    if (orphanRisk > 0.08) warn(`Plate-advection orphan-risk share is high (${orphanRisk.toFixed(2)}).`);
+    for (const key of FRAGMENT_PLACEMENT_SHARE_KEYS) {
+      const value = readMetric(b, key);
+      if (value < 0 || value > 1) fail(`Fragment-placement diagnostic ${key} is outside [0, 1] (${value}).`);
+    }
+    const fragmentCount = readMetric(b, 'fragmentPlacementFragmentCount');
+    const movingFragmentCount = readMetric(b, 'fragmentPlacementMovingFragmentCount');
+    const sourceCellCount = readMetric(b, 'fragmentPlacementSourceCellCount');
+    const targetCellCount = readMetric(b, 'fragmentPlacementTargetCellCount');
+    const retainedCellRatio = readMetric(b, 'fragmentPlacementRetainedCellRatio');
+    const meanDisplacement = readMetric(b, 'fragmentPlacementMeanDisplacementRadians');
+    const maxDisplacement = readMetric(b, 'fragmentPlacementMaxDisplacementRadians');
+    if (fragmentCount < 0 || movingFragmentCount < 0 || sourceCellCount < 0 || targetCellCount < 0) fail('Fragment-placement diagnostics contain negative counts.');
+    if (movingFragmentCount > fragmentCount) fail(`Fragment-placement moving-fragment count exceeds total fragments (${movingFragmentCount} > ${fragmentCount}).`);
+    if (sourceCellCount > 0 && targetCellCount <= 0) fail('Fragment-placement diagnostics report source cells without target cells.');
+    if (retainedCellRatio < 0) fail(`Fragment-placement retained-cell ratio is negative (${retainedCellRatio}).`);
+    if (meanDisplacement < 0 || maxDisplacement < 0 || maxDisplacement + 1e-9 < meanDisplacement) fail(`Fragment-placement displacement diagnostics are inconsistent (mean ${meanDisplacement}, max ${maxDisplacement}).`);
   }
 
   const biomeVersion = readText(b, 'biomeDiagnosticsVersion');
@@ -190,24 +211,20 @@ function aggregateResults(results: PresetTestResult[]): Record<string, number | 
     elevationStdDevMedian: percentile(fingerprints.map((item) => item.elevationStdDev), 0.5),
     roughnessMedian: percentile(fingerprints.map((item) => item.elevationRoughness), 0.5),
     uniqueCrustFingerprintShareBySeedAndWorld: byWorld.size ? new Set(byWorld.values()).size / byWorld.size : 0,
-    plateAdvectionDiagnosticsCoverageShare: fingerprints.length ? fingerprints.filter((item) => readText(item, 'plateAdvectionDiagnosticsVersion') === 'plate-advection-v3').length / fingerprints.length : 0,
-    plateAdvectionPassCountMedian: aggregateMedian(fingerprints, 'plateAdvectionPassCount'),
-    plateAdvectionOwnershipChangedCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionOwnershipChangedCellShare'),
-    plateAdvectionContinentalOwnershipChangedCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionContinentalOwnershipChangedCellShare'),
-    plateAdvectionMeanOwnershipChangesPerPassMedian: aggregateMedian(fingerprints, 'plateAdvectionMeanOwnershipChangesPerPass'),
-    plateAdvectionMaxOwnershipChangesPerPassMedian: aggregateMedian(fingerprints, 'plateAdvectionMaxOwnershipChangesPerPass'),
-    plateAdvectionCoherentFrontierAdvanceShareMedian: aggregateMedian(fingerprints, 'plateAdvectionCoherentFrontierAdvanceShare'),
-    plateAdvectionOpenedOceanCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionOpenedOceanCellShare'),
-    plateAdvectionCompressedBoundaryCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionCompressedBoundaryCellShare'),
-    plateAdvectionSubductedCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionSubductedCellShare'),
-    plateAdvectionYoungOceanCrustCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionYoungOceanCrustCellShare'),
-    plateAdvectionCoherentRiftCorridorCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionCoherentRiftCorridorCellShare'),
-    plateAdvectionMarginContinuityScoreMedian: aggregateMedian(fingerprints, 'plateAdvectionMarginContinuityScore'),
-    plateAdvectionFragmentReleaseSuppressionCountMedian: aggregateMedian(fingerprints, 'plateAdvectionFragmentReleaseSuppressionCount'),
-    plateAdvectionOrphanRiskCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionOrphanRiskCellShare'),
-    plateAdvectionTerrainCarriedMeanAbsElevationDeltaMedian: aggregateMedian(fingerprints, 'plateAdvectionTerrainCarriedMeanAbsElevationDelta'),
-    plateAdvectionTerrainCarriedMaxAbsElevationDeltaMedian: aggregateMedian(fingerprints, 'plateAdvectionTerrainCarriedMaxAbsElevationDelta'),
-    plateAdvectionVolcanismCarriedCellShareMedian: aggregateMedian(fingerprints, 'plateAdvectionVolcanismCarriedCellShare'),
+    fragmentPlacementDiagnosticsCoverageShare: fingerprints.length ? fingerprints.filter((item) => readText(item, 'fragmentPlacementDiagnosticsVersion') === 'fragment-placement-v2').length / fingerprints.length : 0,
+    fragmentPlacementFragmentCountMedian: aggregateMedian(fingerprints, 'fragmentPlacementFragmentCount'),
+    fragmentPlacementMovingFragmentCountMedian: aggregateMedian(fingerprints, 'fragmentPlacementMovingFragmentCount'),
+    fragmentPlacementResolvedRecordShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementResolvedRecordShare'),
+    fragmentPlacementSourceCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementSourceCellShare'),
+    fragmentPlacementTargetCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementTargetCellShare'),
+    fragmentPlacementRetainedCellRatioMedian: aggregateMedian(fingerprints, 'fragmentPlacementRetainedCellRatio'),
+    fragmentPlacementDirectPlacementCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementDirectPlacementCellShare'),
+    fragmentPlacementCollisionCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementCollisionCellShare'),
+    fragmentPlacementVacatedSourceCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementVacatedSourceCellShare'),
+    fragmentPlacementYoungOceanCrustCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementYoungOceanCrustCellShare'),
+    fragmentPlacementOwnershipChangedCellShareMedian: aggregateMedian(fingerprints, 'fragmentPlacementOwnershipChangedCellShare'),
+    fragmentPlacementMeanDisplacementRadiansMedian: aggregateMedian(fingerprints, 'fragmentPlacementMeanDisplacementRadians'),
+    fragmentPlacementMaxDisplacementRadiansMedian: aggregateMedian(fingerprints, 'fragmentPlacementMaxDisplacementRadians'),
     biomeDiagnosticsCoverageShare: fingerprints.length ? diagnosticsPresent.length / fingerprints.length : 0,
     biomeUnsupportedCaseShare: fingerprints.length ? fingerprints.filter((item) => readMetric(item, 'biomeUnsupportedFindingCount') > 0).length / fingerprints.length : 0,
     biomeTransitionDensityP05: percentile(fingerprints.map((item) => readMetric(item, 'biomeTransitionDensity')), 0.05),
@@ -253,24 +270,20 @@ function aggregateResults(results: PresetTestResult[]): Record<string, number | 
     aggregates[`${key}DriftContinentalCollisionPairsMedian`] = aggregateMedian(samples, 'agingDriftContinentalCollisionPairs');
     aggregates[`${key}DriftContinentalRiftPairsMedian`] = aggregateMedian(samples, 'agingDriftContinentalRiftPairs');
     aggregates[`${key}DriftSubductionPairsMedian`] = aggregateMedian(samples, 'agingDriftSubductionPairs');
-    aggregates[`${key}PlateAdvectionDiagnosticsCoverageShare`] = samples.length ? samples.filter((item) => readText(item, 'plateAdvectionDiagnosticsVersion') === 'plate-advection-v3').length / samples.length : 0;
-    aggregates[`${key}PlateAdvectionPassCountMedian`] = aggregateMedian(samples, 'plateAdvectionPassCount');
-    aggregates[`${key}PlateAdvectionOwnershipChangedCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionOwnershipChangedCellShare');
-    aggregates[`${key}PlateAdvectionContinentalOwnershipChangedCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionContinentalOwnershipChangedCellShare');
-    aggregates[`${key}PlateAdvectionMeanOwnershipChangesPerPassMedian`] = aggregateMedian(samples, 'plateAdvectionMeanOwnershipChangesPerPass');
-    aggregates[`${key}PlateAdvectionMaxOwnershipChangesPerPassMedian`] = aggregateMedian(samples, 'plateAdvectionMaxOwnershipChangesPerPass');
-    aggregates[`${key}PlateAdvectionCoherentFrontierAdvanceShareMedian`] = aggregateMedian(samples, 'plateAdvectionCoherentFrontierAdvanceShare');
-    aggregates[`${key}PlateAdvectionOpenedOceanCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionOpenedOceanCellShare');
-    aggregates[`${key}PlateAdvectionCompressedBoundaryCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionCompressedBoundaryCellShare');
-    aggregates[`${key}PlateAdvectionSubductedCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionSubductedCellShare');
-    aggregates[`${key}PlateAdvectionYoungOceanCrustCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionYoungOceanCrustCellShare');
-    aggregates[`${key}PlateAdvectionCoherentRiftCorridorCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionCoherentRiftCorridorCellShare');
-    aggregates[`${key}PlateAdvectionMarginContinuityScoreMedian`] = aggregateMedian(samples, 'plateAdvectionMarginContinuityScore');
-    aggregates[`${key}PlateAdvectionFragmentReleaseSuppressionCountMedian`] = aggregateMedian(samples, 'plateAdvectionFragmentReleaseSuppressionCount');
-    aggregates[`${key}PlateAdvectionOrphanRiskCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionOrphanRiskCellShare');
-    aggregates[`${key}PlateAdvectionTerrainCarriedMeanAbsElevationDeltaMedian`] = aggregateMedian(samples, 'plateAdvectionTerrainCarriedMeanAbsElevationDelta');
-    aggregates[`${key}PlateAdvectionTerrainCarriedMaxAbsElevationDeltaMedian`] = aggregateMedian(samples, 'plateAdvectionTerrainCarriedMaxAbsElevationDelta');
-    aggregates[`${key}PlateAdvectionVolcanismCarriedCellShareMedian`] = aggregateMedian(samples, 'plateAdvectionVolcanismCarriedCellShare');
+    aggregates[`${key}FragmentPlacementDiagnosticsCoverageShare`] = samples.length ? samples.filter((item) => readText(item, 'fragmentPlacementDiagnosticsVersion') === 'fragment-placement-v2').length / samples.length : 0;
+    aggregates[`${key}FragmentPlacementFragmentCountMedian`] = aggregateMedian(samples, 'fragmentPlacementFragmentCount');
+    aggregates[`${key}FragmentPlacementMovingFragmentCountMedian`] = aggregateMedian(samples, 'fragmentPlacementMovingFragmentCount');
+    aggregates[`${key}FragmentPlacementResolvedRecordShareMedian`] = aggregateMedian(samples, 'fragmentPlacementResolvedRecordShare');
+    aggregates[`${key}FragmentPlacementSourceCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementSourceCellShare');
+    aggregates[`${key}FragmentPlacementTargetCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementTargetCellShare');
+    aggregates[`${key}FragmentPlacementRetainedCellRatioMedian`] = aggregateMedian(samples, 'fragmentPlacementRetainedCellRatio');
+    aggregates[`${key}FragmentPlacementDirectPlacementCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementDirectPlacementCellShare');
+    aggregates[`${key}FragmentPlacementCollisionCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementCollisionCellShare');
+    aggregates[`${key}FragmentPlacementVacatedSourceCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementVacatedSourceCellShare');
+    aggregates[`${key}FragmentPlacementYoungOceanCrustCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementYoungOceanCrustCellShare');
+    aggregates[`${key}FragmentPlacementOwnershipChangedCellShareMedian`] = aggregateMedian(samples, 'fragmentPlacementOwnershipChangedCellShare');
+    aggregates[`${key}FragmentPlacementMeanDisplacementRadiansMedian`] = aggregateMedian(samples, 'fragmentPlacementMeanDisplacementRadians');
+    aggregates[`${key}FragmentPlacementMaxDisplacementRadiansMedian`] = aggregateMedian(samples, 'fragmentPlacementMaxDisplacementRadians');
     aggregates[`${key}FinalWaterOceanErrorMedian`] = aggregateMedian(samples, 'finalWaterOceanErrorPercentagePoints');
     aggregates[`${key}FinalWaterDeepOceanShareMedian`] = aggregateMedian(samples, 'finalWaterDeepOceanShareOfMarine');
     aggregates[`${key}FinalWaterShelfShareMedian`] = aggregateMedian(samples, 'finalWaterImmediateShelfShareOfMarine') + aggregateMedian(samples, 'finalWaterContinentalShelfShareOfMarine');
@@ -385,10 +398,7 @@ function evaluateAggregateFindings(aggregates: Record<string, number | string>):
   if (aggregateNumber(aggregates, 'pangeaLargestLandmassShareMedian') + 0.05 < earthLargest) findings.push('Pangea aggregate largest-landmass share is below Earthlike.');
   if (aggregateNumber(aggregates, 'pangeaBiomeClimateRegimeShareContinentalMedian') < 0.05) findings.push(`Pangea aggregate continental climate-regime share is effectively absent (${aggregateNumber(aggregates, 'pangeaBiomeClimateRegimeShareContinentalMedian').toFixed(2)}).`);
 
-  if (aggregateNumber(aggregates, 'plateAdvectionDiagnosticsCoverageShare') < 1) findings.push('Plate-advection-v3 diagnostics are missing from one or more completed cases.');
-  if (aggregateNumber(aggregates, 'earthlikePlateAdvectionOwnershipChangedCellShareMedian') > 0.01 && aggregateNumber(aggregates, 'earthlikePlateAdvectionCoherentFrontierAdvanceShareMedian') <= 0) findings.push('Earthlike plate advection reports ownership movement without coherent frontier advance.');
-  if (aggregateNumber(aggregates, 'earthlikePlateAdvectionMarginContinuityScoreMedian') < 0.25) findings.push('Earthlike plate-advection margin continuity median is low.');
-  if (aggregateNumber(aggregates, 'earthlikePlateAdvectionOrphanRiskCellShareMedian') > 0.08) findings.push('Earthlike plate-advection orphan-risk median is high.');
+  if (aggregateNumber(aggregates, 'fragmentPlacementDiagnosticsCoverageShare') < 1) findings.push('Fragment-placement-v2 diagnostics are missing from one or more completed cases.');
   if (aggregateNumber(aggregates, 'biomeDiagnosticsCoverageShare') < 1) findings.push('Biome diagnostics are missing from one or more completed cases.');
   if (aggregateNumber(aggregates, 'biomeTransitionDensityP95') > 0.7) findings.push('Biome transition density has a high upper tail, suggesting fragmented assignment in some worlds.');
   if (aggregateNumber(aggregates, 'biomeIsolatedCellShareP95') > 0.08) findings.push('Biome isolated-cell share has a high upper tail.');
@@ -430,13 +440,13 @@ function markdown(report: PresetValidationReport): string {
     for (const finding of report.aggregateFindings) lines.push(`- ${finding}`);
   }
 
-  lines.push('', '## Plate advection validation summary', '');
-  lines.push('| Preset | Coverage | Ownership changed | Continental changed | Frontier advance | Opened ocean | Rift corridor | Margin continuity | Suppressed releases | Orphan risk |');
-  lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
+  lines.push('', '## Fragment placement validation summary', '');
+  lines.push('| Preset | Coverage | Fragments | Moving fragments | Resolved records | Source share | Target share | Retained ratio | Direct placement | Collision | Vacated source | Young ocean | Ownership changed | Mean displacement | Max displacement |');
+  lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
   for (const preset of PRESETS) {
     const key = presetKey(preset);
     const a = report.aggregates ?? {};
-    lines.push(`| ${preset} | ${fmt(a[`${key}PlateAdvectionDiagnosticsCoverageShare`])} | ${fmt(a[`${key}PlateAdvectionOwnershipChangedCellShareMedian`])} | ${fmt(a[`${key}PlateAdvectionContinentalOwnershipChangedCellShareMedian`])} | ${fmt(a[`${key}PlateAdvectionCoherentFrontierAdvanceShareMedian`])} | ${fmt(a[`${key}PlateAdvectionOpenedOceanCellShareMedian`])} | ${fmt(a[`${key}PlateAdvectionCoherentRiftCorridorCellShareMedian`])} | ${fmt(a[`${key}PlateAdvectionMarginContinuityScoreMedian`])} | ${fmt(a[`${key}PlateAdvectionFragmentReleaseSuppressionCountMedian`])} | ${fmt(a[`${key}PlateAdvectionOrphanRiskCellShareMedian`])} |`);
+    lines.push(`| ${preset} | ${fmt(a[`${key}FragmentPlacementDiagnosticsCoverageShare`])} | ${fmt(a[`${key}FragmentPlacementFragmentCountMedian`])} | ${fmt(a[`${key}FragmentPlacementMovingFragmentCountMedian`])} | ${fmt(a[`${key}FragmentPlacementResolvedRecordShareMedian`])} | ${fmt(a[`${key}FragmentPlacementSourceCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementTargetCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementRetainedCellRatioMedian`])} | ${fmt(a[`${key}FragmentPlacementDirectPlacementCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementCollisionCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementVacatedSourceCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementYoungOceanCrustCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementOwnershipChangedCellShareMedian`])} | ${fmt(a[`${key}FragmentPlacementMeanDisplacementRadiansMedian`])} | ${fmt(a[`${key}FragmentPlacementMaxDisplacementRadiansMedian`])} |`);
   }
 
   lines.push('', '## Biome validation summary', '');
