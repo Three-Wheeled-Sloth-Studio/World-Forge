@@ -76,3 +76,6 @@ Before changing geographic drilldown behavior, read and update as appropriate:
 Before changing system, globe, weather, seasonal, or secondary-body enrichment behavior, read and update as appropriate:
 
 - `refs/planning/pi-system-visualization-and-progressive-body-enrichment.md`
+- `refs/planning/background-secondary-body-generation-2026-09-02.md`
+- `refs/testing/background-secondary-body-generation-qa-2026-09-02.md`
+- `refs/handoffs/background-secondary-body-generation-checkpoint.md`
