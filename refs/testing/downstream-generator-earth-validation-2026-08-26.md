@@ -306,6 +306,20 @@ This diagnostic is fixed-size apart from the existing topology traversal: four b
 
 The next material model should therefore add a generic persistent drainage or water-table proxy—something that distinguishes accumulated saturation from merely humid, flat ground—and separately revisit whether every generated sink-lake should imply a wetland-sized footprint. Any candidate must first run as an evaluator/adapter counterfactual, improve the weak regional windows and observed fraction separation, retain the global prevalence budget and Köppen tolerances, and remain linear-time. No production generator behavior changes in this attribution checkpoint.
 
+### Water-table proxy screen
+
+The first evaluator-only proxy tests whether bounded neighborhood hydrology can stand in for persistent catchment state. A drainage-margin branch selects flat, saturated lowlands within two topology steps of generated river or lake support. A separate cold-peatland branch selects flat, saturated, low-elevation land from `-5 C` to `12 C` without requiring strong local river intensity. Their union remains a fixed-radius, linear-time traversal and adds no persisted layer.
+
+| Tier | Drainage-margin cells / high-coverage rate / mean GLWD % | Cold-peatland cells / high-coverage rate / mean GLWD % | Union cells / high-coverage rate / mean GLWD % |
+| --- | ---: | ---: | ---: |
+| Fast | 669 / 6.13% / 14.19 | 167 / 14.37% / 21.44 | 671 / 6.11% / 14.18 |
+| Standard | 15,717 / 7.39% / 13.99 | 5,460 / 12.36% / 21.07 | 16,134 / 7.54% / 14.27 |
+| Ultra | 273,979 / 8.99% / 13.93 | 152,836 / 12.25% / 19.34 | 314,851 / 9.53% / 14.83 |
+
+Both branches enrich observed wetland coverage relative to the naive saturated non-river pool, so drainage persistence and cold flatland are useful signals. Neither is selective enough to classify wetlands: the Ultra union would add `314,851` cells and fewer than one in ten meet the high-coverage threshold. The candidate is rejected without a production run.
+
+The important architectural finding is that the hydrology solver already computes raw catchment accumulation and downstream receivers, then discards them after deriving the normalized river layer. The next diagnostic should expose those transient solver fields through an optional manual-validation observer, with zero allocation or callback work in normal production. That will allow a genuine topographic-wetness/catchment-retention screen rather than broadening river/lake influence. The observer must not persist reference data or hydrology diagnostics in saved projects.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |

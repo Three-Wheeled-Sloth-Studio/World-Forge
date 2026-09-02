@@ -384,6 +384,31 @@ export function attributeWetlandHydrology(evidence: WetlandHydrologyEvidence): W
   return 'cohesionOrResidual';
 }
 
+export type WetlandWaterTableEvidence = WetlandHydrologyEvidence & {
+  temperatureC: number;
+  neighborhoodRiver: number;
+  neighborhoodLake: boolean;
+};
+
+export function wetlandWaterTableCandidates(evidence: WetlandWaterTableEvidence): {
+  drainageMargin: boolean;
+  coldPeatland: boolean;
+} {
+  if (evidence.generatedWetland || evidence.lake || evidence.altitude < 0 || evidence.altitude >= 0.05) {
+    return { drainageMargin: false, coldPeatland: false };
+  }
+  const flatSaturated = evidence.wetness > 0.55 && evidence.localRelief < LOWLAND_FLOODPLAIN_MAX_RELIEF;
+  return {
+    drainageMargin: flatSaturated
+      && (evidence.neighborhoodLake || evidence.neighborhoodRiver > LOWLAND_FLOODPLAIN_MIN_RIVER),
+    coldPeatland: evidence.river <= LOWLAND_FLOODPLAIN_MIN_RIVER
+      && evidence.wetness > 0.55
+      && evidence.localRelief < 0.02
+      && evidence.temperatureC >= -5
+      && evidence.temperatureC < 12,
+  };
+}
+
 const WETLAND_ATTRIBUTION_REGIONS = [
   { id: 'amazonLowlands', minLatitude: -20, maxLatitude: 5, minLongitude: -80, maxLongitude: -45 },
   { id: 'congoLowlands', minLatitude: -12, maxLatitude: 5, minLongitude: 10, maxLongitude: 32 },
@@ -402,6 +427,16 @@ type WetlandAttributionAccumulator = {
   cohesionOrResidual: number;
   saturatedNonRiverMiss: number;
 };
+
+type WetlandCandidateAccumulator = {
+  cells: number;
+  highCoverage: number;
+  observedPercent: number;
+};
+
+function createWetlandCandidateAccumulator(): WetlandCandidateAccumulator {
+  return { cells: 0, highCoverage: 0, observedPercent: 0 };
+}
 
 function createWetlandAttributionAccumulator(): WetlandAttributionAccumulator {
   return {
@@ -466,6 +501,11 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
   let saturatedNonRiverCandidateCells = 0;
   let saturatedNonRiverCandidateHighCoverage = 0;
   let saturatedNonRiverCandidateObservedPercent = 0;
+  const waterTableCandidates = {
+    drainageMargin: createWetlandCandidateAccumulator(),
+    coldPeatland: createWetlandCandidateAccumulator(),
+    combined: createWetlandCandidateAccumulator(),
+  };
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (world.topologyLayers.water[cell]) continue;
     const x = Math.min(
@@ -484,12 +524,22 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
     const observed = percent >= 50;
     const group = (observed ? 2 : 0) + (generated ? 1 : 0);
     let localRelief = 0;
+    let neighborhoodRiver = world.topologyLayers.river[cell];
+    let neighborhoodLake = Boolean(world.topologyLayers.lakes[cell]);
     for (let direction = 0; direction < 4; direction += 1) {
       const neighbor = topology.neighbors[cell * 4 + direction];
       if (neighbor < 0) continue;
       localRelief = Math.max(localRelief, Math.abs(
         world.topologyLayers.elevation[neighbor] - world.topologyLayers.elevation[cell],
       ));
+      neighborhoodRiver = Math.max(neighborhoodRiver, world.topologyLayers.river[neighbor]);
+      neighborhoodLake ||= Boolean(world.topologyLayers.lakes[neighbor]);
+      for (let secondDirection = 0; secondDirection < 4; secondDirection += 1) {
+        const secondNeighbor = topology.neighbors[neighbor * 4 + secondDirection];
+        if (secondNeighbor < 0) continue;
+        neighborhoodRiver = Math.max(neighborhoodRiver, world.topologyLayers.river[secondNeighbor]);
+        neighborhoodLake ||= Boolean(world.topologyLayers.lakes[secondNeighbor]);
+      }
     }
     groupCounts[group] += 1;
     groupWetness[group] += world.topologyLayers.wetness[cell];
@@ -525,6 +575,29 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
       saturatedNonRiverCandidateCells += 1;
       saturatedNonRiverCandidateObservedPercent += percent;
       if (observed) saturatedNonRiverCandidateHighCoverage += 1;
+    }
+    const waterTable = wetlandWaterTableCandidates({
+      generatedWetland: generated,
+      lake: Boolean(world.topologyLayers.lakes[cell]),
+      wetness: world.topologyLayers.wetness[cell],
+      river: world.topologyLayers.river[cell],
+      altitude: world.topologyLayers.elevation[cell] - world.seaLevel,
+      localRelief,
+      lakeWetnessSupport,
+      temperatureC: world.topologyLayers.temperature[cell],
+      neighborhoodRiver,
+      neighborhoodLake,
+    });
+    for (const id of ['drainageMargin', 'coldPeatland'] as const) {
+      if (!waterTable[id]) continue;
+      waterTableCandidates[id].cells += 1;
+      waterTableCandidates[id].observedPercent += percent;
+      if (observed) waterTableCandidates[id].highCoverage += 1;
+    }
+    if (waterTable.drainageMargin || waterTable.coldPeatland) {
+      waterTableCandidates.combined.cells += 1;
+      waterTableCandidates.combined.observedPercent += percent;
+      if (observed) waterTableCandidates.combined.highCoverage += 1;
     }
     if (observed) {
       attributionTotals.highCoverage += 1;
@@ -590,6 +663,16 @@ function wetlandValidationProfile(project: WorldProject, observations: EarthObse
       saturatedNonRiverCandidateHighCoverage / Math.max(1, saturatedNonRiverCandidateCells),
     attributionSaturatedNonRiverCandidateMeanObservedPercent:
       saturatedNonRiverCandidateObservedPercent / Math.max(1, saturatedNonRiverCandidateCells),
+    ...Object.fromEntries(
+      (['drainageMargin', 'coldPeatland', 'combined'] as const).flatMap((id) => {
+        const candidate = waterTableCandidates[id];
+        return [
+          [`waterTable${capitalizeMetricId(id)}CandidateCells`, candidate.cells],
+          [`waterTable${capitalizeMetricId(id)}HighCoverageShare`, candidate.highCoverage / Math.max(1, candidate.cells)],
+          [`waterTable${capitalizeMetricId(id)}MeanObservedPercent`, candidate.observedPercent / Math.max(1, candidate.cells)],
+        ];
+      }),
+    ),
     ...Object.fromEntries(
       WETLAND_ATTRIBUTION_REGIONS.flatMap((region) => {
         const totals = regionAttribution[region.id];

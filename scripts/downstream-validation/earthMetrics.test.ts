@@ -9,6 +9,7 @@ import {
   seasonalForestThresholdAdjustment,
   spearmanRankCorrelation,
   summarizeNativeBiomeConfusion,
+  wetlandWaterTableCandidates,
   type HydrationRegimeSample,
 } from './earthMetrics';
 
@@ -29,6 +30,31 @@ describe('Earth downstream metric math', () => {
     expect(attributeWetlandHydrology({ ...common, altitude: 0.08 })).toBe('strongRiver');
     expect(attributeWetlandHydrology({ ...common, river: 0.1 })).toBe('cohesionOrResidual');
     expect(attributeWetlandHydrology({ ...common, generatedWetland: false })).toBe('notWetland');
+  });
+
+  it('screens drainage-margin and cold-peatland water-table evidence independently', () => {
+    const common = {
+      generatedWetland: false,
+      lake: false,
+      wetness: 0.6,
+      river: 0.1,
+      altitude: 0.02,
+      localRelief: 0.01,
+      lakeWetnessSupport: 0.35,
+      temperatureC: 8,
+      neighborhoodRiver: 0.3,
+      neighborhoodLake: false,
+    };
+
+    expect(wetlandWaterTableCandidates(common)).toEqual({ drainageMargin: true, coldPeatland: true });
+    expect(wetlandWaterTableCandidates({ ...common, temperatureC: 20 })).toEqual({
+      drainageMargin: true,
+      coldPeatland: false,
+    });
+    expect(wetlandWaterTableCandidates({ ...common, generatedWetland: true })).toEqual({
+      drainageMargin: false,
+      coldPeatland: false,
+    });
   });
 
   it('reports perfect monotonic agreement independent of scale', () => {
