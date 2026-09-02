@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-08-26
+updated: 2026-09-02
 principle: Run the narrowest useful validation during implementation, then the appropriate checkpoint validation before declaring work complete. Not every command applies to every change.
 commands:
   - id: case-collisions
@@ -30,6 +30,10 @@ commands:
     command: npm audit
     purpose: Check the current dependency graph for known vulnerabilities.
     use_when: Dependencies, lockfiles, package overrides, or security-sensitive build inputs change; also during intentional security review.
+  - id: fictional-preset-matrix
+    command: npm run validate:presets -- --mode full
+    purpose: Run the repeated fictional preset matrix through the native production generation path and record preset-level diagnostics.
+    use_when: An intentional preset/generator diagnostic checkpoint needs broad fictional-world evidence. This is manual-only and must never be added to ordinary push CI.
   - id: geographic-evaluation
     command: npm run evaluate:regions
     purpose: Run deterministic geographic-region quality evaluation.
@@ -61,6 +65,7 @@ commands:
 notes:
   - Ordinary dev/release validation is one job: npm ci, npm run verify, and the production page-harness smoke. Ready pull requests and manual checkpoints also run the production rerank smoke.
   - Manual validation exposes a full_test_matrix input that restores the extended generation and geographic seed matrices.
+  - The fictional preset matrix is intentionally manual. Its retired plate-advection-v3 expectation was stale validation-contract debt and has been replaced with fragment-placement-v2 reporting. See refs/testing/plate-diagnostic-contract-audit-2026-09-02.md.
   - QA and main are exact-SHA promotion targets. Deployment requires a successful Validate World Forge run for the exact source SHA and then performs build-only compilation/bundling.
   - The former dedicated Ultra Earth acceptance workflow was removed after owner acceptance because its tests and full verification duplicated the ordinary suite.
   - Real scientific-source rebuilds and geographic evaluation remain intentional diagnostics because they provide evidence ordinary CI does not.

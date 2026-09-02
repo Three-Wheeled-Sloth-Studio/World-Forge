@@ -174,25 +174,25 @@ type MotionLifecycle = {
   maxContinentalCentroidDisplacementRadians?: number;
 };
 
-type PlateAdvection = {
+type FragmentPlacement = {
   modelVersion?: string;
-  passCount?: number;
-  ownershipChangedCellShare?: number;
-  continentalOwnershipChangedCellShare?: number;
-  meanOwnershipChangesPerPass?: number;
-  maxOwnershipChangesPerPass?: number;
-  coherentFrontierAdvanceShare?: number;
-  openedOceanCellShare?: number;
-  compressedBoundaryCellShare?: number;
-  subductedCellShare?: number;
+  fragmentCount?: number;
+  movingFragmentCount?: number;
+  resolvedRecordShare?: number;
+  sourceCellCount?: number;
+  targetCellCount?: number;
+  sourceCellShare?: number;
+  targetCellShare?: number;
+  retainedCellRatio?: number;
+  directPlacementCellShare?: number;
+  collisionCellShare?: number;
+  collisionResolvedCellShare?: number;
+  mergedCollisionCellShare?: number;
+  vacatedSourceCellShare?: number;
   youngOceanCrustCellShare?: number;
-  coherentRiftCorridorCellShare?: number;
-  marginContinuityScore?: number;
-  fragmentReleaseSuppressionCount?: number;
-  orphanRiskCellShare?: number;
-  terrainCarriedMeanAbsElevationDelta?: number;
-  terrainCarriedMaxAbsElevationDelta?: number;
-  volcanismCarriedCellShare?: number;
+  ownershipChangedCellShare?: number;
+  meanDisplacementRadians?: number;
+  maxDisplacementRadians?: number;
 };
 
 type FragmentHistory = {
@@ -368,7 +368,7 @@ function fields(prefix: string, process: MutationProcess | undefined): DeepTimeL
 
 export function fingerprintDeepTimeLedger(project: WorldProject): DeepTimeLedgerFingerprint {
   const extended = project.primaryWorld as typeof project.primaryWorld & {
-    deepTime?: { mutationLedger?: MutationLedger; stageIsolation?: StageIsolation; historicalProcesses?: HistoricalProcesses; impactHistory?: ImpactHistory; continentalDrift?: ContinentalDrift; plateAdvection?: PlateAdvection; fragmentHistory?: FragmentHistory; motionLifecycle?: MotionLifecycle; finalWater?: FinalWater; presentClimate?: PresentClimate; hydrology?: Hydrology; biomeDiagnostics?: BiomeDiagnostics };
+    deepTime?: { mutationLedger?: MutationLedger; stageIsolation?: StageIsolation; historicalProcesses?: HistoricalProcesses; impactHistory?: ImpactHistory; continentalDrift?: ContinentalDrift; fragmentPlacement?: FragmentPlacement; fragmentHistory?: FragmentHistory; motionLifecycle?: MotionLifecycle; finalWater?: FinalWater; presentClimate?: PresentClimate; hydrology?: Hydrology; biomeDiagnostics?: BiomeDiagnostics };
   };
   const ledger = extended.deepTime?.mutationLedger;
   const sediment = ledger?.sediment;
@@ -376,7 +376,7 @@ export function fingerprintDeepTimeLedger(project: WorldProject): DeepTimeLedger
   const historical = extended.deepTime?.historicalProcesses;
   const impactHistory = extended.deepTime?.impactHistory;
   const drift = extended.deepTime?.continentalDrift;
-  const advection = extended.deepTime?.plateAdvection;
+  const fragmentPlacement = extended.deepTime?.fragmentPlacement;
   const fragmentHistory = extended.deepTime?.fragmentHistory;
   const motion = extended.deepTime?.motionLifecycle;
   const finalWater = extended.deepTime?.finalWater;
@@ -583,24 +583,24 @@ export function fingerprintDeepTimeLedger(project: WorldProject): DeepTimeLedger
     agingMotionVectorChangedShare: motion?.plateMotionVectorChangedShareDuringAging ?? 0,
     agingMotionMeanContinentalCentroidDisplacementRadians: motion?.meanContinentalCentroidDisplacementRadians ?? 0,
     agingMotionMaxContinentalCentroidDisplacementRadians: motion?.maxContinentalCentroidDisplacementRadians ?? 0,
-    plateAdvectionDiagnosticsVersion: advection?.modelVersion ?? 'missing',
-    plateAdvectionPassCount: advection?.passCount ?? 0,
-    plateAdvectionOwnershipChangedCellShare: advection?.ownershipChangedCellShare ?? 0,
-    plateAdvectionContinentalOwnershipChangedCellShare: advection?.continentalOwnershipChangedCellShare ?? 0,
-    plateAdvectionMeanOwnershipChangesPerPass: advection?.meanOwnershipChangesPerPass ?? 0,
-    plateAdvectionMaxOwnershipChangesPerPass: advection?.maxOwnershipChangesPerPass ?? 0,
-    plateAdvectionCoherentFrontierAdvanceShare: advection?.coherentFrontierAdvanceShare ?? 0,
-    plateAdvectionOpenedOceanCellShare: advection?.openedOceanCellShare ?? 0,
-    plateAdvectionCompressedBoundaryCellShare: advection?.compressedBoundaryCellShare ?? 0,
-    plateAdvectionSubductedCellShare: advection?.subductedCellShare ?? 0,
-    plateAdvectionYoungOceanCrustCellShare: advection?.youngOceanCrustCellShare ?? 0,
-    plateAdvectionCoherentRiftCorridorCellShare: advection?.coherentRiftCorridorCellShare ?? 0,
-    plateAdvectionMarginContinuityScore: advection?.marginContinuityScore ?? 0,
-    plateAdvectionFragmentReleaseSuppressionCount: advection?.fragmentReleaseSuppressionCount ?? 0,
-    plateAdvectionOrphanRiskCellShare: advection?.orphanRiskCellShare ?? 0,
-    plateAdvectionTerrainCarriedMeanAbsElevationDelta: advection?.terrainCarriedMeanAbsElevationDelta ?? 0,
-    plateAdvectionTerrainCarriedMaxAbsElevationDelta: advection?.terrainCarriedMaxAbsElevationDelta ?? 0,
-    plateAdvectionVolcanismCarriedCellShare: advection?.volcanismCarriedCellShare ?? 0,
+    fragmentPlacementDiagnosticsVersion: fragmentPlacement?.modelVersion ?? 'missing',
+    fragmentPlacementFragmentCount: fragmentPlacement?.fragmentCount ?? 0,
+    fragmentPlacementMovingFragmentCount: fragmentPlacement?.movingFragmentCount ?? 0,
+    fragmentPlacementResolvedRecordShare: fragmentPlacement?.resolvedRecordShare ?? 0,
+    fragmentPlacementSourceCellCount: fragmentPlacement?.sourceCellCount ?? 0,
+    fragmentPlacementTargetCellCount: fragmentPlacement?.targetCellCount ?? 0,
+    fragmentPlacementSourceCellShare: fragmentPlacement?.sourceCellShare ?? 0,
+    fragmentPlacementTargetCellShare: fragmentPlacement?.targetCellShare ?? 0,
+    fragmentPlacementRetainedCellRatio: fragmentPlacement?.retainedCellRatio ?? 0,
+    fragmentPlacementDirectPlacementCellShare: fragmentPlacement?.directPlacementCellShare ?? 0,
+    fragmentPlacementCollisionCellShare: fragmentPlacement?.collisionCellShare ?? 0,
+    fragmentPlacementCollisionResolvedCellShare: fragmentPlacement?.collisionResolvedCellShare ?? 0,
+    fragmentPlacementMergedCollisionCellShare: fragmentPlacement?.mergedCollisionCellShare ?? 0,
+    fragmentPlacementVacatedSourceCellShare: fragmentPlacement?.vacatedSourceCellShare ?? 0,
+    fragmentPlacementYoungOceanCrustCellShare: fragmentPlacement?.youngOceanCrustCellShare ?? 0,
+    fragmentPlacementOwnershipChangedCellShare: fragmentPlacement?.ownershipChangedCellShare ?? 0,
+    fragmentPlacementMeanDisplacementRadians: fragmentPlacement?.meanDisplacementRadians ?? 0,
+    fragmentPlacementMaxDisplacementRadians: fragmentPlacement?.maxDisplacementRadians ?? 0,
     fragmentHistoryVersion: fragmentHistory?.modelVersion ?? 'missing',
     fragmentHistoryFragmentCount: fragmentHistory?.fragmentCount ?? 0,
     fragmentHistoryContinentalCellShare: fragmentHistory?.continentalCellShare ?? 0,
