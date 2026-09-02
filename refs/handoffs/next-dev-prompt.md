@@ -21,7 +21,7 @@ The cleanup establishes and implements these contracts:
 - focused regression coverage verifies current diagnostic presence, schema consistency, preset-path compatibility, fingerprint agreement, fixed-seed determinism, and absence of the retired fingerprint key;
 - no plate construction, fragment placement, terrain response, climate, hydrology, biome, or package behavior changed.
 
-See `refs/testing/plate-diagnostic-contract-audit-2026-09-02.md`.
+See `refs/testing/plate-diagnostic-contract-audit-2026-09-02.md`. The historical downstream report is preserved as measured evidence; its stale diagnostic classification is corrected by `refs/testing/downstream-generator-earth-validation-plate-diagnostic-correction-2026-09-02.md`.
 
 ## Immediate next slice
 
@@ -39,8 +39,7 @@ npm run validate:presets -- --mode full
 3. Record the manual preset report path and before/after findings.
 4. Confirm that the stale `plate-advection-v3` coverage and margin-continuity findings are gone.
 5. Treat any remaining tiny-biome-patch or other scientific findings independently. Do not tune production behavior merely to make the suite green.
-6. Update the historical downstream Earth validation checkpoint with a correction note that preserves the old 80-world result while recording that its plate-advection failures were later retired as stale harness debt.
-7. Once that evidence is captured, close the plate diagnostic debt and return to the selected roadmap slice.
+6. Once that evidence is captured, close the plate diagnostic debt and return to the selected roadmap slice.
 
 ## Known before-state for the manual matrix
 
