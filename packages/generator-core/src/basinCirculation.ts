@@ -198,6 +198,7 @@ function classifyAdjustedBiome(
   if (layers.water[index]) return BIOME_CODE.ocean;
   if (layers.ice[index]) return BIOME_CODE.iceCap;
   const legacyRiverWetland = layers.river[index] > 0.5 && layers.wetness[index] > 0.66;
+  if (wetlandHydrologyModel === 'catchment-budget-v1' && topologyWetland) return BIOME_CODE.wetland;
   const supportedLake = wetlandHydrologyModel === 'legacy'
     ? Boolean(layers.lakes[index])
     : topologyWetland && Boolean(layers.lakes[index]) && layers.wetness[index] >= lakeWetnessSupport;

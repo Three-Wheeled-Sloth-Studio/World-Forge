@@ -18,6 +18,8 @@ That transient observer and manual-adapter capture are now implemented. Raw topo
 
 The joint-budget screen is the first cross-tier positive candidate. Ranking all eligible lowland cells by catchment retention plus bounded lake/river support and selecting the current wetland count raises projected GLWD recall by `+8.30 / +5.76 / +3.17` points Fast/Standard/Ultra. Selected cells average `19.83% / 21.34% / 21.98%` GLWD coverage. A `4096`-bin histogram limits budget overshoot to `1 / 10 / 335` cells. This remains evaluator-only: next implement an opt-in production-order mask from the live accumulation array, then measure Köppen F1, final raster consistency, regional recall, presets, and runtime before changing the default.
 
+The opt-in production-order `catchment-budget-v1` candidate is now implemented and passes the full gate. Scale-aware incumbent preservation (`87.5%` Fast, `50%` Standard/Ultra) keeps Köppen macro-F1 at `0.5468 / 0.5640 / 0.5932` and final consistency at `1.0`. GLWD recall rises to `40.83% / 30.17% / 25.70%`; separation reaches `7.50 / 10.82 / 13.80` points. Prevalence error is `7.21 / 0.30 / 1.40` points. The 80-case preset suite adds no aggregate finding, unsupported wetlands remain zero, and biome shares remain in accepted ranges. Default behavior is still `lowland-floodplain-v1`; next increment may promote the candidate as the default and retain the old model as the manual comparator.
+
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`

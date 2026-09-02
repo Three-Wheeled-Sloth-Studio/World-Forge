@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { generateProjectWithNativeStages } from '../packages/generator-core/src/nativeStagePipeline';
+import { reconcilePresentDayDownstream } from '../packages/generator-core/src/deepTimePipeline';
 import { plateCountDistributionsByPreset, prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '../packages/generator-core/src/systemOrbitPreset';
 import { distributionCenter, distributionSpread } from '../packages/generator-core/src/numericDistribution';
 import { createDefaultConfig, type GenerationConfig } from '../packages/shared/src/index';
@@ -475,7 +476,11 @@ async function main(): Promise<void> {
     let result: PresetTestResult;
     try {
       const config = prepareSystemOrbitConfig(configForTestCase(baseConfig, testCase));
-      const project = reconcileSystemOrbitPresets(generateProjectWithNativeStages(config, { appVersion: APP_VERSION }));
+      const generated = generateProjectWithNativeStages(config, { appVersion: APP_VERSION });
+      if (process.argv.includes('--catchment-budget-wetlands')) {
+        reconcilePresentDayDownstream(generated, { wetlandHydrologyModel: 'catchment-budget-v1' });
+      }
+      const project = reconcileSystemOrbitPresets(generated);
       const fingerprint = { ...fingerprintProject(project), ...fingerprintInitialTerrain(project), ...fingerprintDeepTimeLedger(project) } as TerrainFingerprint;
       result = { testCase, fingerprint, status: 'pass', findings: [], elapsedMs: performance.now() - caseStarted };
     } catch (error) {

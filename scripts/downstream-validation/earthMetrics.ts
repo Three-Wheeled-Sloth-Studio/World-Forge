@@ -329,7 +329,7 @@ const allEarthDownstreamMetrics: readonly EarthMetric[] = [
     proves: 'The delivered raster biome agrees with production classification rules applied to the delivered raster climate and hydrology.',
     doesNotProve: 'That the classification thresholds are scientifically correct.',
     threshold: { minimum: 0.995 },
-    evaluate: ({ project }) => finalBiomeConsistency(project),
+    evaluate: ({ project, reconciliation }) => finalBiomeConsistency(project, reconciliation.wetlandHydrologyModel),
   },
   {
     id: 'performance.core-downstream-ms',
@@ -2806,7 +2806,10 @@ function metricWrappedDelta(value: number, center: number, period: number): numb
   return delta;
 }
 
-function finalBiomeConsistency(project: WorldProject) {
+function finalBiomeConsistency(
+  project: WorldProject,
+  wetlandHydrologyModel: EarthDownstreamOutput['reconciliation']['wetlandHydrologyModel'],
+) {
   const layers = project.primaryWorld.layers;
   const topology = buildCubedSphereTopology(project.primaryWorld.topology.resolution);
   const topologyLookup = equirectangularTopologyLookup(
@@ -2828,6 +2831,7 @@ function finalBiomeConsistency(project: WorldProject) {
       index,
       topologyWetland,
       lakeWetnessSupport,
+      wetlandHydrologyModel,
     )) supported += 1;
   }
   return { value: supported / Math.max(1, land), sampleCount: land };
@@ -2838,9 +2842,11 @@ function expectedBiomeCode(
   index: number,
   topologyWetland = false,
   lakeWetnessSupport = 0,
+  wetlandHydrologyModel: EarthDownstreamOutput['reconciliation']['wetlandHydrologyModel'] = 'lowland-floodplain-v1',
 ): number {
   const layers = project.primaryWorld.layers;
   if (layers.ice[index]) return biomeToCode('ice_cap');
+  if (wetlandHydrologyModel === 'catchment-budget-v1' && topologyWetland) return biomeToCode('wetland');
   const supportedLake = Boolean(layers.lakes[index]) && topologyWetland && layers.wetness[index] >= lakeWetnessSupport;
   const lowlandFloodplain = topologyWetland
     && layers.elevation[index] >= project.primaryWorld.seaLevel

@@ -101,4 +101,21 @@ describe('present-day downstream validation seam', () => {
     expect(floodplainWetlands).not.toBe(legacyWetlands);
     expect(floodplain.consistency.biomeCorrections).toBeGreaterThanOrEqual(0);
   });
+
+  it('applies catchment-budget wetlands deterministically through final circulation', () => {
+    const config = createDefaultConfig('downstream-catchment-budget', { width: 64, height: 32 });
+    config.topologyResolution = 16;
+    const first = generateProjectWithNativeStages(config);
+    const second = generateProjectWithNativeStages(config);
+
+    reconcilePresentDayDownstream(first, { wetlandHydrologyModel: 'catchment-budget-v1' });
+    reconcilePresentDayDownstream(second, { wetlandHydrologyModel: 'catchment-budget-v1' });
+    const wetland = biomeToCode('wetland');
+    const firstTopology = [...first.primaryWorld.topologyLayers.biomes].filter((biome) => biome === wetland).length;
+    const firstRaster = [...first.primaryWorld.layers.biomes].filter((biome) => biome === wetland).length;
+
+    expect(first.primaryWorld.topologyLayers.biomes).toEqual(second.primaryWorld.topologyLayers.biomes);
+    expect(firstTopology).toBeGreaterThan(0);
+    expect(firstRaster).toBeGreaterThan(0);
+  });
 });

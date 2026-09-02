@@ -55,12 +55,17 @@ function inputs(project: WorldProject, cell: number): BiomeInputs {
 type BiomeCohesionOptions = {
   projectRaster?: boolean;
   preserveLowlandFloodplains?: boolean;
+  preserveAssignedWetlands?: boolean;
 };
 
 function supportScore(project: WorldProject, cell: number, biome: Biome, options: BiomeCohesionOptions = {}): number {
   const value = inputs(project, cell);
   if (biome === 'ice_cap') return value.temperature <= -8 ? 1 : value.temperature <= -2 ? 0.65 : 0;
   if (biome === 'wetland') {
+    if (options.preserveAssignedWetlands
+      && project.primaryWorld.topologyLayers.biomes[cell] === biomeToCode('wetland')) {
+      return LOWLAND_FLOODPLAIN_COHESION_SUPPORT;
+    }
     const altitude = value.elevation - project.primaryWorld.seaLevel;
     const lowlandFloodplain = options.preserveLowlandFloodplains
       && altitude >= 0

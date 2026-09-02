@@ -55,6 +55,7 @@ import {
 } from './topologyScaleField';
 import {
   lakeWetnessSupportForTopology,
+  catchmentIncumbentShareForTopology,
   LOWLAND_FLOODPLAIN_MAX_ALTITUDE,
   LOWLAND_FLOODPLAIN_MAX_RELIEF,
   LOWLAND_FLOODPLAIN_MIN_RIVER,
@@ -2664,8 +2665,9 @@ function rebuildTopologyHydrology(
   topology: CubedSphereTopology,
   optimizeTraversal = false,
   normalizeRiverIntensityByTopologyScale = true,
+  wetlandHydrologyModel: WetlandHydrologyModel = 'lowland-floodplain-v1',
   observer?: (fields: TransientHydrologyFields) => void,
-): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics } {
+): { cells: number; rivers: River[]; diagnostics: HydrologyDiagnostics; catchmentWetlands?: Uint8Array } {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
   const count = topology.cellCount;
@@ -2739,7 +2741,87 @@ function rebuildTopologyHydrology(
   addHydrologyCandidatesAsRivers(tracedCandidates, rivers, claimed, maximumRivers, 0.34, false);
 
   const diagnostics = buildHydrologyDiagnostics(project, topology, downstream, accumulation, candidateSources.length, maximumRivers, rivers);
-  return { cells: count, rivers, diagnostics };
+  const catchmentWetlands = wetlandHydrologyModel === 'catchment-budget-v1'
+    ? catchmentWetlandBudgetMask(project, topology, accumulation)
+    : undefined;
+  return { cells: count, rivers, diagnostics, catchmentWetlands };
+}
+
+function catchmentWetlandBudgetMask(
+  project: DeepTimeProject,
+  topology: CubedSphereTopology,
+  accumulation: Float32Array,
+): Uint8Array {
+  const world = project.primaryWorld;
+  const layers = world.topologyLayers;
+  const lakeSupport = lakeWetnessSupportForTopology(topology.resolution);
+  const baselineHistogram = new Uint32Array(4096);
+  const fillHistogram = new Uint32Array(4096);
+  const baselineMask = new Uint8Array(topology.cellCount);
+  let target = 0;
+  const scoreBin = (cell: number, relief: number): number => {
+    const score = Math.log1p(accumulation[cell]) - Math.log(relief + 0.002)
+      + (layers.lakes[cell] ? 1 : 0)
+      + Math.min(0.5, layers.river[cell] * 0.5);
+    return Math.max(0, Math.min(baselineHistogram.length - 1, Math.floor(((score + 4) / 18) * baselineHistogram.length)));
+  };
+  const reliefAt = (cell: number): number => {
+    let relief = 0;
+    for (let direction = 0; direction < 4; direction += 1) {
+      const neighbor = topology.neighbors[cell * 4 + direction];
+      if (neighbor >= 0) relief = Math.max(relief, Math.abs(layers.elevation[neighbor] - layers.elevation[cell]));
+    }
+    return relief;
+  };
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (layers.water[cell]) continue;
+    const altitude = layers.elevation[cell] - world.seaLevel;
+    const relief = reliefAt(cell);
+    const baselineWetland = (Boolean(layers.lakes[cell]) && layers.wetness[cell] >= lakeSupport)
+      || (layers.river[cell] > 0.5 && layers.wetness[cell] > 0.66)
+      || (altitude >= 0
+        && altitude < LOWLAND_FLOODPLAIN_MAX_ALTITUDE
+        && relief < LOWLAND_FLOODPLAIN_MAX_RELIEF
+        && layers.river[cell] > LOWLAND_FLOODPLAIN_MIN_RIVER
+        && layers.wetness[cell] > LOWLAND_FLOODPLAIN_MIN_WETNESS);
+    if (baselineWetland) {
+      baselineMask[cell] = 1;
+      baselineHistogram[scoreBin(cell, relief)] += 1;
+      target += 1;
+    }
+  }
+  const mask = new Uint8Array(topology.cellCount);
+  const cutoffFor = (histogram: Uint32Array, selectionTarget: number): { bin: number; remaining: number } => {
+    let above = 0;
+    let bin = histogram.length - 1;
+    for (; bin >= 0; bin -= 1) {
+      if (above + histogram[bin] >= selectionTarget) break;
+      above += histogram[bin];
+    }
+    return { bin, remaining: Math.max(0, selectionTarget - above) };
+  };
+  const incumbentTarget = Math.ceil(target * catchmentIncumbentShareForTopology(topology.resolution));
+  const incumbentCutoff = cutoffFor(baselineHistogram, incumbentTarget);
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (!baselineMask[cell]) continue;
+    const bin = scoreBin(cell, reliefAt(cell));
+    if (bin > incumbentCutoff.bin || (bin === incumbentCutoff.bin && incumbentCutoff.remaining-- > 0)) mask[cell] = 1;
+  }
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (layers.water[cell] || mask[cell]) continue;
+    const altitude = layers.elevation[cell] - world.seaLevel;
+    if (altitude < 0 || altitude >= 0.05 || layers.wetness[cell] <= 0.5) continue;
+    fillHistogram[scoreBin(cell, reliefAt(cell))] += 1;
+  }
+  const fillCutoff = cutoffFor(fillHistogram, target - incumbentTarget);
+  for (let cell = 0; cell < topology.cellCount; cell += 1) {
+    if (layers.water[cell] || mask[cell]) continue;
+    const altitude = layers.elevation[cell] - world.seaLevel;
+    if (altitude < 0 || altitude >= 0.05 || layers.wetness[cell] <= 0.5) continue;
+    const bin = scoreBin(cell, reliefAt(cell));
+    if (bin > fillCutoff.bin || (bin === fillCutoff.bin && fillCutoff.remaining-- > 0)) mask[cell] = 1;
+  }
+  return mask;
 }
 
 type HydrologyCandidate = {
@@ -2999,6 +3081,7 @@ function classifyTopologyBiomes(
   project: DeepTimeProject,
   topology: CubedSphereTopology,
   wetlandHydrologyModel: WetlandHydrologyModel = 'lowland-floodplain-v1',
+  catchmentWetlands?: Uint8Array,
 ): number {
   const world = project.primaryWorld;
   const layers = world.topologyLayers;
@@ -3018,7 +3101,9 @@ function classifyTopologyBiomes(
     const altitude = layers.elevation[cell] - world.seaLevel;
     const legacyRiverWetland = layers.river[cell] > 0.5 && layers.wetness[cell] > 0.66;
     let hydrologyWetland = layers.lakes[cell] || legacyRiverWetland;
-    if (wetlandHydrologyModel === 'lowland-floodplain-v1') {
+    if (wetlandHydrologyModel === 'catchment-budget-v1') {
+      hydrologyWetland = Boolean(catchmentWetlands?.[cell]);
+    } else if (wetlandHydrologyModel === 'lowland-floodplain-v1') {
       const supportedLake = Boolean(layers.lakes[cell]) && layers.wetness[cell] >= coarseLakeWetnessSupport;
       let lowlandFloodplain = false;
       if (altitude >= 0
@@ -3164,6 +3249,7 @@ export type PresentDayDownstreamReconciliation = {
   biomeCohesionReassignments: number;
   projectedCellsRefreshed: number;
   stageTimingsMs: Record<string, number>;
+  wetlandHydrologyModel: WetlandHydrologyModel;
 };
 
 /**
@@ -3231,6 +3317,7 @@ export function reconcilePresentDayDownstream(
     topology,
     optimizeTraversal,
     options.normalizeRiverIntensityByTopologyScale ?? true,
+    wetlandHydrologyModel,
     options.observeHydrology,
   ));
   mutable.primaryWorld.rivers = hydrologyResult.rivers;
@@ -3243,6 +3330,7 @@ export function reconcilePresentDayDownstream(
     mutable,
     topology,
     wetlandHydrologyModel,
+    hydrologyResult.catchmentWetlands,
   ));
   const biomeCohesionReassignments = timed('biome-cohesion', () => applyBiomeCohesion(
     mutable,
@@ -3250,6 +3338,7 @@ export function reconcilePresentDayDownstream(
     {
       projectRaster: false,
       preserveLowlandFloodplains: wetlandHydrologyModel === 'lowland-floodplain-v1',
+      preserveAssignedWetlands: wetlandHydrologyModel === 'catchment-budget-v1',
     },
   ));
   const projectedCellsRefreshed = timed('projection', () => projectFinalTopology(mutable, topology));
@@ -3275,6 +3364,7 @@ export function reconcilePresentDayDownstream(
     biomeCohesionReassignments,
     projectedCellsRefreshed,
     stageTimingsMs: timings,
+    wetlandHydrologyModel,
   };
 }
 

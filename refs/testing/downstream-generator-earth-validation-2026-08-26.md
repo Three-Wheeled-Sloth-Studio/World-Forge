@@ -350,6 +350,25 @@ The joint evaluator ranks all physically eligible lowland cells by topographic w
 
 This is the first wetland counterfactual with a material positive placement result at every tier while preserving prevalence by construction. It is not yet accepted production behavior: the histogram screen does not mutate biomes, so Köppen macro-F1, final raster consistency, regional recall, fictional-world invariants, and runtime of a production-order implementation have not been measured. The next slice should implement this as an opt-in production candidate using the already-live accumulation array, apply the selected mask before biome cohesion/projection, and run the full cross-tier and preset gates before changing the default.
 
+### Opt-in catchment-budget production candidate
+
+The candidate now runs in production stage order behind `--catchment-budget-wetlands`. It reuses live accumulation, computes a bounded `4096`-bin ranking, preserves the highest-retention share of incumbent wetlands, fills the remaining exact budget from eligible lowlands, and carries the selected topology mask through cohesion, projection, and final circulation. The incumbent share is scale-aware: `87.5%` at Fast topology `64`, tapering to `50%` at Standard `256` and above because coarse cells carry less spatially precise catchment evidence. Normal default generation remains `lowland-floodplain-v1` and pays none of the candidate mask/histogram allocation.
+
+| Metric | Fast default -> candidate | Standard default -> candidate | Ultra default -> candidate |
+| --- | ---: | ---: | ---: |
+| GLWD high-coverage recall | 37.72% -> 40.83% | 24.34% -> 30.17% | 19.85% -> 25.70% |
+| GLWD fraction separation | 7.34 -> 7.50 points | 8.78 -> 10.82 points | 9.76 -> 13.80 points |
+| GLWD prevalence error | 6.13 -> 7.21 points | 0.15 -> 0.30 points | 1.62 -> 1.40 points |
+| Köppen macro-F1 | 0.5557 -> 0.5468 | 0.5740 -> 0.5640 | 0.5955 -> 0.5932 |
+| Final classification consistency | 1.0000 -> 1.0000 | 1.0000 -> 1.0000 | 1.0000 -> 1.0000 |
+| Core downstream time | ~168 -> 175 ms | ~998 -> 1,003 ms | ~15,472 -> 13,561 ms |
+
+The first unrestricted rerank was rejected because macro-F1 fell by `0.0376 / 0.0221 / 0.0209`. Preserving half the incumbent budget fixed Standard and Ultra but still over-replaced coarse Fast cells. The final scale-aware incumbent rule brings Fast macro-F1 loss to `0.0089`; all tiers remain inside the maintained `0.02` component tolerance. Timing is neutral within run variability and the candidate remains linear-time.
+
+Regional recall improves broadly. Standard Amazon/Congo/Hudson/West-Siberian recall becomes `39.26% / 26.05% / 39.91% / 14.61%`; Ultra becomes `32.81% / 28.38% / 32.00% / 16.27%`. Ultra Ganges-Brahmaputra improves to `9.70%`; Sudd remains weak at `8.49%` Ultra and `1.69%` Standard, so the candidate does not solve every warm floodplain.
+
+The 80-case short fictional suite adds no aggregate finding beyond the two accepted plate-advection findings. Unsupported wetlands remain zero. Median wetland shares remain approximately Earthlike `12.9%`, Habitable `12.1%`, Waterworld `14.7%`, Archipelago `12.3%`, Desert `1.8%`, Pangea `9.2%`, and Random `8.4%`, effectively matching the accepted lowland-floodplain ranges. The candidate advances to a default-promotion decision, but this checkpoint leaves it opt-in so the default switch remains a small reversible increment.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
