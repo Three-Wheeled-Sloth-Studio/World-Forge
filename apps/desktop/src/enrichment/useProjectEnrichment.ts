@@ -140,6 +140,14 @@ export function useProjectEnrichment({ project, onProjectEnriched }: {
     worker.postMessage({ type: 'run-system-orbital-context', id, source: systemOrbitalContextSourceFromProject(current) });
   }, [status]);
 
+  useEffect(() => {
+    if (!project || (status !== 'idle' && status !== 'stale')) return;
+    const currentArtifact = project.enrichmentArtifacts?.[SYSTEM_ORBITAL_CONTEXT_WORKFLOW_ID];
+    if (currentArtifact && isCurrentSystemOrbitalContextArtifact(project, currentArtifact)) return;
+    const timer = window.setTimeout(() => ensureOrbitalContext(), 250);
+    return () => window.clearTimeout(timer);
+  }, [artifact, ensureOrbitalContext, project?.projectId, status]);
+
   const cancelOrbitalContext = useCallback(() => {
     if (status !== 'running' || !taskIdRef.current) return;
     workerRef.current?.postMessage({ type: 'cancel', id: taskIdRef.current });
