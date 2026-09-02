@@ -66,10 +66,14 @@ export function reconcileBodyGenerationLifecycle(
     const currentArtifact = source && isCurrentGeneratedSystemBodyArtifact(source, artifact)
       ? artifact
       : null;
-    const staleArtifact = Boolean(source && artifact && !currentArtifact);
+    const fallbackArtifact = source
+      ? currentGeneratedBodyArtifactForAnyFidelity(project, orbitalContext, body.id, artifact)
+      : null;
+    const usableArtifact = currentArtifact ?? fallbackArtifact;
+    const staleArtifact = Boolean(source && artifact && !usableArtifact);
     const status: BodyGenerationLifecycleStatus = isPrimary
       ? 'generated'
-      : currentArtifact
+      : usableArtifact
         ? 'generated'
         : staleArtifact
           ? 'stale'
@@ -97,10 +101,10 @@ export function reconcileBodyGenerationLifecycle(
       requestedFidelity,
       workflow,
       nowIso,
-      artifactKey: currentArtifact?.artifactKey,
-      completedAt: currentArtifact?.completedAt,
+      artifactKey: usableArtifact?.artifactKey,
+      completedAt: usableArtifact?.completedAt,
       staleReason: staleArtifact
-        ? 'Saved generated-body artifact no longer matches the current project, orbital artifact, workflow graph, profile, or requested fidelity.'
+        ? 'Saved generated-body artifact no longer matches the current project, orbital artifact, workflow graph, or body profile.'
         : undefined
     });
   }
@@ -161,6 +165,18 @@ export function queueUnresolvedBodies(
   return next;
 }
 
+export function queueBackgroundPreviewBodies(
+  lifecycle: BodyGenerationLifecycle,
+  nowIso = new Date().toISOString()
+): BodyGenerationLifecycle {
+  let next = lifecycle;
+  for (const record of Object.values(lifecycle.records)) {
+    if (!record.eligible || (record.status !== 'ready' && record.status !== 'placeholder') || record.artifactKeys.length > 0) continue;
+    next = queueBodyGeneration(next, record.bodyId, 'preview', nowIso);
+  }
+  return next;
+}
+
 export function queueUnresolvedAirlessMoons(
   lifecycle: BodyGenerationLifecycle,
   requestedFidelity: BodyGenerationFidelity = 'preview',
@@ -207,6 +223,29 @@ export function pauseBodyGenerationQueue(
   nowIso = new Date().toISOString()
 ): BodyGenerationLifecycle {
   return updateLifecycle(lifecycle, { paused: true }, nowIso);
+}
+
+export function preemptActiveBodyGeneration(
+  lifecycle: BodyGenerationLifecycle,
+  bodyId: string,
+  nowIso = new Date().toISOString()
+): BodyGenerationLifecycle {
+  const record = lifecycle.records[bodyId];
+  if (!record || lifecycle.activeBodyId !== bodyId || record.status !== 'generating') return lifecycle;
+  return updateLifecycle(lifecycle, {
+    queue: [bodyId, ...lifecycle.queue.filter((candidate) => candidate !== bodyId)],
+    activeBodyId: null,
+    paused: true,
+    records: {
+      ...lifecycle.records,
+      [bodyId]: {
+        ...record,
+        status: 'queued',
+        startedAt: undefined,
+        updatedAt: nowIso
+      }
+    }
+  }, nowIso);
 }
 
 export function removeQueuedBodyGeneration(
@@ -289,6 +328,7 @@ export function completeBodyGeneration(
       [artifact.bodyId]: {
         ...record,
         status: 'generated',
+        requestedFidelity: 'requestedFidelity' in artifact ? artifact.requestedFidelity : record.requestedFidelity,
         workflow: {
           id: artifact.workflow.id,
           version: artifact.workflow.version,
@@ -324,7 +364,8 @@ export function bodyArtifactForBody(
   try {
     const source = systemBodyGenerationSourceFromProject(project, orbitalContext, bodyId, requestedFidelity);
     const artifact = project.enrichmentArtifacts?.[systemBodyArtifactKey(bodyId)];
-    return isCurrentGeneratedSystemBodyArtifact(source, artifact) ? artifact : null;
+    if (isCurrentGeneratedSystemBodyArtifact(source, artifact)) return artifact;
+    return currentGeneratedBodyArtifactForAnyFidelity(project, orbitalContext, bodyId, artifact);
   } catch {
     return null;
   }
@@ -340,6 +381,23 @@ export function airlessArtifactForBody(
     const source = airlessRockyBodySourceFromProject(project, orbitalContext, bodyId, requestedFidelity);
     const artifact = project.enrichmentArtifacts?.[airlessRockyBodyArtifactKey(bodyId)];
     return isCurrentAirlessRockyBodyArtifact(source, artifact) ? artifact : null;
+  } catch {
+    return null;
+  }
+}
+
+function currentGeneratedBodyArtifactForAnyFidelity(
+  project: WorldProject,
+  orbitalContext: SystemOrbitalContextArtifact,
+  bodyId: string,
+  artifact: unknown
+): GeneratedSystemBodyArtifact | null {
+  if (!artifact || typeof artifact !== 'object') return null;
+  const candidate = artifact as Partial<GeneratedSystemBodyArtifact>;
+  if (candidate.requestedFidelity !== 'preview' && candidate.requestedFidelity !== 'standard') return null;
+  try {
+    const source = systemBodyGenerationSourceFromProject(project, orbitalContext, bodyId, candidate.requestedFidelity);
+    return isCurrentGeneratedSystemBodyArtifact(source, artifact) ? artifact as GeneratedSystemBodyArtifact : null;
   } catch {
     return null;
   }
@@ -364,8 +422,15 @@ function reconcileRecord(input: {
 }): BodyGenerationRecord {
   const existing = input.existing;
   const sourceChanged = Boolean(existing && existing.sourceBodySignature !== input.sourceBodySignature);
-  const preservedStatus = existing && !sourceChanged && input.eligible
+  const preserveQueuedUpgrade = Boolean(
+    sourceChanged
+    && input.artifactKey
+    && existing
+    && (existing.status === 'queued' || existing.status === 'generating')
+  );
+  const preservedStatus = existing && input.eligible
     && ['queued', 'generating', 'failed'].includes(existing.status)
+    && (!sourceChanged || preserveQueuedUpgrade)
     ? existing.status
     : input.status;
   const artifactKeys = input.artifactKey
@@ -374,7 +439,7 @@ function reconcileRecord(input: {
   return {
     bodyId: input.bodyId,
     parentBodyId: input.parentBodyId,
-    status: sourceChanged && existing?.status === 'generated' ? 'stale' : preservedStatus,
+    status: sourceChanged && existing?.status === 'generated' && !input.artifactKey ? 'stale' : preservedStatus,
     eligible: input.eligible,
     eligibilityReason: input.eligibilityReason,
     profile: input.profile,
@@ -387,7 +452,7 @@ function reconcileRecord(input: {
     startedAt: preservedStatus === 'generating' ? existing?.startedAt : undefined,
     completedAt: input.status === 'generated' ? input.completedAt ?? existing?.completedAt : undefined,
     updatedAt: existing?.updatedAt ?? input.nowIso,
-    staleReason: sourceChanged ? 'Body scaffold or orbital source changed after generation.' : input.staleReason,
+    staleReason: sourceChanged && !input.artifactKey ? 'Body scaffold or orbital source changed after generation.' : input.staleReason,
     failureReason: preservedStatus === 'failed' ? existing?.failureReason : undefined
   };
 }
