@@ -65,7 +65,7 @@ commands:
 notes:
   - Ordinary dev/release validation is one job: npm ci, npm run verify, and the production page-harness smoke. Ready pull requests and manual checkpoints also run the production rerank smoke.
   - Manual validation exposes a full_test_matrix input that restores the extended generation and geographic seed matrices.
-  - The fictional preset matrix is intentionally manual. Its retired plate-advection-v3 expectation is validation-contract debt; current production plate diagnostics use fragment-placement-v2. See refs/testing/plate-diagnostic-contract-audit-2026-09-02.md.
+  - The fictional preset matrix is intentionally manual. Its retired plate-advection-v3 expectation was stale validation-contract debt and has been replaced with fragment-placement-v2 reporting. See refs/testing/plate-diagnostic-contract-audit-2026-09-02.md.
   - QA and main are exact-SHA promotion targets. Deployment requires a successful Validate World Forge run for the exact source SHA and then performs build-only compilation/bundling.
   - The former dedicated Ultra Earth acceptance workflow was removed after owner acceptance because its tests and full verification duplicated the ordinary suite.
   - Real scientific-source rebuilds and geographic evaluation remain intentional diagnostics because they provide evidence ordinary CI does not.
