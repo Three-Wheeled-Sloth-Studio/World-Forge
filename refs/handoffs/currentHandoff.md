@@ -16,6 +16,8 @@ The subsequent water-table proxy screen rejects bounded neighborhood smearing to
 
 That transient observer and manual-adapter capture are now implemented. Raw topographic wetness separates unrecovered GLWD wetlands from ordinary land by about `1.0-1.15` score units at every tier, but its absolute value shifts with resolution. Percentile tails solve the scale problem: Standard/Ultra top-5% eligible candidates are `18.44% / 19.78%` high-coverage with about `23%` mean GLWD coverage. A budget-matched replacement of the weak strong-river branch changes recall by `-0.69 / +4.36 / +0.18` points Fast/Standard/Ultra, so it is rejected. No production behavior changed. Next screen should jointly rank the entire non-standing-water/non-floodplain wetland budget with a bounded histogram, rather than replacing one branch uniformly.
 
+The joint-budget screen is the first cross-tier positive candidate. Ranking all eligible lowland cells by catchment retention plus bounded lake/river support and selecting the current wetland count raises projected GLWD recall by `+8.30 / +5.76 / +3.17` points Fast/Standard/Ultra. Selected cells average `19.83% / 21.34% / 21.98%` GLWD coverage. A `4096`-bin histogram limits budget overshoot to `1 / 10 / 335` cells. This remains evaluator-only: next implement an opt-in production-order mask from the live accumulation array, then measure Köppen F1, final raster consistency, regional recall, presets, and runtime before changing the default.
+
 Repository: `Three-Wheeled-Sloth-Studio/World-Forge`
 
 Branch: `dev`

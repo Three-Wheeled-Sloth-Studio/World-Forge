@@ -551,6 +551,9 @@ function wetlandValidationProfile(
   const catchmentHistogramCounts = new Uint32Array(256);
   const catchmentHistogramHighCoverage = new Uint32Array(256);
   const catchmentHistogramObservedPercent = new Float64Array(256);
+  const jointBudgetHistogramCounts = new Uint32Array(4096);
+  const jointBudgetHistogramHighCoverage = new Uint32Array(4096);
+  const jointBudgetHistogramObservedPercent = new Float64Array(4096);
   for (let cell = 0; cell < topology.cellCount; cell += 1) {
     if (world.topologyLayers.water[cell]) continue;
     const x = Math.min(
@@ -605,6 +608,20 @@ function wetlandValidationProfile(
     const topographicWetness = logAccumulation - Math.log(localRelief + 0.002);
     groupLogAccumulation[group] += logAccumulation;
     groupTopographicWetness[group] += topographicWetness;
+    if (hydrologyTrace
+      && altitude < 0.05
+      && world.topologyLayers.wetness[cell] > 0.5) {
+      const retentionScore = topographicWetness
+        + (world.topologyLayers.lakes[cell] ? 1 : 0)
+        + Math.min(0.5, world.topologyLayers.river[cell] * 0.5);
+      const jointBin = Math.max(0, Math.min(
+        jointBudgetHistogramCounts.length - 1,
+        Math.floor(((retentionScore + 4) / 18) * jointBudgetHistogramCounts.length),
+      ));
+      jointBudgetHistogramCounts[jointBin] += 1;
+      jointBudgetHistogramObservedPercent[jointBin] += percent;
+      if (observed) jointBudgetHistogramHighCoverage[jointBin] += 1;
+    }
     const attribution = attributeWetlandHydrology({
       generatedWetland: generated,
       lake: Boolean(world.topologyLayers.lakes[cell]),
@@ -731,6 +748,12 @@ function wetlandValidationProfile(
     catchmentHistogramObservedPercent,
     attributionGeneratedCount.strongRiver,
   );
+  const jointBudgetCandidate = summarizeWetlandCandidateTarget(
+    jointBudgetHistogramCounts,
+    jointBudgetHistogramHighCoverage,
+    jointBudgetHistogramObservedPercent,
+    generatedWetland,
+  );
   const details = {
     available: 1,
     comparableTopologyCells: comparable,
@@ -755,6 +778,13 @@ function wetlandValidationProfile(
       strongRiverReplacement.observedPercent / Math.max(1, strongRiverReplacement.cells),
     catchmentStrongRiverReplacementRecallDelta:
       (strongRiverReplacement.highCoverage - attributionTotals.strongRiver) / Math.max(1, observedHighCoverage),
+    catchmentJointBudgetCandidateCells: jointBudgetCandidate.cells,
+    catchmentJointBudgetHighCoverageRecall:
+      jointBudgetCandidate.highCoverage / Math.max(1, observedHighCoverage),
+    catchmentJointBudgetRecallDelta:
+      (jointBudgetCandidate.highCoverage - observedHighCoverageRecovered) / Math.max(1, observedHighCoverage),
+    catchmentJointBudgetMeanObservedPercent:
+      jointBudgetCandidate.observedPercent / Math.max(1, jointBudgetCandidate.cells),
     attributionSaturatedNonRiverHighCoverageMisses: attributionTotals.saturatedNonRiverMiss,
     attributionSaturatedNonRiverHighCoverageMissShare:
       attributionTotals.saturatedNonRiverMiss / Math.max(1, attributionTotals.highCoverage - attributionTotals.recovered),

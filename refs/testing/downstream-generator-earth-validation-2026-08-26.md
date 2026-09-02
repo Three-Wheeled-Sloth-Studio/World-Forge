@@ -338,6 +338,18 @@ Standard and Ultra are materially and consistently enriched; Fast tails are too 
 
 The next evaluator candidate should rank the complete generated wetland budget jointly, preserving explicit standing-water and floodplain semantics while using catchment retention to compete for the remaining budget. It must use a bounded histogram/percentile calculation rather than a fixed TWI constant, because the absolute score is resolution-dependent. No production wetland behavior changes in this checkpoint.
 
+### Joint wetland-budget screen
+
+The joint evaluator ranks all physically eligible lowland cells by topographic wetness plus bounded explicit lake and river support, then selects the same number of cells as the current generated wetland budget. A `4096`-bin histogram keeps selection error to `1 / 10 / 335` cells Fast/Standard/Ultra without sorting or retaining per-cell objects; that is at most `0.21%` budget overshoot.
+
+| Tier | Current budget | Selected cells | Counterfactual recall | Recall change | Selected mean GLWD % |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fast | 1,136 | 1,137 | 46.02% | +8.30 points | 19.83 |
+| Standard | 11,333 | 11,343 | 30.10% | +5.76 points | 21.34 |
+| Ultra | 156,558 | 156,893 | 23.02% | +3.17 points | 21.98 |
+
+This is the first wetland counterfactual with a material positive placement result at every tier while preserving prevalence by construction. It is not yet accepted production behavior: the histogram screen does not mutate biomes, so Köppen macro-F1, final raster consistency, regional recall, fictional-world invariants, and runtime of a production-order implementation have not been measured. The next slice should implement this as an opt-in production candidate using the already-live accumulation array, apply the selected mask before biome cohesion/projection, and run the full cross-tier and preset gates before changing the default.
+
 ## Accepted component baselines
 
 | Metric | Fast 256 x 128 | Standard 1024 x 512 | Ultra 4096 x 2048 |
