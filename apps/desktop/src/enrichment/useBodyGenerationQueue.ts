@@ -107,7 +107,7 @@ export function useBodyGenerationQueue({
       const detail = (event as CustomEvent<GenerationTelemetryDetail>).detail;
       if (!detail?.taskId || detail.taskId.startsWith('body-enrichment-')) return;
       if (detail.phase === 'started') foregroundTaskIdsRef.current.add(detail.taskId);
-      else if (detail.phase === 'completed' || detail.phase === 'failed') foregroundTaskIdsRef.current.delete(detail.taskId);
+      else if (detail.phase === 'completed' || detail.phase === 'failed' || detail.phase === 'cancelled') foregroundTaskIdsRef.current.delete(detail.taskId);
       setObservedForegroundBusy(foregroundTaskIdsRef.current.size > 0);
     };
     window.addEventListener(generationTelemetryEvent, onGenerationTelemetry);
