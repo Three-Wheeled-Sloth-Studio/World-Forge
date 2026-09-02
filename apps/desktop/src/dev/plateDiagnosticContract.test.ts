@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultConfig } from '@world-forge/shared';
 import { generateProjectWithNativeStages } from '../../../../packages/generator-core/src/nativeStagePipeline';
 import { prepareSystemOrbitConfig, reconcileSystemOrbitPresets } from '../../../../packages/generator-core/src/systemOrbitPreset';
+import { fingerprintDeepTimeLedger } from './deepTimeLedgerFingerprint';
 import { configForTestCase, type PresetTestCase } from './presetValidation';
 
 const cases: PresetTestCase[] = [
@@ -72,16 +73,27 @@ describe('active plate diagnostic contract', () => {
   it.each(cases)('exposes fragment-placement-v2 across preset generation paths: $id', (testCase) => {
     const project = generate(testCase);
     const diagnostics = project.primaryWorld.deepTime.fragmentPlacement;
+    const fingerprint = fingerprintDeepTimeLedger(project);
+
     expect(diagnostics).toBeDefined();
     expectFragmentPlacementSchema(diagnostics!);
+    expect(fingerprint.fragmentPlacementDiagnosticsVersion).toBe('fragment-placement-v2');
+    expect(fingerprint.fragmentPlacementFragmentCount).toBe(diagnostics!.fragmentCount);
+    expect(fingerprint.fragmentPlacementMovingFragmentCount).toBe(diagnostics!.movingFragmentCount);
+    expect(fingerprint.fragmentPlacementOwnershipChangedCellShare).toBe(diagnostics!.ownershipChangedCellShare);
+    expect(fingerprint.fragmentPlacementRetainedCellRatio).toBe(diagnostics!.retainedCellRatio);
+    expect('plateAdvectionDiagnosticsVersion' in fingerprint).toBe(false);
   });
 
   it('is deterministic for a fixed prepared preset case', () => {
     const testCase = cases[0];
-    const first = generate(testCase).primaryWorld.deepTime.fragmentPlacement;
-    const second = generate(testCase).primaryWorld.deepTime.fragmentPlacement;
+    const firstProject = generate(testCase);
+    const secondProject = generate(testCase);
+    const first = firstProject.primaryWorld.deepTime.fragmentPlacement;
+    const second = secondProject.primaryWorld.deepTime.fragmentPlacement;
 
     expect(first).toBeDefined();
     expect(second).toEqual(first);
+    expect(fingerprintDeepTimeLedger(secondProject)).toEqual(fingerprintDeepTimeLedger(firstProject));
   });
 });
