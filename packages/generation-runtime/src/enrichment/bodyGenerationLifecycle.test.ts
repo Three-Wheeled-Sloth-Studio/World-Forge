@@ -161,6 +161,30 @@ describe('body generation lifecycle', () => {
     expect(bodyArtifactForBody(upgradingProject, orbitalContext, 'body-2', 'standard')?.requestedFidelity).toBe('preview');
   });
 
+  it('keeps the preview usable and the failure retryable when a standard upgrade fails', async () => {
+    const initial = reconcileBodyGenerationLifecycle(project, orbitalContext, '2026-08-01T00:00:00.000Z');
+    const previewSource = systemBodyGenerationSourceFromProject(project, orbitalContext, 'body-2', 'preview');
+    const previewArtifact = await runSystemBodyGenerationWorkflow(previewSource);
+    const completed = completeBodyGeneration(initial, previewArtifact, '2026-08-01T00:05:00.000Z');
+    const previewProject = {
+      ...project,
+      bodyGeneration: completed,
+      enrichmentArtifacts: { ...project.enrichmentArtifacts, [previewArtifact.artifactKey]: previewArtifact }
+    } as WorldProject;
+    const reconciledPreview = reconcileBodyGenerationLifecycle(previewProject, orbitalContext, '2026-08-01T00:06:00.000Z');
+    const upgradeQueued = queueBodyGeneration(reconciledPreview, 'body-2', 'standard', '2026-08-01T00:07:00.000Z');
+    const upgradeRunning = startNextBodyGeneration(resumeBodyGenerationQueue(upgradeQueued), '2026-08-01T00:07:30.000Z');
+    const upgradeFailed = failBodyGeneration(upgradeRunning, 'body-2', 'synthetic standard failure', '2026-08-01T00:08:00.000Z');
+    const failedProject = { ...previewProject, bodyGeneration: upgradeFailed } as WorldProject;
+    const reconciledFailure = reconcileBodyGenerationLifecycle(failedProject, orbitalContext, '2026-08-01T00:09:00.000Z');
+
+    expect(reconciledFailure.records['body-2'].status).toBe('failed');
+    expect(reconciledFailure.records['body-2'].requestedFidelity).toBe('standard');
+    expect(reconciledFailure.records['body-2'].failureReason).toBe('synthetic standard failure');
+    expect(bodyArtifactForBody(failedProject, orbitalContext, 'body-2', 'standard')?.requestedFidelity).toBe('preview');
+    expect(retryBodyGeneration(reconciledFailure, 'body-2').records['body-2'].status).toBe('queued');
+  });
+
   it('marks generated output stale when the orbital source changes', async () => {
     const initial = reconcileBodyGenerationLifecycle(project, orbitalContext, '2026-08-01T00:00:00.000Z');
     const source = systemBodyGenerationSourceFromProject(project, orbitalContext, 'body-2', 'preview');
