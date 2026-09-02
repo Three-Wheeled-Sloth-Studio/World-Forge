@@ -422,15 +422,15 @@ function reconcileRecord(input: {
 }): BodyGenerationRecord {
   const existing = input.existing;
   const sourceChanged = Boolean(existing && existing.sourceBodySignature !== input.sourceBodySignature);
-  const preserveQueuedUpgrade = Boolean(
+  const preserveUpgradeState = Boolean(
     sourceChanged
     && input.artifactKey
     && existing
-    && (existing.status === 'queued' || existing.status === 'generating')
+    && (existing.status === 'queued' || existing.status === 'generating' || existing.status === 'failed')
   );
   const preservedStatus = existing && input.eligible
     && ['queued', 'generating', 'failed'].includes(existing.status)
-    && (!sourceChanged || preserveQueuedUpgrade)
+    && (!sourceChanged || preserveUpgradeState)
     ? existing.status
     : input.status;
   const artifactKeys = input.artifactKey
