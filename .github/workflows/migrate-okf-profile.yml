@@ -1,0 +1,58 @@
+name: Agent Academy OKF Profile Migration
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: okf-profile-migration-dev
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    if: ${{ !contains(github.event.head_commit.message, '[okf-migrated]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install refs dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Migrate project memory to OKF profile
+        run: python refs/tools/migrate_okf_frontmatter.py
+
+      - name: Remove one-time migration helpers
+        run: |
+          rm refs/tools/migrate_okf_frontmatter.py
+          rm .github/workflows/migrate-okf-profile.yml
+
+      - name: Generate deterministic OKF indexes
+        run: python refs/tools/generate_okf_indexes.py
+
+      - name: Validate migrated project memory
+        run: python refs/tools/validate_okf.py
+
+      - name: Commit migrated corpus
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A AGENTS.md .gitignore package.json refs .github/workflows
+          git commit -m "docs: align World Forge refs with Agent Academy OKF profile [okf-migrated]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
