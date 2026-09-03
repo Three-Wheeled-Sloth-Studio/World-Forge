@@ -13,7 +13,7 @@ Implemented in PR #127:
 - replaced the manual preset harness's `plate-advection-v3` failure, aggregate fields, and markdown summary with `fragment-placement-v2` reporting;
 - removed the obsolete Earthlike margin-continuity, frontier-advance, and orphan-risk checks rather than translating them into unsupported new scientific thresholds;
 - expanded `apps/desktop/src/dev/plateDiagnosticContract.test.ts` to verify emitted diagnostics, fingerprint agreement, representative preset paths, deterministic output, bounded/current schema values, and absence of the retired fingerprint key;
-- kept the 80-case preset suite manual-only and outside ordinary push CI.
+- kept the full preset suite manual-only and outside ordinary push CI.
 
 This is validation/reporting plumbing only. No plate construction, fragment placement, deep-time motion, terrain response, climate, hydrology, biome, reference-source, package, or deployment behavior changed.
 
@@ -22,10 +22,11 @@ The old Earthlike margin-continuity finding remains reclassified as an obsolete-
 Validation evidence:
 
 - clean pre-cleanup checkpoint: `Validate World Forge` run `33649692255`, green, including `npm run verify` and both production browser smokes;
-- final cleanup PR validation is the authoritative remote gate for the current head;
-- the chat environment cannot obtain a network-capable local checkout, so it cannot independently execute `npx vitest ...`, `npm run verify`, or the intentionally manual 80-case preset suite.
+- final cleanup PR validation is the authoritative remote gate for the cleanup commit;
+- current `dev` passed `Validate World Forge` run `33679572113` after the subsequent generator work;
+- the deliberate local full preset run completed 140 cases in 134.79 seconds: 138 passed, two warned, zero failed, and zero errored.
 
-The preserved manual before-state is: all 80 worlds generated without runtime errors; the suite was globally red because of the stale plate-advection contract; four cases also retained pre-existing tiny-biome-patch findings. Do not claim an after-state until `npm run validate:presets -- --mode full` is deliberately rerun from a suitable local checkout.
+The measured after-state is recorded by the ignored local report `validation-reports/preset-validation-2026-09-03T02-03-38Z.md`. `fragment-placement-v2` diagnostic coverage is `1.0` globally and for every preset, resolved-record share medians are `1.0`, and the run reports no aggregate finding. The stale plate-advection coverage and margin-continuity findings are gone. The two warnings are isolated Archipelago tiny-biome-patch cases (`1001006` under both Sol-like and habitable-star preparation), each at `0.20`; they are not plate-contract failures and do not justify production tuning by themselves.
 
 ## Resumed downstream diagnostic checkpoint
 

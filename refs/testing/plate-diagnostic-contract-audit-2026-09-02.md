@@ -77,12 +77,14 @@ Routine validation remains:
 
 The fictional preset matrix remains an intentional manual diagnostic and must not be added to ordinary push CI.
 
-A clean pre-cleanup branch checkpoint passed `Validate World Forge` run `33649692255`, including canonical repository verification and both production browser smokes. The final cleanup head must also pass the ordinary validation gate before merge.
+A clean pre-cleanup branch checkpoint passed `Validate World Forge` run `33649692255`, including canonical repository verification and both production browser smokes. Current `dev`, including the merged cleanup and subsequent generator work, passed `Validate World Forge` run `33679572113`.
 
-## Manual preset evidence boundary
+## Manual preset evidence
 
-The chat execution environment cannot establish a network-capable local World Forge checkout, and the repository intentionally has no ordinary CI workflow that runs `npm run validate:presets -- --mode full`. Therefore the repeated 80-case suite was not run from this environment.
+The before-state is preserved as historical evidence: all 80 worlds generated without runtime errors, the suite was globally red because of the stale `plate-advection-v3` contract, and four cases retained pre-existing tiny-biome-patch findings.
 
-The before-state is preserved as historical evidence: all 80 worlds generated without runtime errors, the suite was globally red because of the stale `plate-advection-v3` contract, and four cases retained pre-existing tiny-biome-patch findings. After the cleanup, the stale plate diagnostic failures are expected to disappear; that expectation must be confirmed by the next deliberate local/manual preset run rather than asserted as measured evidence.
+A deliberate local `npm run validate:presets -- --mode full` run on current `dev` completed the expanded 140-case matrix in 134.79 seconds. It recorded 138 passes, two warnings, zero failures, zero errors, and no aggregate findings. `fragmentPlacementDiagnosticsCoverageShare` is `1.0`; each preset also reports coverage `1.0` and median resolved-record share `1.0`. This confirms that the stale plate coverage and margin-continuity findings are gone rather than merely expected to disappear.
+
+The ignored local report is `validation-reports/preset-validation-2026-09-03T02-03-38Z.md`. Its two warnings are isolated tiny-biome-patch findings for seed `1001006` Archipelago under both Sol-like and habitable-star preparation. They are not plate-contract failures. The suite remains manual-only and outside ordinary CI.
 
 No private Earth reference data, GLWD assets, workspace helper scripts, or Hostinger access are required for that fictional preset run.

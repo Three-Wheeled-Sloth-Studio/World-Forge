@@ -30,14 +30,8 @@ The validation plumbing has now been repaired to fingerprint, validate, aggregat
 
 See `refs/testing/plate-diagnostic-contract-audit-2026-09-02.md` for the root-cause audit and focused regression coverage.
 
-## Evidence still required
+## Measured after-state
 
-This addendum does not invent an after-state for the expensive fictional suite. A deliberate local run of:
+A deliberate local `npm run validate:presets -- --mode full` run on current `dev` completed the expanded 140-case matrix in 134.79 seconds: 138 passed, two warned, zero failed, and zero errored. The run reports no aggregate finding, global and per-preset `fragment-placement-v2` diagnostic coverage of `1.0`, and median resolved-record share of `1.0` for every preset. The stale plate-advection coverage and margin-continuity findings are therefore confirmed absent.
 
-```text
-npm run validate:presets -- --mode full
-```
-
-is still required to record the post-cleanup 80-world report. The expected removal of the stale plate-advection findings is a code-level expectation until that manual run is performed.
-
-Any remaining tiny-biome-patch or other scientific findings must be evaluated independently and must not trigger production tuning without measured evidence.
+The ignored local report is `validation-reports/preset-validation-2026-09-03T02-03-38Z.md`. Both warnings are isolated seed `1001006` Archipelago tiny-biome-patch findings, one under each stellar preparation path. They must be evaluated independently and do not trigger production tuning without additional measured evidence.

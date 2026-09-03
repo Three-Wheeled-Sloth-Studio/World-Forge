@@ -1,4 +1,4 @@
-# Next Dev Prompt: Plate Diagnostic Manual Checkpoint
+# Next Dev Prompt: Post-Plate-Diagnostic Roadmap Return
 
 Updated: 2026-09-02
 
@@ -23,23 +23,13 @@ The cleanup establishes and implements these contracts:
 
 See `refs/testing/plate-diagnostic-contract-audit-2026-09-02.md`. The historical downstream report is preserved as measured evidence; its stale diagnostic classification is corrected by `refs/testing/downstream-generator-earth-validation-plate-diagnostic-correction-2026-09-02.md`.
 
-## Immediate next slice
+## Completed manual checkpoint
 
-The remaining checkpoint is evidence collection, not another code change.
+The deliberate local `npm run validate:presets -- --mode full` checkpoint completed on current `dev` with 140 cases in 134.79 seconds. The result was 138 passes, two warnings, zero failures, zero errors, and no aggregate findings. `fragment-placement-v2` diagnostic coverage is complete globally and for every preset, so the stale `plate-advection-v3` coverage and margin-continuity findings are closed.
 
-1. From a normal local checkout, run:
+The ignored local evidence is `validation-reports/preset-validation-2026-09-03T02-03-38Z.md`. The two warnings are isolated Archipelago tiny-biome-patch findings for seed `1001006` under Sol-like and habitable-star preparation. Treat them independently; do not tune production behavior merely to remove warnings.
 
-```text
-npx vitest run apps/desktop/src/dev/plateDiagnosticContract.test.ts
-npm run verify
-npm run validate:presets -- --mode full
-```
-
-2. Keep the preset suite intentional and manual. Do not add it to ordinary push CI or create a dedicated workflow merely to run it.
-3. Record the manual preset report path and before/after findings.
-4. Confirm that the stale `plate-advection-v3` coverage and margin-continuity findings are gone.
-5. Treat any remaining tiny-biome-patch or other scientific findings independently. Do not tune production behavior merely to make the suite green.
-6. Once that evidence is captured, close the plate diagnostic debt and return to the selected roadmap slice.
+Keep the preset suite intentional and manual. Do not add it to ordinary push CI or create a dedicated workflow merely to run it.
 
 ## Known before-state for the manual matrix
 
@@ -50,7 +40,7 @@ The preserved historical run established:
 - four cases also retained pre-existing tiny-biome-patch findings;
 - later wetland work reported no additional aggregate finding beyond the two stale plate-advection findings.
 
-Do not rewrite those historical reports as though they had produced different output. The next manual run is the after-state.
+Do not rewrite those historical reports as though they had produced different output. The 140-case local checkpoint above is the measured after-state.
 
 ## Suggested roadmap return after the manual checkpoint
 
