@@ -36,10 +36,8 @@ jobs:
       - name: Migrate project memory to OKF profile
         run: python refs/tools/migrate_okf_frontmatter.py
 
-      - name: Remove one-time migration helpers
-        run: |
-          rm refs/tools/migrate_okf_frontmatter.py
-          rm .github/workflows/migrate-okf-profile.yml
+      - name: Remove one-time migration helper
+        run: rm refs/tools/migrate_okf_frontmatter.py
 
       - name: Generate deterministic OKF indexes
         run: python refs/tools/generate_okf_indexes.py
@@ -53,6 +51,6 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A AGENTS.md .gitignore package.json refs .github/workflows
+          git add -A AGENTS.md .gitignore package.json refs
           git commit -m "docs: align World Forge refs with Agent Academy OKF profile [okf-migrated]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
