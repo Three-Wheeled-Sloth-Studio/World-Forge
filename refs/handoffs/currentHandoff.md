@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Current Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # Current Handoff
 
 Updated: 2026-09-02
@@ -214,3 +221,9 @@ Do not split Earth out of Sol and do not reduce the maintained resolution as an 
 - Do not create Earth-specific renderers or package formats.
 - Do not mistake missing Parchment `.env.local` for a World Forge/auth code regression.
 - Treat current 3D startup latency as performance evidence for a later optimization slice.
+
+## Agent Academy OKF compatibility
+
+On 2026-09-03, World Forge adopted the Agent Academy `agent-academy-okf-v1` compatibility profile pinned to OKF v0.2 and Agent Academy commit `16691651776151a7eb1ebf13d99a92658e0684e6`.
+
+This is an interoperability and discovery increment only. The existing World Forge `refs/` taxonomy, project-specific reading order, deterministic YAML state, scientific validation contracts, and exact-SHA promotion model remain authoritative. Markdown knowledge is exposed as OKF concepts and deterministic committed indexes provide generic traversal for future studio-wide cataloging.

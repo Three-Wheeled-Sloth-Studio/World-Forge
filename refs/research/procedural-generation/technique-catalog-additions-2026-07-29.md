@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Technique Catalog Additions"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Technique Catalog Additions
 
 Updated: 2026-07-29

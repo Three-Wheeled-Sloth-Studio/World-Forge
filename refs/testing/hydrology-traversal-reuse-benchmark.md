@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Exact Hydrology Traversal Optimization Benchmark"
+tags:
+- world-forge
+- testing
+---
 # Exact Hydrology Traversal Optimization Benchmark
 
 Generated: 2026-07-29T18:47:42.547Z

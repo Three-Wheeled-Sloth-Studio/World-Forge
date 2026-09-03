@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Current Generation Performance Profile"
+tags:
+- world-forge
+- testing
+---
 # Current Generation Performance Profile
 
 Generated: 2026-08-02T15:38:13.085Z

@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Generation Resolution Semantics"
+tags:
+- world-forge
+- planning
+---
 # Generation Resolution Semantics
 
 Updated: 2026-08-02

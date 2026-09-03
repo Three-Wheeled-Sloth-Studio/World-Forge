@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Body detail tiers and lightweight payload strategy"
+tags:
+- world-forge
+- planning
+---
 # Body detail tiers and lightweight payload strategy
 
 Updated: 2026-08-04

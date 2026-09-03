@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Regions: Landmass-First Candidate"
+tags:
+- world-forge
+- testing
+---
 # Geographic Regions: Landmass-First Candidate
 
 Updated: 2026-07-27

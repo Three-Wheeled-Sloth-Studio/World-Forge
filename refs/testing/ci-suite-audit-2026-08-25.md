@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "CI Suite Audit - 2026-08-25"
+tags:
+- world-forge
+- testing
+---
 # CI Suite Audit - 2026-08-25
 
 Status: accepted cleanup checkpoint.

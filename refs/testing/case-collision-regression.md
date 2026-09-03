@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Case-collision regression guard"
+tags:
+- world-forge
+- testing
+---
 # Case-collision regression guard
 
 World Forge supports Windows development and must not contain tracked paths that differ only by capitalization.

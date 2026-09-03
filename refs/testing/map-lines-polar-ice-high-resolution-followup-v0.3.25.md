@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "High-Resolution Map-Line Follow-up"
+tags:
+- world-forge
+- testing
+---
 # High-Resolution Map-Line Follow-up
 
 Date: 2026-07-29

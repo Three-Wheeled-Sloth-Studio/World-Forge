@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Sol Basic Globe QA Record"
+tags:
+- world-forge
+- testing
+---
 # Sol Basic Globe QA Record
 
 Updated: 2026-08-05

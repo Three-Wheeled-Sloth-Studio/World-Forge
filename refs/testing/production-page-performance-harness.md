@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Production Page Performance Harness"
+tags:
+- world-forge
+- testing
+---
 # Production Page Performance Harness
 
 Updated: 2026-08-02

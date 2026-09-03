@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Drilldown Workspace and Mini-map QA"
+tags:
+- world-forge
+- testing
+---
 # Geographic Drilldown Workspace and Mini-map QA
 
 Updated: 2026-08-05

@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "PI: System Visualization and Progressive Body Enrichment"
+tags:
+- world-forge
+- planning
+---
 # PI: System Visualization and Progressive Body Enrichment
 
 Updated: 2026-08-01

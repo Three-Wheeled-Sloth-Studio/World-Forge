@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Handoff: climatological pressure and basin-scale circulation v6"
+tags:
+- world-forge
+- handoffs
+---
 # Handoff: climatological pressure and basin-scale circulation v6
 
 ## Status

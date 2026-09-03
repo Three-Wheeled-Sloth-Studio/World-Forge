@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Canonical Geographic Drilldown \u2014 Next-Slice Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # Canonical Geographic Drilldown — Next-Slice Handoff
 
 Updated: 2026-08-05

@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Current Handoff: Geographic Atlas WP3 Stepped Hex Terrain"
+tags:
+- world-forge
+- handoffs
+---
 # Current Handoff: Geographic Atlas WP3 Stepped Hex Terrain
 
 Updated: 2026-08-06

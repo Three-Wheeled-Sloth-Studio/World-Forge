@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Sol atmospheric geometry and selector QA"
+tags:
+- world-forge
+- testing
+---
 # Sol atmospheric geometry and selector QA
 
 Updated: 2026-08-04

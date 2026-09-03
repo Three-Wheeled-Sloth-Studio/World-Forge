@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Sol reference pipeline"
+tags:
+- world-forge
+- testing
+---
 # Sol reference pipeline
 
 Updated: 2026-08-05

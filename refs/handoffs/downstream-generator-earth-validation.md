@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Downstream Generator Earth Validation Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # Downstream Generator Earth Validation Handoff
 
 Updated: 2026-08-25

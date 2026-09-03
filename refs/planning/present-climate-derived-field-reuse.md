@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Present-Climate Derived-Field Reuse"
+tags:
+- world-forge
+- planning
+---
 # Present-Climate Derived-Field Reuse
 
 Updated: 2026-07-29

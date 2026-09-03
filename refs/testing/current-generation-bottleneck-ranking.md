@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Current Generation Bottleneck Ranking"
+tags:
+- world-forge
+- testing
+---
 # Current Generation Bottleneck Ranking
 
 Updated: 2026-08-02

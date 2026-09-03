@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Current Handoff: Canonical Geographic Tile-Window Drilldown"
+tags:
+- world-forge
+- handoffs
+---
 # Current Handoff: Canonical Geographic Tile-Window Drilldown
 
 Updated: 2026-07-28

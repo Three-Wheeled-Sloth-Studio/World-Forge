@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Globe Body Integration Visual QA"
+tags:
+- world-forge
+- testing
+---
 # Globe Body Integration Visual QA
 
 Validated at 1440 x 900 and 1920 x 1080.

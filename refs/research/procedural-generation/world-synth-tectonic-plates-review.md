@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: World-Synth Tectonic Plates"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: World-Synth Tectonic Plates
 
 Updated: 2026-07-29

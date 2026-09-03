@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Production page baseline evidence - v0.3.58"
+tags:
+- world-forge
+- testing
+---
 # Production page baseline evidence - v0.3.58
 
 This folder preserves the accepted production-path performance baseline captured on 2026-08-02.

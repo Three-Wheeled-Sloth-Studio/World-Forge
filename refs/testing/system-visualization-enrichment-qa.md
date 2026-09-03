@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "System Visualization and Enrichment QA"
+tags:
+- world-forge
+- testing
+---
 # System Visualization and Enrichment QA
 
 Updated: 2026-07-31

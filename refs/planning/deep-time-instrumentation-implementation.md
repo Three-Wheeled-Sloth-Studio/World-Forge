@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Deep-Time Instrumentation Implementation"
+tags:
+- world-forge
+- planning
+---
 # Deep-Time Instrumentation Implementation
 
 Updated: 2026-07-29

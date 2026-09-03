@@ -1,3 +1,10 @@
+---
+type: "Decision Record"
+title: "Mars and Venus product direction"
+tags:
+- world-forge
+- decisions
+---
 # Mars and Venus product direction
 
 Updated: 2026-08-05

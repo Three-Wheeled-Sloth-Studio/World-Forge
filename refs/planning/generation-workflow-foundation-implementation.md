@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Generation Workflow Foundation Implementation"
+tags:
+- world-forge
+- planning
+---
 # Generation Workflow Foundation Implementation
 
 Updated: 2026-07-29

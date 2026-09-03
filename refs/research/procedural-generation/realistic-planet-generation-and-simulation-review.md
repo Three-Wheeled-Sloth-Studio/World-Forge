@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: realistic-planet-generation-and-simulation"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: realistic-planet-generation-and-simulation
 
 Updated: 2026-07-29

@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Generation Workflow Comparison"
+tags:
+- world-forge
+- testing
+---
 # Generation Workflow Comparison
 
 Generated: 2026-07-29T15:49:18.534Z

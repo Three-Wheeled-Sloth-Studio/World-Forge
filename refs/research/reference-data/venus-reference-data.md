@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Venus reference data"
+tags:
+- world-forge
+- research
+---
 # Venus reference data
 
 Updated: 2026-08-04

@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: Procedural Terrain Generation with Biome Ecosystem and Dynamic Weather"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: Procedural Terrain Generation with Biome Ecosystem and Dynamic Weather
 
 Updated: 2026-07-29

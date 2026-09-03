@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: Dwarf Fortress Advanced World Generation"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: Dwarf Fortress Advanced World Generation
 
 Updated: 2026-07-29

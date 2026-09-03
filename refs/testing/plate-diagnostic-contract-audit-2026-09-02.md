@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Plate Diagnostic Contract Audit"
+tags:
+- world-forge
+- testing
+---
 # Plate Diagnostic Contract Audit
 
 Updated: 2026-09-02

@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Production Page Performance Baseline - v0.3.58"
+tags:
+- world-forge
+- testing
+---
 # Production Page Performance Baseline - v0.3.58
 
 Updated: 2026-08-02

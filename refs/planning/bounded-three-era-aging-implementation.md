@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Bounded Three-Era Aging Implementation"
+tags:
+- world-forge
+- planning
+---
 # Bounded Three-Era Aging Implementation
 
 Updated: 2026-07-29

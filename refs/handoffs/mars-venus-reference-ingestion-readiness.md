@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Handoff: Mars and Venus reference ingestion"
+tags:
+- world-forge
+- handoffs
+---
 # Handoff: Mars and Venus reference ingestion
 
 Updated: 2026-08-05

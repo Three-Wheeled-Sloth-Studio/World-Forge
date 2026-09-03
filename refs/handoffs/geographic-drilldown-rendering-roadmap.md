@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Geographic Drilldown Rendering Roadmap"
+tags:
+- world-forge
+- handoffs
+---
 # Geographic Drilldown Rendering Roadmap
 
 Updated: 2026-08-06

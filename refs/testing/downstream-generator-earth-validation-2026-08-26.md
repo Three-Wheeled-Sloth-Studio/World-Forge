@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Downstream Generator Earth Validation Checkpoint"
+tags:
+- world-forge
+- testing
+---
 # Downstream Generator Earth Validation Checkpoint
 
 Updated: 2026-08-27

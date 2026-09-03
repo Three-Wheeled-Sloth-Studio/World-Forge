@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Polar Climate and Foundation Profiling Validation Status"
+tags:
+- world-forge
+- testing
+---
 # Polar Climate and Foundation Profiling Validation Status
 
 Updated: 2026-08-02

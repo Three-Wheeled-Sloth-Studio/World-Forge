@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Production Performance Instrumentation Plan"
+tags:
+- world-forge
+- planning
+---
 # Production Performance Instrumentation Plan
 
 Updated: 2026-08-02

@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "System Explore Visual QA"
+tags:
+- world-forge
+- testing
+---
 # System Explore Visual QA
 
 Updated: 2026-07-31

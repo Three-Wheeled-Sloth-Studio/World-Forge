@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "System Visualization and Enrichment Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # System Visualization and Enrichment Handoff
 
 Updated: 2026-08-01

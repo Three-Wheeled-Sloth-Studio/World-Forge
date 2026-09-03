@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Production attribution and focused rerank increment"
+tags:
+- world-forge
+- planning
+---
 # Production attribution and focused rerank increment
 
 Updated: 2026-08-02

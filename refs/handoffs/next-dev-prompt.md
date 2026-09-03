@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Next Dev Prompt: Post-Plate-Diagnostic Roadmap Return"
+tags:
+- world-forge
+- handoffs
+---
 # Next Dev Prompt: Post-Plate-Diagnostic Roadmap Return
 
 Updated: 2026-09-02

@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Handoff: Morphology-aware Macro-area Decomposition"
+tags:
+- world-forge
+- handoffs
+---
 # Handoff: Morphology-aware Macro-area Decomposition
 
 Updated: 2026-07-28

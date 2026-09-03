@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Handoff: Earth Climate Calibration Benchmark"
+tags:
+- world-forge
+- handoffs
+---
 # Handoff: Earth Climate Calibration Benchmark
 
 Updated: 2026-08-04

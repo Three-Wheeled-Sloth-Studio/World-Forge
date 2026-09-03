@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Experimental Hybrid Workflow QA"
+tags:
+- world-forge
+- testing
+---
 # Experimental Hybrid Workflow QA
 
 Validated against Detailed at 256 x 128 using seeds `1001001`, `3141592`, and `8675309` across Earthlike, Archipelago, and geology/glacial stress scenarios.

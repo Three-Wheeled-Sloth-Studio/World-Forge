@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: Red Blob 1843 Planet Generation"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: Red Blob 1843 Planet Generation
 
 Updated: 2026-07-29

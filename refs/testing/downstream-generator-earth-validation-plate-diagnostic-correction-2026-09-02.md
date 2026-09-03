@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Downstream Earth Validation Plate-Diagnostic Correction"
+tags:
+- world-forge
+- testing
+---
 # Downstream Earth Validation Plate-Diagnostic Correction
 
 Updated: 2026-09-02

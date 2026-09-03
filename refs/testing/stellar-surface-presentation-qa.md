@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Stellar Surface Presentation QA"
+tags:
+- world-forge
+- testing
+---
 # Stellar Surface Presentation QA
 
 Date: 2026-08-01

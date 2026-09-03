@@ -1,3 +1,10 @@
+---
+type: "Project Memory Reference"
+title: "Integrating World Forge with External Games"
+tags:
+- world-forge
+- reference
+---
 # Integrating World Forge with External Games
 
 ## Purpose

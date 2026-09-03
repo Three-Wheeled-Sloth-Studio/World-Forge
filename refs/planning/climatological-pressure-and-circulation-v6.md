@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Climatological pressure and circulation v6"
+tags:
+- world-forge
+- planning
+---
 # Climatological pressure and circulation v6
 
 ## Intent

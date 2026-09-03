@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Current Handoff: Structural Terrain Integrity"
+tags:
+- world-forge
+- handoffs
+---
 # Current Handoff: Structural Terrain Integrity
 
 Updated: 2026-07-26

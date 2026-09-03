@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Parameter Target Audit and Correlation Plan"
+tags:
+- world-forge
+- planning
+---
 # Parameter Target Audit and Correlation Plan
 
 Updated: 2026-08-02

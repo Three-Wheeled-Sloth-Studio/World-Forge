@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: genworldvoronoi"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: genworldvoronoi
 
 Updated: 2026-07-29

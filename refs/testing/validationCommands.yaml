@@ -1,11 +1,15 @@
 version: 1
-updated: 2026-09-02
+updated: 2026-09-03
 principle: Run the narrowest useful validation during implementation, then the appropriate checkpoint validation before declaring work complete. Not every command applies to every change.
 commands:
   - id: case-collisions
     command: npm run check:case-collisions
     purpose: Fail on tracked paths that collide after case-folding.
     use_when: Any file is added, renamed, moved, or an import path changes; also runs automatically before typecheck and build.
+  - id: okf-profile
+    command: npm run validate:okf
+    purpose: Validate OKF v0.2 concept frontmatter, the pinned Agent Academy profile, and deterministic discovery indexes.
+    use_when: Any refs Markdown, OKF profile, index generator, or studio-knowledge interoperability surface changes; ordinary repository validation runs it automatically.
   - id: focused-tests
     command: npx vitest run <relevant-test-files>
     purpose: Exercise the smallest relevant regression surface while implementing a change.
@@ -63,7 +67,7 @@ commands:
     purpose: Reduce the CC BY 4.0 GLWD v2 fractional and dominant-class GeoTIFFs into an ignored local wetland-validation bundle.
     use_when: Preparing or refreshing the optional observed-wetland slice. Never download or prepare GLWD in ordinary push CI.
 notes:
-  - Ordinary dev/release validation is one job: npm ci, npm run verify, and the production page-harness smoke. Ready pull requests and manual checkpoints also run the production rerank smoke.
+  - Ordinary dev/release validation is one job: refs dependencies, npm ci, npm run verify, and the production page-harness smoke. npm run verify includes the OKF profile check. Ready pull requests and manual checkpoints also run the production rerank smoke.
   - Manual validation exposes a full_test_matrix input that restores the extended generation and geographic seed matrices.
   - The fictional preset matrix is intentionally manual. Its retired plate-advection-v3 expectation was stale validation-contract debt and has been replaced with fragment-placement-v2 reporting. See refs/testing/plate-diagnostic-contract-audit-2026-09-02.md.
   - QA and main are exact-SHA promotion targets. Deployment requires a successful Validate World Forge run for the exact source SHA and then performs build-only compilation/bundling.

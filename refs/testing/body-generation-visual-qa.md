@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Body Lifecycle and Airless-Moon Visual QA"
+tags:
+- world-forge
+- testing
+---
 # Body Lifecycle and Airless-Moon Visual QA
 
 Status: required acceptance path for the first secondary-body generation proof

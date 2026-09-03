@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Vertical Striping Root-Cause First Pass"
+tags:
+- world-forge
+- testing
+---
 # Vertical Striping Root-Cause First Pass
 
 Date: 2026-07-21

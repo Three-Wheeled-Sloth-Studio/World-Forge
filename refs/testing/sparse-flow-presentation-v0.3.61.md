@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Sparse wind and current presentation acceptance \u2014 v0.3.61"
+tags:
+- world-forge
+- testing
+---
 # Sparse wind and current presentation acceptance — v0.3.61
 
 ## Purpose

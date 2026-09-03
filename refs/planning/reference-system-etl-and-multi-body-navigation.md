@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Reference-system ETL and multi-body navigation"
+tags:
+- world-forge
+- planning
+---
 # Reference-system ETL and multi-body navigation
 
 Updated: 2026-08-03

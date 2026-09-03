@@ -1,3 +1,10 @@
+---
+type: "Engineering Reference"
+title: "Shared Studio Guidance: World Forge Application Record"
+tags:
+- world-forge
+- engineering
+---
 # Shared Studio Guidance: World Forge Application Record
 
 Updated: 2026-08-07
@@ -85,9 +92,9 @@ That project-specific rule remains in force. The useful shared behavior is coher
 
 ### Full Agent Academy schema/template validation
 
-Not adopted now. World Forge predates the template and has a large established `refs/` taxonomy. Importing `templatePolicy.yaml`, the full schema registry, blank integration files, and template validator would add maintenance surface without a current consumer.
+The blank Agent Academy schema/template remains intentionally not adopted. World Forge predates that template and has a large established `refs/` taxonomy; importing `templatePolicy.yaml`, the full schema registry, and blank template resources would still create duplicate maintenance surface.
 
-Revisit if cross-project tooling begins reading standardized refs metadata programmatically.
+The OKF-compatible Agent Academy profile is now adopted because cross-project discovery is a real consumer. `refs/okfProfile.yaml`, OKF Markdown frontmatter, deterministic committed indexes, and the focused OKF validator provide interoperability without replacing World Forge's taxonomy or deterministic YAML contracts.
 
 ### Externalized build metadata
 

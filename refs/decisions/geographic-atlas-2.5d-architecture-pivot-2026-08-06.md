@@ -1,3 +1,10 @@
+---
+type: "Decision Record"
+title: "Decision: Pivot the Geographic Atlas to a Constrained 2.5D Scene"
+tags:
+- world-forge
+- decisions
+---
 # Decision: Pivot the Geographic Atlas to a Constrained 2.5D Scene
 
 Date: 2026-08-06

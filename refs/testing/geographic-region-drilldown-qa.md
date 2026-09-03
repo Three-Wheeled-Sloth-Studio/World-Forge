@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Tile-Window Drilldown: Browser QA"
+tags:
+- world-forge
+- testing
+---
 # Geographic Tile-Window Drilldown: Browser QA
 
 Updated: 2026-07-28

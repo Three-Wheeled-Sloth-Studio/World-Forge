@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Present-climate topology traversal benchmark"
+tags:
+- world-forge
+- testing
+---
 # Present-climate topology traversal benchmark
 
 - Source commit: `fc26114f9f18fa74fb735688ea92cebb311b25a2`

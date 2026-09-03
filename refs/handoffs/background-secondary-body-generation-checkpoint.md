@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Background Secondary-Body Generation Checkpoint"
+tags:
+- world-forge
+- handoffs
+---
 # Background Secondary-Body Generation Checkpoint
 
 Updated: 2026-09-02

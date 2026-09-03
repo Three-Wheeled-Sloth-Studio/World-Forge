@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Production attribution rerank implementation checklist"
+tags:
+- world-forge
+- testing
+---
 # Production attribution rerank implementation checklist
 
 Updated: 2026-08-02

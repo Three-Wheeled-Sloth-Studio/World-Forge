@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic drilldown scale-fidelity findings"
+tags:
+- world-forge
+- testing
+---
 # Geographic drilldown scale-fidelity findings
 
 Updated: 2026-08-06

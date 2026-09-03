@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Windows Production Page Runner Regression"
+tags:
+- world-forge
+- testing
+---
 # Windows Production Page Runner Regression
 
 Observed on Windows PowerShell from the repository root:

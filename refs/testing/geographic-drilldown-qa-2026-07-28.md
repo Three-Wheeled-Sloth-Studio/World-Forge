@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Drill-down QA Findings - 2026-07-28"
+tags:
+- world-forge
+- testing
+---
 # Geographic Drill-down QA Findings - 2026-07-28
 
 Tested build: `0.3.21`

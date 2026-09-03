@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Climatological pressure and circulation v6 acceptance"
+tags:
+- world-forge
+- testing
+---
 # Climatological pressure and circulation v6 acceptance
 
 ## Purpose

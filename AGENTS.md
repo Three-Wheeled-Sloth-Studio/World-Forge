@@ -11,6 +11,7 @@ World Forge uses these shared studio sources as guidance, not as a compliance ch
 Apply the parts that solve an actual World Forge problem. Do not add files, dependencies, process, or ceremony solely to resemble a template. Project-specific instructions in this file and recorded project decisions take precedence when generic guidance conflicts. Record deliberate deviations instead of leaving contradictory instructions in place.
 
 Start project-memory work at `refs/README.md`. See `refs/engineering/studio-principles-application.md` for the current application/deferment record.
+Generic OKF-compatible discovery begins at `refs/index.md`; `refs/okfProfile.yaml` defines the interoperability boundary without replacing the project-specific reading order.
 
 ## Repository workflow
 

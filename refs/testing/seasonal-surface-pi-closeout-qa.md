@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Seasonal surface and PI closeout QA"
+tags:
+- world-forge
+- testing
+---
 # Seasonal surface and PI closeout QA
 
 Validation target: World Forge 0.3.51.

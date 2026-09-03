@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "High-Resolution Performance Recovery"
+tags:
+- world-forge
+- testing
+---
 # High-Resolution Performance Recovery
 
 Date: 2026-07-30

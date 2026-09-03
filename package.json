@@ -42,8 +42,9 @@
     "test": "vitest run",
     "pretypecheck": "npm run check:case-collisions",
     "typecheck": "tsc -b",
-    "validate": "npm run typecheck && npm test && npm run test:production-page-harness && npm run test:production-rerank",
-    "verify": "npm run validate && npm run build:bundle"
+    "validate": "npm run validate:okf && npm run typecheck && npm test && npm run test:production-page-harness && npm run test:production-rerank",
+    "verify": "npm run validate && npm run build:bundle",
+    "validate:okf": "python refs/tools/validate_okf.py"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.2",

@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Mars reference data"
+tags:
+- world-forge
+- research
+---
 # Mars reference data
 
 Updated: 2026-08-05

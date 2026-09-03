@@ -1,3 +1,10 @@
+---
+type: "Project Memory Guide"
+title: "World Forge Project Memory"
+tags:
+- world-forge
+- project-memory
+---
 # World Forge Project Memory
 
 `refs/` is the durable project-memory layer for World Forge. It contains planning, decisions, engineering notes, QA evidence, research, and handoffs that should survive beyond a chat or one implementation session.
@@ -36,3 +43,13 @@ Shared guidance is not a checklist. Project-specific decisions and user directio
 - Prefer links to canonical shared guidance over copied prose that can drift.
 - Do not store secrets, API keys, access tokens, passwords, private keys, personal credentials, or machine-only paths in `refs/`.
 - Do not create new metadata files merely because the Academy template contains one; add them when a real consumer or retrieval need exists.
+
+## OKF-compatible discovery
+
+World Forge exposes this mature project-memory corpus through the Agent Academy OKF-compatible profile without replacing its established taxonomy or deterministic YAML state.
+
+- Start generic OKF traversal at `refs/index.md`.
+- Profile semantics and the pinned OKF baseline are in `refs/okfProfile.yaml`.
+- Markdown knowledge files are OKF concepts; YAML files remain authoritative structured resources where exact state matters.
+- Generated `index.md` files are committed for zero-setup discovery. Regenerate with `python refs/tools/generate_okf_indexes.py` and validate with `npm run validate:okf`.
+- OKF `verified` is a factual trust claim. Passing repository tests or refs validation does not create that claim.

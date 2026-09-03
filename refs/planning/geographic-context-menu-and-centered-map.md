@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Geographic context menu and centered-map interaction"
+tags:
+- world-forge
+- planning
+---
 # Geographic context menu and centered-map interaction
 
 Status: follow-up planning note

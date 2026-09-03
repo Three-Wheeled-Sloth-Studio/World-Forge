@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "World Builder Control Inventory"
+tags:
+- world-forge
+- planning
+---
 # World Builder Control Inventory
 
 Updated: 2026-07-28

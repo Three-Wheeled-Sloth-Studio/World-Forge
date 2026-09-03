@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "All-system-body generation QA"
+tags:
+- world-forge
+- testing
+---
 # All-system-body generation QA
 
 Validation target: World Forge 0.3.49.

@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "World Builder Cleanup Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # World Builder Cleanup Handoff
 
 Updated: 2026-07-30

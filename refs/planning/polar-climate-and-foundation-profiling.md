@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Polar Climate and Initial Foundation Profiling Increment"
+tags:
+- world-forge
+- planning
+---
 # Polar Climate and Initial Foundation Profiling Increment
 
 Updated: 2026-08-02

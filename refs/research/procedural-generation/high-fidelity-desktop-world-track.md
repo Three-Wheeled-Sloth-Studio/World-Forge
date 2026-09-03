@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "High-Fidelity Desktop World Track"
+tags:
+- world-forge
+- research
+---
 # High-Fidelity Desktop World Track
 
 Updated: 2026-07-29

@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "PI: Sol Reference System and Accurate Earth"
+tags:
+- world-forge
+- planning
+---
 # PI: Sol Reference System and Accurate Earth
 
 Status: Planned

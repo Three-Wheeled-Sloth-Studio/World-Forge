@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Geographic Region Drilldown Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # Geographic Region Drilldown Handoff
 
 Updated: 2026-08-05

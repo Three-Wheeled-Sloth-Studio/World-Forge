@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Durable Production Performance Audit"
+tags:
+- world-forge
+- planning
+---
 # Durable Production Performance Audit
 
 Updated: 2026-08-02

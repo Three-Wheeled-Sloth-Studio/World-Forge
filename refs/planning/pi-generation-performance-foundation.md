@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "PI: Generation Performance Foundation"
+tags:
+- world-forge
+- planning
+---
 # PI: Generation Performance Foundation
 
 Updated: 2026-07-29

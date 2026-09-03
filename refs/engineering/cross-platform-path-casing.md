@@ -1,3 +1,10 @@
+---
+type: "Engineering Reference"
+title: "Cross-platform path casing"
+tags:
+- world-forge
+- engineering
+---
 # Cross-platform path casing
 
 Case-only filename distinctions are forbidden in World Forge.

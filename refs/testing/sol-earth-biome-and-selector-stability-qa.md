@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Sol Earth biome and selector stability QA"
+tags:
+- world-forge
+- testing
+---
 # Sol Earth biome and selector stability QA
 
 Updated: 2026-08-04

@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: Clustered Convection for Plate Tectonics"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: Clustered Convection for Plate Tectonics
 
 Updated: 2026-07-29

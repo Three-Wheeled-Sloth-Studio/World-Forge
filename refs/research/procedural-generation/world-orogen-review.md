@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: World Orogen"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: World Orogen
 
 Updated: 2026-07-28

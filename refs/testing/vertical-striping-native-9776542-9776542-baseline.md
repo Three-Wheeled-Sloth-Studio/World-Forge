@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Vertical Striping Native-Stage Isolation"
+tags:
+- world-forge
+- testing
+---
 # Vertical Striping Native-Stage Isolation
 
 Generated: 2026-07-27T00:22:54.798Z

@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Earth reference-data sources and ETL notes"
+tags:
+- world-forge
+- research
+---
 # Earth reference-data sources and ETL notes
 
 Updated: 2026-08-18

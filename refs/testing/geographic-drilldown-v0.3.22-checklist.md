@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Drill-down 0.3.22 Retest"
+tags:
+- world-forge
+- testing
+---
 # Geographic Drill-down 0.3.22 Retest
 
 Use the same world and viewport as the 0.3.21 screenshots.

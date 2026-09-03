@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Generation Optimization Strategy and Research Index"
+tags:
+- world-forge
+- research
+---
 # Generation Optimization Strategy and Research Index
 
 Updated: 2026-07-29

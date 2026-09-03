@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Handoff: sparse flow presentation v0.3.61"
+tags:
+- world-forge
+- handoffs
+---
 # Handoff: sparse flow presentation v0.3.61
 
 ## Status

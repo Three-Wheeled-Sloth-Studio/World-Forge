@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Handoff: production attribution rerank"
+tags:
+- world-forge
+- handoffs
+---
 # Handoff: production attribution rerank
 
 Updated: 2026-08-02

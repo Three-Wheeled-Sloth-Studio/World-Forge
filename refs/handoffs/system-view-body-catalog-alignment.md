@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "System view body-catalog alignment handoff"
+tags:
+- world-forge
+- handoffs
+---
 # System view body-catalog alignment handoff
 
 Updated: 2026-08-04

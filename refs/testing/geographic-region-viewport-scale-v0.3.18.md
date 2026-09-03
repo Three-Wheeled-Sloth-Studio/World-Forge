@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Region Viewport Scale Evidence"
+tags:
+- world-forge
+- testing
+---
 # Geographic Region Viewport Scale Evidence
 
 Updated: 2026-07-27

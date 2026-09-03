@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Atlas Presentation QA"
+tags:
+- world-forge
+- testing
+---
 # Geographic Atlas Presentation QA
 
 Updated: 2026-08-15

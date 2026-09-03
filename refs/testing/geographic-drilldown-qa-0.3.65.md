@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic drilldown QA checkpoint 0.3.65"
+tags:
+- world-forge
+- testing
+---
 # Geographic drilldown QA checkpoint 0.3.65
 
 Date: 2026-08-06

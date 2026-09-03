@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Geographic Atlas 2.5D WP0 Inventory"
+tags:
+- world-forge
+- planning
+---
 # Geographic Atlas 2.5D WP0 Inventory
 
 Updated: 2026-08-06

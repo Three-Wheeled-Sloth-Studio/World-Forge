@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Background Secondary-Body Generation QA"
+tags:
+- world-forge
+- testing
+---
 # Background Secondary-Body Generation QA
 
 Updated: 2026-09-02

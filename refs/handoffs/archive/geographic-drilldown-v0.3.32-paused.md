@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Geographic Drilldown Status at Pause"
+tags:
+- world-forge
+- handoffs
+---
 # Geographic Drilldown Status at Pause
 
 Updated: 2026-07-28

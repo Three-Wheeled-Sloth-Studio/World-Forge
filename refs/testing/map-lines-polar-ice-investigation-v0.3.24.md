@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Map Line Artifacts and Polar Ice Investigation"
+tags:
+- world-forge
+- testing
+---
 # Map Line Artifacts and Polar Ice Investigation
 
 Date: 2026-07-29

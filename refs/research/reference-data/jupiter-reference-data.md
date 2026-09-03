@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Jupiter reference appearance data"
+tags:
+- world-forge
+- research
+---
 # Jupiter reference appearance data
 
 Updated: 2026-08-04

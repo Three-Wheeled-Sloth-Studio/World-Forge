@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Body fidelity and satellite QA"
+tags:
+- world-forge
+- testing
+---
 # Body fidelity and satellite QA
 
 Validation target: World Forge 0.3.50.

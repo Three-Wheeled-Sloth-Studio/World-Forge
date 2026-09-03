@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Intermittent Windows generation-determinism failure"
+tags:
+- world-forge
+- testing
+---
 # Intermittent Windows generation-determinism failure
 
 Updated: 2026-08-05

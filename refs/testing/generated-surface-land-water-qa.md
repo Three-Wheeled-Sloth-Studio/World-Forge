@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Generated Surface Land/Water Readability QA"
+tags:
+- world-forge
+- testing
+---
 # Generated Surface Land/Water Readability QA
 
 Updated: 2026-08-14

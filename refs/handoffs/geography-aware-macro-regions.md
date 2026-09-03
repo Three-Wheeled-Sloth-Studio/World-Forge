@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Current Handoff: Geography-Aware Macro-Regions"
+tags:
+- world-forge
+- handoffs
+---
 # Current Handoff: Geography-Aware Macro-Regions
 
 Updated: 2026-07-27

@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Background Secondary-Body Generation Contract"
+tags:
+- world-forge
+- planning
+---
 # Background Secondary-Body Generation Contract
 
 Updated: 2026-09-02

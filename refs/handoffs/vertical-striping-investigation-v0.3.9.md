@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "World Forge v0.3.9 Vertical Striping Investigation Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # World Forge v0.3.9 Vertical Striping Investigation Handoff
 
 ## Ready-to-use takeover prompt

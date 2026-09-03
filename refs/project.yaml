@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-08-07
+updated: 2026-09-03
 project:
   name: World Forge
   repository: Three-Wheeled-Sloth-Studio/World-Forge
@@ -11,6 +11,8 @@ source_of_truth:
   project_memory_index: refs/README.md
   current_handoff: refs/handoffs/currentHandoff.md
   validation_commands: refs/testing/validationCommands.yaml
+  okf_profile: refs/okfProfile.yaml
+  okf_discovery_index: refs/index.md
   ci_workflow: .github/workflows/validate.yml
 external_guidance:
   - id: tws-design-principles
@@ -19,8 +21,8 @@ external_guidance:
     application: Apply relevant shared product, application, engineering, UI, and release principles; record World Forge deviations locally.
   - id: agent-academy
     repository: Three-Wheeled-Sloth-Studio/Agent-Academy
-    status: selective
-    application: Use project-memory and agent-orientation patterns where they add retrieval or automation value; do not import the blank template wholesale.
+    status: active-profile
+    application: Use the Agent Academy OKF-compatible profile for discovery, provenance, and interoperability while preserving World Forge's mature project-specific refs taxonomy and deterministic YAML state.
   - id: tws-agentic-harness
     repository: Three-Wheeled-Sloth-Studio/TWS-Agentic-Harness
     status: reference

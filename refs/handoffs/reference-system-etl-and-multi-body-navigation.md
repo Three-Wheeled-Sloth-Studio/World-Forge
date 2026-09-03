@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Reference-system ETL and multi-body navigation handoff"
+tags:
+- world-forge
+- handoffs
+---
 # Reference-system ETL and multi-body navigation handoff
 
 Updated: 2026-08-04

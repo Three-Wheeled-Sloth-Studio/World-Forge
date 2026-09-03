@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Research Framework and Technique Catalog"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Research Framework and Technique Catalog
 
 Updated: 2026-07-29

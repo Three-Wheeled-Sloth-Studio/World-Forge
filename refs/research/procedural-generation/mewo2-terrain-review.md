@@ -1,3 +1,10 @@
+---
+type: "Research Reference"
+title: "Procedural Generation Review: mewo2/terrain"
+tags:
+- world-forge
+- research
+---
 # Procedural Generation Review: mewo2/terrain
 
 Updated: 2026-07-29

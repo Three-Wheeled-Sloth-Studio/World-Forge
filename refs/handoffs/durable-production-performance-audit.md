@@ -1,3 +1,10 @@
+---
+type: "Handoff Record"
+title: "Durable Production Performance Audit Handoff"
+tags:
+- world-forge
+- handoffs
+---
 # Durable Production Performance Audit Handoff
 
 The page timing buffer and command-line harness currently provide local evidence only. They do not write to PostgreSQL or another shared audit service.

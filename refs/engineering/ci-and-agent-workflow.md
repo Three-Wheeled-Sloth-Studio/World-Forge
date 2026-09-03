@@ -1,3 +1,10 @@
+---
+type: "Engineering Reference"
+title: "World Forge CI and Coding-Agent Workflow"
+tags:
+- world-forge
+- engineering
+---
 # World Forge CI and Coding-Agent Workflow
 
 World Forge follows the studio-wide [CI Signal Discipline](https://github.com/Three-Wheeled-Sloth-Studio/TWS-Design-Principles/blob/main/engineering/CI-Signal-Discipline.md). That document is the shared principle source. This file records the repository-specific implementation and deliberate deviations.

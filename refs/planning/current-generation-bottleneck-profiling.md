@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Current Generation Bottleneck Profiling Increment"
+tags:
+- world-forge
+- planning
+---
 # Current Generation Bottleneck Profiling Increment
 
 Updated: 2026-08-02

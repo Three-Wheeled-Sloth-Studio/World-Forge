@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "Polar Climate Calibration Decision"
+tags:
+- world-forge
+- planning
+---
 # Polar Climate Calibration Decision
 
 Updated: 2026-08-02

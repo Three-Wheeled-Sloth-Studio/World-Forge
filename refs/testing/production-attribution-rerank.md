@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Production attribution rerank harness"
+tags:
+- world-forge
+- testing
+---
 # Production attribution rerank harness
 
 Updated: 2026-08-02

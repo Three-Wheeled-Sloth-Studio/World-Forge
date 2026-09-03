@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic Region Preview: Visual QA"
+tags:
+- world-forge
+- testing
+---
 # Geographic Region Preview: Visual QA
 
 Updated: 2026-07-27

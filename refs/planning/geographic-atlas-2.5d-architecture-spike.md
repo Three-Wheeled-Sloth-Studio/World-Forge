@@ -1,3 +1,10 @@
+---
+type: "Planning Reference"
+title: "PI: Geographic Atlas 2.5D Architecture Spike"
+tags:
+- world-forge
+- planning
+---
 # PI: Geographic Atlas 2.5D Architecture Spike
 
 Updated: 2026-08-06

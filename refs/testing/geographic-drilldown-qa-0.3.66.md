@@ -1,3 +1,10 @@
+---
+type: "Testing Reference"
+title: "Geographic drilldown QA: 0.3.66"
+tags:
+- world-forge
+- testing
+---
 # Geographic drilldown QA: 0.3.66
 
 Date: 2026-08-06
