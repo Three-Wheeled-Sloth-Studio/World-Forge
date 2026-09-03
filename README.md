@@ -58,6 +58,18 @@ npm run build
 
 The CI document records this repository's implementation of the studio-wide signal-discipline principle, including draft-PR behavior, manual validation, concurrency, stable check names, and diagnostic rules.
 
+## Agentic project memory
+
+World Forge uses [Agent Academy](https://github.com/Three-Wheeled-Sloth-Studio/Agent-Academy) as its project-memory pattern and exposes its mature `refs/` corpus through an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) v0.2-compatible profile.
+
+- [Browse the OKF knowledge bundle](refs/index.md).
+- [Inspect the World Forge OKF profile](refs/okfProfile.yaml).
+- Markdown knowledge is exposed as OKF concepts with deterministic committed discovery indexes.
+- Structured YAML remains authoritative where exact project state, validation contracts, or other deterministic data matter.
+- The profile adds interoperability and provenance semantics without replacing World Forge's established project-specific taxonomy.
+
+OKF compatibility is part of the repository's ordinary validation path. Structural validation does not imply that a knowledge claim is factually `verified`; trust metadata is only added when its OKF meaning is actually satisfied.
+
 ## External game integration
 
 See [Integrating World Forge with External Games](refs/reference/external-game-integration.md) for the recommended architecture for full-surface 4X maps, orbital fleet-combat scenarios, local headless generation, Godot and Unity consumers, versioned game packs, and an optional hosted generation service.
