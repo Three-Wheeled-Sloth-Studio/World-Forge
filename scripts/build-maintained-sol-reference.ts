@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -29,9 +29,23 @@ export type ReferenceSetupRetryOptions = {
   label?: string;
 };
 
+export type ReferencePythonBootstrapPlan = {
+  label: string;
+  command: string;
+  args: string[];
+};
+
+export type ReferencePythonEnvironmentOperations = {
+  platform?: string;
+  fileExists?: (filePath: string) => Promise<boolean>;
+  removeRoot?: (root: string) => Promise<void>;
+  runSetup?: (command: string, args: string[]) => Promise<void>;
+};
+
 const REFERENCE_PIP_TIMEOUT_SECONDS = 120;
 const REFERENCE_PIP_RETRIES = 10;
 const REFERENCE_SETUP_ATTEMPTS = 3;
+const UV_MANAGED_PYTHON_VERSION = '3.11';
 
 export function maintainedSolBuildCommands(platform = process.platform): {
   prepareMars: MaintainedSolBuildCommand;
@@ -70,6 +84,52 @@ export function referencePythonPaths(
     bin,
     marker: path.join(root, 'world-forge-requirements.sha256'),
   };
+}
+
+export function referencePythonBootstrapPlans(
+  env: NodeJS.ProcessEnv,
+  venvRoot: string,
+  platform = process.platform,
+): ReferencePythonBootstrapPlan[] {
+  const plans: ReferencePythonBootstrapPlan[] = [];
+  const seen = new Set<string>();
+  const add = (label: string, command: string | null, args: string[]): void => {
+    if (!command) return;
+    const keyCommand = platform === 'win32' ? command.toLowerCase() : command;
+    const key = `${keyCommand}\0${args.join('\0')}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    plans.push({ label, command, args });
+  };
+
+  add(
+    'WORLD_FORGE_BOOTSTRAP_PYTHON override',
+    cleanText(env.WORLD_FORGE_BOOTSTRAP_PYTHON),
+    ['-m', 'venv', venvRoot],
+  );
+  add('PYTHON environment override', cleanText(env.PYTHON), ['-m', 'venv', venvRoot]);
+
+  if (platform === 'win32') {
+    add('Windows Python launcher', 'py', ['-3', '-m', 'venv', venvRoot]);
+    add(
+      `uv managed Python ${UV_MANAGED_PYTHON_VERSION}`,
+      'uv',
+      ['venv', '--python', UV_MANAGED_PYTHON_VERSION, '--seed', venvRoot],
+    );
+  }
+
+  add('python3 from PATH', 'python3', ['-m', 'venv', venvRoot]);
+  add('python from PATH', 'python', ['-m', 'venv', venvRoot]);
+
+  if (platform !== 'win32') {
+    add(
+      `uv managed Python ${UV_MANAGED_PYTHON_VERSION}`,
+      'uv',
+      ['venv', '--python', UV_MANAGED_PYTHON_VERSION, '--seed', venvRoot],
+    );
+  }
+
+  return plans;
 }
 
 export function referencePipInstallArgs(requirementsPath: string): string[] {
@@ -139,6 +199,56 @@ export function childLaunchPlan(
   return { command: command.command, args: command.args };
 }
 
+export async function ensureReferencePythonEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+  repositoryRoot = process.cwd(),
+  operations: ReferencePythonEnvironmentOperations = {},
+): Promise<ReturnType<typeof referencePythonPaths>> {
+  const platform = operations.platform ?? process.platform;
+  const venv = referencePythonPaths(repositoryRoot, platform);
+  const exists = operations.fileExists ?? fileExists;
+  const removeRoot = operations.removeRoot ?? ((root) => rm(root, { recursive: true, force: true }));
+  const runSetup = operations.runSetup
+    ?? ((command, args) => runSetupCommand(command, args, repositoryRoot, env));
+
+  if (await exists(venv.python)) {
+    try {
+      await runSetup(venv.python, ['-m', 'pip', '--version']);
+      return venv;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.warn(`World Forge reference Python environment is incomplete or broken: ${detail}. Rebuilding it.`);
+      await removeRoot(venv.root);
+    }
+  }
+
+  await mkdir(path.dirname(venv.root), { recursive: true });
+  const failures: string[] = [];
+  for (const plan of referencePythonBootstrapPlans(env, venv.root, platform)) {
+    await removeRoot(venv.root);
+    console.log(`Creating World Forge reference Python environment at ${venv.root} using ${plan.label}.`);
+    try {
+      await runSetup(plan.command, plan.args);
+      if (!await exists(venv.python)) {
+        throw new Error('bootstrap command exited successfully but did not create the expected Python interpreter');
+      }
+      await runSetup(venv.python, ['-m', 'pip', '--version']);
+      return venv;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      failures.push(`${plan.label}: ${detail}`);
+      console.warn(`Reference Python bootstrap via ${plan.label} did not produce a usable environment: ${detail}`);
+    }
+  }
+
+  await removeRoot(venv.root);
+  throw new Error([
+    `Unable to create a usable repo-local Python environment automatically at ${venv.root}.`,
+    `Bootstrap attempts: ${failures.join(' | ') || 'none available'}.`,
+    'If this machine uses a nonstandard Python location, WORLD_FORGE_BOOTSTRAP_PYTHON remains available as an override.',
+  ].join('\n'));
+}
+
 export async function prepareReferenceEnvironment(
   env: NodeJS.ProcessEnv = process.env,
   repositoryRoot = process.cwd(),
@@ -146,14 +256,7 @@ export async function prepareReferenceEnvironment(
   const requirementsPath = path.join(repositoryRoot, 'tools', 'reference-etl', 'requirements.txt');
   const requirements = await readFile(requirementsPath);
   const requirementsDigest = createHash('sha256').update(requirements).digest('hex');
-  const venv = referencePythonPaths(repositoryRoot);
-  const bootstrapPython = cleanText(env.WORLD_FORGE_BOOTSTRAP_PYTHON) ?? cleanText(env.PYTHON) ?? 'python';
-
-  if (!await fileExists(venv.python)) {
-    await mkdir(path.dirname(venv.root), { recursive: true });
-    console.log(`Creating World Forge reference Python environment at ${venv.root}`);
-    await runSetupCommand(bootstrapPython, ['-m', 'venv', venv.root], repositoryRoot, env);
-  }
+  const venv = await ensureReferencePythonEnvironment(env, repositoryRoot);
 
   const installedDigest = await readTextIfPresent(venv.marker);
   if (installedDigest?.trim() !== requirementsDigest) {
@@ -249,14 +352,11 @@ function runSetupCommand(
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env, stdio: 'inherit' });
     child.once('error', (error) => {
-      reject(new Error(
-        `Unable to start Python while preparing the World Forge reference environment (${error.message}). `
-        + 'Install Python 3 or set WORLD_FORGE_BOOTSTRAP_PYTHON to a Python 3 executable.',
-      ));
+      reject(new Error(`Unable to start ${command} while preparing the World Forge reference environment (${error.message}).`));
     });
     child.once('exit', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`Reference Python setup exited with code ${String(code)}.`));
+      else reject(new Error(`${command} exited with code ${String(code)} while preparing the World Forge reference environment.`));
     });
   });
 }

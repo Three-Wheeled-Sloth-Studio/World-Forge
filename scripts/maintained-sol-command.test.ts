@@ -5,8 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildMaintainedSolReference,
   childLaunchPlan,
+  ensureReferencePythonEnvironment,
   maintainedSolBuildCommands,
   referencePipInstallArgs,
+  referencePythonBootstrapPlans,
   referencePythonPaths,
   retryReferenceSetupOperation,
   type MaintainedSolBuildCommand,
@@ -70,6 +72,97 @@ describe('maintained Sol reference command', () => {
     });
     expect(referencePythonPaths('C:\\repo', 'win32').python)
       .toBe(path.join('C:\\repo', '.local', 'reference-python', 'Scripts', 'python.exe'));
+  });
+
+  it('prefers the Windows Python launcher and keeps uv as a self-healing managed fallback', () => {
+    const root = path.join('C:\\repo', '.local', 'reference-python');
+    expect(referencePythonBootstrapPlans({}, root, 'win32').slice(0, 2)).toEqual([
+      {
+        label: 'Windows Python launcher',
+        command: 'py',
+        args: ['-3', '-m', 'venv', root],
+      },
+      {
+        label: 'uv managed Python 3.11',
+        command: 'uv',
+        args: ['venv', '--python', '3.11', '--seed', root],
+      },
+    ]);
+  });
+
+  it('honors explicit Python overrides before automatic bootstrap discovery', () => {
+    const root = path.join('C:\\repo', '.local', 'reference-python');
+    const plans = referencePythonBootstrapPlans({
+      WORLD_FORGE_BOOTSTRAP_PYTHON: 'C:\\Python311\\python.exe',
+      PYTHON: 'C:\\OtherPython\\python.exe',
+    }, root, 'win32');
+
+    expect(plans.slice(0, 2)).toEqual([
+      {
+        label: 'WORLD_FORGE_BOOTSTRAP_PYTHON override',
+        command: 'C:\\Python311\\python.exe',
+        args: ['-m', 'venv', root],
+      },
+      {
+        label: 'PYTHON environment override',
+        command: 'C:\\OtherPython\\python.exe',
+        args: ['-m', 'venv', root],
+      },
+    ]);
+  });
+
+  it('rejects false-success bootstrap commands and falls through until a usable venv exists', async () => {
+    const repositoryRoot = 'C:\\repo';
+    const venv = referencePythonPaths(repositoryRoot, 'win32');
+    let pythonPresent = false;
+    const removals: string[] = [];
+    const calls: Array<{ command: string; args: string[] }> = [];
+
+    await ensureReferencePythonEnvironment({}, repositoryRoot, {
+      platform: 'win32',
+      fileExists: async (filePath) => filePath === venv.python && pythonPresent,
+      removeRoot: async (root) => { removals.push(root); },
+      runSetup: async (command, args) => {
+        calls.push({ command, args });
+        if (command === 'py') throw new Error('launcher unavailable');
+        if (command === 'uv') return; // Simulate a command that exits 0 but creates no interpreter.
+        if (command === 'python3') {
+          pythonPresent = true;
+          return;
+        }
+        if (command === venv.python) return;
+        throw new Error(`unexpected command ${command}`);
+      },
+    });
+
+    expect(calls.map((call) => call.command)).toEqual(['py', 'uv', 'python3', venv.python]);
+    expect(removals).toEqual([venv.root, venv.root, venv.root]);
+  });
+
+  it('repairs an existing venv whose Python or pip can no longer run', async () => {
+    const repositoryRoot = 'C:\\repo';
+    const venv = referencePythonPaths(repositoryRoot, 'win32');
+    let firstHealthCheck = true;
+    const removals: string[] = [];
+    const calls: Array<{ command: string; args: string[] }> = [];
+
+    await ensureReferencePythonEnvironment({}, repositoryRoot, {
+      platform: 'win32',
+      fileExists: async (filePath) => filePath === venv.python,
+      removeRoot: async (root) => { removals.push(root); },
+      runSetup: async (command, args) => {
+        calls.push({ command, args });
+        if (command === venv.python && firstHealthCheck) {
+          firstHealthCheck = false;
+          throw new Error('pip is broken');
+        }
+        if (command === 'py' || command === venv.python) return;
+        throw new Error(`unexpected command ${command}`);
+      },
+    });
+
+    expect(calls.map((call) => call.command)).toEqual([venv.python, 'py', venv.python]);
+    expect(removals).toEqual([venv.root, venv.root]);
   });
 
   it('gives pip enough timeout and transport retries for slow reference dependency downloads', () => {
