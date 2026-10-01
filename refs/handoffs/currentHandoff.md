@@ -9,6 +9,25 @@ tags:
 
 Updated: 2026-09-02
 
+## Dependency and local OKF maintenance (2026-09-30)
+
+Refreshed compatible locked dependencies, including Vitest 4.1.11,
+Browserslist 4.29.3, baseline-browser-mapping 2.11.26, and nanoid 3.3.19.
+Firebase's Firestore dependency still requests gRPC `~1.9.0`; a scoped
+override selects `@grpc/grpc-js` 1.13.6, the patched 1.13 release for
+GHSA-m9gg-hp2v-232j and GHSA-f596-whhp-79r4. Remove this override when
+Firestore's supported dependency range includes a patched release.
+`npm audit` reports zero vulnerabilities. `npm run verify` passed all 580
+tests, production harness self-tests, typechecking, and the production build.
+Both `npm run smoke:production-page-harness` and
+`npm run smoke:production-rerank` passed against the production bundle in
+headless Chrome.
+
+The historical July 29 workflow-comparison Markdown and JSON were present
+locally but untracked. Added the report's required OKF frontmatter and
+regenerated discovery indexes to include both artifacts, preserving their
+original benchmark data. OKF validation passes with 138 concepts and 31 indexes.
+
 ## Plate diagnostic validation cleanup checkpoint
 
 The fictional preset suite's stale `plate-advection-v3` contract has been removed from validation plumbing without changing production generation behavior. Current production/shared deep-time schema exposes `fragmentPlacement` diagnostics with model version `fragment-placement-v2`; the preset fingerprint and manual report now use that active contract directly.

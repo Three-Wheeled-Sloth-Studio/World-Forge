@@ -67,6 +67,9 @@
     "vitest": "^4.0.15"
   },
   "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.13.6"
+    },
     "esbuild": "^0.28.1",
     "uuid": "^11.1.1"
   }

@@ -32,6 +32,7 @@ Generated OKF discovery index. Do not edit manually.
 * [Experimental Hybrid Workflow QA](experimental-hybrid-workflow-qa.md) - Agent Academy OKF knowledge concept.
 * [Generated Surface Land/Water Readability QA](generated-surface-land-water-qa.md) - Agent Academy OKF knowledge concept.
 * [Intermittent Windows generation-determinism failure](generation-determinism-intermittent-windows.md) - Agent Academy OKF knowledge concept.
+* [Generation Workflow Comparison](generation-workflow-comparison-2026-07-29T20-29-27-616Z.md) - Agent Academy OKF knowledge concept.
 * [Generation Workflow Comparison](generation-workflow-comparison-2026-07-30T00-06-48-420Z.md) - Agent Academy OKF knowledge concept.
 * [Generation Workflow Comparison](generation-workflow-comparison-2026-07-30T01-15-58-298Z.md) - Agent Academy OKF knowledge concept.
 * [Geographic Atlas Presentation QA](geographic-atlas-presentation-qa.md) - Agent Academy OKF knowledge concept.
@@ -90,6 +91,7 @@ Generated OKF discovery index. Do not edit manually.
 * [bounded-three-era-aging-summary.json](bounded-three-era-aging-summary.json) - Agent Academy supporting resource.
 * [current-generation-profile-1024x512.json](current-generation-profile-1024x512.json) - Agent Academy supporting resource.
 * [current-generation-profile-512x256.json](current-generation-profile-512x256.json) - Agent Academy supporting resource.
+* [generation-workflow-comparison-2026-07-29T20-29-27-616Z.json](generation-workflow-comparison-2026-07-29T20-29-27-616Z.json) - Agent Academy supporting resource.
 * [generation-workflow-comparison-2026-07-30T00-06-48-420Z.json](generation-workflow-comparison-2026-07-30T00-06-48-420Z.json) - Agent Academy supporting resource.
 * [generation-workflow-comparison-2026-07-30T01-15-58-298Z.json](generation-workflow-comparison-2026-07-30T01-15-58-298Z.json) - Agent Academy supporting resource.
 * [geographic-regions-2850873-1001001-raw-v0.3.17.png](geographic-regions-2850873-1001001-raw-v0.3.17.png) - Agent Academy supporting resource.
