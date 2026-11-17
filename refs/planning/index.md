@@ -16,6 +16,7 @@ Generated OKF discovery index. Do not edit manually.
 * [PI: Geographic Atlas 2.5D Architecture Spike](geographic-atlas-2.5d-architecture-spike.md) - Agent Academy OKF knowledge concept.
 * [Geographic Atlas 2.5D WP0 Inventory](geographic-atlas-2.5d-wp0-inventory.md) - Agent Academy OKF knowledge concept.
 * [Geographic context menu and centered-map interaction](geographic-context-menu-and-centered-map.md) - Agent Academy OKF knowledge concept.
+* [Managed Planet Presentation Generator for TWS-Video](managed-planet-presentation-generator-2026-11-17.md) - Agent Academy OKF knowledge concept.
 * [Parameter Target Audit and Correlation Plan](parameter-target-audit-and-correlation.md) - Agent Academy OKF knowledge concept.
 * [PI: Generation Performance Foundation](pi-generation-performance-foundation.md) - Agent Academy OKF knowledge concept.
 * [PI: Sol Reference System and Accurate Earth](pi-sol-reference-system-and-accurate-earth.md) - Agent Academy OKF knowledge concept.
@@ -26,4 +27,5 @@ Generated OKF discovery index. Do not edit manually.
 * [Production attribution and focused rerank increment](production-attribution-rerank-increment.md) - Agent Academy OKF knowledge concept.
 * [Production Performance Instrumentation Plan](production-performance-instrumentation-plan.md) - Agent Academy OKF knowledge concept.
 * [Reference-system ETL and multi-body navigation](reference-system-etl-and-multi-body-navigation.md) - Agent Academy OKF knowledge concept.
+* [TWS-Video Headless Atmosphere Bridge Implementation](tws-video-headless-atmosphere-bridge-2026-11-17.md) - Agent Academy OKF knowledge concept.
 * [World Builder Control Inventory](world-builder-control-inventory.md) - Agent Academy OKF knowledge concept.

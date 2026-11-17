@@ -28,6 +28,7 @@
     "reference:publish-sol-starter": "tsx --tsconfig tsconfig.scripts.json scripts/publish-sol-starter.ts",
     "reference:build-sol": "tsx --tsconfig tsconfig.scripts.json scripts/build-maintained-sol-reference.ts",
     "reference:build-earth": "tsx --tsconfig tsconfig.scripts.json scripts/build-earth-reference.ts",
+    "bridge:atmosphere": "tsx --tsconfig tsconfig.scripts.json scripts/generate-atmosphere-job.ts",
     "reference:pipeline-sol": "tsx --tsconfig tsconfig.scripts.json scripts/build-sol-reference-pipeline.ts",
     "test:production-page-harness": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-page-runner.ts --self-test && npm run profile:production-page:inner -- --self-test",
     "test:production-rerank": "tsx --tsconfig tsconfig.scripts.json scripts/profile-production-rerank.ts --self-test",
@@ -58,6 +59,7 @@
     "vite": "^7.3.0"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "@types/node": "^24.10.4",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

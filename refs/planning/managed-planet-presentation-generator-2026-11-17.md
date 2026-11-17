@@ -1,3 +1,11 @@
+---
+type: "Planning Reference"
+title: "Managed Planet Presentation Generator for TWS-Video"
+tags:
+- world-forge
+- atmosphere
+- bridge
+---
 # Managed Planet Presentation Generator for TWS-Video
 Status: planned, approved architectural direction
 Date: 2026-11-17
