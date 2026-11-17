@@ -29,15 +29,26 @@ const STREAMER_ROTATIONS = STREAMER_OFFSETS.map((radians) => ({ cos: Math.cos(ra
 const seedHashCache = new Map<string, number>();
 const noiseSeedCache = new Map<string, NoiseSeedConfig>();
 
+export type WeatherCanvasFactory = (width: number, height: number) => HTMLCanvasElement;
+
+const browserCanvasFactory: WeatherCanvasFactory = (width, height) => {
+  if (typeof document === 'undefined') {
+    throw new Error('Weather texture rendering requires an injected canvas factory in headless mode.');
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+};
+
 export function createWeatherPresentationTexture(
   artifact: AtmosphericWeatherPresentationArtifact | null,
   mode: WeatherTextureMode,
-  simulationDays: number
+  simulationDays: number,
+  canvasFactory: WeatherCanvasFactory = browserCanvasFactory
 ): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = artifact?.payload.textureResolution.width ?? 512;
-  canvas.height = artifact?.payload.textureResolution.height ?? 256;
-  renderWeatherPresentationTexture(canvas, artifact, mode, simulationDays);
+  const canvas = canvasFactory(artifact?.payload.textureResolution.width ?? 512, artifact?.payload.textureResolution.height ?? 256);
+  renderWeatherPresentationTexture(canvas, artifact, mode, simulationDays, canvasFactory);
   return canvas;
 }
 
@@ -45,7 +56,8 @@ export function renderWeatherPresentationTexture(
   canvas: HTMLCanvasElement,
   artifact: AtmosphericWeatherPresentationArtifact | null,
   mode: WeatherTextureMode,
-  simulationDays: number
+  simulationDays: number,
+  canvasFactory: WeatherCanvasFactory = browserCanvasFactory
 ): void {
   const context = canvas.getContext('2d');
   if (!context) return;
@@ -59,7 +71,7 @@ export function renderWeatherPresentationTexture(
   }
 
   context.globalCompositeOperation = 'lighter';
-  if (mode === 'clouds') drawWindOrientedCloudField(context, canvas, artifact, simulationDays);
+  if (mode === 'clouds') drawWindOrientedCloudField(context, canvas, artifact, simulationDays, canvasFactory);
   for (const system of artifact.payload.systems) {
     drawWeatherPresentationSystem(context, canvas, artifact.seed, system, mode, simulationDays);
   }
@@ -70,13 +82,12 @@ function drawWindOrientedCloudField(
   context: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   artifact: AtmosphericWeatherPresentationArtifact,
-  simulationDays: number
+  simulationDays: number,
+  canvasFactory: WeatherCanvasFactory
 ): void {
-  const field = document.createElement('canvas');
+  const field = canvasFactory(Math.min(canvas.width, 256), Math.min(canvas.height, 128));
   // Evaluate a bounded presentation raster, then let the soft cloud material
   // upscale it. The artifact texture size and save/export contract remain unchanged.
-  field.width = Math.min(canvas.width, 256);
-  field.height = Math.min(canvas.height, 128);
   const fieldContext = field.getContext('2d');
   if (!fieldContext) return;
   const image = fieldContext.createImageData(field.width, field.height);
