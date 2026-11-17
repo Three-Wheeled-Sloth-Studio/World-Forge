@@ -34,7 +34,7 @@ describe('cloud snapshot export', () => {
     expect(manifest.authority).toBe('illustrative');
     expect(manifest.artifactSignature).toBe('weather-contract-example');
     expect(manifest.resolution).toEqual({ width: 512, height: 256 });
-    const hash = await crypto.subtle.digest('SHA-256', image as BufferSource);
+    const hash = await crypto.subtle.digest('SHA-256', Uint8Array.from(image).buffer);
     const actual = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
     expect(manifest.sha256).toBe(actual);
   });
