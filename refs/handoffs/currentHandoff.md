@@ -7,6 +7,14 @@ tags:
 ---
 # Current Handoff
 
+## Earth night-lights reusable reference enrichment (2026-11-17)
+- User requested a second TWS-Video track, **Everybody Sells the Sky**, with a close Earth/Moon setting, World Forge weather and night city lights. Ownership decision: reusable Earth enhancement belongs in World Forge, not a TWS-Video-specific painted texture.
+- Implemented optional source-backed reference ETL `tools/reference-etl/prepare_earth_night_lights.py` on **dev**. Source is NASA Earth Observatory's 2016 Black Marble global **grayscale** equirectangular JPEG at 3600x1800, optional explicit `--download` or a preexisting `--source`. Generates 4096x2048 grayscale night radiance PNG and `manifest.json` under ignored `.local/reference-data/earth-night-lights`; hashes source+output, records date, source URL/credit, gamma/resampling, authority=derived, role=presentation-night-lights. It does not fabricate locations, modify authoritative geography, or run on normal world-generation path.
+- Python regression `scripts/test-earth-night-lights.py` exercises noninvented dark pixels, manifest provenance, and invalid aspect ratio. The local reference Python environment (Pillow in existing requirements) supports the ETL; no network download occurs during normal app build. **Not yet integrated into World Forge's on-screen Globe/Explore material**; TWS-Video may consume this maintained opt-in reference first, then World Forge display integration can follow.
+- Weather presentation already exists in World Forge as `project.atmospheric-weather-presentation` and is illustrated in `apps/desktop/src/globe/weatherPresentationTexture.ts`, but current TWS-Video bridge only consumes Earth elevation/water/biome data. Future change should export a weather/cloud presentation sidecar from the existing artifact contract; do not independently regenerate/fake clouds in TWS-Video.
+- Preserve dev->qa->main promotion sequence after validation; no promotion or local test has yet been run here.
+
+
 Updated: 2026-09-02
 
 ## Dependency and local OKF maintenance (2026-09-30)
