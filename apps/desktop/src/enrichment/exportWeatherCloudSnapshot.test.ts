@@ -40,7 +40,7 @@ describe('cloud snapshot export', () => {
   });
 
   it('rejects incomplete or unvalidated weather artifacts', async () => {
-    const unfinished = { ...artifact(), status: 'failed' };
+    const unfinished = { ...artifact(), status: 'failed' } as unknown as AtmosphericWeatherPresentationArtifact;
     await expect(createWeatherCloudSnapshot(unfinished)).rejects.toThrow('incomplete or invalid');
   });
 });
