@@ -25,8 +25,9 @@ export async function createWeatherCloudSnapshot(
   if (!Number.isFinite(simulationDays)) throw new Error('Simulation time must be finite');
   const canvas = createWeatherPresentationTexture(artifact, 'clouds', simulationDays);
   const png = await canvasPng(canvas);
-  const bytes = new Uint8Array(await png.arrayBuffer());
-  const digest = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
+  const pngBuffer = await png.arrayBuffer();
+  const bytes = new Uint8Array(pngBuffer);
+  const digest = await crypto.subtle.digest('SHA-256', pngBuffer);
   const manifest = {
     schema: WEATHER_CLOUD_SNAPSHOT_SCHEMA,
     role: 'presentation-cloud-opacity',
