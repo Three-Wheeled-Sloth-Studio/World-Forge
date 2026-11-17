@@ -77,3 +77,24 @@ See [Integrating World Forge with External Games](refs/reference/external-game-i
 ## Roadmap
 
 Near-term work focuses on the 2.5D geographic-scene spike, physical plausibility, graph-based generation, editing foundations, diagnostics, and export reliability. The reusable generation engine and browser tool remain public; private product shell, account, roadmap, and deployment material stay in Parchment Worlds and Portfolio.
+
+
+## Optional Earth night lights and weather snapshots
+
+World Forge owns reusable Earth surface/weather presentation assets consumed by related studio tools. **No reference downloads or weather snapshots are generated during ordinary world generation.**
+
+### Nighttime illumination (observed NASA reference)
+
+`tools/reference-etl/prepare_earth_night_lights.py` processes NASA Earth Observatory's global **2016 Black Marble grayscale** image (3600x1800, equirectangular) into a checksum-recorded 4096x2048 grayscale presentation map. It does not infer population or invent city positions.
+
+The exporter accepts an existing source image (`--source <path>`) or an explicit opt-in `--download`, with `--output` defaulting to ignored `.local/reference-data/earth-night-lights`. The reference Python environment needs Pillow (listed in `tools/reference-etl/requirements.txt`). Output contains `earth-night-lights-4096.png` and a manifest with source URL, attribution, SHA256 hashes, projection and transform. The emitting video shader controls the day/night mask separately.
+
+The Windows TWS-Video consumer provides `scripts\\prepare-earth-night-lights.bat fetch` for first-time preparation (uses the World Forge exporter and then verifies/stages its output locally). `scripts\\prepare-earth-night-lights.bat` thereafter stages without downloading.
+
+### Cloud and weather presentation (illustrative)
+
+In World Forge's Globe/Explore view, run the existing **Clouds and weather** enrichment. Once completed and validated, click **Export Clouds** in the weather status to download a `world-forge-<project>-clouds.zip` file with `clouds.png` and `manifest.json`. The image is created from `createWeatherPresentationTexture`, the same source and seed as World Forge's own viewer, using simulation time 0 days. Its ZIP records artifact signature, weather workflow version, source world, seed, authority=`illustrative`, map dimensions and SHA256.
+
+The snapshot is intentionally static; it is not a live atmospheric forecast or time series. TWS-Video can verify/import this ZIP through `scripts\\import-world-forge-clouds.bat "<zip path>"`. Subsequent video work can add time-indexed snapshots based on the same source contract rather than regenerating weather independently.
+
+Both exports are **opt-in presentation/derived artifacts** and do not change authoritative World Forge climate, geography, or generated-world save formats. For implementation and provenance see `refs/handoffs/currentHandoff.md`.
