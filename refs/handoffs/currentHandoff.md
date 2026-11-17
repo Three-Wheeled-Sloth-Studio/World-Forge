@@ -7,6 +7,14 @@ tags:
 ---
 # Current Handoff
 
+## Next thread: managed atmosphere generator for TWS-Video (2026-11-17)
+- User approved architecture for TWS-Video to request planet presentation layers from World Forge through a managed local process, with no manual CLI or desktop UI steps. Start with existing saved WorldProject; generation of entirely new planets comes later.
+- Detailed plan: `refs/planning/managed-planet-presentation-generator-2026-11-17.md`; consumer plan in TWS-Video `refs/planning/world-forge-planet-presentation-bridge-2026-11-17.md`.
+- Reuse `runAtmosphericWeatherPresentationWorkflow` in generation-runtime and `atmosphericWeatherSourceFromProject`. Texture generation currently depends on HTMLCanvasElement in `apps/desktop/src/globe/weatherPresentationTexture.ts`; this is the primary bridge implementation gap. Preserve the Export Clouds ZIP metadata/checksum contract and Globe behavior.
+- A new managed headless entrypoint should accept saved project identity, world ID, resolution and simulation epoch; emit versioned immutable cloud/atmosphere package, structured progress/errors and cancellation; validate signatures and cache key. Avoid duplicating weather logic in TWS-Video, and never apply NASA Earth night lights to generated worlds.
+- Implement on World Forge dev and follow dev -> qa -> main after tests. This is a plan/handoff update only; no generator code has been added yet.
+
+
 ## Shared Earth presentation sources for Everybody Sells the Sky (2026-11-17)
 - User requested downtempo Infra Choir video using two canonical Imperatus ships near Earth/Moon. Reusable planetary detail belongs here, not in TWS-Video: real night city lights and existing atmospheric weather presentation.
 - Optional `tools/reference-etl/prepare_earth_night_lights.py`: NASA Earth Observatory Black Marble 2016 grayscale global reference (3600x1800), explicit `--download` or `--source`, prepares checksum/provenance-recorded 4096x2048 `earth-night-lights-4096.png` plus manifest under ignored `.local/reference-data/earth-night-lights`. Does not change generated world geography, climate, project schema or ordinary generation. Pillow already in optional reference ETL requirements. Python regression `scripts/test-earth-night-lights.py` tests provenance/dark pixels, dimensions.
