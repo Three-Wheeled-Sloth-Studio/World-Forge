@@ -68,7 +68,7 @@ import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
 import { APP_SOURCE_COMMIT, APP_VERSION, APP_VISIBLE_VERSION } from './appVersion';
 import { ReleaseNotesModal } from './release/ReleaseNotesModal';
 import { applyParchmentShellEmbedFlag } from './shell/embedMode';
-import { deliverWorldToTws, parseTwsWorldHandoff, reportTwsHandoffFailure } from './twsVideoWorldHandoff';
+import { deliverWorldToTws, reportTwsHandoffFailure, takeActiveWorldHandoff } from './twsVideoWorldHandoff';
 import './styles.css';
 import './devWorkspace.css';
 
@@ -280,14 +280,6 @@ function configForFreshGeneration(config: GenerationConfig): GenerationConfig {
 
 function App() {
   useEffect(() => {
-    const target = parseTwsWorldHandoff(window.location.search, window.location.hostname);
-    if (!target) return;
-    const cleanUrl = new URL(window.location.href);
-    for (const key of ['twsWorldPort', 'twsWorldToken', 'twsWorldId']) cleanUrl.searchParams.delete(key);
-    window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
-    void deliverWorldToTws(target).catch((error: unknown) => reportTwsHandoffFailure(target, error));
-  }, []);
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('embed') !== 'shell' || window.parent === window) return;
 
@@ -318,6 +310,27 @@ function App() {
   const storedUi = useMemo(() => normalizeWorkspaceUiSettings(storedWorkspace.ui), [storedWorkspace.ui]);
   const [config, setConfig] = useState<GenerationConfig>(() => normalizeGenerationConfig(storedWorkspace.config ?? defaultHighConfig()));
   const [project, setProject] = useState<WorldProject | null>(null);
+  useEffect(() => {
+    if (!project || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) return;
+    let closed = false;
+    let inFlight = false;
+    const check = async () => {
+      if (closed || inFlight) return;
+      inFlight = true;
+      try {
+        const target = await takeActiveWorldHandoff(project.projectId);
+        if (!target || closed) return;
+        await deliverWorldToTws(target, project).catch((error: unknown) => reportTwsHandoffFailure(target, error));
+      } catch (error) {
+        console.warn('Local TWS-Video active-world handoff check failed.', error);
+      } finally {
+        inFlight = false;
+      }
+    };
+    const timer = window.setInterval(() => { void check(); }, 1000);
+    void check();
+    return () => { closed = true; window.clearInterval(timer); };
+  }, [project]);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => workspaceModeForProject(Boolean(project)));
   const [contentLibrary, setContentLibrary] = useState<ContentLibraryConfig>(() => normalizeContentLibrary(storedWorkspace.contentLibrary ?? structuredClone(defaultContentLibrary)));
   const [savedMaps, setSavedMaps] = useState<SavedMapRecord[]>(() => storedWorkspace.savedMaps ?? []);

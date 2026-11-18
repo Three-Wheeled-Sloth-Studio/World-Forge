@@ -8,6 +8,7 @@ tags:
 # Current Handoff
 
 ## TWS-Video read-only browser world snapshot (2026-11-18)
+- Active-project fix: TWS no longer opens a duplicate World Forge tab. World Forge dev service queues a one-time localhost request; the already-open app on the matching `projectId` exports its current in-memory world. No IndexedDB lookup or browser navigation is needed. See `refs/handoffs/tws-video-readonly-world-snapshot-2026-11-18.md`.
 - Windows QA repair: a selected-world attempt opened World Forge but timed out without a dialog. The bridge now sends local authenticated progress/error statuses into TWS-Video and no longer uses browser confirm/alert dialogs. The exact original cause remains unconfirmed until Windows retry; TWS distinguishes no handler from missing world.
 - Added a local-only, one-time browser request that loads a selected WorldProject from World Forge IndexedDB and, with explicit user confirmation, sends an `exportWforge` snapshot to TWS-Video's token-authenticated ephemeral receiver. No source projects or exports are written.
 - This completes selected-world payload transfer to TWS-Video for the existing headless atmosphere job; earlier metadata-only catalog remains Parchment Worlds-owned. Browser-origin/Windows round-trip and source-world coverage need user QA before any branch promotion.

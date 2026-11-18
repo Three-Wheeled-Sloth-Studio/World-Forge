@@ -1,5 +1,5 @@
 import { exportWforge } from '@world-forge/exporters';
-import { IndexedDbWorldStorageProvider } from './storage';
+import type { WorldProject } from '@world-forge/shared';
 
 export type TwsWorldHandoffTarget = { port: number; token: string; worldId: string };
 type HandoffPhase = 'connected' | 'loading' | 'packing' | 'sending' | 'error';
@@ -34,13 +34,11 @@ export async function reportTwsHandoffFailure(target: TwsWorldHandoffTarget, err
   }
 }
 
-/** Initiated only by the selected-world action in TWS-Video. No modal or source mutation. */
-export async function deliverWorldToTws(target: TwsWorldHandoffTarget): Promise<void> {
+/** Uses the current, potentially unsaved in-memory world in the already-open app. */
+export async function deliverWorldToTws(target: TwsWorldHandoffTarget, project: WorldProject): Promise<void> {
+  if (project.projectId !== target.worldId) throw new Error('Active World Forge project identity differs from the selected project.');
   await reportHandoff(target, 'connected', 'World Forge connected to TWS-Video.');
-  await reportHandoff(target, 'loading', 'Reading selected world from World Forge browser storage...');
-  const source = new IndexedDbWorldStorageProvider();
-  const project = await source.loadWorld(target.worldId);
-  if (!project) throw new Error('Selected world is not stored in this World Forge browser library. Open/save it in World Forge first.');
+  await reportHandoff(target, 'loading', 'Reading active World Forge project...');
   await reportHandoff(target, 'packing', `Packaging temporary snapshot: ${project.projectName}`);
   const packageBlob = await exportWforge(project, { compressionLevel: 1 });
   await reportHandoff(target, 'sending', 'Transferring temporary world snapshot to TWS-Video...');
@@ -50,4 +48,21 @@ export async function deliverWorldToTws(target: TwsWorldHandoffTarget): Promise<
     body: packageBlob,
   });
   if (!response.ok) throw new Error(`TWS-Video rejected the world snapshot (${response.status}).`);
+}
+
+/** Polls only for the active world ID; no navigation or new World Forge tab is necessary. */
+export async function takeActiveWorldHandoff(projectId: string): Promise<TwsWorldHandoffTarget | null> {
+  const response = await fetch(`/__tws/world-handoff/pending?projectId=${encodeURIComponent(projectId)}`, {
+    cache: 'no-store',
+  });
+  if (!response.ok) return null;
+  const payload: unknown = await response.json();
+  if (!payload || typeof payload !== 'object' || !('request' in payload)) return null;
+  const request = (payload as { request: unknown }).request;
+  if (!request || typeof request !== 'object') return null;
+  const record = request as Record<string, unknown>;
+  if (record.projectId !== projectId || typeof record.port !== 'number' ||
+      !Number.isInteger(record.port) || record.port < 1024 || record.port > 65535 ||
+      typeof record.token !== 'string' || !/^[a-f0-9]{48}$/.test(record.token)) return null;
+  return { worldId: projectId, port: record.port, token: record.token };
 }
