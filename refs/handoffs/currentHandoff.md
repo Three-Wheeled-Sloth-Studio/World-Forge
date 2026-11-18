@@ -7,6 +7,12 @@ tags:
 ---
 # Current Handoff
 
+## TWS-Video read-only browser world snapshot (2026-11-18)
+- Added a local-only, one-time browser request that loads a selected WorldProject from World Forge IndexedDB and, with explicit user confirmation, sends an `exportWforge` snapshot to TWS-Video's token-authenticated ephemeral receiver. No source projects or exports are written.
+- This completes selected-world payload transfer to TWS-Video for the existing headless atmosphere job; earlier metadata-only catalog remains Parchment Worlds-owned. Browser-origin/Windows round-trip and source-world coverage need user QA before any branch promotion.
+- Typecheck, OKF and 587 Vitest tests pass. `npm run verify` is incomplete: the production page harness could not bind its local `tsx` IPC socket (`EPERM`) in this environment. This is not a functional QA pass.
+- See `refs/handoffs/tws-video-readonly-world-snapshot-2026-11-18.md`.
+
 ## Next thread: managed atmosphere generator for TWS-Video (2026-11-17)
 - User approved architecture for TWS-Video to request planet presentation layers from World Forge through a managed local process, with no manual CLI or desktop UI steps. Start with existing saved WorldProject; generation of entirely new planets comes later.
 - Detailed plan: `refs/planning/managed-planet-presentation-generator-2026-11-17.md`; consumer plan in TWS-Video `refs/planning/world-forge-planet-presentation-bridge-2026-11-17.md`.

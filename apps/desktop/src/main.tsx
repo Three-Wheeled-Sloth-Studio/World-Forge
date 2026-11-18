@@ -68,6 +68,7 @@ import { useWorkspacePersistence } from './workspace/useWorkspacePersistence';
 import { APP_SOURCE_COMMIT, APP_VERSION, APP_VISIBLE_VERSION } from './appVersion';
 import { ReleaseNotesModal } from './release/ReleaseNotesModal';
 import { applyParchmentShellEmbedFlag } from './shell/embedMode';
+import { deliverWorldToTws, parseTwsWorldHandoff } from './twsVideoWorldHandoff';
 import './styles.css';
 import './devWorkspace.css';
 
@@ -278,6 +279,16 @@ function configForFreshGeneration(config: GenerationConfig): GenerationConfig {
 }
 
 function App() {
+  useEffect(() => {
+    const target = parseTwsWorldHandoff(window.location.search, window.location.hostname);
+    if (!target) return;
+    const cleanUrl = new URL(window.location.href);
+    for (const key of ['twsWorldPort', 'twsWorldToken', 'twsWorldId']) cleanUrl.searchParams.delete(key);
+    window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+    void deliverWorldToTws(target).catch((error: unknown) => {
+      window.alert(`TWS-Video world handoff failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  }, []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('embed') !== 'shell' || window.parent === window) return;
