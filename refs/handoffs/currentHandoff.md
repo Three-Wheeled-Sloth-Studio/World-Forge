@@ -12,7 +12,8 @@ tags:
 - Parchment Worlds now supplies its authoritative persisted `.wforge` package and exact body binding to TWS. The managed generator validates the package project ID, selects the requested persisted body surface without fallback, and records Parchment project/world plus World Forge project/body identity in the result manifest.
 - Missing or unsurfaced requested bodies fail with `WORLD_UNAVAILABLE`; source-project bytes remain unchanged and completed output remains immutable.
 - Full `npm run verify` passes: OKF/case checks, typecheck, 587 tests, production harness self-tests and production bundle. The five focused generator tests include a real cold-start 512x256 headless Chromium render with no World Forge UI.
-- Windows TWS QA passed for persisted Sol System -> Earth: the 184.54 MiB authoritative package transferred through Parchment, this managed generator ran without consulting/opening World Forge UI, and the verified 512x256 candidate preview appeared. It was not accepted and no video render ran. Remote CI remains the final published checkpoint gate.
+- Windows TWS QA passed for persisted Sol System -> Earth: the 184.54 MiB authoritative package transferred through Parchment, this managed generator ran without consulting/opening World Forge UI, and the verified 512x256 candidate preview appeared. It was not accepted and no video render ran.
+- Published checkpoint `8b7c357` on `dev`; GitHub Validate World Forge run `44556170253` passed.
 
 ## TWS-Video read-only browser world snapshot (2026-11-18)
 - Active-project fix: TWS no longer opens a duplicate World Forge tab. World Forge dev service queues a one-time localhost request; the already-open app on the matching `projectId` exports its current in-memory world. No IndexedDB lookup or browser navigation is needed. See `refs/handoffs/tws-video-readonly-world-snapshot-2026-11-18.md`.
