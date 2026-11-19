@@ -7,6 +7,7 @@ import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import { importMultiBodyWforge } from '../packages/exporters/src/multiBodyWforge';
 import type { AtmosphericWeatherPresentationArtifact } from '@world-forge/shared';
+import { projectForWorldBody, readWorldBodyCatalog } from '@world-forge/shared/worldBodies';
 import {
   atmosphericWeatherSourceFromProject,
   isCurrentAtmosphericWeatherPresentationArtifact,
@@ -27,6 +28,13 @@ export type AtmosphereJobRequest = {
   outputDirectory: string;
   simulationDays?: number;
   browserExecutable?: string;
+  worldId?: string;
+  sourceIdentity?: {
+    parchmentProjectId: string;
+    worldAssetId: string;
+    requestedWorldProjectId: string;
+    worldForgeProjectId: string;
+  };
 };
 
 export function validateAtmosphereJobRequest(value: unknown): AtmosphereJobRequest {
@@ -46,6 +54,17 @@ export function validateAtmosphereJobRequest(value: unknown): AtmosphereJobReque
   if (request.browserExecutable !== undefined && (typeof request.browserExecutable !== 'string' || !path.isAbsolute(request.browserExecutable))) {
     throw new Error('INVALID_REQUEST: browserExecutable must be an absolute path.');
   }
+  if (request.worldId !== undefined && !validIdentity(request.worldId)) {
+    throw new Error('INVALID_REQUEST: worldId is invalid.');
+  }
+  if (request.sourceIdentity !== undefined) {
+    if (!request.sourceIdentity || typeof request.sourceIdentity !== 'object') {
+      throw new Error('INVALID_REQUEST: sourceIdentity is invalid.');
+    }
+    for (const field of ['parchmentProjectId', 'worldAssetId', 'requestedWorldProjectId', 'worldForgeProjectId'] as const) {
+      if (!validIdentity(request.sourceIdentity[field])) throw new Error(`INVALID_REQUEST: sourceIdentity.${field} is invalid.`);
+    }
+  }
   if (path.resolve(request.sourceWforge) === path.resolve(request.outputDirectory)) {
     throw new Error('INVALID_REQUEST: Source and output must differ.');
   }
@@ -64,7 +83,13 @@ export async function generateAtmosphereJob(
   const request = validateAtmosphereJobRequest(requestValue);
   const sourceBytes = await readFile(request.sourceWforge);
   const sourceSha256 = sha256(sourceBytes);
-  const project = await importMultiBodyWforge(new File([sourceBytes], path.basename(request.sourceWforge)));
+  const importedProject = await importMultiBodyWforge(new File([sourceBytes], path.basename(request.sourceWforge)));
+  if (request.sourceIdentity && request.sourceIdentity.worldForgeProjectId !== importedProject.projectId) {
+    throw new Error('SOURCE_IDENTITY_MISMATCH: Persisted package project ID does not match the selected Parchment binding.');
+  }
+  const requestedBodyId = request.worldId ?? readWorldBodyCatalog(importedProject).primaryBodyId;
+  const project = projectForWorldBody(importedProject, requestedBodyId);
+  if (!project) throw new Error(`WORLD_UNAVAILABLE: Selected body ${requestedBodyId} has no persisted generated surface.`);
   let cancelled = false;
   const abort = () => { cancelled = true; };
   process.once('SIGINT', abort);
@@ -112,7 +137,11 @@ export async function generateAtmosphereJob(
     const atmosphereBytes = Buffer.from(JSON.stringify(atmosphere, null, 2) + '\n');
     const manifest = {
       schema: ATMOSPHERE_RESULT_SCHEMA,
-      source: { file: path.basename(request.sourceWforge), sha256: sourceSha256, projectId: project.projectId, worldId: project.primaryWorld.id },
+      source: {
+        file: path.basename(request.sourceWforge), sha256: sourceSha256,
+        projectId: project.projectId, worldId: project.primaryWorld.id, bodyId: requestedBodyId,
+        ...(request.sourceIdentity ?? {}),
+      },
       weather: { artifactSignature: weather.artifactSignature, sourceSignature: weather.source.sourceSignature,
         authority: 'illustrative', simulationDays: request.simulationDays ?? 0 },
       projection: 'equirectangular', resolution: weather.payload.textureResolution,
@@ -134,6 +163,10 @@ export async function generateAtmosphereJob(
     process.removeListener('SIGTERM', abort);
     if (staging) await rm(staging, { recursive: true, force: true });
   }
+}
+
+function validIdentity(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= 240;
 }
 
 async function renderCloudsInChromium(weather: AtmosphericWeatherPresentationArtifact, days: number, browserExecutable?: string): Promise<Buffer> {

@@ -8,6 +8,10 @@ tags:
 ---
 # Read-only World Snapshot for TWS-Video (2026-11-18)
 
+## Superseded on 2026-11-19
+
+The active-browser snapshot design below was replaced after Windows QA proved it could not resolve the selected Parchment world reliably. World Forge's browser polling and Vite queue have been removed. Parchment Worlds now resolves its own authoritative persisted package attachment and exact body binding through an explicit read-only request; TWS passes that package to World Forge's managed headless generator. Keep the history below as failure context, not current architecture.
+
 World Forge `dev` exposes a local-only, one-time request queue through its development server, consumed by the already-open World Forge browser app when its active project matches the requested world ID.
 
 - It reads the active WorldProject from React application state, never from Parchment's project metadata, a separately opened blank tab, or an assumed `.wforge` export.

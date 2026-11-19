@@ -27,5 +27,6 @@ Generated OKF discovery index. Do not edit manually.
 * [Current Handoff: Structural Terrain Integrity](structural-terrain-integrity.md) - Agent Academy OKF knowledge concept.
 * [System view body-catalog alignment handoff](system-view-body-catalog-alignment.md) - Agent Academy OKF knowledge concept.
 * [System Visualization and Enrichment Handoff](system-visualization-enrichment.md) - Agent Academy OKF knowledge concept.
+* [TWS-Video Read-only World Snapshot](tws-video-readonly-world-snapshot-2026-11-18.md) - Agent Academy OKF knowledge concept.
 * [World Forge v0.3.9 Vertical Striping Investigation Handoff](vertical-striping-investigation-v0.3.9.md) - Agent Academy OKF knowledge concept.
 * [World Builder Cleanup Handoff](world-builder-cleanup.md) - Agent Academy OKF knowledge concept.

@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
-import { twsWorldHandoffPlugin } from './apps/desktop/src/twsWorldHandoffPlugin';
 
 const defaultPublicEnv: Record<string, string> = {
   VITE_WORLD_FORGE_SERVICE_URL: ''
@@ -13,7 +12,7 @@ for (const [name, value] of Object.entries(defaultPublicEnv)) {
 
 export default defineConfig({
   base: './',
-  plugins: [react(), twsWorldHandoffPlugin()],
+  plugins: [react()],
   root: 'apps/desktop',
   envDir: __dirname,
   publicDir: '../../public',
